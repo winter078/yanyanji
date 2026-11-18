@@ -1,0 +1,57 @@
+/* ============================================================
+   themes.css — 纯色主题包（波 7）
+   只放主题块，不改 base.css。每个主题 = 完整一套 17 个槽位。
+   加载顺序必须在 base.css 之后。
+   ============================================================ */
+
+/* ---------- 樱花（浅底 · 柔粉） ---------- */
+[data-theme="sakura"] {
+  --bg-base: #fdf2f4;
+  --bg-surface: #ffffff;
+  --bg-elevated: rgba(255, 250, 251, 0.94);
+  --bg-elevated-solid: #fff7f8;
+  --text-primary: #43242b;
+  --text-secondary: #7d5a63;
+  --text-muted: #a3868d;
+  --border-default: rgba(120, 60, 75, 0.10);
+  --accent-primary: #c96a86;
+  --accent-soft: rgba(201, 106, 134, 0.14);
+  --bubble-user: #f6c8d6;
+  --bubble-user-text: #4a2530;
+  --bubble-bot: #ffffff;
+  --bubble-bot-text: #43242b;
+  --wechat-bg-chat: #fbe9ee;
+  --wechat-bg-bar: rgba(253, 240, 243, 0.96);
+  --wechat-bg-input: #ffffff;
+  --glass-faint: rgba(120, 60, 75, 0.04);
+  --glass-soft: rgba(120, 60, 75, 0.055);
+  --glass: rgba(120, 60, 75, 0.075);
+  --glass-strong: rgba(120, 60, 75, 0.11);
+  --chat-dim: rgba(60, 20, 30, 0.14);
+}
+
+/* ---------- 抹茶（浅底 · 奶绿） ---------- */
+[data-theme="matcha"] {
+  --bg-base: #eff2e9;
+  --bg-surface: #ffffff;
+  --bg-elevated: rgba(246, 248, 241, 0.94);
+  --bg-elevated-solid: #f4f6ee;
+  --text-primary: #2a3326;
+  --text-secondary: #5c6a54;
+  --text-muted: #83917a;
+  --border-default: rgba(60, 80, 50, 0.10);
+  --accent-primary: #7c9c6a;
+  --accent-soft: rgba(124, 156, 106, 0.15);
+  --bubble-user: #cfe0bd;
+  --bubble-user-text: #25301f;
+  --bubble-bot: #ffffff;
+  --bubble-bot-text: #2a3326;
+  --wechat-bg-chat: #eef2e7;
+  --wechat-bg-bar: rgba(242, 246, 236, 0.96);
+  --wechat-bg-input: #ffffff;
+  --glass-faint: rgba(40, 60, 35, 0.04);
+  --glass-soft: rgba(40, 60, 35, 0.055);
+  --glass: rgba(40, 60, 35, 0.075);
+  --glass-strong: rgba(40, 60, 35, 0.11);
+  --chat-dim: rgba(20, 30, 15, 0.14);
+}

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>chat avatar flow probe</title>
+  <style>
+    html, body { margin: 0; padding: 0; width: 500px; height: 1000px; overflow: hidden; background: #000; }
+    iframe { display: block; width: 500px; height: 1000px; border: 0; }
+  </style>
+</head>
+<body>
+<script>
+  const img = {
+    alan1: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=160&auto=format&fit=crop&q=80',
+    alan2: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=160&auto=format&fit=crop&q=80'
+  };
+  const chars = [{ id: 'c-a', name: '阿岚', avatar: img.alan1, tag: '角色', intro: '会陪你熬夜聊天', prompt: '', directives: '', relations: [], starred: false, createdAt: 1 }];
+  const history = [
+    { role: 'user', content: '我昨天画到凌晨三点，手都快断了。', time: '22:10' },
+    { role: 'assistant', content: '先别画了，过来。', time: '22:11' }
+  ];
+  const vault = [
+    { id: 'av1', name: '笑眼 · 开心', tag: '开心', emotion: '开心', tagClass: '', note: '', url: img.alan1 },
+    { id: 'av2', name: '别过头去 · 吃醋', tag: '吃醋', emotion: '吃醋', tagClass: 'badge-angry', note: '', url: img.alan2 }
+  ];
+  localStorage.setItem('momo_characters', JSON.stringify(chars));
+  localStorage.setItem('momo_characters_trash', '[]');
+  localStorage.setItem('momo_active_char', 'c-a');
+  localStorage.setItem('momo_user_nick', '末末');
+  localStorage.setItem('momo_char_remarks_v1', '{}');
+  localStorage.setItem('momo_chat_histories', JSON.stringify({ 'c-a': history }));
+  localStorage.setItem('momo_chat_history', JSON.stringify(history));
+  localStorage.setItem('momo_chat_history_scoped_v1', '1');
+  localStorage.setItem('momo_wechat_friends', JSON.stringify(['c-a']));
+  localStorage.setItem('momo_wechat_pins', '[]');
+  localStorage.setItem('momo_wechat_hidden_convs', '[]');
+  localStorage.setItem('momo_vault_char_c-a_v1', JSON.stringify(vault));
+  localStorage.setItem('momo_vault_active_tab_v2', 'xuyan');
+  localStorage.setItem('momo_vault_current_char_v1', 'c-a');
+  localStorage.removeItem('momo_vault_list_couple_v2');
+
+  const f = document.createElement('iframe');
+  f.src = '/index.html?v=2026111145';
+  f.addEventListener('load', function () {
+    setTimeout(function () {
+      const d = f.contentDocument;
+      const w = f.contentWindow;
+      const out = [];
+      const baselineAssistants = function () {
+        return (w.appData.chatHistory || []).filter(function (m) { return m.role === 'assistant'; }).length;
+      };
+      try {
+        if (typeof w.openFriendChat === 'function') w.openFriendChat('c-a');
+        setTimeout(function () {
+          try {
+            const before = baselineAssistants();
+            const beforeAvatar = w.findCharacterById('c-a').avatar;
+            out.push('baselineAssistants=' + before);
+            if (w.appData) { w.appData.apiKey = 'probe-key'; w.appData.apiBase = 'http://probe.local/v1'; }
+            w.fetch = function () {
+              return Promise.resolve({
+                ok: true,
+                json: function () {
+                  return Promise.resolve({ choices: [{ message: { content: '有点吃醋。\n[换头像: 吃醋]' } }] });
+                },
+                text: function () { return Promise.resolve(''); }
+              });
+            };
+            const input = w.document.getElementById('chat-input');
+            if (input) input.value = '测试换头像';
+            if (typeof w.handleTriggerGenerate === 'function') w.handleTriggerGenerate();
+            else w.document.getElementById('gen-btn').click();
+
+            let tries = 0;
+            const poll = setInterval(function () {
+              tries++;
+              const modal = w.document.getElementById('avatar-change-modal');
+              const open = !!modal && modal.classList.contains('open');
+              if (!open && tries < 80) return;
+              clearInterval(poll);
+              const atModal = baselineAssistants();
+              out.push('modalOpen=' + open + ' after=' + (tries * 50) + 'ms');
+              out.push('bodyAddedWhileModalOpen=' + (atModal - before));
+              out.push('avatarChangedWhileModalOpen=' + (w.findCharacterById('c-a').avatar !== beforeAvatar));
+              out.push('modalRect=' + (modal ? Math.round(modal.getBoundingClientRect().width) + 'x' + Math.round(modal.getBoundingClientRect().height) : 'none'));
+              out.push('chatPageActive=' + (w.document.getElementById('page-chat') ? getComputedStyle(w.document.getElementById('page-chat')).display !== 'none' : 'no-page'));
+              if (!open) { render(); return; }
+              w.resolveAvatarChange(true);
+              setTimeout(function () {
+                const after = baselineAssistants();
+                out.push('assistantAfterAgree=' + after + ' added=' + (after - before));
+                out.push('avatarAfterAgree=' + (w.findCharacterById('c-a').avatar === img.alan2));
+                out.push('globalAfterAgree=' + (w.appData.botAvatar === img.alan2));
+                const texts = (w.appData.chatHistory || []).filter(m => m.role === 'assistant').map(m => m.content || '').join(' | ');
+                out.push('bodyHasText=' + /有点吃醋/.test(texts));
+                render();
+              }, 1200);
+            }, 50);
+            function render() {
+              const pre = d.createElement('pre');
+              pre.id = 'probe-result';
+              pre.style.cssText = 'position:fixed;left:0;bottom:0;z-index:9999;width:500px;margin:0;padding:10px 14px;background:rgba(16,16,20,.92);color:#9be7a8;font:12px/1.5 monospace;white-space:pre-wrap;box-sizing:border-box;';
+              pre.textContent = out.join('\n');
+              document.body.appendChild(pre);
+              document.title = 'flow done';
+            }
+          } catch (e) { document.title = 'ERROR ' + e.message; }
+        }, 700);
+      } catch (e) { document.title = 'ERROR ' + e.message; }
+    }, 1400);
+  });
+  document.body.appendChild(f);
+</script>
+</body>
+</html>

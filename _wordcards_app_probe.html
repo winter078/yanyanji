@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>wordcards app probe</title>
+  <style>
+    html, body { margin: 0; padding: 0; width: 500px; height: 1200px; overflow: hidden; background: #000; }
+    iframe { display: block; width: 500px; height: 1200px; border: 0; }
+    #probe-result { position: fixed; left: 0; top: 0; z-index: 9999; margin: 0; padding: 4px; background: rgba(0,0,0,.82); color: #8f8; font: 11px/1.45 monospace; white-space: pre-wrap; max-width: 492px; }
+    #probe-result.hidden { display: none; }
+  </style>
+</head>
+<body>
+<script>
+  const view = new URLSearchParams(location.search).get('view') || 'chat';
+  const clean = new URLSearchParams(location.search).get('clean') === '1';
+  const IMG_A = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=240&auto=format&fit=crop&q=80';
+  const IMG_B = 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=240&auto=format&fit=crop&q=80';
+  const IMG_ME = 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=240&auto=format&fit=crop&q=80';
+
+  const chars = [
+    { id: 'c-a', name: '阿岚', avatar: IMG_A, tag: '会吃醋', intro: '嘴硬心软', prompt: '', directives: '', relations: [], starred: false, createdAt: 1 },
+    { id: 'c-b', name: '周绪言', avatar: IMG_B, tag: '慢热', intro: '话少', prompt: '', directives: '', relations: [], starred: false, createdAt: 2 }
+  ];
+  const wcHistory = [
+    { role: 'user', content: '今天好累。', time: '22:10' },
+    { role: 'assistant', content: '辛苦了。先歇一会儿，别硬撑。', time: '22:10', wordcard: true },
+    { role: 'user', content: '你还在吗？', time: '22:14' },
+    { role: 'assistant', content: '我在。', time: '22:14', wordcard: true }
+  ];
+
+  localStorage.setItem('momo_characters', JSON.stringify(chars));
+  localStorage.setItem('momo_characters_trash', '[]');
+  localStorage.setItem('momo_active_char', 'c-a');
+  localStorage.setItem('momo_user_nick', '末末');
+  localStorage.setItem('momo_hero_avatar', IMG_ME);
+  localStorage.setItem('momo_wechat_friends', JSON.stringify(['c-a', 'c-b']));
+  localStorage.setItem('momo_wordcards_history_v1_c-a', JSON.stringify(wcHistory));
+  localStorage.setItem('momo_wordcards_memory_v1_c-a', '他答应过，不管多晚都会回我。\n我不喜欢他逞强。');
+
+  const f = document.createElement('iframe');
+  f.src = '/index.html?v=2026111183';
+  f.addEventListener('load', function () {
+    setTimeout(function () {
+      const w = f.contentWindow;
+      const d = f.contentDocument;
+      const lines = [];
+      function ok(name, cond) { lines.push((cond ? 'PASS ' : 'FAIL ') + name); }
+      function closeAllModals() {
+        try {
+          if (typeof w.closeStickerDrawer === 'function') w.closeStickerDrawer();
+          if (typeof w.resolveAvatarChange === 'function') w.resolveAvatarChange(false);
+          if (typeof w.resolveChatFrameChange === 'function') w.resolveChatFrameChange(false);
+          if (typeof w.closeWordCardModal === 'function') w.closeWordCardModal();
+        } catch (e) {}
+        d.querySelectorAll('.avatar-change-mask.open, .modal-mask.open, .drawer-mask.open, .sheet-mask.open, .vault-drawer-mask.open, .wc-modal-mask.open').forEach(function (el) {
+          el.classList.remove('open');
+        });
+      }
+      function wait(ms) { return new Promise(function (resolve) { setTimeout(resolve, ms); }); }
+      async function run() {
+        try {
+          const calm = d.createElement('style');
+          calm.textContent = '*,*::before,*::after{transition:none!important;animation:none!important}';
+          (d.head || d.documentElement).appendChild(calm);
+          closeAllModals();
+
+          const WC = w.WordCards;
+          ok('字卡模块已加载', !!WC);
+          ok('字卡是独立函数，不再接管微信聊天', typeof w.wordCardShouldHandle === 'undefined' && typeof w.wordCardAutoReply === 'undefined');
+          ok('单人聊天设置里没有字卡入口', !d.getElementById('wc-entry-sub'));
+          ok('字卡 App 页面存在', !!d.getElementById('page-wordcards'));
+          ok('桌面 Dock 有字卡入口', !!d.querySelector('.dock-app-item .dock-label') && Array.from(d.querySelectorAll('.dock-app-item .dock-label')).some(function (el) { return el.textContent === '字卡'; }));
+
+          w.openWordCardApp(view === 'home' ? 'chat' : view, 'c-a');
+          await wait(500);
+          closeAllModals();
+
+          if (view === 'home') {
+            w.openPage('page-home');
+            await wait(300);
+            ok('能回到桌面', d.getElementById('page-home').classList.contains('active'));
+          } else if (view === 'library') {
+            ok('字卡库页已打开', !!d.querySelector('#wc-app-body .wc-library-scroll'));
+            ok('角色库 / 通用库页签存在', !!d.getElementById('wc-tab-library'));
+            ok('字卡库底部有记忆总结入口', !!d.querySelector('.wc-memory-entry'));
+            w.wcSwitchTab('global');
+            await wait(250);
+            ok('通用库有 10 张种子卡', WC.countCards(WC.getDeck('global', '')) >= 9);
+          } else if (view === 'memory') {
+            ok('记忆页已打开', !!d.querySelector('#wc-app-body .wc-memory-scroll'));
+            const ta = d.getElementById('wc-memory-textarea');
+            ok('记忆文本框存在', !!ta);
+            if (ta) {
+              ta.value = '他答应过，不管多晚都会回我。\n我不喜欢他逞强。';
+              w.wcSaveMemory(false);
+              await wait(200);
+              ok('记忆只存进字卡 App', WC.getMemory('c-a') === '他答应过，不管多晚都会回我。\n我不喜欢他逞强。');
+            }
+          } else {
+            ok('字卡对话页已打开', !!d.querySelector('#wc-app-body .wc-chat-view'));
+            ok('对话里已有历史气泡', d.querySelectorAll('#wc-app-body .wc-msg').length >= 2);
+            const input = d.getElementById('wc-chat-input');
+            ok('输入栏存在', !!input);
+            if (input) {
+              input.value = '今天好累';
+              w.wcSendText();
+              await wait(250);
+              const h = WC.getHistory('c-a');
+              ok('发送后追加了用户和字卡回复', h.length >= 2 && h[h.length - 2].role === 'user' && h[h.length - 1].role === 'assistant');
+            }
+            w.wcSwitchView('library');
+            await wait(250);
+            ok('能从对话切到字卡库', !!d.querySelector('#wc-app-body .wc-library-scroll'));
+            w.wcSwitchView('chat');
+            await wait(250);
+            ok('能从字卡库切回对话', !!d.querySelector('#wc-app-body .wc-chat-view'));
+          }
+
+          const pick = WC.pickWordCard('今天好累', { charId: 'c-a' });
+          ok('「累」能命中通用关心卡', !!pick && /今天|累|歇|辛苦|扛/.test(pick.card.text));
+        } catch (e) {
+          lines.push('ERROR ' + (e && e.stack ? e.stack : e));
+        }
+
+        if (clean) {
+          document.getElementById('probe-result').classList.add('hidden');
+        } else {
+          const pre = document.createElement('pre');
+          pre.id = 'probe-result';
+          pre.textContent = lines.join('\n');
+          document.body.appendChild(pre);
+        }
+      }
+      run();
+    }, 800);
+  });
+  document.body.appendChild(f);
+</script>
+</body>
+</html>

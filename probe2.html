@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>裸页测试</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover, user-scalable=no" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<style>
+  html, body { margin: 0; padding: 0; background: #000; height: 100%; }
+  #red { position: fixed; top: 0; left: 0; right: 0; height: 240px; background: #e01818; }
+  #txt { position: fixed; top: 250px; left: 0; right: 0; color: #fff;
+         font: 15px/1.7 -apple-system, "PingFang SC", sans-serif; padding: 10px 14px; }
+  #txt b { color: #ffd24a; }
+</style>
+</head>
+<body>
+  <div id="red"></div>
+  <div id="txt"></div>
+<script>
+(function () {
+  var t = document.getElementById('txt');
+  function up() {
+    var sh = (window.screen && window.screen.height) || 0;
+    var ih = window.innerHeight || 0;
+    var sa = '';
+    try {
+      var probe = document.createElement('div');
+      probe.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:env(safe-area-inset-top,0px);visibility:hidden';
+      document.body.appendChild(probe);
+      sa = probe.getBoundingClientRect().height;
+    } catch (e) {}
+    t.innerHTML =
+      '这个页面只有一条红条，<b>没有任何别的代码</b>，跟你的小手机完全无关。<br><br>' +
+      '视口高 <b>' + ih + '</b> · 屏高 <b>' + sh + '</b> · 差 <b>' + (sh - ih) + '</b><br>' +
+      '顶部安全区 <b>' + Math.round(sa) + '</b> · 独立窗口 <b>' + (navigator.standalone === true) + '</b><br><br>' +
+      '看红条<b>上面</b>有没有一条浅色带：<br>' +
+      '有 → 那条是系统画的，跟网页无关<br>' +
+      '没有（红条顶到屏幕最上沿）→ 那是我代码的问题';
+  }
+  up();
+  addEventListener('resize', up);
+  addEventListener('orientationchange', function () { setTimeout(up, 400); });
+  setTimeout(up, 600);
+})();
+</script>
+</body>
+</html>

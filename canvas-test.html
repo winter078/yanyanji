@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="画布测试" />
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+<title>画布测试</title>
+<style>
+  html,body{margin:0;padding:0;background:#101014;color:#fff;
+    font:16px/1.6 -apple-system,'PingFang SC',sans-serif;}
+  #red{position:fixed;top:0;left:0;right:0;height:44px;background:#e01818;z-index:9}
+  #green{position:fixed;bottom:0;left:0;right:0;height:80px;background:#00d34d;z-index:9}
+  #info{position:fixed;top:52px;left:10px;right:10px;font-size:15px;z-index:10}
+  b{color:#ffe27a}
+</style>
+</head>
+<body>
+<div id="red"></div>
+<div id="green"></div>
+<div id="info">
+  <div style="font-size:20px;font-weight:700;margin-bottom:10px;">看底部绿条</div>
+  <div>绿条<b>顶到屏幕最下沿</b> → 网页能画满整屏，我一次就能修好</div>
+  <div>绿条<b>离底还空一截</b> → 网页画不到最底，只能换方案</div>
+  <div id="nums" style="margin-top:14px;font-size:14px;opacity:.85;">测量中…</div>
+</div>
+<script>
+  function show(){
+    var vv = window.innerHeight, sh = screen.height, sw = screen.width;
+    var probe = document.getElementById('red');
+    document.getElementById('nums').innerHTML =
+      '视口高 <b>' + vv + '</b> / 屏高 <b>' + sh + '</b> / 屏宽 <b>' + sw + '</b><br>' +
+      '绿条底边 <b>' + Math.round(document.getElementById('green').getBoundingClientRect().bottom) + '</b>' +
+      ' / 视口底 <b>' + vv + '</b><br>' +
+      'standalone <b>' + (navigator.standalone === true) + '</b> · ' +
+      'dpr <b>' + (window.devicePixelRatio||0) + '</b>';
+  }
+  window.addEventListener('load', show);
+  window.addEventListener('resize', show);
+  setTimeout(show, 300);
+</script>
+</body>
+</html>

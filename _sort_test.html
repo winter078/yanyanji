@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><title>sort test</title></head>
+<body style="margin:0;padding:12px;font:14px/1.4 sans-serif;background:#fff;color:#111;">
+<pre id="out">waiting</pre>
+<script>
+  const chars = [
+    { id: 'c-a', name: 'A', avatar: '', tag: 't', intro: '', prompt: '', createdAt: 1 },
+    { id: 'c-b', name: 'B', avatar: '', tag: 't', intro: '', prompt: '', createdAt: 2 },
+    { id: 'c-c', name: 'C', avatar: '', tag: 't', intro: '', prompt: '', createdAt: 3 }
+  ];
+  const messages = {
+    'c-a': [{ role: 'assistant', content: 'A newest', time: '06:00' }],
+    'c-b': [{ role: 'assistant', content: 'B pinned older', time: '05:00' }],
+    'c-c': [{ role: 'assistant', content: 'C oldest', time: '04:00' }]
+  };
+  localStorage.setItem('momo_characters', JSON.stringify(chars));
+  localStorage.setItem('momo_wechat_friends', JSON.stringify(['c-a', 'c-b', 'c-c']));
+  localStorage.setItem('momo_active_char', 'c-a');
+  localStorage.setItem('momo_wechat_pins', JSON.stringify(['c-b']));
+  localStorage.setItem('momo_wechat_hidden_convs', '[]');
+  localStorage.setItem('momo_chat_histories', JSON.stringify(messages));
+  localStorage.setItem('momo_chat_history_scoped_v1', '1');
+  localStorage.setItem('momo_chat_history', JSON.stringify(messages['c-a']));
+
+  const frame = document.createElement('iframe');
+  frame.style.width = '420px';
+  frame.style.height = '720px';
+  frame.src = 'index.html';
+  document.body.appendChild(frame);
+
+  const ids = () => Array.from(frame.contentDocument.querySelectorAll('#wechat-extra-sessions .wechat-chat-item'))
+    .map(el => el.getAttribute('data-conv-id'));
+
+  frame.onload = () => {
+    setTimeout(() => {
+      const before = ids();
+      const row = frame.contentDocument.querySelector('#wechat-extra-sessions .wechat-chat-item[data-conv-id="c-c"]');
+      if (row) row.click();
+      setTimeout(() => {
+        document.getElementById('out').textContent = JSON.stringify({ before: before, after: ids(), clicked: !!row });
+      }, 1500);
+    }, 1200);
+  };
+</script>
+</body>
+</html>

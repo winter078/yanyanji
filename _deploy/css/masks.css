@@ -1,0 +1,320 @@
+/* ---------- 面具 / 小号：聊天设定底部面板 ---------- */
+.mask-layer {
+  z-index: 3300;
+}
+
+.mask-sheet {
+  max-height: 92vh;
+}
+
+.mask-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 16px 18px;
+  box-sizing: border-box;
+}
+
+.mask-hero {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  margin-bottom: 14px;
+  border-radius: 16px;
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.08));
+  background: var(--bg-surface, #202126);
+}
+
+.mask-avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  overflow: hidden;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-base, #15161a);
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.10));
+  color: var(--color-text-secondary, #aaa);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.mask-avatar.is-current {
+  width: 54px;
+  height: 54px;
+  border-radius: 14px;
+}
+
+.mask-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.mask-hero-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.mask-hero-label {
+  font-size: 11px;
+  color: var(--color-text-secondary, #aaa);
+  letter-spacing: 0.4px;
+}
+
+.mask-hero-name {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary, #f2f2f4);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mask-hero-sub {
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--color-text-secondary, #aaa);
+  margin-top: 3px;
+}
+
+.mask-section-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 2px 8px;
+  font-size: 11.5px;
+  color: var(--color-text-secondary, #aaa);
+}
+
+.mask-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mask-row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.08));
+  background: var(--bg-surface, #202126);
+  color: var(--text-primary, #f2f2f4);
+  text-align: left;
+  cursor: pointer;
+  min-height: 58px;
+}
+
+.mask-row.is-active {
+  border-color: rgba(120, 170, 255, 0.45);
+  background: rgba(80, 120, 190, 0.13);
+}
+
+.mask-row-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.mask-row-name {
+  font-size: 14.5px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mask-row-sub {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--color-text-secondary, #aaa);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mask-current-pill {
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  color: rgba(185, 210, 255, 0.95);
+  background: rgba(110, 160, 255, 0.14);
+  border: 1px solid rgba(120, 170, 255, 0.28);
+}
+
+.mask-row-action {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.08));
+  background: transparent;
+  color: var(--color-text-secondary, #aaa);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.mask-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.mask-primary-btn,
+.mask-secondary-btn {
+  width: 100%;
+  min-height: 44px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mask-primary-btn {
+  background: rgba(110, 160, 255, 0.16);
+  border: 1px solid rgba(120, 170, 255, 0.34);
+  color: rgba(205, 225, 255, 0.96);
+}
+
+.mask-secondary-btn {
+  background: transparent;
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.10));
+  color: var(--color-text-secondary, #aaa);
+}
+
+.mask-tip {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--color-text-secondary, #aaa);
+}
+
+.mask-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mask-editor-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mask-editor-avatar {
+  width: 58px;
+  height: 58px;
+  border-radius: 15px;
+  overflow: hidden;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-base, #15161a);
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.10));
+  color: var(--color-text-secondary, #aaa);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.mask-editor-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.mask-editor-avatar-btn {
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.10));
+  background: var(--bg-surface, #202126);
+  color: var(--text-primary, #f2f2f4);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.mask-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.mask-field-label {
+  font-size: 11.5px;
+  color: var(--color-text-secondary, #aaa);
+  padding-left: 2px;
+}
+
+.mask-input,
+.mask-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 11px;
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.10));
+  background: var(--bg-base, #15161a);
+  color: var(--text-primary, #f2f2f4);
+  font-size: 16px;
+  line-height: 1.5;
+  padding: 10px 12px;
+  outline: none;
+}
+
+.mask-input {
+  height: 44px;
+}
+
+.mask-textarea {
+  min-height: 76px;
+  resize: vertical;
+  font-size: 14px;
+}
+
+.mask-input::placeholder,
+.mask-textarea::placeholder {
+  color: rgba(180, 180, 190, 0.45);
+}
+
+.mask-input:focus,
+.mask-textarea:focus {
+  border-color: rgba(120, 170, 255, 0.42);
+}
+
+.mask-editor-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.mask-editor-actions .mask-primary-btn,
+.mask-editor-actions .mask-secondary-btn {
+  flex: 1;
+}
+
+.mask-delete-btn {
+  width: 100%;
+  min-height: 40px;
+  border-radius: 11px;
+  border: 1px solid rgba(239, 68, 68, 0.26);
+  background: rgba(239, 68, 68, 0.08);
+  color: rgba(255, 140, 150, 0.92);
+  font-size: 12.5px;
+  cursor: pointer;
+}

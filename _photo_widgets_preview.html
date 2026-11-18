@@ -1,0 +1,365 @@
+<html data-canvas-width="1200" data-canvas-height="1000" style="margin:0;padding:0;">
+<title>三种相片小组件预览</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #08090b; }
+  .board {
+    position: relative;
+    width: 1200px;
+    height: 1000px;
+    overflow: hidden;
+    background: #090a0c;
+    color: #f3ece4;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+  }
+  .bg {
+    position: absolute;
+    inset: -40px;
+    width: calc(100% + 80px);
+    height: calc(100% + 80px);
+    object-fit: cover;
+    object-position: center 40%;
+    filter: brightness(.34) saturate(.38) contrast(.92) blur(6px);
+    transform: scale(1.04);
+    opacity: .9;
+  }
+  .wash {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 50% 38%, rgba(238,222,207,.055), transparent 56%),
+      linear-gradient(180deg, rgba(6,7,9,.24), rgba(6,7,9,.36) 44%, rgba(6,7,9,.82) 100%);
+  }
+  .grain {
+    position: absolute;
+    inset: 0;
+    opacity: .11;
+    mix-blend-mode: soft-light;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.72' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E");
+  }
+  .header {
+    position: absolute;
+    left: 84px;
+    top: 50px;
+  }
+  .kicker {
+    font-size: 10px;
+    line-height: 1;
+    letter-spacing: .24em;
+    color: rgba(235,225,214,.43);
+    text-transform: uppercase;
+  }
+  .title {
+    margin-top: 15px;
+    font-size: 31px;
+    line-height: 1.1;
+    font-weight: 500;
+    letter-spacing: .04em;
+    color: rgba(244,237,230,.92);
+  }
+  .sub {
+    margin-top: 8px;
+    font-size: 10px;
+    letter-spacing: .10em;
+    color: rgba(235,225,214,.48);
+  }
+  .badge {
+    position: absolute;
+    right: 84px;
+    top: 56px;
+    padding: 8px 12px 7px;
+    border: 1px solid rgba(255,255,255,.13);
+    border-radius: 999px;
+    font-size: 9px;
+    letter-spacing: .15em;
+    color: rgba(243,236,228,.60);
+    background: rgba(255,255,255,.025);
+    backdrop-filter: blur(12px);
+  }
+
+  .halo {
+    position: absolute;
+    width: 540px;
+    height: 540px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(231,215,199,.10), rgba(231,215,199,.025) 42%, transparent 70%);
+    filter: blur(18px);
+    pointer-events: none;
+  }
+  .halo.one { left: 0px; top: 100px; }
+  .halo.two { left: 700px; top: 100px; }
+  .halo.three { left: 0px; top: 600px; }
+
+  .label {
+    position: absolute;
+    font-size: 9px;
+    letter-spacing: .16em;
+    line-height: 1.9;
+    color: rgba(235,225,214,.50);
+    text-transform: uppercase;
+  }
+  .label strong {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: .06em;
+    color: rgba(244,237,230,.72);
+  }
+
+  .plain-widget {
+    position: absolute;
+    width: 360px;
+    height: 360px;
+    border-radius: 38px;
+    overflow: hidden;
+    background: #111116;
+    box-shadow:
+      0 28px 56px rgba(0,0,0,.46),
+      0 8px 18px rgba(0,0,0,.30),
+      inset 0 0 0 1px rgba(255,255,255,.12);
+    isolation: isolate;
+  }
+  .plain-widget img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: brightness(.80) saturate(.62) contrast(.96);
+    transform: scale(1.015);
+  }
+  .plain-widget .vignette {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 42%, transparent 48%, rgba(8,8,12,.23) 100%);
+    box-shadow: inset 0 0 26px rgba(0,0,0,.18);
+  }
+  .plain-widget .tint {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(145deg, rgba(238,222,207,.075), transparent 40%, rgba(8,8,13,.16));
+    mix-blend-mode: soft-light;
+  }
+
+  .wide-widget {
+    position: absolute;
+    width: 560px;
+    height: 188px;
+    border-radius: 30px;
+    overflow: hidden;
+    background: #111116;
+    box-shadow:
+      0 20px 40px rgba(0,0,0,.40),
+      0 6px 14px rgba(0,0,0,.26),
+      inset 0 0 0 1px rgba(255,255,255,.11);
+    isolation: isolate;
+  }
+  .wide-widget img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 36% 50%;
+    filter: brightness(.80) saturate(.62) contrast(.95);
+    transform: scale(1.02);
+  }
+  .wide-widget .vignette {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, rgba(8,8,12,.18), transparent 26%, transparent 76%, rgba(8,8,12,.22)),
+      radial-gradient(ellipse at 50% 40%, transparent 52%, rgba(8,8,12,.22) 100%);
+  }
+
+  .pair-widget {
+    position: absolute;
+    width: 360px;
+    height: 360px;
+    padding: 13px;
+    border-radius: 42px;
+    background: linear-gradient(145deg, rgba(48,45,53,.56), rgba(22,20,27,.72) 48%, rgba(11,10,15,.82));
+    border: 1px solid rgba(255,255,255,.15);
+    box-shadow:
+      0 30px 60px rgba(0,0,0,.45),
+      0 8px 18px rgba(0,0,0,.30),
+      inset 0 1px 0 rgba(255,255,255,.10);
+    backdrop-filter: blur(24px) saturate(.8);
+  }
+  .pair-inner {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  .pair-photos {
+    display: flex;
+    gap: 9px;
+    height: 230px;
+  }
+  .pair-card {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    height: 230px;
+    border-radius: 22px;
+    overflow: hidden;
+    background: #111116;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
+  }
+  .pair-card img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: brightness(.78) saturate(.60) contrast(.96);
+    transform: scale(1.08);
+  }
+  .pair-card.left img { object-position: 54% 44%; }
+  .pair-card.right img { object-position: 48% 48%; }
+  .pair-card .shade {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, transparent 50%, rgba(7,7,11,.28));
+  }
+  .pair-name {
+    margin-top: auto;
+    padding: 18px 10px 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-top: 1px solid rgba(255,255,255,.10);
+    color: rgba(248,241,233,.78);
+    font-size: 17px;
+    letter-spacing: .08em;
+    white-space: nowrap;
+  }
+  .pair-name .pencil {
+    width: 12px;
+    height: 12px;
+    opacity: .44;
+  }
+  .pair-name .pencil svg {
+    display: block;
+    width: 12px;
+    height: 12px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+  }
+
+  .note {
+    position: absolute;
+    right: 84px;
+    top: 650px;
+    width: 470px;
+    padding-left: 26px;
+    border-left: 1px solid rgba(255,255,255,.11);
+    color: rgba(235,225,214,.48);
+    font-size: 10px;
+    line-height: 2.05;
+    letter-spacing: .06em;
+  }
+  .note .big {
+    display: block;
+    margin-bottom: 12px;
+    font-size: 17px;
+    line-height: 1.5;
+    letter-spacing: .06em;
+    color: rgba(244,237,230,.76);
+  }
+  .footline {
+    position: absolute;
+    left: 84px;
+    right: 84px;
+    bottom: 102px;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(255,255,255,.15), rgba(255,255,255,.04) 68%, transparent);
+  }
+  .foot {
+    position: absolute;
+    left: 84px;
+    bottom: 64px;
+    font-size: 9px;
+    letter-spacing: .18em;
+    color: rgba(235,225,214,.38);
+    text-transform: uppercase;
+  }
+</style>
+<div class="board">
+  <img class="bg" src="media/desktop-dark-bg.jpg" alt="" />
+  <div class="wash"></div>
+  <div class="grain"></div>
+  <div class="halo one"></div>
+  <div class="halo two"></div>
+  <div class="halo three"></div>
+
+  <div class="header">
+    <div class="kicker">Photo widgets / 03 forms</div>
+    <div class="title">相片，留一块给记忆</div>
+    <div class="sub">PICTURE · ROUNDED · LOW LIGHT</div>
+  </div>
+  <div class="badge">PREVIEW 02</div>
+
+  <!-- 01: 2×2 pure photo -->
+  <div class="plain-widget" style="left:84px;top:170px;">
+    <img src="_widget_sample3.jpg" alt="单图相片" />
+    <div class="tint"></div>
+    <div class="vignette"></div>
+  </div>
+  <div class="label" style="left:84px;top:552px;">
+    <strong>01 / 2×2</strong>
+    单图 · 纯相片
+  </div>
+
+  <!-- 02: 2×2 two photos + editable name -->
+  <div class="pair-widget" style="left:756px;top:170px;">
+    <div class="pair-inner">
+      <div class="pair-photos">
+        <div class="pair-card left">
+          <img src="_pair_left.jpg" alt="双图相片左" />
+          <div class="shade"></div>
+        </div>
+        <div class="pair-card right">
+          <img src="_pair_right.jpg" alt="双图相片右" />
+          <div class="shade"></div>
+        </div>
+      </div>
+      <div class="pair-name">
+        <span>未命名</span>
+        <span class="pencil">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 20h4l11-11a2.8 2.8 0 0 0-4-4L4 16v4Z" />
+            <path d="M13.5 6.5 17.5 10.5" />
+          </svg>
+        </span>
+      </div>
+    </div>
+  </div>
+  <div class="label" style="left:756px;top:552px;">
+    <strong>02 / 2×2</strong>
+    双图 · 下方名称可编辑
+  </div>
+
+  <!-- 03: 1×3 wide photo -->
+  <div class="wide-widget" style="left:84px;top:654px;">
+    <img src="_widget_sample3.jpg" alt="横向相片" />
+    <div class="vignette"></div>
+  </div>
+  <div class="label" style="left:84px;top:862px;">
+    <strong>03 / 1×3</strong>
+    横向相片条 · 3 列宽 × 1 行高
+  </div>
+
+  <div class="note">
+    <span class="big">同一套语气，三种尺寸。</span>
+    单图不叠字，让照片自己说话；双图把“两个人”并排放在一个 2×2 里，名字只占最底下一行；1×3 是横向留白，适合一张宽幅照片或一段场景。<br />
+    图片、圆角、名称均可替换；预览只锁定了暗色烟灰玻璃、低亮度和暖白字。
+  </div>
+
+  <div class="footline"></div>
+  <div class="foot">Picture widget study / dark adaptation of reference</div>
+</div>
+</html>

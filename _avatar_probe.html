@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>avatar vault probe</title>
+  <style>
+    html, body { margin: 0; padding: 0; width: 500px; height: 1000px; overflow: hidden; background: #000; }
+    iframe { display: block; width: 500px; height: 1000px; border: 0; }
+  </style>
+</head>
+<body>
+<script>
+  const img = {
+    self1: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&auto=format&fit=crop&q=80',
+    self2: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
+    zhou1: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80',
+    zhou2: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&auto=format&fit=crop&q=80',
+    zhou3: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=400&auto=format&fit=crop&q=80',
+    alan: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=160&auto=format&fit=crop&q=80',
+    xia: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=160&auto=format&fit=crop&q=80'
+  };
+  const chars = [
+    { id: 'c-zhou', name: '周绪言', avatar: img.zhou1, tag: '角色', intro: '总爱管着你的那个人', prompt: '', directives: '', relations: [], starred: true, createdAt: 1 },
+    { id: 'c-alan', name: '阿岚', avatar: img.alan, tag: '角色', intro: '会陪你熬夜聊天', prompt: '', directives: '', relations: [], starred: false, createdAt: 2 },
+    { id: 'c-xia', name: '小夏', avatar: img.xia, tag: '角色', intro: '安静的倾听者', prompt: '', directives: '', relations: [], starred: false, createdAt: 3 }
+  ];
+  const zhouVault = [
+    { id: 'zv1', name: '白衬衫 · 日常', tag: '日常温润', emotion: '日常温润', tagClass: '', note: '安静温和的日常衬衫形象。', url: img.zhou1 },
+    { id: 'zv2', name: '别过头去 · 黑白大衣', tag: '吃醋', emotion: '吃醋', tagClass: 'badge-angry', note: '略带清冷的背影。', url: img.zhou2 },
+    { id: 'zv3', name: '雨天灰蓝 · 围巾', tag: '委屈', emotion: '委屈', tagClass: 'badge-angry', note: '雨天灰蓝调的安静氛围。', url: img.zhou3 }
+  ];
+  const alanVault = [
+    { id: 'av1', name: '笑眼 · 开心', tag: '开心', emotion: '开心', tagClass: 'badge-happy', note: '她笑起来眼睛弯弯的。', url: img.alan }
+  ];
+  localStorage.setItem('momo_characters', JSON.stringify(chars));
+  localStorage.setItem('momo_characters_trash', '[]');
+  localStorage.setItem('momo_active_char', 'c-zhou');
+  localStorage.setItem('momo_user_nick', '末末');
+  localStorage.setItem('momo_char_remarks_v1', '{}');
+  localStorage.setItem('momo_chat_histories', JSON.stringify({ 'c-zhou': [{ role: 'user', content: '在吗', time: '22:10' }, { role: 'assistant', content: '在。', time: '22:11' }] }));
+  localStorage.setItem('momo_chat_history', JSON.stringify([{ role: 'user', content: '在吗', time: '22:10' }, { role: 'assistant', content: '在。', time: '22:11' }]));
+  localStorage.setItem('momo_wechat_friends', JSON.stringify(['c-zhou', 'c-alan', 'c-xia']));
+  localStorage.setItem('momo_wechat_pins', '[]');
+  localStorage.setItem('momo_wechat_hidden_convs', '[]');
+  localStorage.setItem('momo_vault_list_momo_v2', JSON.stringify([
+    { id: 'mv1', name: '软萌紫发 · 画画日常', tag: '日常', emotion: '日常', tagClass: '', note: '安静专注的日常瞬间。', url: img.self1 },
+    { id: 'mv2', name: '微卷长发 · 温柔侧颜', tag: '约会', emotion: '约会', tagClass: 'badge-happy', note: '温和柔润的侧颜光影。', url: img.self2 }
+  ]));
+  localStorage.setItem('momo_vault_char_c-zhou_v1', JSON.stringify(zhouVault));
+  localStorage.setItem('momo_vault_char_c-alan_v1', JSON.stringify(alanVault));
+  localStorage.setItem('momo_vault_current_char_v1', 'c-zhou');
+  localStorage.setItem('momo_vault_active_tab_v2', 'momo');
+
+  const view = new URLSearchParams(location.search).get('view') || 'self';
+  const f = document.createElement('iframe');
+  f.src = '/index.html?v=2026111140';
+  f.addEventListener('load', function () {
+    setTimeout(function () {
+      try {
+        const w = f.contentWindow;
+        if (typeof w.openPage === 'function') w.openPage('page-avatar-vault');
+        if (view === 'role' || view === 'drawer' || view === 'popup' || view === 'upload' || view === 'empty') {
+          if (typeof w.switchVaultTab === 'function') w.switchVaultTab('xuyan');
+          if (typeof w.renderVaultView === 'function') w.renderVaultView();
+        }
+        if (view === 'empty') {
+          if (typeof w.selectVaultCharacter === 'function') w.selectVaultCharacter('c-xia');
+        }
+        if (view === 'upload') {
+          setTimeout(function () {
+            if (typeof w.openVaultUploadDrawer === 'function') w.openVaultUploadDrawer();
+            const mask = w.document.getElementById('vault-upload-drawer');
+            if (mask) {
+              mask.style.transition = 'none';
+              mask.style.animation = 'none';
+              const card = mask.querySelector('.ledger-drawer-card');
+              if (card) card.style.animation = 'none';
+            }
+          }, 500);
+        }
+        if (view === 'drawer') {
+          setTimeout(function () {
+            if (typeof w.openVaultCharDrawer === 'function') w.openVaultCharDrawer();
+            const mask = w.document.getElementById('vault-char-drawer');
+            if (mask) {
+              mask.style.transition = 'none';
+              const card = mask.querySelector('.vault-char-drawer-card');
+              if (card) card.style.transition = 'none';
+            }
+          }, 500);
+        }
+        if (view === 'popup') {
+          setTimeout(function () {
+            const item = w.loadCharVaultList('c-zhou')[1];
+            if (typeof w.askAvatarChange === 'function') w.askAvatarChange('c-zhou', item);
+            const mask = w.document.getElementById('avatar-change-modal');
+            if (mask) {
+              mask.style.transition = 'none';
+              const card = mask.querySelector('.avatar-change-card');
+              if (card) card.style.transition = 'none';
+            }
+          }, 700);
+        }
+      } catch (e) {}
+    }, 1500);
+  });
+  document.body.appendChild(f);
+</script>
+</body>
+</html>

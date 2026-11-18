@@ -1,0 +1,11 @@
+name = "momo-phone"
+pages_build_output_dir = "."
+compatibility_date = "2026-11-01"
+
+kv_namespaces = [
+  { binding = "PUSH_SUBS", id = "562d1ecfd00f4cf3a945c88ac68718f7" }
+]
+
+[vars]
+VAPID_PUBLIC = "BEOh8D6wP17ABKyAHtTTpTnn74rwJe32H1ZCBBJFPQrEbKO0NHhQB91LyCzu9nQk6JuVH8w9mH0GyFNVYtGh0no"
+VAPID_SUBJECT = "mailto:2953133090@qq.com"

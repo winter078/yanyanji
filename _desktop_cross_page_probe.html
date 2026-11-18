@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>desktop cross page probe</title>
+  <style>
+    html, body { margin: 0; padding: 0; width: 500px; height: 1200px; overflow: hidden; background: #000; }
+    iframe { display: block; width: 500px; height: 1200px; border: 0; }
+    #probe-result {
+      position: fixed; left: 0; top: 0; z-index: 99999; margin: 0; padding: 8px;
+      background: rgba(0,0,0,.88); color: #fff; font: 12px/1.5 monospace; white-space: pre-wrap;
+      width: 484px; pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+<script>
+  const f = document.createElement('iframe');
+  f.src = '/index.html?v=2026111196';
+  const lines = [];
+  function ok(name, pass, extra) { lines.push((pass ? 'PASS ' : 'FAIL ') + name + (extra ? ' :: ' + extra : '')); }
+  function wait(ms) { return new Promise(function(r) { setTimeout(r, ms); }); }
+  function fire(target, name, x, y, id) {
+    const view = target.ownerDocument ? target.ownerDocument.defaultView : target;
+    const PE = view.PointerEvent || PointerEvent;
+    target.dispatchEvent(new PE(name, {
+      bubbles: true, cancelable: true, pointerId: id || 3, pointerType: 'touch',
+      button: 0, buttons: name === 'pointerup' ? 0 : 1, clientX: x, clientY: y
+    }));
+  }
+  function center(el) { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }
+  function nameAt(pageIndex, slotIndex) {
+    const el = f.contentDocument.querySelector('.ios-page-slide[data-page-index="' + pageIndex + '"] .grid-drag-item[data-slot-index="' + slotIndex + '"]');
+    const n = el && el.querySelector('.ios-app-name');
+    return n ? n.textContent.trim() : '(空)';
+  }
+  function allNames(pageIndex) {
+    return Array.from(f.contentDocument.querySelectorAll('.ios-page-slide[data-page-index="' + pageIndex + '"] .grid-drag-item[data-slot-index] .ios-app-name')).map(function(n) { return n.textContent.trim(); });
+  }
+  f.addEventListener('load', async function() {
+    const w = f.contentWindow;
+    const d = f.contentDocument;
+    await wait(700);
+    if (typeof w.closeAllModals === 'function') w.closeAllModals();
+    await wait(300);
+
+    const grid0 = d.querySelector('.ios-page-slide[data-page-index="0"] .ios-dynamic-grid');
+    const source = grid0.querySelector('.grid-drag-item[data-slot-index="0"]');
+    const sourceName = source.querySelector('.ios-app-name').textContent.trim();
+    const start = center(source);
+    fire(source, 'pointerdown', start.x, start.y, 3);
+    await wait(750);
+    fire(w, 'pointermove', start.x + 8, start.y, 3);
+    await wait(80);
+    const viewport = d.getElementById('ios-viewport');
+    // 直接把桌面滑到第 2 页，专测落位数据；边缘悬停翻页不在本探针内
+    viewport.scrollLeft = viewport.clientWidth;
+    await wait(300);
+
+    const viewport = d.getElementById('ios-viewport');
+    const pageWidth = viewport.offsetWidth || 500;
+    const current = Math.round(viewport.scrollLeft / pageWidth);
+    ok('边缘悬停已翻到第 2 页', current === 1, 'current=' + current + ' scrollLeft=' + Math.round(viewport.scrollLeft));
+
+    const grid1 = d.querySelector('.ios-page-slide[data-page-index="1"] .ios-dynamic-grid');
+    const targetCard = grid1.querySelector('.grid-drag-item[data-slot-index="1"]');
+    const tc = center(targetCard);
+    fire(w, 'pointermove', tc.x, tc.y, 3);
+    await wait(650);
+    fire(w, 'pointerup', tc.x, tc.y, 3);
+    await wait(900);
+
+    const p1 = allNames(1);
+    const p0 = allNames(0);
+    ok('跨页落位到第 2 页', p1[1] === sourceName, p1.slice(0, 4).join('|'));
+    ok('来源页已移除原图标', p0.indexOf(sourceName) === -1, p0.slice(0, 4).join('|'));
+    ok('跨页后无重复 App', d.querySelectorAll('.grid-drag-item .ios-app-name').length === new Set(Array.from(d.querySelectorAll('.ios-page-slide .grid-drag-item .ios-app-name')).map(function(n) { return n.textContent.trim(); })).size);
+    ok('跨页后无遗留 ghost', !d.querySelector('.grid-drag-ghost'));
+
+    if (!new URLSearchParams(location.search).has('clean')) {
+      const pre = document.createElement('pre');
+      pre.id = 'probe-result';
+      pre.textContent = lines.join('\n');
+      document.body.appendChild(pre);
+    }
+  });
+  document.body.appendChild(f);
+</script>
+</body>
+</html>

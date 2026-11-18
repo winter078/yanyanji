@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>desktop edit probe</title>
+  <style>
+    html, body { margin: 0; padding: 0; width: 500px; height: 1200px; overflow: hidden; background: #000; }
+    iframe { display: block; width: 500px; height: 1200px; border: 0; }
+    #probe-result { position: fixed; left: 0; top: 0; z-index: 9999; margin: 0; padding: 4px; background: rgba(0,0,0,.82); color: #8f8; font: 11px/1.45 monospace; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+<script>
+  const clean = new URLSearchParams(location.search).get('clean') === '1';
+  const f = document.createElement('iframe');
+  f.src = '/index.html?v=2026111183';
+  f.addEventListener('load', function () {
+    setTimeout(function () {
+      const w = f.contentWindow;
+      const d = f.contentDocument;
+      const lines = [];
+      function ok(name, cond) { lines.push((cond ? 'PASS ' : 'FAIL ') + name); }
+      try {
+        const calm = d.createElement('style');
+        calm.textContent = '*,*::before,*::after{transition:none!important;animation:none!important}';
+        (d.head || d.documentElement).appendChild(calm);
+        w.enterIosEditMode();
+        setTimeout(function () {
+          ok('全局完成浮条已移除', !d.getElementById('ios-done-btn'));
+          const doneButtons = Array.from(d.querySelectorAll('.desktop-page-actions button')).filter(function (b) {
+            return b.textContent.trim() === '完成' && b.getClientRects().length > 0;
+          });
+          ok('页面顶部只剩一个可见完成', doneButtons.length === 1);
+          if (!clean) {
+            const pre = document.createElement('pre');
+            pre.id = 'probe-result';
+            pre.textContent = lines.join('\n');
+            document.body.appendChild(pre);
+          }
+        }, 600);
+      } catch (e) {
+        lines.push('ERROR ' + e);
+      }
+    }, 800);
+  });
+  document.body.appendChild(f);
+</script>
+</body>
+</html>

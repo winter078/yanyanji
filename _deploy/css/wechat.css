@@ -1,0 +1,1674 @@
+
+/* ================= 微信原生引用条 (1:1 高仿图2 暗黑模式) ================= */
+
+
+.msg-group.user 
+
+.msg-group.bot 
+
+.wechat-quote-bar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 5px;
+  padding: 5px 8px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  max-width: 100%;
+  box-sizing: border-box;
+  user-select: none;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.wechat-quote-bar:hover {
+  background: var(--bg-elevated);
+}
+
+.wechat-quote-bar .quote-content-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.wechat-quote-bar .quote-sender-tag {
+  color: var(--text-secondary);
+  font-weight: 500;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.wechat-quote-bar .quote-text-snip {
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 180px;
+  font-size: 12px;
+}
+
+.wechat-quote-bar .quote-thumb-img {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--bg-elevated-solid);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+/* 输入框上方引用预览栏优化 */
+.chat-quote-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  background: var(--chat-drawer-bg, var(--bg-elevated));
+  border-top: 1px solid var(--border-default);
+  font-size: 12px;
+  color: var(--text-secondary);
+  z-index: 10;
+}
+
+.chat-quote-bar .quote-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.chat-quote-bar .quote-bar-tag {
+  color: var(--text-secondary);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.chat-quote-bar .quote-bar-snippet {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+
+.chat-quote-bar .quote-bar-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 3px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid var(--color-border);
+}
+
+/* ================= 微信图片气泡与文字长图卡片 ================= */
+.msg-pic-bubble {
+  max-width: 200px;
+  max-height: 240px;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  background: var(--color-bg-card);
+  display: inline-block;
+}
+
+.msg-pic-bubble img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.2s ease;
+}
+
+.msg-pic-bubble img:hover {
+  transform: scale(1.02);
+}
+
+.msg-text-card {
+  background: linear-gradient(145deg, var(--bg-elevated-solid), var(--bg-surface));
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  max-width: 260px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+  color: var(--text-primary);
+  font-size: 13.5px;
+  line-height: 1.6;
+  position: relative;
+}
+
+.msg-text-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.15);
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.msg-text-card-author {
+  font-weight: bold;
+  color: var(--accent-primary);
+}
+
+.msg-text-card-body {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.msg-text-card-footer {
+  margin-top: 10px;
+  text-align: right;
+  font-size: 10.5px;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+}
+
+
+/* ================= Claude 风格思维链 (Thinking UI) ================= */
+.claude-thinking-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  padding: 4px 10px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  letter-spacing: 0.2px;
+}
+
+.claude-thinking-pill:hover {
+  background: var(--color-bg-card);
+  color: var(--text-primary);
+  border-color: var(--border-default);
+}
+
+.claude-thinking-pill .sparkle-icon {
+  color: #d97706; /* 仿 Claude 温暖琥珀流光 */
+  font-size: 12px;
+  animation: gentlePulse 2.4s ease-in-out infinite;
+}
+
+@keyframes gentlePulse {
+  0%, 100% { opacity: 0.6; transform: scale(0.95); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+.claude-thinking-box {
+  display: none;
+  margin-bottom: 8px;
+  padding: 10px 14px;
+  background: var(--bg-elevated);
+  border-left: 2.5px solid #d97706;
+  border-radius: 4px 10px 10px 4px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-width: 90%;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  animation: accordionDown 0.25s ease forwards;
+}
+
+.claude-thinking-box.open {
+  display: block;
+}
+
+@keyframes accordionDown {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ================= 微信输入框上方引用预览条 ================= */
+.chat-quote-bar-wrap {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--color-bg-card);
+  border-top: 1px solid var(--color-border);
+  padding: 6px 14px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.chat-quote-bar-wrap .quote-preview-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-quote-bar-wrap .quote-preview-tag {
+  color: var(--accent-primary);
+  font-weight: 500;
+}
+
+.chat-quote-bar-wrap .quote-preview-text {
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+}
+
+.chat-quote-bar-wrap .quote-cancel-btn {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+
+
+/* ================= iOS 原生毛玻璃半屏思维链抽屉 (复刻图2) ================= */
+.ios-bottom-sheet-mask {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 1200;
+  display: none;
+  align-items: flex-end;
+  opacity: 0;
+  transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ios-bottom-sheet-mask.open {
+  display: flex;
+  opacity: 1;
+}
+
+.ios-bottom-sheet-card {
+  width: 100%;
+  max-height: 75%;
+  min-height: 260px;
+  background: var(--bg-elevated);
+  border-top: 1px solid var(--color-border);
+  border-radius: 28px 28px 0 0;
+  padding: 12px 20px 34px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.7);
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ios-bottom-sheet-mask.open .ios-bottom-sheet-card {
+  transform: translateY(0);
+}
+
+.ios-bottom-sheet-grabber {
+  width: 36px;
+  height: 4.5px;
+  background: var(--border-default);
+  border-radius: 3px;
+  margin: 0 auto 12px;
+}
+
+.ios-bottom-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ios-sheet-close-circle {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--bg-elevated-solid);
+  border: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.ios-sheet-close-circle:active {
+  background: var(--bg-elevated);
+}
+
+.ios-sheet-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  letter-spacing: -0.2px;
+}
+
+.ios-bottom-sheet-body {
+  padding: 18px 4px 10px;
+  overflow-y: auto;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+/* ================= iOS 动作菜单 ActionSheet (朋友圈换封面) ================= */
+.ios-actionsheet-mask {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 1300;
+  display: none;
+  align-items: flex-end;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.ios-actionsheet-mask.open {
+  display: flex;
+  opacity: 1;
+}
+
+.ios-actionsheet-card {
+  width: 100%;
+  padding: 10px 14px 28px;
+  display: flex;
+  flex-direction: column;
+  transform: translateY(100%);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ios-actionsheet-mask.open .ios-actionsheet-card {
+  transform: translateY(0);
+}
+
+.ios-actionsheet-group {
+  background: var(--bg-surface) !important;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.ios-actionsheet-title {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  text-align: center;
+  padding: 12px 14px;
+  border-bottom: 0.5px solid var(--color-border);
+}
+
+.ios-actionsheet-btn {
+  width: 100%;
+  padding: 14px 16px;
+  border: none;
+  background: transparent;
+  color: var(--accent-primary);
+  font-size: 16px;
+  font-weight: 500;
+  text-align: center;
+  cursor: pointer;
+  border-bottom: 0.5px solid var(--color-border);
+  transition: background 0.15s ease;
+}
+
+.ios-actionsheet-btn:last-child {
+  border-bottom: none;
+}
+
+.ios-actionsheet-btn:active {
+  background: var(--color-bg-card);
+}
+
+.ios-actionsheet-btn.cancel {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+/* ================= 图4 风格气泡上方极简 Thinking 折叠条 ================= */
+.thinking-pill-v4 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s ease;
+}
+
+.thinking-pill-v4:hover {
+  color: var(--text-primary);
+}
+
+.thinking-pill-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #f97316; /* 仿图4温暖橙红点 */
+  box-shadow: 0 0 6px rgba(249, 115, 22, 0.6);
+}
+
+.thinking-pill-title {
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.thinking-pill-action {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.thinking-drawer-v4 {
+  display: none;
+  margin-bottom: 8px;
+  padding: 12px 14px;
+  background: var(--bg-elevated);
+  border-left: 2px solid #f97316;
+  border-radius: 4px 10px 10px 4px;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-width: 92%;
+  animation: accordionDown 0.2s ease forwards;
+}
+
+.thinking-drawer-v4.open {
+  display: block;
+}
+
+
+/* ================= 1:1 复刻图二全新极简底栏 ================= */
+.wechat-input-bar-v2 {
+  position: relative;
+  width: 100%;
+  padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 12px));
+  background: var(--bg-elevated) !important;
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  border-top: 0.5px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-sizing: border-box;
+  z-index: 100;
+  flex-shrink: 0;
+}
+
+/* 图二左侧两个圆圈按钮 */
+.chat-circle-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--glass-soft);
+  color: var(--text-primary);
+  border: 0.5px solid var(--border-default);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.10);
+  transition: all 0.15s ease;
+}
+
+.chat-circle-btn:active {
+  transform: scale(0.92);
+  background: var(--bg-elevated-solid);
+}
+
+/* 图二中间大胶囊白色输入框 */
+.chat-pill-input-box {
+  flex: 1;
+  min-height: 44px;
+  background: var(--wechat-bg-input, #ffffff);
+  border: 0.5px solid var(--border-default);
+  border-radius: 22px;
+  display: flex;
+  align-items: center;
+  padding: 4px 6px 4px 16px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.chat-capsule-textarea {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 15px;
+  font-family: inherit;
+  resize: none;
+  line-height: 20px;
+  max-height: 90px;
+  padding: 6px 0;
+  margin: 0;
+}
+
+.chat-capsule-textarea::placeholder {
+  color: var(--color-text-secondary);
+}
+
+.chat-pill-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 6px;
+}
+
+/* 内嵌按钮：生成✨ 与 发送✈ */
+.chat-inner-action-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.15s ease;
+}
+
+.chat-inner-action-btn:active {
+  transform: scale(0.9);
+}
+
+.gen-spark-btn {
+  background: transparent;
+  color: var(--accent-primary);
+}
+
+.gen-spark-btn:hover {
+  background: var(--accent-soft);
+}
+
+.send-plane-btn {
+  background: var(--accent-primary);
+  color: #ffffff;
+}
+
+.send-plane-btn:hover {
+  background: var(--accent-primary);
+  filter: brightness(1.08);
+}
+
+/* 暂停/停止生成按键 (1:1 复刻 Codex / 极简 AI 暂停圆钮) */
+.stop-gen-btn {
+  background: var(--bg-elevated-solid);
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+.stop-gen-btn:hover {
+  background: var(--bg-elevated);
+  transform: scale(1.06);
+}
+
+.stop-gen-btn:active {
+  transform: scale(0.92);
+}
+
+@keyframes stopBtnPulse {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(88, 86, 214, 0.35); }
+  50% { transform: scale(1.05); box-shadow: 0 0 0 4px rgba(88, 86, 214, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(88, 86, 214, 0); }
+}
+
+.stop-gen-btn.pulse-stop {
+  animation: stopBtnPulse 1.8s infinite ease-in-out;
+}
+
+/* ================= 1:1 复刻图三侧边/抽屉弹出菜单 ================= */
+.plus-action-drawer-v3 {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: var(--chat-drawer-bg, var(--bg-surface));
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border-radius: 28px 28px 0 0;
+  border-top: 1px solid var(--border-default);
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.25);
+  z-index: 120;
+  transform: translateY(105%);
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 10px 18px calc(24px + env(safe-area-inset-bottom, 15px));
+  box-sizing: border-box;
+}
+
+.plus-action-drawer-v3.open {
+  transform: translateY(0);
+}
+
+.plus-v3-menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 10px;
+}
+
+.plus-v3-item {
+  display: flex;
+  align-items: center;
+  padding: 13px 14px;
+  border-radius: 14px;
+  cursor: pointer;
+  color: var(--color-text-primary);
+  transition: background 0.15s ease;
+}
+
+.plus-v3-item:active {
+  background: var(--color-bg-card);
+}
+
+.plus-v3-icon {
+  width: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+  margin-right: 14px;
+}
+
+.plus-v3-text {
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  flex: 1;
+}
+
+.plus-v3-check-status {
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 10px;
+  background: rgba(7, 193, 96, 0.18);
+  color: #07c160;
+  border: 0.5px solid rgba(7, 193, 96, 0.35);
+  font-weight: 600;
+}
+
+.plus-v3-check-status.disabled {
+  background: var(--color-bg-card);
+  color: var(--color-text-secondary);
+  border: 0.5px solid var(--border-default);
+}
+
+.plus-v3-divider {
+  height: 0.5px;
+  background: var(--border-default);
+  margin: 6px 10px;
+}
+
+/* ================= 动描/旁白模式独立渲染卡片 ================= */
+.narration-action-card {
+  display: block;
+  margin: 12px auto;
+  width: fit-content;
+  max-width: 92%;
+  padding: 12px 18px;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--color-border);
+  border-radius: 12px;
+  color: var(--color-text-secondary);
+  font-size: 13.5px;
+  letter-spacing: 0.2px;
+  line-height: 1.6;
+  text-align: left;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  box-sizing: border-box;
+}
+
+/* 用户旁白：全宽灰色卡片，无头像、无名字、无气泡 */
+.msg-group.msg-narration-row {
+  flex-direction: row !important;
+  justify-content: center !important;
+}
+.msg-group.msg-narration-row .msg-avatar-box,
+.msg-group.msg-narration-row .msg-avatar {
+  display: none !important;
+}
+.msg-group.msg-narration-row .msg-content-col {
+  flex: 1 1 100% !important;
+  max-width: 100% !important;
+  align-items: flex-start !important;
+}
+.msg-group.msg-narration-row .msg-bubble-wrap {
+  width: 100% !important;
+  max-width: 100% !important;
+  align-items: flex-start !important;
+}
+.msg-group.msg-narration-row .narration-user-card {
+  display: inline-block;
+  width: fit-content;
+  max-width: 88%;
+  margin: 4px 0 10px;
+}
+
+/* 旁白输入态：输入栏上方的独立横条 */
+.chat-narration-mode-bar {
+  position: relative;
+  z-index: 5;
+  width: calc(100% - 28px);
+  margin: 0 14px 10px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  box-sizing: border-box;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+}
+.chat-narration-mode-label {
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  line-height: 1.2;
+}
+.chat-narration-mode-exit {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.chat-narration-mode-exit:active {
+  background: var(--glass-soft);
+}
+
+/* 群聊和单聊共用同一条「旁白模式」入口 */
+
+/* ================= 角色旁白展开项（复刻聊天设定里的动描写法面板） ================= */
+.action-desc-advanced {
+  border-top: 0.5px solid var(--border-default);
+}
+.action-desc-summary-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px;
+  border-bottom: 0.5px solid var(--border-default);
+}
+.action-desc-summary-label {
+  flex: none;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.action-desc-summary-value {
+  flex: 1;
+  min-width: 0;
+  text-align: right;
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.action-desc-summary-arrow {
+  flex: none;
+  color: var(--color-text-secondary);
+  font-size: 18px;
+  line-height: 1;
+}
+.action-desc-section {
+  padding: 14px 16px;
+  border-bottom: 0.5px solid var(--border-default);
+}
+.action-desc-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+}
+.action-desc-segmented {
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--bg-base);
+  border: 1px solid var(--border-default);
+  box-sizing: border-box;
+}
+.action-desc-seg-btn {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-secondary);
+  border-radius: 9px;
+  padding: 9px 4px;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s;
+}
+.action-desc-seg-btn.active {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.16);
+}
+.action-desc-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.action-desc-chip {
+  border: 1px solid var(--border-default);
+  background: transparent;
+  color: var(--color-text-secondary);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 12.5px;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: border-color 0.18s, color 0.18s, background 0.18s;
+}
+.action-desc-chip.active {
+  border-color: var(--text-primary);
+  color: var(--text-primary);
+  background: var(--bg-elevated);
+}
+.action-desc-textarea {
+  display: block;
+  width: 100%;
+  min-height: 88px;
+  box-sizing: border-box;
+  resize: vertical;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.6;
+  outline: none;
+  font-family: inherit;
+}
+.action-desc-textarea::placeholder {
+  color: var(--color-text-secondary);
+}
+.action-desc-help {
+  margin-top: 7px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+.action-desc-toggle-row {
+  border-top: 0.5px solid var(--border-default);
+}
+
+
+
+
+/* 恢复正常 flex 流，消除中间大片悬空空白 */
+.wechat-messages-wrap {
+  padding: 16px 14px 16px 14px !important;
+  flex: 1;
+  min-height: 0;
+}
+
+/* 真实微信紧凑连发美化 */
+.msg-group {
+  margin-bottom: 0 !important;
+}
+.msg-time-subtle {
+  font-size: 10.5px !important;
+  color: var(--text-secondary) !important;
+  margin-top: 5px !important;
+  letter-spacing: 0.2px;
+  opacity: 0.75;
+  display: none !important; /* 默认隐藏每条气泡下方的独立时间，保持整洁 */
+}
+.msg-group:last-child .msg-time-subtle {
+  display: block !important; /* 仅在整组最后一条显示 */
+}
+
+
+
+/* ================= 1:1 原生微信气泡宽度与防诡异折行规范 ================= */
+
+/* 微信世界书开关弹窗动画层级 */
+#worldbook-switch-modal.open {
+  display: flex !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+
+/* ================= 纯正微信图2原生排版规范 ================= */
+.msg-group {
+  display: flex !important;
+  gap: 8px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-bottom: 10px !important;
+  box-sizing: border-box !important;
+}
+
+.msg-group.bot {
+  flex-direction: row !important;
+  justify-content: flex-start !important;
+}
+
+.msg-group.user {
+  flex-direction: row-reverse !important;
+  justify-content: flex-start !important;
+}
+
+.msg-content-col {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  max-width: calc(100% - 46px) !important; /* 手机宽度减去头像 36px 和 gap 8px */
+}
+
+.msg-group.bot .msg-content-col {
+  align-items: flex-start !important;
+}
+
+.msg-group.user .msg-content-col {
+  align-items: flex-end !important;
+}
+
+.msg-bubble-wrap {
+  display: flex !important;
+  flex-direction: column !important;
+  max-width: 100% !important;
+  width: auto !important;
+  min-width: 0 !important;
+}
+
+.msg-group.bot .msg-bubble-wrap {
+  align-items: flex-start !important;
+}
+
+.msg-group.user .msg-bubble-wrap {
+  align-items: flex-end !important;
+}
+
+/* 气泡本体：形状、内边距、字号全部走 --chat-* 变量，分区 CSS / 滑块才改得动 */
+.msg-bubble-wechat {
+  display: inline-block;
+  width: fit-content;
+  max-width: var(--chat-bubble-max, 248px);
+  padding: var(--chat-bubble-pad-y, 10px) var(--chat-bubble-pad-x, 13px);
+  border-radius: var(--chat-bubble-radius, 16px);
+  font-size: var(--chat-font-size, 15px);
+  line-height: var(--chat-line-height, 1.52);
+  letter-spacing: 0.1px;
+  word-break: normal;
+  overflow-wrap: anywhere;
+  text-align: left;
+  white-space: pre-wrap;
+  box-sizing: border-box;
+  margin: 0;
+}
+
+.msg-group.bot .msg-bubble-wechat {
+  background: var(--bubble-bot, #2b2a33);
+  color: var(--bubble-bot-text, #f5f5f7);
+  border: var(--chat-bubble-border, 0.5px) solid var(--chat-bubble-outline, var(--color-border-subtle, transparent));
+  border-top-left-radius: var(--chat-bubble-tail, 5px);
+  box-shadow: var(--chat-bubble-shadow, 0 1px 3px rgba(0, 0, 0, 0.18));
+}
+
+.msg-group.user .msg-bubble-wechat {
+  background: var(--bubble-user, #28c445);
+  color: var(--bubble-user-text, #000000);
+  border-top-right-radius: var(--chat-bubble-tail, 5px);
+  box-shadow: var(--chat-bubble-shadow, 0 1px 3px rgba(0, 0, 0, 0.18));
+}
+
+/* 头像节奏：默认“每条消息一个头像”；只有外观页切到“每轮一个头像”时，
+   才收起同一方连续发言的后续头像并收紧间距。 */
+#page-chat[data-avatar-mode="round"] .msg-group.msg-continuation .msg-avatar {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+#page-chat[data-avatar-mode="round"] .msg-group.msg-continuation {
+  margin-bottom: 4px !important;
+}
+
+/* 确保所有底栏抽屉内部输入框、文本框强制显示光标与允许输入编辑 */
+.ios-bottom-sheet-card input,
+.ios-bottom-sheet-card textarea,
+#modal-palace-edit-card input,
+#modal-palace-edit-card textarea {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  pointer-events: auto !important;
+  cursor: text !important;
+}
+
+/* ================= 微信 1:1 原生图文分享卡片 (小红书/抖音/B站/通用网页) ================= */
+.msg-share-card {
+  width: 260px;
+  max-width: 100%;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--color-border);
+  border-radius: 12px;
+  padding: 12px 14px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s ease, background 0.15s ease;
+  box-sizing: border-box;
+}
+.msg-share-card:active {
+  transform: scale(0.98);
+  background: var(--bg-elevated-solid);
+}
+.msg-share-title {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  line-height: 1.38;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-all;
+}
+.msg-share-mid {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.msg-share-desc {
+  flex: 1;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-all;
+}
+.msg-share-cover {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--color-bg-card);
+}
+.msg-share-cover-letter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.5px;
+  box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.22);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+.msg-share-brand {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding-top: 6px;
+  border-top: 0.5px solid var(--color-border);
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+.msg-share-brand-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* ================= 真实微信 1:1 居中时间分隔标志 (图二原生复刻) ================= */
+.wechat-time-divider {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  margin: 14px 0 8px;
+  user-select: none;
+  pointer-events: none;
+  clear: both;
+}
+
+.wechat-time-pill {
+  background: var(--bg-elevated);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.3px;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", sans-serif;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+
+/* =========================================================
+   状态药丸与聊天控件语义规则 (Design Token 驱动，禁用 !important)
+   使用双类特异性 .status-pill.status-* 自然提升权重
+   ========================================================= */
+
+.status-pill {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  background-color: var(--info-soft);
+  color: var(--info-primary);
+  transition: all 0.2s ease;
+}
+
+.status-pill.status-pending {
+  background-color: var(--info-soft);
+  color: var(--info-primary);
+}
+.status-pill.status-success {
+  background-color: var(--success-soft);
+  color: var(--success-primary);
+}
+.status-pill.status-error {
+  background-color: var(--danger-soft);
+  color: var(--danger-primary);
+}
+
+/* 齿轮配置按钮激活态 (Design Token 驱动) */
+.chat-gear-btn.is-active {
+  color: var(--accent-primary);
+  background-color: var(--accent-soft);
+  border: 1px solid var(--accent-primary);
+}
+
+/* 记忆宫殿筛选 Tab 激活态与动作按钮 (Design Token 驱动) */
+.palace-filter-btn {
+  background-color: var(--color-bg-card, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
+}
+.palace-filter-btn.is-active {
+  background-color: var(--palace-highlight-soft);
+  border: 1px solid var(--palace-highlight);
+  color: var(--palace-highlight-text);
+}
+.palace-search-mode-btn.is-active {
+  background-color: var(--palace-highlight);
+  color: #ffffff;
+}
+.palace-search-mode-btn {
+  color: var(--text-muted);
+}
+
+/* =========================================================
+   聊天界面精修（#page-chat 单独这一屏）
+   顶栏与输入栏跟着这一屏的底色走，浅色下不再出现灰白断层
+   顶栏用 --wechat-bg-bar，分区换肤才改得到它
+   ========================================================= */
+#page-chat .wechat-header {
+  background: var(--wechat-bg-bar, var(--color-bg-bar, rgba(23, 23, 27, 0.94)));
+}
+
+[data-theme="light"] #page-chat .wechat-header,
+[data-theme="sakura"] #page-chat .wechat-header,
+[data-theme="matcha"] #page-chat .wechat-header {
+  background: var(--wechat-bg-chat);
+}
+
+[data-theme="light"] #page-chat .wechat-input-bar-v2,
+[data-theme="sakura"] #page-chat .wechat-input-bar-v2,
+[data-theme="matcha"] #page-chat .wechat-input-bar-v2 {
+  background: var(--wechat-bg-chat) !important;
+  border-top: 0.5px solid var(--border-default);
+}
+
+/* 会话列表：左滑删除对话框（只移除会话，不删聊天记录） */
+#wechat-session-list .wechat-chat-item {
+  position: relative;
+  overflow: hidden;
+  touch-action: pan-y;
+  -webkit-user-select: none;
+  user-select: none;
+}
+#wechat-session-list .wx-swipe-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  transition: transform 0.22s cubic-bezier(.22,.61,.36,1);
+  will-change: transform;
+}
+#wechat-session-list .wechat-chat-item.swiped .wx-swipe-content {
+  transform: none;
+}
+#wechat-session-list .wx-swipe-del {
+  position: absolute;
+  top: -20px;
+  right: -84px;
+  bottom: -20px;
+  width: 84px;
+  border: 0;
+  padding: 0;
+  background: #e5484d;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  z-index: 2;
+  transition: transform 0.22s cubic-bezier(.22,.61,.36,1);
+}
+#wechat-session-list .wechat-chat-item.swiped .wx-swipe-del {
+  transform: translateX(-84px);
+}
+
+/* ================= 聊天真实感小包：系统胶囊与 emoji 反应 ================= */
+.wechat-time-divider.wechat-system-notice {
+  margin: 10px 0 6px;
+  pointer-events: none;
+}
+
+.wechat-time-pill.wechat-system-pill {
+  max-width: calc(100% - 76px);
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  font-weight: 400;
+  letter-spacing: 0.15px;
+  text-align: center;
+  white-space: normal;
+  word-break: break-word;
+  box-sizing: border-box;
+}
+
+.msg-reaction-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  padding: 0 2px;
+  box-sizing: border-box;
+}
+
+.msg-group.user .msg-reaction-row {
+  justify-content: flex-end;
+}
+
+.msg-reaction-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 22px;
+  padding: 1px 7px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.16);
+  border: 0.5px solid rgba(255, 255, 255, 0.24);
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 14px;
+  line-height: 1.2;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
+  user-select: none;
+}
+/* ===== 字卡库 ===== */
+.wc-mode-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--glass, rgba(255,255,255,0.06));
+  border: 1px solid var(--border-default, rgba(255,255,255,0.1));
+  box-sizing: border-box;
+}
+.wc-mode-left { min-width: 0; flex: 1; }
+.wc-mode-title { font-size: 14px; font-weight: 700; color: var(--color-text-primary); }
+.wc-mode-desc { margin-top: 4px; font-size: 11.5px; line-height: 1.55; color: var(--color-text-secondary); }
+.wc-principle { margin: 10px 2px 0; font-size: 11.5px; line-height: 1.65; color: var(--color-text-secondary); }
+.wc-tabs { display: flex; gap: 8px; margin-top: 14px; }
+.wc-tab {
+  flex: 1; appearance: none; border: 1px solid var(--border-default); border-radius: 11px;
+  background: var(--bg-surface); color: var(--color-text-secondary); padding: 9px 10px;
+  font-size: 12.5px; font-weight: 600; cursor: pointer; box-sizing: border-box;
+}
+.wc-tab.active { background: var(--accent-primary); color: #fff; border-color: transparent; }
+.wc-tab span { margin-left: 3px; font-size: 10.5px; opacity: .72; font-weight: 400; }
+.wc-toolbar { display: flex; gap: 8px; margin-top: 10px; }
+.wc-tool-btn {
+  flex: 1; appearance: none; border: 1px solid var(--border-default); border-radius: 10px;
+  background: transparent; color: var(--color-text-secondary); padding: 8px 10px;
+  font-size: 12px; font-weight: 600; cursor: pointer; box-sizing: border-box;
+}
+.wc-tool-btn.accent { color: var(--stickers-accent, #38bdf8); border-color: rgba(56,189,248,.3); background: rgba(56,189,248,.08); }
+.wc-groups { margin-top: 14px; display: flex; flex-direction: column; gap: 12px; padding-bottom: 28px; }
+.wc-group {
+  background: var(--bg-surface); border: 1px solid var(--border-default);
+  border-radius: 14px; padding: 12px; box-sizing: border-box;
+}
+.wc-group-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.wc-group-title-wrap { min-width: 0; }
+.wc-group-name { font-size: 13.5px; font-weight: 700; color: var(--color-text-primary); word-break: break-word; }
+.wc-group-count { margin-top: 2px; font-size: 10.5px; color: var(--color-text-secondary); }
+.wc-group-actions { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; max-width: 160px; }
+.wc-mini-btn {
+  appearance: none; border: 1px solid var(--border-default); border-radius: 8px;
+  background: transparent; color: var(--color-text-secondary); padding: 4px 7px;
+  font-size: 10.5px; line-height: 1.2; cursor: pointer; white-space: nowrap;
+}
+.wc-mini-btn.accent { color: var(--stickers-accent, #38bdf8); border-color: rgba(56,189,248,.3); background: rgba(56,189,248,.07); }
+.wc-mini-btn.danger { color: var(--danger-primary); border-color: rgba(239,68,68,.24); background: rgba(239,68,68,.05); }
+.wc-card {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+  padding: 10px 0 2px; border-top: 0.5px solid var(--border-default); margin-top: 10px;
+}
+.wc-card.is-off { opacity: .45; }
+.wc-card-main { min-width: 0; flex: 1; }
+.wc-card-text { font-size: 13px; line-height: 1.55; color: var(--color-text-primary); word-break: break-word; }
+.wc-card-meta { margin-top: 4px; font-size: 10.5px; color: var(--color-text-secondary); line-height: 1.45; word-break: break-word; }
+.wc-card-actions { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; max-width: 112px; }
+.wc-empty-line { font-size: 12px; color: var(--color-text-secondary); padding: 10px 0 2px; line-height: 1.6; }
+.wc-empty-state { text-align: center; padding: 28px 18px 32px; }
+.wc-empty-title { font-size: 14px; font-weight: 700; color: var(--color-text-primary); }
+.wc-empty-desc { margin-top: 6px; font-size: 12px; line-height: 1.6; color: var(--color-text-secondary); }
+.wc-primary-btn {
+  margin-top: 14px; appearance: none; border: none; border-radius: 11px;
+  background: var(--accent-primary); color: #fff; padding: 9px 16px;
+  font-size: 12.5px; font-weight: 600; cursor: pointer;
+}
+
+.wc-modal-mask {
+  position: fixed; inset: 0; z-index: 9999; display: none; align-items: center; justify-content: center;
+  padding: 20px; box-sizing: border-box; background: rgba(0,0,0,.55);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
+.wc-modal-mask.open { display: flex; }
+.wc-modal-box {
+  width: min(420px, 100%); max-height: 82vh; overflow: auto; box-sizing: border-box;
+  background: var(--bg-surface, #1c1c1e); border: 1px solid var(--border-default);
+  border-radius: 18px; padding: 18px; box-shadow: 0 24px 70px rgba(0,0,0,.45);
+}
+.wc-modal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.wc-modal-title { font-size: 15px; font-weight: 700; color: var(--color-text-primary); }
+.wc-modal-close {
+  appearance: none; border: none; background: transparent; color: var(--color-text-secondary);
+  font-size: 18px; line-height: 1; cursor: pointer; padding: 2px 4px;
+}
+.wc-modal-body { margin-top: 14px; }
+.wc-label { display: block; margin: 12px 0 6px; font-size: 12px; font-weight: 600; color: var(--color-text-primary); }
+.wc-label:first-child { margin-top: 0; }
+.wc-input, .wc-textarea, .wc-select {
+  width: 100%; box-sizing: border-box; border: 1px solid var(--border-default); border-radius: 10px;
+  background: var(--bg-base); color: var(--color-text-primary); padding: 9px 10px;
+  font-size: 13px; line-height: 1.5; outline: none; font-family: inherit;
+}
+.wc-textarea { min-height: 96px; resize: vertical; }
+.wc-hint { margin-top: 5px; font-size: 10.5px; line-height: 1.6; color: var(--color-text-secondary); }
+.wc-check-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 12.5px; color: var(--color-text-primary); }
+.wc-check-row input { width: 16px; height: 16px; accent-color: var(--accent-primary); }
+.wc-modal-actions { display: flex; gap: 8px; margin-top: 18px; }
+.wc-modal-btn {
+  flex: 1; appearance: none; border: 1px solid var(--border-default); border-radius: 12px;
+  background: transparent; color: var(--color-text-primary); padding: 10px 12px;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.wc-modal-btn.primary { background: var(--accent-primary); color: #fff; border-color: transparent; }
+
+/* ===== 字卡独立 App ===== */
+.wc-app-bar {
+  flex: none;
+  padding: 10px 16px 0;
+  background: var(--bg-base);
+  box-sizing: border-box;
+}
+.wc-char-row { display: flex; align-items: center; gap: 10px; }
+.wc-char-label { flex: none; font-size: 11px; color: var(--color-text-secondary); }
+.wc-char-select { flex: 1; min-width: 0; padding: 8px 10px; font-size: 12.5px; }
+.wc-view-tabs { display: flex; gap: 6px; margin-top: 10px; }
+.wc-view-tab {
+  flex: 1;
+  appearance: none;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--bg-surface);
+  color: var(--color-text-secondary);
+  padding: 8px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+.wc-view-tab.active { background: var(--accent-primary); color: #fff; border-color: transparent; }
+#wc-app-body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+
+.wc-chat-view { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.wc-chat-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 14px 16px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.wc-chat-scroll::-webkit-scrollbar { display: none; }
+.wc-msg { display: flex; align-items: flex-end; gap: 8px; }
+.wc-msg.user { flex-direction: row-reverse; }
+.wc-msg-avatar { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; flex: none; background: rgba(255,255,255,.08); }
+.wc-msg-avatar-fallback { display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--color-text-secondary); }
+.wc-msg-bubble {
+  max-width: 76%;
+  padding: 9px 12px;
+  border-radius: 14px;
+  font-size: 13px;
+  line-height: 1.55;
+  word-break: break-word;
+  white-space: pre-wrap;
+  box-sizing: border-box;
+}
+.wc-msg.bot .wc-msg-bubble { background: var(--bg-surface); color: var(--color-text-primary); border: 0.5px solid var(--border-default); border-bottom-left-radius: 4px; }
+.wc-msg.user .wc-msg-bubble { background: #95ec69; color: #111; border-bottom-right-radius: 4px; }
+.wc-chat-empty { padding: 34px 22px 20px; text-align: center; }
+.wc-chat-empty-title { font-size: 14px; font-weight: 700; color: var(--color-text-primary); }
+.wc-chat-empty-desc { margin-top: 7px; font-size: 12px; line-height: 1.7; color: var(--color-text-secondary); }
+.wc-chat-inputbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: var(--wechat-bg-bar);
+  border-top: 0.5px solid var(--border-default);
+  box-sizing: border-box;
+}
+.wc-chat-draw-btn, .wc-chat-send-btn {
+  flex: none;
+  appearance: none;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  padding: 9px 11px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.wc-chat-draw-btn { color: #fbbf24; border-color: rgba(251,191,36,.28); background: rgba(251,191,36,.07); }
+.wc-chat-send-btn { color: #fff; background: var(--accent-primary); border-color: transparent; }
+.wc-chat-input {
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--bg-base);
+  color: var(--color-text-primary);
+  padding: 9px 10px;
+  font-size: 13px;
+  line-height: 1.4;
+  outline: none;
+  font-family: inherit;
+}
+
+.wc-library-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 14px 16px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-sizing: border-box;
+}
+.wc-app-intro {
+  border-radius: 14px;
+  padding: 14px 15px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  box-sizing: border-box;
+}
+.wc-app-intro-title { font-size: 14px; font-weight: 700; color: var(--color-text-primary); }
+.wc-app-intro-desc { margin-top: 6px; font-size: 11.5px; line-height: 1.68; color: var(--color-text-secondary); }
+.wc-memory-entry {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 15px;
+  border-radius: 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  box-sizing: border-box;
+  cursor: pointer;
+}
+.wc-memory-entry-main { flex: 1; min-width: 0; }
+.wc-memory-entry-title { font-size: 13.5px; font-weight: 700; color: var(--color-text-primary); }
+.wc-memory-entry-desc { margin-top: 4px; font-size: 11px; line-height: 1.6; color: var(--color-text-secondary); }
+.wc-memory-entry-arrow { flex: none; font-size: 20px; line-height: 1; color: var(--color-text-secondary); }
+
+.wc-memory-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px 16px 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-sizing: border-box;
+}
+.wc-memory-head {
+  padding: 14px 15px;
+  border-radius: 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  box-sizing: border-box;
+}
+.wc-memory-title { font-size: 14px; font-weight: 700; color: var(--color-text-primary); }
+.wc-memory-desc { margin-top: 7px; font-size: 11.5px; line-height: 1.68; color: var(--color-text-secondary); }
+.wc-memory-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 230px;
+  resize: vertical;
+  border: 1px solid var(--border-default);
+  border-radius: 14px;
+  background: var(--bg-surface);
+  color: var(--color-text-primary);
+  padding: 13px 14px;
+  font-size: 13px;
+  line-height: 1.7;
+  outline: none;
+  font-family: inherit;
+}
+.wc-memory-actions { display: flex; gap: 8px; }
+.wc-memory-btn {
+  flex: 1;
+  appearance: none;
+  border: 1px solid var(--border-default);
+  border-radius: 11px;
+  background: transparent;
+  color: var(--color-text-primary);
+  padding: 9px 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.wc-memory-btn.primary { background: var(--accent-primary); color: #fff; border-color: transparent; }
+.wc-memory-btn.danger { color: var(--danger-primary); border-color: rgba(239,68,68,.24); background: rgba(239,68,68,.05); }
+.wc-memory-status { font-size: 11px; color: var(--color-text-secondary); text-align: center; }
+.wc-memory-foot { font-size: 10.5px; line-height: 1.6; color: var(--color-text-secondary); text-align: center; opacity: .8; }
+
+/* 聊天里的通话时长胶囊：可点，点开才看通话记录 */
+.wechat-time-divider.wechat-system-notice .wechat-call-pill {
+  pointer-events: auto;
+  cursor: pointer;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 5px 12px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  border: .5px solid rgba(255, 255, 255, .14);
+  -webkit-tap-highlight-color: transparent;
+}
+.wechat-call-pill svg { flex: 0 0 auto; opacity: .82; }
+.wechat-call-pill::after { content: ""; position: absolute; inset: -8px -4px; }
+.wechat-call-pill:active { opacity: .78; }

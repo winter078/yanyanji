@@ -1,0 +1,2206 @@
+
+/* ================= 📖 鲜果机风·极美「阅读」APP 深度复刻样式 ================= */
+#page-reader {
+  background: var(--bg-base) !important;
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  display: flex;
+  flex-direction: column;
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  overflow: hidden;
+}
+
+/* 顶部导航 (纯白通透带大圆角胶囊按键) */
+.xianguo-header {
+  height: 52px;
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border-default);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  flex-shrink: 0;
+  box-shadow: var(--shadow-card);
+}
+
+.xianguo-back-btn {
+  background: var(--rd-card-3);
+  border: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  color: var(--rd-text);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.xianguo-back-btn:hover {
+  background: var(--rd-card-3);
+}
+
+.xianguo-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--rd-text);
+  letter-spacing: 0.5px;
+}
+
+.xianguo-add-btn {
+  background: #f7d5d7; /* 极温柔肉粉色大圆角方块 */
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  color: var(--rd-text);
+  font-size: 20px;
+  font-weight: 400;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(247, 213, 215, 0.4);
+  transition: transform 0.15s;
+}
+
+.xianguo-add-btn:active {
+  transform: scale(0.92);
+}
+
+/* 顶部跑道型药丸双切换：【我的书架】 | 【书城】 */
+.xianguo-tabs-capsule-wrap {
+  padding: 10px 16px 6px 16px;
+  background: var(--rd-card);
+}
+
+.xianguo-tabs-capsule {
+  display: flex;
+  background: var(--rd-card-3);
+  border-radius: 14px;
+  padding: 3px;
+}
+
+.xianguo-tab-pill {
+  flex: 1;
+  text-align: center;
+  padding: 9px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--rd-text-sub);
+  border-radius: 11px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.xianguo-tab-pill.active {
+  background: var(--rd-card);
+  color: var(--rd-text);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* 滚动容器 */
+.xianguo-content-viewport {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 16px 40px 16px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ================= 图1：【回到上次那一页】超美大Banner卡片 ================= */
+.xianguo-last-read-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 10px;
+}
+
+.xianguo-last-read-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--rd-text);
+  letter-spacing: -0.3px;
+}
+
+.xianguo-last-read-percent {
+  font-size: 13px;
+  font-weight: 700;
+  color: #10b981;
+  background: #e6f9f0;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.xianguo-last-read-card {
+  background: linear-gradient(135deg, #fdf8f6 0%, #fef3f3 100%);
+  border: 1px solid #f9e7e7;
+  border-radius: 20px;
+  padding: 14px;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 15px rgba(254, 243, 243, 0.8);
+  position: relative;
+  overflow: hidden;
+}
+
+.xianguo-last-read-cover {
+  width: 86px;
+  height: 116px;
+  border-radius: 10px;
+  object-fit: cover;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+  background: #eedbd5;
+}
+
+.xianguo-last-read-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.xianguo-last-read-author {
+  font-size: 11px;
+  color: var(--rd-text-mute);
+  margin-bottom: 2px;
+}
+
+.xianguo-last-read-bookname {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--rd-text);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.xianguo-last-read-chap {
+  font-size: 11px;
+  color: var(--rd-text-sub);
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.xianguo-last-read-progress-bar {
+  height: 4px;
+  background: #f1dedc;
+  border-radius: 2px;
+  margin: 10px 0 6px 0;
+  overflow: hidden;
+}
+
+.xianguo-last-read-progress-fill {
+  height: 100%;
+  background: #ea8d95;
+  border-radius: 2px;
+}
+
+.xianguo-last-read-time {
+  font-size: 10px;
+  color: var(--rd-text-mute);
+  margin-bottom: 8px;
+}
+
+.xianguo-resume-btn {
+  background: var(--rd-cta);
+  color: var(--rd-cta-text);
+  border: 1px solid var(--rd-cta-border);
+  border-radius: 12px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  box-shadow: 0 3px 8px var(--rd-cta-shadow);
+  transition: opacity 0.2s;
+}
+
+.xianguo-resume-btn:hover {
+  opacity: 0.92;
+}
+
+.xianguo-resume-btn:active {
+  background: var(--rd-cta-press);
+}
+
+/* ================= 图1：【我的书架 (3本书)】与书籍三列网格 ================= */
+.xianguo-shelf-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.xianguo-shelf-title-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.xianguo-shelf-sub {
+  font-size: 11px;
+  color: #ea8d95;
+  font-weight: 600;
+}
+
+.xianguo-shelf-count {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--rd-text);
+}
+
+.xianguo-shelf-filter-btn {
+  background: var(--rd-card);
+  border: 1px solid var(--rd-border);
+  border-radius: 14px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--rd-text-sub);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.xianguo-books-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px 12px;
+}
+
+.xianguo-book-item {
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  position: relative;
+}
+
+.xianguo-book-cover-wrap {
+  width: 100%;
+  aspect-ratio: 3 / 4.1;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+  position: relative;
+  background: var(--rd-card-3);
+}
+
+.xianguo-book-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 鲜果机特色的极简粉白渐变纯文字封面 (图1右侧的午夜梦魇封面) */
+.xianguo-pure-cover {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(180deg, #f7f3f9 0%, #f9e2e6 100%);
+  padding: 10px 8px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border: 1px solid #f1d5dc;
+}
+
+.xianguo-pure-cover-top {
+  font-size: 10px;
+  color: #8e889b;
+  font-weight: 600;
+}
+
+.xianguo-pure-cover-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #2a2533;
+  line-height: 1.3;
+  text-align: center;
+}
+
+.xianguo-pure-cover-bottom {
+  font-size: 9px;
+  color: #9f9aa8;
+  text-align: center;
+}
+
+.xianguo-book-meta-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--rd-text);
+  margin-top: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.xianguo-book-meta-chap {
+  font-size: 10px;
+  color: var(--rd-text-mute);
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.xianguo-book-meta-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+.xianguo-book-meta-prog {
+  font-size: 10px;
+  color: var(--rd-text-mute);
+}
+
+.xianguo-book-edit-dot {
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 2px 4px;
+  cursor: pointer;
+}
+
+/* ================= 图2：【书城】搜索、分类与热搜流 ================= */
+.xianguo-store-search-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.xianguo-search-input-wrap {
+  flex: 1;
+  background: var(--rd-card);
+  border: 1px solid var(--rd-border);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 8px;
+}
+
+.xianguo-search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 13px;
+  padding: 10px 0;
+  color: var(--rd-text);
+  background: transparent;
+}
+
+.xianguo-search-btn {
+  background: var(--rd-cta);
+  color: var(--rd-cta-text);
+  border: 1px solid var(--rd-cta-border);
+  border-radius: 14px;
+  padding: 0 18px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* 标签横滑栏 (当代现代 / 外国文学 / 侦探·推理 / 古典文学 / 武侠小说) */
+.xianguo-genre-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+}
+
+.xianguo-genre-chip {
+  background: var(--rd-card);
+  border: 1px solid var(--rd-border);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 12px;
+  color: var(--rd-text-sub);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.xianguo-genre-chip.active {
+  background: #ea8d95;
+  color: var(--color-text-primary);
+  border-color: #ea8d95;
+}
+
+/* 最近浏览药丸 */
+.xianguo-recent-wrap {
+  margin-bottom: 18px;
+}
+
+.xianguo-recent-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--rd-text);
+  margin-bottom: 8px;
+}
+
+.xianguo-recent-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.xianguo-recent-pill {
+  background: var(--rd-card-3);
+  color: var(--rd-text-sub);
+  border-radius: 12px;
+  padding: 5px 12px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+/* 分类作品流 (台言·古言作品) */
+.xianguo-feed-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 12px;
+}
+
+.xianguo-feed-title-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.xianguo-feed-tag {
+  font-size: 10px;
+  color: #ea8d95;
+  font-weight: 700;
+}
+
+.xianguo-feed-title {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--rd-text);
+}
+
+.xianguo-feed-count {
+  font-size: 11px;
+  color: var(--rd-text-mute);
+}
+
+.xianguo-book-feed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.xianguo-feed-card {
+  background: var(--rd-card);
+  border-radius: 14px;
+  padding: 12px;
+  display: flex;
+  gap: 12px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  transition: transform 0.15s;
+}
+
+.xianguo-feed-card:hover {
+  transform: translateY(-2px);
+}
+
+.xianguo-feed-cover {
+  width: 66px;
+  height: 90px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--rd-card-3);
+}
+
+.xianguo-feed-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.xianguo-feed-name {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--rd-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.xianguo-feed-author-tag {
+  font-size: 11px;
+  color: var(--rd-text-mute);
+  margin-top: 2px;
+}
+
+.xianguo-feed-intro {
+  font-size: 11px;
+  color: var(--rd-text-sub);
+  line-height: 1.4;
+  margin-top: 4px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.xianguo-feed-update {
+  font-size: 10px;
+  color: var(--rd-text-mute);
+  margin-top: 4px;
+}
+
+/* ================= 图3：【把一本书放进鲜果机】底部抽屉弹窗 ================= */
+.xianguo-sheet-mask {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  animation: fadeIn 0.2s ease;
+}
+
+.xianguo-sheet-panel {
+  background: var(--bg-surface) !important;
+  border-radius: 28px 28px 0 0;
+  padding: 12px 18px 30px 18px;
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.xianguo-sheet-drag-handle {
+  width: 36px;
+  height: 4px;
+  background: #e0ded9;
+  border-radius: 2px;
+  margin: 0 auto 12px auto;
+}
+
+.xianguo-sheet-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.xianguo-sheet-sub {
+  font-size: 11px;
+  color: #ea8d95;
+  font-weight: 700;
+}
+
+.xianguo-sheet-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--rd-text);
+  margin-top: 2px;
+}
+
+.xianguo-sheet-desc {
+  font-size: 11px;
+  color: var(--rd-text-mute);
+  margin-top: 3px;
+}
+
+.xianguo-sheet-close-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--rd-card-3);
+  border: none;
+  color: var(--rd-text-sub);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.xianguo-sheet-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.xianguo-sheet-opt-card {
+  background: var(--rd-card-2);
+  border: 1px solid var(--rd-border);
+  border-radius: 16px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.xianguo-sheet-opt-card:hover {
+  background: var(--rd-card-3);
+}
+
+.xianguo-sheet-opt-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.xianguo-sheet-opt-info {
+  flex: 1;
+}
+
+.xianguo-sheet-opt-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--rd-text);
+}
+
+.xianguo-sheet-opt-sub {
+  font-size: 11px;
+  color: var(--rd-text-mute);
+  margin-top: 2px;
+}
+
+.xianguo-sheet-opt-arrow {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+/* ================= 图4：【编辑书籍】底部抽屉弹窗 ================= */
+.xianguo-edit-book-preview-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 10px 0 16px 0;
+}
+
+.xianguo-edit-book-cover {
+  width: 96px;
+  height: 130px;
+  border-radius: 12px;
+  object-fit: cover;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+  margin-bottom: 10px;
+}
+
+.xianguo-change-cover-btn {
+  background: #f7e8ea;
+  color: #ea8d95;
+  border: none;
+  border-radius: 12px;
+  padding: 6px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.xianguo-edit-field {
+  margin-bottom: 12px;
+}
+
+.xianguo-edit-field label {
+  font-size: 11px;
+  color: var(--rd-text-sub);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.xianguo-edit-input {
+  width: 100%;
+  background: var(--rd-card-2);
+  border: 1px solid var(--rd-border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--rd-text);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.xianguo-edit-save-btn {
+  background: #ea8d95;
+  color: var(--color-text-primary);
+  border: none;
+  border-radius: 14px;
+  padding: 12px 0;
+  font-size: 14px;
+  font-weight: 700;
+  width: 100%;
+  cursor: pointer;
+  margin-top: 6px;
+  box-shadow: 0 4px 12px rgba(234, 141, 149, 0.35);
+}
+
+.xianguo-edit-del-btn {
+  background: #fbebed;
+  color: #ea8d95;
+  border: none;
+  border-radius: 14px;
+  padding: 11px 0;
+  font-size: 13px;
+  font-weight: 600;
+  width: 100%;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+/* ================= 图5 & 图6：正文沉浸阅读 + 划线浮窗 + 绪言伴读半屏对话 ================= */
+.xianguo-reading-container {
+  position: absolute;
+  inset: 0;
+  background: #fcfbfa; /* 护眼高级纸张色 */
+  z-index: 60;
+  display: none;
+  flex-direction: column;
+}
+
+.xianguo-read-top-header {
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.xianguo-read-article-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px 80px 20px;
+  font-size: 17px;
+  line-height: 2.1;
+  color: var(--rd-text);
+  letter-spacing: 0.3px;
+  user-select: text; /* 允许随意划词选中！ */
+  position: relative;
+}
+
+.xianguo-read-chapter-num {
+  font-size: 12px;
+  color: var(--rd-text-mute);
+  margin-bottom: 4px;
+}
+
+.xianguo-read-chapter-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--rd-text);
+  margin-bottom: 24px;
+}
+
+.xianguo-read-p {
+  margin-bottom: 18px;
+  position: relative;
+}
+
+/* 划线高亮效果 (复刻图5中的蓝色半透明底色) */
+.xianguo-highlight-span {
+  background: #cfe8fc;
+  border-radius: 3px;
+  padding: 1px 2px;
+}
+
+/* 悬浮划线操作小黑条 (复刻图5中的：高亮 / 划线 / 笔记 / 和TA聊) */
+.xianguo-selection-bubble {
+  position: absolute;
+  background: #2b2b36;
+  border-radius: 12px;
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  z-index: 80;
+  transform: translateX(-50%);
+  animation: popIn 0.15s ease;
+}
+
+.xianguo-bubble-action {
+  color: var(--color-text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+}
+
+.xianguo-bubble-action:hover {
+  opacity: 0.8;
+}
+
+/* ================= 图6：底部半屏抽屉【绪言伴读共读对话】 ================= */
+.xianguo-read-together-drawer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 60%;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-default);
+  border-radius: 26px 26px 0 0;
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.25);
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  transform: translateY(105%);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.xianguo-read-together-drawer.show {
+  transform: translateY(0);
+}
+
+.xianguo-together-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px 10px 18px;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.xianguo-together-partner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.xianguo-partner-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #ea8d95;
+}
+
+.xianguo-partner-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.xianguo-partner-name {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--rd-text);
+}
+
+.xianguo-partner-status {
+  font-size: 10px;
+  color: var(--rd-text-mute);
+}
+
+.xianguo-together-chat-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--rd-card-2);
+}
+
+/* 引用小说原文小气泡 */
+.xianguo-quote-pill {
+  font-size: 11px;
+  color: var(--rd-text-sub);
+  background: rgba(0, 0, 0, 0.04);
+  border-left: 2.5px solid #ea8d95;
+  padding: 4px 8px;
+  border-radius: 0 6px 6px 0;
+  margin-top: 4px;
+  line-height: 1.3;
+}
+
+.xianguo-chat-bubble-user {
+  align-self: flex-end;
+  background: #e6f7ec;
+  color: #2e6642;
+  padding: 8px 12px;
+  border-radius: 14px 14px 2px 14px;
+  font-size: 13px;
+  max-width: 80%;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+}
+
+.xianguo-chat-bubble-bot {
+  align-self: flex-start;
+  background: #f3ebf7; /* 浪漫紫/粉温润气泡 */
+  color: #3b2c44;
+  padding: 10px 12px;
+  border-radius: 14px 14px 14px 2px;
+  font-size: 13px;
+  line-height: 1.5;
+  max-width: 86%;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+}
+
+/* 图6底部的3个预置灵感提问胶囊 */
+.xianguo-chat-suggestions {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 8px 16px;
+  background: var(--rd-card-2);
+}
+
+.xianguo-suggest-pill {
+  background: var(--rd-card);
+  border: 1px solid #e8e5dc;
+  border-radius: 14px;
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.xianguo-together-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px 16px 16px;
+  background: var(--rd-card);
+}
+
+.xianguo-together-input {
+  flex: 1;
+  background: var(--rd-card-2);
+  border: 1px solid var(--rd-border);
+  border-radius: 20px;
+  padding: 8px 14px;
+  font-size: 12px;
+  outline: none;
+}
+
+.xianguo-together-send-btn {
+  background: #ea8d95;
+  color: var(--color-text-primary);
+  border: none;
+  border-radius: 18px;
+  padding: 7px 16px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: translate(-50%, 8px) scale(0.95); }
+  to { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+
+/* ================= 阅读页底部羊皮纸功能控制栏 (图5设计) ================= */
+.xianguo-parchment-bottom-bar {
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-default);
+  padding: 12px 18px 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex-shrink: 0;
+  box-shadow: var(--shadow-card);
+  z-index: 50;
+}
+
+.xianguo-parchment-progress-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.xianguo-progress-header-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: #7d725d;
+}
+
+.xianguo-progress-slider {
+  width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: #e3dac4;
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.xianguo-progress-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--rd-card);
+  border: 1px solid #c7bc9f;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+  cursor: pointer;
+}
+
+.xianguo-parchment-actions-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 6px;
+}
+
+.xianguo-parchment-action-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #4a4031;
+  transition: opacity 0.2s;
+}
+
+.xianguo-parchment-action-item:hover {
+  opacity: 0.8;
+}
+
+.xianguo-parchment-action-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.xianguo-parchment-action-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: #5c5140;
+}
+
+/* ================= 伴读输入框内嵌【生成AI星星键 + 纸飞机发送键】(图3设计) ================= */
+.xianguo-together-input-capsule {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: var(--rd-card-2);
+  border: 1px solid var(--rd-border);
+  border-radius: 24px;
+  padding: 4px 6px 4px 14px;
+  gap: 6px;
+}
+
+.xianguo-together-input-field {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 12px;
+  color: var(--rd-text);
+}
+
+.xianguo-together-btns-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 紫色四角星 AI 智能生成思考键 */
+.xianguo-ai-sparkle-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: #f0eeff;
+  color: #6366f1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.xianguo-ai-sparkle-btn:hover {
+  background: #e0dcff;
+  transform: scale(1.06);
+}
+
+.xianguo-ai-sparkle-btn.pulsing {
+  animation: sparkleRotate 1.2s infinite ease-in-out;
+}
+
+@keyframes sparkleRotate {
+  0% { transform: scale(1) rotate(0deg); }
+  50% { transform: scale(1.15) rotate(15deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+/* 深色圆形纸飞机发送键 (图3) */
+.xianguo-paper-plane-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: var(--rd-plane);
+  color: var(--rd-cta-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s;
+}
+
+.xianguo-paper-plane-btn:hover {
+  background: var(--rd-cta-press);
+  transform: scale(1.05);
+}
+
+.xianguo-paper-plane-btn:active {
+  transform: scale(0.92);
+}
+
+/* ================= 📖 底部弹出模态卡片 (设置/背景/目录) ================= */
+.reader-popup-mask {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
+  z-index: 120;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  animation: fadeIn 0.2s ease;
+}
+
+.reader-popup-card {
+  background: var(--bg-surface) !important;
+  border-radius: 24px 24px 0 0;
+  padding: 16px 18px 28px 18px;
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reader-popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--rd-border);
+  margin-bottom: 16px;
+}
+
+.reader-popup-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--rd-text);
+}
+
+.reader-popup-close {
+  background: var(--rd-card-3);
+  border: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: var(--rd-text-sub);
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reader-setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.reader-setting-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.reader-font-size-ctrls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--rd-card-3);
+  padding: 4px 10px;
+  border-radius: 12px;
+}
+
+.reader-ctrl-pill {
+  background: var(--rd-card);
+  border: 1px solid #e5dfd2;
+  color: var(--rd-text);
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.reader-current-size-val {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--rd-text);
+  min-width: 36px;
+  text-align: center;
+}
+
+.reader-pills-row {
+  display: flex;
+  gap: 8px;
+}
+
+.reader-option-pill {
+  background: var(--rd-card-3);
+  border: 1px solid transparent;
+  color: var(--rd-text-sub);
+  padding: 6px 14px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.reader-option-pill.active {
+  background: #ea8d95;
+  color: var(--color-text-primary);
+  border-color: #ea8d95;
+}
+
+/* 背景配色挑选网格 */
+.reader-theme-palettes-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.reader-theme-palette-box {
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  transition: all 0.2s;
+}
+
+.reader-theme-palette-box:hover {
+  border-color: #ea8d95;
+  transform: translateY(-2px);
+}
+
+.reader-palette-preview {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+/* 目录抽屉 */
+.reader-catalog-card {
+  max-height: 70%;
+}
+
+.reader-catalog-scroll-list {
+  overflow-y: auto;
+  max-height: 320px;
+  display: flex;
+  flex-direction: column;
+}
+
+.reader-catalog-row-item {
+  padding: 12px 6px;
+  border-bottom: 1px solid var(--rd-border);
+  font-size: 13px;
+  color: var(--rd-text);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+.reader-catalog-row-item:hover, .reader-catalog-row-item.active {
+  color: #ea8d95;
+  font-weight: 700;
+}
+
+/* 气泡中周绪言完整昵称与头像展示 */
+.xianguo-chat-bot-header {
+  font-size: 11px;
+  font-weight: 700;
+  color: #8e44ad;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ================= 伴读左侧加号与展开菜单 ================= */
+.xianguo-together-more-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: var(--rd-card-3);
+  color: var(--rd-text-sub);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.xianguo-together-more-btn:hover {
+  background: #e4e0d7;
+  color: var(--rd-text);
+}
+
+.xianguo-together-more-btn.open {
+  transform: rotate(45deg);
+  background: #ea8d95;
+  color: var(--color-text-primary);
+}
+
+/* 加号展开的操作胶囊栏 */
+.xianguo-more-actions-bar {
+  display: flex;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--rd-card);
+  border-top: 1px dashed var(--rd-border);
+  animation: fadeIn 0.15s ease;
+}
+
+.xianguo-more-act-chip {
+  background: var(--rd-card-2);
+  border: 1px solid #f8d7dc;
+  color: #d65d6a;
+  border-radius: 14px;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s;
+}
+
+.xianguo-more-act-chip:hover {
+  background: #ea8d95;
+  color: var(--color-text-primary);
+  border-color: #ea8d95;
+}
+
+/* ================= 📖 总结阅读弹窗样式 ================= */
+.reader-edit-toggle-btn {
+  background: var(--rd-card-2);
+  border: 1px solid #f8d7dc;
+  color: #ea8d95;
+  border-radius: 12px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.reader-edit-toggle-btn:hover {
+  background: #ea8d95;
+  color: var(--color-text-primary);
+}
+
+.reader-summary-view-box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 380px;
+  overflow-y: auto;
+  padding: 4px 2px;
+}
+
+.reader-summary-badge {
+  font-size: 10.5px;
+  color: #ea8d95;
+  background: var(--rd-card-2);
+  padding: 3px 8px;
+  border-radius: 6px;
+  align-self: flex-start;
+  font-weight: 600;
+}
+
+.reader-summary-title-text {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--rd-text);
+  line-height: 1.3;
+}
+
+.reader-summary-body-text {
+  font-size: 13px;
+  color: var(--text-primary);
+  line-height: 1.7;
+  white-space: pre-wrap;
+  background: var(--rd-card-2);
+  border: 1px solid #f0ece3;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.reader-summary-footer-meta {
+  font-size: 10px;
+  color: var(--rd-text-mute);
+  text-align: right;
+}
+
+.reader-summary-edit-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ================= 气泡长按动画与震动效果 ================= */
+.xianguo-chat-bubble-user, .xianguo-chat-bubble-bot {
+  position: relative;
+  user-select: none;
+  -webkit-touch-callout: none;
+  transition: transform 0.15s, opacity 0.15s;
+}
+
+.xianguo-chat-bubble-user:active, .xianguo-chat-bubble-bot:active {
+  transform: scale(0.97);
+}
+
+.xianguo-bubble-del-btn {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #ef4444;
+  color: #ffffff;
+  border: 1px solid var(--rd-border);
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  animation: popIn 0.15s ease;
+  z-index: 10;
+}
+
+/* ================= 📖 拖拽批量导入高亮视觉遮罩 ================= */
+.xianguo-drag-drop-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(254, 243, 245, 0.92);
+  border: 3px dashed #ea8d95;
+  border-radius: 24px;
+  z-index: 200;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+  animation: fadeIn 0.15s ease;
+}
+
+.xianguo-drag-drop-overlay.active {
+  display: flex;
+}
+
+.xianguo-drag-drop-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, #fef0f1 0%, #fcd9dd 100%);
+  color: #ea8d95;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  box-shadow: 0 8px 25px rgba(234, 141, 149, 0.35);
+  animation: floatBob 2s infinite ease-in-out;
+}
+
+.xianguo-drag-drop-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--rd-text);
+}
+
+.xianguo-drag-drop-sub {
+  font-size: 12px;
+  color: var(--rd-text-mute);
+}
+
+/* 导入完成/处理中浮动状态条 */
+.xianguo-import-toast {
+  position: absolute;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #2b2b36;
+  color: #ffffff;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  z-index: 250;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  animation: fadeIn 0.2s ease;
+}
+
+/* ================= ✍️ user专属写手创作工作台样式 ================= */
+.xianguo-writer-modal {
+  position: absolute;
+  inset: 0;
+  background: var(--rd-card-2);
+  z-index: 150;
+  display: flex;
+  flex-direction: column;
+  animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.xianguo-writer-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.xianguo-writer-header {
+  height: 58px;
+  background: var(--rd-card);
+  border-bottom: 1px solid var(--rd-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  flex-shrink: 0;
+}
+
+.xianguo-writer-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.xianguo-writer-btn-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: var(--rd-card-3);
+  color: var(--rd-text-sub);
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.xianguo-writer-header-title-box {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.xianguo-writer-title-input {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--rd-text);
+  border: none;
+  background: transparent;
+  outline: none;
+  padding: 0;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.xianguo-writer-title-input:focus {
+  border-bottom: 1.5px solid #ea8d95;
+}
+
+.xianguo-writer-meta-sub {
+  font-size: 11px;
+  color: var(--rd-text-mute);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.xianguo-writer-author-input {
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 11px;
+  color: #ea8d95;
+  font-weight: 600;
+  width: 65px;
+  padding: 0;
+}
+
+.xianguo-writer-badge {
+  font-size: 9px;
+  background: var(--rd-card-2);
+  color: #e11d48;
+  padding: 1px 5px;
+  border-radius: 4px;
+  border: 1px solid #fcd5dd;
+  font-weight: 600;
+}
+
+.xianguo-writer-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.xianguo-writer-stat-pill {
+  font-size: 10px;
+  color: var(--text-secondary);
+  background: var(--rd-card-3);
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+.xianguo-writer-save-btn {
+  background: linear-gradient(135deg, #f78da7 0%, #ea8d95 100%);
+  color: var(--color-text-primary);
+  border: none;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(234, 141, 149, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.xianguo-writer-chapters-bar {
+  background: var(--rd-card-2);
+  border-bottom: 1px solid #ebe2d8;
+  display: flex;
+  align-items: center;
+  padding: 6px 10px;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.xianguo-writer-chaps-scroll {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  flex: 1;
+  scrollbar-width: none;
+}
+
+.xianguo-writer-chaps-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.xianguo-writer-chap-tab {
+  padding: 4px 10px;
+  font-size: 11px;
+  border-radius: 12px;
+  background: var(--rd-card);
+  color: var(--rd-text-sub);
+  border: 1px solid #e8ded4;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-weight: 600;
+}
+
+.xianguo-writer-chap-tab.active {
+  background: #ea8d95;
+  color: var(--color-text-primary);
+  border-color: #ea8d95;
+  box-shadow: 0 2px 8px rgba(234, 141, 149, 0.35);
+}
+
+.xianguo-writer-add-chap-btn {
+  background: var(--rd-card);
+  border: 1px dashed #ea8d95;
+  color: #ea8d95;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.xianguo-writer-chap-meta-bar {
+  background: var(--rd-card);
+  border-bottom: 1px solid #f0e9e2;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.xianguo-writer-chap-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.xianguo-writer-chap-tag {
+  font-size: 11px;
+  font-weight: 700;
+  color: #ea8d95;
+  background: #fff0f3;
+  padding: 2px 6px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.xianguo-writer-cur-chap-input {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--rd-text);
+  border: none;
+  background: transparent;
+  outline: none;
+  width: 100%;
+}
+
+.xianguo-writer-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.xianguo-writer-tool-btn {
+  background: #f7f1ea;
+  border: 1px solid #ebdcd0;
+  color: #5d5350;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.xianguo-writer-tool-btn.danger {
+  color: #e11d48;
+  background: #fff1f2;
+  border-color: #fecdd3;
+}
+
+.xianguo-writer-editor-body {
+  flex: 1;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--rd-card-2);
+}
+
+.xianguo-writer-textarea {
+  width: 100%;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  resize: none;
+  font-size: 15px;
+  line-height: 1.85;
+  color: var(--rd-text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  letter-spacing: 0.3px;
+  box-sizing: border-box;
+}
+
+.xianguo-writer-footer {
+  height: 38px;
+  background: var(--rd-card);
+  border-top: 1px solid var(--rd-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  flex-shrink: 0;
+}
+
+.xianguo-writer-footer-tips {
+  font-size: 11px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.xianguo-writer-cur-words {
+  font-size: 11px;
+  font-weight: 600;
+  color: #ea8d95;
+  flex-shrink: 0;
+}
+
+.xianguo-read-edit-pen-btn {
+  padding: 4px 8px;
+  font-size: 12px;
+  background: rgba(234, 141, 149, 0.15);
+  color: #ea8d95;
+  border: 1px solid rgba(234, 141, 149, 0.4);
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-right: 4px;
+}
+
+/* ================= 📖 图2：网文写手「章节目录」管理中心 (Dark Table Mode) ================= */
+.xianguo-writer-catalog-view {
+  position: absolute;
+  inset: 0;
+  background: #141416;
+  color: #e5e5e7;
+  z-index: 160;
+  display: flex;
+  flex-direction: column;
+  animation: fadeIn 0.15s ease;
+}
+
+.xianguo-writer-cat-header {
+  min-height: 58px;
+  height: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: #19191c;
+  border-bottom: 1px solid #28282c;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 25;
+}
+
+.xianguo-writer-cat-back-btn {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.xianguo-writer-cat-header-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  letter-spacing: 0.5px;
+}
+
+.xianguo-writer-cat-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.xianguo-writer-cat-add-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f78da7 0%, #ea8d95 100%);
+  color: var(--color-text-primary);
+  border: none;
+  font-size: 22px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(234, 141, 149, 0.45);
+  position: relative;
+  z-index: 30;
+  pointer-events: auto !important;
+  transition: transform 0.1s ease;
+}
+.xianguo-writer-cat-add-btn:active {
+  transform: scale(0.92);
+}
+
+.xianguo-writer-cat-columns-bar {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  font-size: 12px;
+  color: #77777d;
+  background: #141416;
+  border-bottom: 1px solid #232327;
+  flex-shrink: 0;
+}
+
+.xianguo-writer-cat-col-num {
+  width: 70px;
+}
+
+.xianguo-writer-cat-col-summary {
+  flex: 1;
+}
+
+.xianguo-writer-cat-col-order {
+  width: 65px;
+  text-align: right;
+  cursor: pointer;
+  color: #ea8d95;
+  font-weight: 600;
+}
+
+.xianguo-writer-cat-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.xianguo-writer-cat-item {
+  display: flex;
+  align-items: center;
+  padding: 14px 16px;
+  border-bottom: 1px solid #202024;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  user-select: none;
+}
+
+.xianguo-writer-cat-item:hover, .xianguo-writer-cat-item:active {
+  background: #1f1f24;
+}
+
+.xianguo-writer-cat-item.active {
+  background: #231f24;
+  border-left: 3px solid #ea8d95;
+}
+
+.xianguo-writer-cat-item-num-box {
+  width: 70px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.xianguo-writer-cat-item-index {
+  font-size: 13px;
+  color: var(--rd-text-sub);
+  min-width: 18px;
+}
+
+.xianguo-writer-cat-item-chap-tag {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1.3;
+}
+
+.xianguo-writer-cat-item-info {
+  flex: 1;
+  min-width: 0;
+  padding: 0 10px;
+}
+
+.xianguo-writer-cat-item-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #dfdfe4;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.xianguo-writer-cat-item-meta {
+  font-size: 11px;
+  color: var(--rd-text-sub);
+  display: flex;
+  gap: 8px;
+}
+
+.xianguo-writer-cat-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.xianguo-writer-cat-order-btn {
+  background: #25252b;
+  border: 1px solid #33333a;
+  color: var(--rd-text-mute);
+  font-size: 11px;
+  padding: 3px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.xianguo-writer-cat-order-btn:hover {
+  color: #ea8d95;
+  border-color: #ea8d95;
+}
+
+.xianguo-writer-cat-footer {
+  height: 50px;
+  background: #19191c;
+  border-top: 1px solid #28282c;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  flex-shrink: 0;
+}
+
+.xianguo-writer-cat-publish-btn {
+  background: linear-gradient(135deg, #f78da7 0%, #ea8d95 100%);
+  color: var(--color-text-primary);
+  border: none;
+  padding: 8px 16px;
+  border-radius: 18px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ================= 💭 绪言耳边温存思索 · 动态呼吸与跳动音波 ================= */
+.xianguo-thinking-bubble-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #7b4f59;
+}
+
+.xianguo-thinking-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.xianguo-thinking-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ea8d95;
+  animation: xianguoThinkingBounce 1.4s infinite ease-in-out both;
+}
+
+.xianguo-thinking-dot:nth-child(1) { animation-delay: -0.32s; }
+.xianguo-thinking-dot:nth-child(2) { animation-delay: -0.16s; }
+.xianguo-thinking-dot:nth-child(3) { animation-delay: 0s; }
+
+@keyframes xianguoThinkingBounce {
+  0%, 80%, 100% {
+    transform: scale(0);
+    opacity: 0.4;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+    background: #e11d48;
+  }
+}
+
+/* ===== 深色补丁：渐变卡与淡粉按钮（中性色替换覆盖不到的两处） ===== */
+[data-theme="dark"] #page-reader .xianguo-last-read-card,
+body[data-theme="dark"] #page-reader .xianguo-last-read-card,
+.phone-screen[data-theme="dark"] #page-reader .xianguo-last-read-card,
+#phone-screen-root[data-theme="dark"] #page-reader .xianguo-last-read-card {
+  background: var(--rd-card-2);
+  border-color: var(--rd-border);
+  box-shadow: none;
+}
+
+[data-theme="dark"] #page-reader .xianguo-last-read-progress-bar,
+body[data-theme="dark"] #page-reader .xianguo-last-read-progress-bar,
+.phone-screen[data-theme="dark"] #page-reader .xianguo-last-read-progress-bar,
+#phone-screen-root[data-theme="dark"] #page-reader .xianguo-last-read-progress-bar {
+  background: var(--rd-border);
+}
+
+/* 淡粉“+”按钮保留粉底，图标只能是深的 */
+[data-theme="dark"] #page-reader .xianguo-add-btn,
+body[data-theme="dark"] #page-reader .xianguo-add-btn,
+.phone-screen[data-theme="dark"] #page-reader .xianguo-add-btn,
+#phone-screen-root[data-theme="dark"] #page-reader .xianguo-add-btn {
+  color: #4a2c36;
+}

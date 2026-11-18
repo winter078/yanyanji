@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+  html,body{margin:0;padding:0;background:#000;}
+  iframe{position:fixed;top:0;left:0;width:390px;height:844px;border:0;}
+</style></head><body>
+<iframe id="f" src="/index.html"></iframe>
+<script>
+document.getElementById('f').addEventListener('load', function () {
+  try {
+    var w = this.contentWindow, d = w.document.documentElement;
+    d.classList.add('ios', 'standalone');
+    if (w.__momFitScreen) w.__momFitScreen();
+    setTimeout(function () {
+      document.title = 'ok ' + w.innerHeight + ' / ' + (w.screen && w.screen.height);
+    }, 200);
+  } catch (e) { document.title = 'err ' + e.message; }
+});
+</script>
+</body></html>

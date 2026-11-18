@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>desktop reorder visual hold</title>
+  <style>
+    html, body { margin: 0; padding: 0; width: 500px; height: 1200px; overflow: hidden; background: #000; }
+    iframe { display: block; width: 500px; height: 1200px; border: 0; }
+  </style>
+</head>
+<body>
+<script>
+  const f = document.createElement('iframe');
+  f.src = '/index.html?v=2026111197';
+  function wait(ms) { return new Promise(function(r) { setTimeout(r, ms); }); }
+  function fire(target, name, x, y, id) {
+    const view = target.ownerDocument ? target.ownerDocument.defaultView : target;
+    const PE = view.PointerEvent || PointerEvent;
+    target.dispatchEvent(new PE(name, {
+      bubbles: true, cancelable: true, pointerId: id || 9, pointerType: 'touch',
+      button: 0, buttons: name === 'pointerup' ? 0 : 1, clientX: x, clientY: y
+    }));
+  }
+  f.addEventListener('load', async function() {
+    const w = f.contentWindow;
+    const d = f.contentDocument;
+    await wait(600);
+    if (typeof w.closeAllModals === 'function') w.closeAllModals();
+    await wait(300);
+    const grid = d.querySelector('.ios-page-slide[data-page-index="0"] .ios-dynamic-grid');
+    const from = grid.querySelector('.grid-drag-item[data-slot-index="0"]');
+    const to = grid.querySelector('.grid-drag-item[data-slot-index="2"]');
+    const a = from.getBoundingClientRect();
+    const b = to.getBoundingClientRect();
+    fire(from, 'pointerdown', a.left + a.width / 2, a.top + a.height / 2, 9);
+    await wait(700);
+    fire(w, 'pointermove', b.left + b.width / 2, b.top + b.height / 2, 9);
+  });
+  document.body.appendChild(f);
+</script>
+</body>
+</html>

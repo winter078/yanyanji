@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>chat appearance probe</title>
+  <style>
+    html, body { margin: 0; padding: 0; width: 500px; height: 1200px; overflow: hidden; background: #000; }
+    iframe { display: block; width: 500px; height: 1200px; border: 0; }
+    #probe-result { position: fixed; left: 0; top: 0; z-index: 9999; margin: 0; padding: 4px; background: rgba(0,0,0,.8); color: #8f8; font: 12px monospace; white-space: pre-wrap; max-width: 480px; }
+  </style>
+</head>
+<body>
+<script>
+  const view = new URLSearchParams(location.search).get('view') || 'sheet';
+  const clean = new URLSearchParams(location.search).get('clean') === '1';
+  const IMG_A = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=240&auto=format&fit=crop&q=80';
+  const IMG_B = 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=240&auto=format&fit=crop&q=80';
+  const IMG_ME = 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=240&auto=format&fit=crop&q=80';
+  const chars = [
+    { id: 'c-a', name: '阿岚', avatar: IMG_A, tag: '会吃醋', intro: '嘴硬心软', prompt: '', directives: '', relations: [], starred: false, createdAt: 1 },
+    { id: 'c-b', name: '小夏', avatar: IMG_B, tag: '爱撒娇', intro: '很黏人', prompt: '', directives: '', relations: [], starred: false, createdAt: 2 }
+  ];
+  const history = [
+    { role: 'assistant', content: '你终于回来了。', time: '22:10' },
+    { role: 'user', content: '刚洗完澡。', time: '22:11' },
+    { role: 'assistant', content: '头发擦干了吗？别又感冒。', time: '22:12' }
+  ];
+  localStorage.setItem('momo_characters', JSON.stringify(chars));
+  localStorage.setItem('momo_characters_trash', '[]');
+  localStorage.setItem('momo_active_char', 'c-a');
+  localStorage.setItem('momo_user_nick', '末末');
+  localStorage.setItem('momo_hero_avatar', IMG_ME);
+  localStorage.setItem('momo_chat_histories', JSON.stringify({ 'c-a': history, 'c-b': history }));
+  localStorage.setItem('momo_chat_history', JSON.stringify(history));
+  localStorage.setItem('momo_chat_history_scoped_v1', '1');
+  localStorage.setItem('momo_wechat_friends', JSON.stringify(['c-a', 'c-b']));
+  localStorage.setItem('momo_vault_list_momo_v2', JSON.stringify([
+    { id: 'av_momo_1', url: IMG_ME, emotion: '日常', name: '我的日常' }
+  ]));
+  localStorage.setItem('momo_vault_char_c-a', JSON.stringify([
+    { id: 'av_char_a1', url: IMG_A, emotion: '吃醋', name: '阿岚吃醋' },
+    { id: 'av_char_a2', url: IMG_B, emotion: '开心', name: '阿岚笑' }
+  ]));
+  localStorage.setItem('momo_chat_appearances_v1', JSON.stringify({
+    'c-a': {
+      charId: 'c-a', preset: 'plain', fontSize: 15, avatarSize: 40, avatarShape: 'circle', avatarMode: 'message',
+      userBg: '', userText: '', botBg: '', botText: '',
+      selfAvatar: '', selfAvatarId: 'av_momo_1', selfFrame: 'builtin_duo', selfFrameText1: '我在', selfFrameText2: '说没有我就不行。',
+      botFrame: 'builtin_banner', botFrameText1: '把你老公删了', botFrameText2: '我来当你老公'
+    },
+    'c-b': {
+      charId: 'c-b', preset: 'ig', fontSize: 14, avatarSize: 44, avatarShape: 'circle', avatarMode: 'message',
+      userBg: '', userText: '', botBg: '', botText: '',
+      selfAvatar: '', selfAvatarId: 'av_momo_1', selfFrame: 'builtin_glow', selfFrameText1: '快说需要我。', selfFrameText2: '',
+      botFrame: 'builtin_thin', botFrameText1: '今天也要抱抱', botFrameText2: ''
+    }
+  }));
+
+  const f = document.createElement('iframe');
+  f.src = '/index.html?v=2026111306';
+  f.addEventListener('load', function () {
+    setTimeout(function () {
+      const w = f.contentWindow;
+      const d = f.contentDocument;
+      const lines = [];
+      function ok(name, cond) { lines.push((cond ? 'PASS ' : 'FAIL ') + name); }
+      function closeAllModals() {
+        try {
+          if (typeof w.closeVaultUploadDrawer === 'function') w.closeVaultUploadDrawer();
+          if (typeof w.closeVaultCharDrawer === 'function') w.closeVaultCharDrawer();
+          if (typeof w.closeStickerDrawer === 'function') w.closeStickerDrawer();
+          if (typeof w.resolveAvatarChange === 'function') w.resolveAvatarChange(false);
+          if (typeof w.resolveChatFrameChange === 'function') w.resolveChatFrameChange(false);
+        } catch (e) {}
+        d.querySelectorAll('.avatar-change-mask.open, .modal-mask.open, .drawer-mask.open, .sheet-mask.open, .vault-drawer-mask.open').forEach(function (el) {
+          el.classList.remove('open');
+        });
+      }
+      try {
+        const calm = d.createElement('style');
+        calm.textContent = '*,*::before,*::after{transition:none!important;animation:none!important}';
+        (d.head || d.documentElement).appendChild(calm);
+        if (typeof w.openFriendChat === 'function') w.openFriendChat('c-a');
+        setTimeout(function () {
+          closeAllModals();
+          if (typeof w.openPage === 'function') w.openPage('page-chat');
+          const apA = JSON.parse((w.localStorage.getItem('momo_chat_appearances_v1') || '{}'))['c-a'] || {};
+          const apB = JSON.parse((w.localStorage.getItem('momo_chat_appearances_v1') || '{}'))['c-b'] || {};
+          ok('角色 A 拥有独立头像框', apA.botFrame === 'builtin_banner');
+          ok('角色 A 自己那侧也有框', apA.selfFrame === 'builtin_duo');
+          ok('我的头像只存 ID 不存 base64', apA.selfAvatarId === 'av_momo_1' && !apA.selfAvatar);
+          ok('角色 B 拥有另一套头像框', apB.botFrame === 'builtin_thin');
+          ok('两个角色不同框', apA.botFrame !== apB.botFrame);
+          ok('聊天里有头像框容器', !!d.querySelector('#message-container .msg-avatar-box'));
+          ok('横幅框已渲染', !!d.querySelector('#message-container .caf-banner'));
+          ok('对方框文案正确', (d.querySelector('#message-container .caf-banner .caf-text-one') || {}).textContent === '把你老公删了');
+          ok('角色可以按名字找到「光晕」', !!(w.findChatFrameByName && w.findChatFrameByName('光晕')));
+          const parsedFrameCmd = w.extractChatTrailingCommands ? w.extractChatTrailingCommands('今晚想见你。\n[换头像框: 光晕|快说需要我。]') : {};
+          ok('尾部换框指令能解析', parsedFrameCmd.frame === '光晕|快说需要我。');
+
+          if (view === 'setting') {
+            if (typeof w.openPage === 'function') w.openPage('page-chat-setting');
+            setTimeout(function () {
+              ok('单人聊天设定页已打开', !!d.querySelector('#page-chat-setting.view-page.active'));
+              ok('聊天外观入口在当前角色设定里', !!d.getElementById('ca-entry-sub'));
+              finish();
+            }, 320);
+          } else if (view === 'sheet-square') {
+            const map = JSON.parse(w.localStorage.getItem('momo_chat_appearances_v1'));
+            map['c-a'].avatarShape = 'square';
+            w.localStorage.setItem('momo_chat_appearances_v1', JSON.stringify(map));
+            if (w.applyChatAppearance) w.applyChatAppearance('c-a');
+            closeAllModals();
+            if (typeof w.openChatAppearanceSheet === 'function') w.openChatAppearanceSheet();
+            setTimeout(function () {
+              const pv = d.querySelector('.ca-preview-avatar .msg-avatar');
+              const pvFrame = d.querySelector('.ca-preview-avatar .caf');
+              ok('方形预览已切成圆角方形', !!pv && w.getComputedStyle(pv).borderRadius === '10px');
+              ok('方形预览里框已隐藏', !pvFrame || w.getComputedStyle(pvFrame).display === 'none');
+              finish();
+            }, 350);
+          } else if (view === 'sheet') {
+            closeAllModals();
+            if (typeof w.openChatAppearanceSheet === 'function') w.openChatAppearanceSheet();
+            setTimeout(function () {
+              ok('外观面板已打开', !!d.querySelector('#chat-appearance-mask.open'));
+              ok('有「我/对方」两个页签', d.querySelectorAll('.ca-tab').length === 2);
+              ok('自带框 5 款', d.querySelectorAll('.ca-frame-card').length >= 6);
+              ok('面板显示当前角色', /阿岚/.test((d.getElementById('ca-sub') || {}).textContent || ''));
+              finish();
+            }, 350);
+          } else if (view === 'confirm') {
+            const frame = w.findChatFrame('builtin_glow');
+            w.askChatFrameChange('c-a', frame, '快说需要我。', '');
+            setTimeout(function () {
+              ok('换框弹窗已打开', !!d.querySelector('#chat-frame-change-modal.open'));
+              ok('弹窗标题是角色名', /阿岚/.test((d.getElementById('chat-frame-change-name') || {}).textContent || ''));
+              finish();
+            }, 320);
+          } else if (view === 'square') {
+            const map = JSON.parse(w.localStorage.getItem('momo_chat_appearances_v1'));
+            map['c-a'].avatarShape = 'square';
+            w.localStorage.setItem('momo_chat_appearances_v1', JSON.stringify(map));
+            if (w.applyChatAppearance) w.applyChatAppearance('c-a');
+            if (w.loadChatHistory) w.loadChatHistory();
+            setTimeout(function () {
+              const squareFrame = d.querySelector('#message-container .caf-banner');
+              ok('方形下框隐藏', !squareFrame || w.getComputedStyle(squareFrame).display === 'none');
+              ok('方形标记已生效', (d.getElementById('page-chat') || {}).getAttribute('data-avatar-shape') === 'square');
+              finish();
+            }, 320);
+          } else {
+            finish();
+          }
+        }, 900);
+      } catch (e) {
+        lines.push('ERROR ' + e.message);
+        finish();
+      }
+      function finish() {
+        const pre = document.createElement('pre');
+        pre.id = 'probe-result';
+        pre.textContent = lines.join('\n');
+        if (clean) pre.style.display = 'none';
+        document.body.appendChild(pre);
+      }
+    }, 900);
+  });
+  document.body.appendChild(f);
+</script>
+</body>
+</html>

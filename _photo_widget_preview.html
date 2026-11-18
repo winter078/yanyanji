@@ -1,0 +1,252 @@
+<html data-canvas-width="1000" data-canvas-height="1000" style="margin:0;padding:0;">
+<title>相片小组件 2×2 暗色预览</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #08090b; }
+  .board {
+    position: relative;
+    width: 1000px;
+    height: 1000px;
+    overflow: hidden;
+    background: #090a0c;
+    color: #f3ece4;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+  }
+  .bg {
+    position: absolute;
+    inset: -40px;
+    width: calc(100% + 80px);
+    height: calc(100% + 80px);
+    object-fit: cover;
+    object-position: center 42%;
+    filter: brightness(.38) saturate(.42) contrast(.92) blur(5px);
+    transform: scale(1.04);
+    opacity: .86;
+  }
+  .wash {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 50% 38%, rgba(238,222,207,.055) 0%, rgba(238,222,207,.018) 30%, transparent 58%),
+      linear-gradient(180deg, rgba(6,7,9,.22) 0%, rgba(6,7,9,.34) 42%, rgba(6,7,9,.78) 100%);
+  }
+  .grain {
+    position: absolute;
+    inset: 0;
+    opacity: .12;
+    mix-blend-mode: soft-light;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.72' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E");
+  }
+  .eyebrow {
+    position: absolute;
+    left: 64px;
+    top: 56px;
+    font-size: 10px;
+    line-height: 1;
+    letter-spacing: .22em;
+    color: rgba(235,225,214,.46);
+    text-transform: uppercase;
+  }
+  .eyebrow strong {
+    display: block;
+    margin-top: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: .14em;
+    color: rgba(243,236,228,.78);
+  }
+  .size {
+    position: absolute;
+    right: 64px;
+    top: 58px;
+    padding: 8px 12px 7px;
+    border: 1px solid rgba(255,255,255,.13);
+    border-radius: 999px;
+    font-size: 10px;
+    letter-spacing: .15em;
+    color: rgba(243,236,228,.66);
+    background: rgba(255,255,255,.025);
+    backdrop-filter: blur(12px);
+  }
+  .halo {
+    position: absolute;
+    left: 185px;
+    top: 112px;
+    width: 630px;
+    height: 630px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(231,215,199,.10), rgba(231,215,199,.025) 40%, transparent 70%);
+    filter: blur(18px);
+    pointer-events: none;
+  }
+  .widget {
+    position: absolute;
+    left: 245px;
+    top: 166px;
+    width: 510px;
+    height: 510px;
+    padding: 7px;
+    border-radius: 50px;
+    background: linear-gradient(145deg, rgba(50,47,55,.56) 0%, rgba(24,22,29,.68) 46%, rgba(12,11,16,.78) 100%);
+    border: 1px solid rgba(255,255,255,.15);
+    box-shadow:
+      0 38px 74px rgba(0,0,0,.48),
+      0 10px 24px rgba(0,0,0,.34),
+      inset 0 1px 0 rgba(255,255,255,.10),
+      inset 0 -1px 0 rgba(0,0,0,.35);
+    backdrop-filter: blur(26px) saturate(.8);
+  }
+  .photo {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    border-radius: 43px;
+    background: #15141a;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.09);
+    isolation: isolate;
+  }
+  .photo img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 34% 50%;
+    filter: brightness(.76) saturate(.58) contrast(.96);
+    transform: scale(1.02);
+  }
+  .photo .tint {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(145deg, rgba(222,205,191,.08), transparent 38%, rgba(8,8,13,.16) 100%);
+    mix-blend-mode: soft-light;
+  }
+  .photo .vignette {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 44%, transparent 44%, rgba(8,8,12,.24) 100%);
+    box-shadow: inset 0 0 32px rgba(0,0,0,.18);
+  }
+  .photo .bottom {
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 48%;
+    background: linear-gradient(to top, rgba(5,6,9,.82) 0%, rgba(5,6,9,.52) 27%, rgba(5,6,9,.16) 58%, transparent 100%);
+  }
+  .caption {
+    position: absolute;
+    left: 28px;
+    right: 78px;
+    bottom: 26px;
+    font-size: 26px;
+    line-height: 1.2;
+    font-weight: 500;
+    letter-spacing: .015em;
+    color: rgba(249,242,234,.94);
+    text-shadow: 0 2px 18px rgba(0,0,0,.55);
+  }
+  .date {
+    position: absolute;
+    right: 28px;
+    bottom: 29px;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    font-size: 12px;
+    letter-spacing: .10em;
+    color: rgba(249,242,234,.56);
+    text-shadow: 0 2px 12px rgba(0,0,0,.5);
+  }
+  .filmmark {
+    position: absolute;
+    left: 28px;
+    top: 25px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 10px;
+    letter-spacing: .18em;
+    color: rgba(249,242,234,.58);
+    text-transform: uppercase;
+    text-shadow: 0 1px 10px rgba(0,0,0,.55);
+  }
+  .filmmark::before {
+    content: "";
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: rgba(233,194,142,.72);
+    box-shadow: 0 0 10px rgba(233,194,142,.34);
+  }
+  .captionline {
+    position: absolute;
+    left: 64px;
+    right: 64px;
+    bottom: 152px;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(255,255,255,.16), rgba(255,255,255,.04) 64%, transparent);
+  }
+  .footleft {
+    position: absolute;
+    left: 64px;
+    bottom: 70px;
+  }
+  .footleft .cn {
+    font-size: 24px;
+    font-weight: 500;
+    letter-spacing: .08em;
+    color: rgba(243,236,228,.88);
+  }
+  .footleft .en {
+    margin-top: 7px;
+    font-size: 9px;
+    letter-spacing: .22em;
+    color: rgba(235,225,214,.40);
+    text-transform: uppercase;
+  }
+  .footright {
+    position: absolute;
+    right: 64px;
+    bottom: 70px;
+    max-width: 330px;
+    text-align: right;
+    font-size: 10px;
+    line-height: 1.9;
+    letter-spacing: .06em;
+    color: rgba(235,225,214,.48);
+  }
+</style>
+<div class="board">
+  <img class="bg" src="media/desktop-dark-bg.jpg" alt="" />
+  <div class="wash"></div>
+  <div class="grain"></div>
+  <div class="halo"></div>
+
+  <div class="eyebrow">
+    WIDGET STUDY / 02
+    <strong>PHOTO</strong>
+  </div>
+  <div class="size">2 × 2</div>
+
+  <div class="widget">
+    <div class="photo">
+      <img src="_widget_sample3.jpg" alt="相片示例" />
+      <div class="tint"></div>
+      <div class="vignette"></div>
+      <div class="bottom"></div>
+      <div class="filmmark">Film 01</div>
+      <div class="caption">今天也在这</div>
+      <div class="date">11 · 12</div>
+    </div>
+  </div>
+
+  <div class="captionline"></div>
+  <div class="footleft">
+    <div class="cn">相片</div>
+    <div class="en">Picture / glass frame / caption</div>
+  </div>
+  <div class="footright">
+    图片可替换 · 圆角可调<br />
+    文案与日期可关闭
+  </div>
+</div>
+</html>

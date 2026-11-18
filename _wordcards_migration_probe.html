@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>wordcards desktop migration probe</title>
+  <style>
+    html, body { margin: 0; padding: 0; width: 500px; height: 1200px; overflow: hidden; background: #000; }
+    iframe { display: block; width: 500px; height: 1200px; border: 0; }
+    #probe-result { position: fixed; left: 0; top: 0; z-index: 9999; margin: 0; padding: 4px; background: rgba(0,0,0,.82); color: #8f8; font: 11px/1.45 monospace; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+<script>
+  localStorage.setItem('momo_desktop_layout_v5', JSON.stringify({
+    version: '5.2',
+    pages: [{ name: '桌面第 1 页', widgets: [], slots: [{ id: 'app-store', type: 'app', page: 'page-store', name: '应用商店', icon: '🛍️', bg: '#333' }] }]
+  }));
+  localStorage.removeItem('momo_wordcards_desktop_seeded');
+  const f = document.createElement('iframe');
+  f.src = '/index.html?v=2026111183';
+  f.addEventListener('load', function () {
+    setTimeout(function () {
+      const lines = [];
+      function ok(name, cond) { lines.push((cond ? 'PASS ' : 'FAIL ') + name); }
+      try {
+        const saved = JSON.parse(localStorage.getItem('momo_desktop_layout_v5') || '{}');
+        const slots = saved.pages && saved.pages[0] && saved.pages[0].slots || [];
+        ok('旧桌面布局补上了字卡图标', slots.some(function (s) { return s && s.id === 'app-wordcards'; }));
+        ok('只补一次标记已写入', localStorage.getItem('momo_wordcards_desktop_seeded') === '1');
+        const d = f.contentDocument;
+        ok('桌面渲染出了字卡图标', Array.from(d.querySelectorAll('.ios-app-name')).some(function (el) { return el.textContent === '字卡'; }));
+      } catch (e) {
+        lines.push('ERROR ' + e);
+      }
+      const pre = document.createElement('pre');
+      pre.id = 'probe-result';
+      pre.textContent = lines.join('\n');
+      document.body.appendChild(pre);
+    }, 1200);
+  });
+  document.body.appendChild(f);
+</script>
+</body>
+</html>

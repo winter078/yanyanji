@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>desktop grid probe</title>
+  <style>
+    html, body { margin: 0; padding: 0; width: 500px; height: 900px; overflow: hidden; background: #000; }
+    iframe { display: block; width: 500px; height: 900px; border: 0; }
+    #probe-result { position: fixed; left: 0; top: 0; z-index: 9999; margin: 0; padding: 4px; background: rgba(0,0,0,.82); color: #8f8; font: 11px/1.45 monospace; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+<pre id="probe-result">loading...</pre>
+<script>
+  const clean = new URLSearchParams(location.search).get('clean') === '1';
+  if (!clean) localStorage.removeItem('momo_grid_probe_seen');
+
+  // 模拟用户当前桌面：中间夹着卸载后留下的 null 空洞
+  const layout = {
+    version: '5.2',
+    pages: [
+      {
+        id: 'page-1', name: '主屏',
+        widgets: [{ id: 'widget-hero', type: 'widget-hero' }],
+        slots: [
+          { id: 'app-app-store', name: '应用商店', page: 'page-app-store' },
+          null,
+          { id: 'app-api', name: '设置', page: 'page-api' },
+          null,
+          { id: 'app-theme', name: '外观', page: 'page-theme' },
+          null,
+          { id: 'app-wordcards', name: '字卡', page: 'page-wordcards' }
+        ]
+      },
+      {
+        id: 'page-2', name: '组件与应用',
+        widgets: [{ id: 'widget-note-1', type: 'widget-note', title: '心声私签' }],
+        slots: []
+      }
+    ]
+  };
+  localStorage.setItem('momo_desktop_layout_v5', JSON.stringify(layout));
+  localStorage.setItem('momo_dock_slots_v1', JSON.stringify(['dock-wechat', 'app-wordcards', 'app-rp', 'app-palace']));
+  localStorage.setItem('momo_wordcards_desktop_seeded', '1');
+  localStorage.setItem('momo_xhs_desktop_seeded', '1');
+
+  const f = document.createElement('iframe');
+  f.src = '/index.html?v=2026111200';
+  document.body.appendChild(f);
+
+  function wait(ms) { return new Promise(function (resolve) { setTimeout(resolve, ms); }); }
+
+  function measureGrid(w, d, label) {
+    const slide = d.querySelector('.ios-page-slide[data-page-index="0"]');
+    const grid = d.querySelector('.ios-page-slide[data-page-index="0"] .ios-dynamic-grid');
+    const header = d.querySelector('.ios-page-slide[data-page-index="0"] .desktop-page-header-bar');
+    if (!slide || !grid) return { label: label, missing: true };
+    const items = Array.from(grid.querySelectorAll('.grid-drag-item'));
+    const appItems = items.filter(function (el) { return !!el.querySelector('.ios-app-name'); });
+    const tops = [];
+    appItems.forEach(function (el) {
+      const r = el.getBoundingClientRect();
+      if (!tops.includes(Math.round(r.top))) tops.push(Math.round(r.top));
+    });
+    return {
+      label: label,
+      edit: d.body.classList.contains('ios-edit-mode'),
+      items: items.length,
+      appItems: appItems.length,
+      slotIndexes: appItems.map(function (el) { return el.getAttribute('data-slot-index'); }),
+      gridHeight: Math.round(grid.getBoundingClientRect().height),
+      slideHeight: Math.round(slide.getBoundingClientRect().height),
+      slideScrollHeight: slide.scrollHeight,
+      headerHeight: header ? Math.round(header.getBoundingClientRect().height) : -1,
+      appRowTops: tops,
+      appRowCount: tops.length,
+      storedSlots: JSON.parse(localStorage.getItem('momo_desktop_layout_v5') || '{}').pages[0].slots.length
+    };
+  }
+
+  f.addEventListener('load', async function () {
+    const w = f.contentWindow;
+    const d = f.contentDocument;
+    await wait(600);
+    const lines = [];
+    const browse = measureGrid(w, d, 'browse');
+    lines.push(JSON.stringify(browse));
+    w.enterIosEditMode();
+    await wait(300);
+    const edit = measureGrid(w, d, 'edit');
+    lines.push(JSON.stringify(edit));
+    w.exitIosEditMode();
+    await wait(300);
+    const back = measureGrid(w, d, 'browse-again');
+    lines.push(JSON.stringify(back));
+    const pass = browse.items === 12 && browse.appItems === 4 &&
+      browse.slotIndexes.join('|') === '0|2|4|6' &&
+      browse.storedSlots === 7 &&
+      Math.abs(edit.gridHeight - browse.gridHeight) <= 2 &&
+      back.items === 12 && back.slotIndexes.join('|') === '0|2|4|6';
+    lines.unshift((pass ? 'PASS ' : 'FAIL ') + 'three-row grid unified');
+    document.getElementById('probe-result').textContent = lines.join('\n');
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#221b2b"/>
+      <stop offset="0.55" stop-color="#15121c"/>
+      <stop offset="1" stop-color="#0b0a10"/>
+    </linearGradient>
+    <radialGradient id="halo" cx="0.72" cy="0.5" r="0.45">
+      <stop offset="0" stop-color="#f3ce9a" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#f3ce9a" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="pageL" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f6ecd7"/>
+      <stop offset="1" stop-color="#e4d4b4"/>
+    </linearGradient>
+    <linearGradient id="pageR" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#efe2c8"/>
+      <stop offset="1" stop-color="#d8c5a1"/>
+    </linearGradient>
+    <linearGradient id="fur" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#20202a"/>
+      <stop offset="1" stop-color="#0c0c12"/>
+    </linearGradient>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="26"/>
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#halo)"/>
+
+  <g transform="translate(512 496) scale(1.16) translate(-512 -512)">
+  <!-- 书 -->
+  <rect x="158" y="636" width="708" height="196" rx="30" fill="#2c2330"/>
+  <rect x="178" y="672" width="668" height="140" rx="20" fill="#3a2e3c"/>
+
+  <path d="M512 700 L318 650 C286 642 258 662 258 700 L258 772 C258 804 284 816 318 810 L512 786 Z" fill="url(#pageL)"/>
+  <path d="M512 700 L706 650 C738 642 766 662 766 700 L766 772 C766 804 740 816 706 810 L512 786 Z" fill="url(#pageR)"/>
+
+  <!-- 书页折痕与文字线 -->
+  <path d="M512 700 L512 786" stroke="#b39c76" stroke-width="3" opacity="0.7"/>
+  <g stroke="#bdaa86" stroke-width="2.4" opacity="0.5">
+    <line x1="310" y1="692" x2="470" y2="716"/>
+    <line x1="306" y1="722" x2="470" y2="744"/>
+    <line x1="306" y1="752" x2="440" y2="770"/>
+    <line x1="716" y1="692" x2="556" y2="716"/>
+    <line x1="720" y1="722" x2="556" y2="744"/>
+    <line x1="720" y1="752" x2="584" y2="770"/>
+  </g>
+
+  <!-- 尾巴（绕在书沿） -->
+  <path d="M430 640 C 360 632 300 654 268 690 C 248 714 262 736 292 734" stroke="#181820" stroke-width="30" stroke-linecap="round" fill="none"/>
+
+  <!-- 猫身体 -->
+  <ellipse cx="548" cy="590" rx="212" ry="96" fill="url(#fur)"/>
+  <ellipse cx="548" cy="596" rx="212" ry="96" fill="none" stroke="#efe3c8" stroke-opacity="0.10" stroke-width="3"/>
+
+  <!-- 前爪搭在书页上 -->
+  <path d="M322 600 C 322 636 344 654 372 654 C 400 654 420 638 420 606" fill="#191922"/>
+  <g stroke="#efe3c8" stroke-opacity="0.22" stroke-width="2.6">
+    <line x1="352" y1="646" x2="352" y2="626"/>
+    <line x1="375" y1="648" x2="375" y2="628"/>
+    <line x1="397" y1="644" x2="397" y2="624"/>
+  </g>
+
+  <!-- 头 -->
+  <circle cx="742" cy="530" r="92" fill="url(#fur)"/>
+  <!-- 耳朵 -->
+  <path d="M672 480 L690 400 L742 466 Z" fill="#14141c"/>
+  <path d="M812 480 L794 400 L742 466 Z" fill="#14141c"/>
+  <path d="M690 462 L700 424 L726 462 Z" fill="#3a3348" opacity="0.7"/>
+  <path d="M794 462 L784 424 L758 462 Z" fill="#3a3348" opacity="0.7"/>
+
+  <!-- 闭眼 -->
+  <path d="M690 534 C 702 548 726 548 738 534" stroke="#f6e9ce" stroke-width="7" fill="none" stroke-linecap="round" opacity="0.85"/>
+  <path d="M748 534 C 760 548 784 548 796 534" stroke="#f6e9ce" stroke-width="7" fill="none" stroke-linecap="round" opacity="0.85"/>
+
+  <!-- 鼻子 -->
+  <path d="M738 556 L748 566 L728 566 Z" fill="#e8b7a4" opacity="0.8"/>
+
+  <!-- 胡须 -->
+  <g stroke="#f6e9ce" stroke-width="2.6" opacity="0.35">
+    <line x1="720" y1="576" x2="656" y2="566"/>
+    <line x1="720" y1="588" x2="652" y2="596"/>
+    <line x1="768" y1="576" x2="832" y2="566"/>
+    <line x1="768" y1="588" x2="836" y2="596"/>
+  </g>
+
+  <!-- 星星点缀 -->
+  <g fill="#f3ce9a">
+    <circle cx="300" cy="470" r="4" opacity="0.55"/>
+    <circle cx="360" cy="408" r="2.6" opacity="0.4"/>
+    <circle cx="866" cy="352" r="3.4" opacity="0.45"/>
+  </g>
+  </g>
+</svg>

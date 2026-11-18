@@ -1,0 +1,706 @@
+/* 跑团剧场拓展样式 */
+
+/* ===== 顶栏：角色切换居中 ===== */
+.rp-topbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 6px;
+}
+.rp-topbar .wechat-back-btn {
+  justify-self: start;
+}
+.rp-topbar .rp-top-setting-btn {
+  justify-self: end;
+}
+.rp-top-actor {
+  justify-self: center;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 160px;
+  padding: 3px 9px 3px 4px;
+  border-radius: 15px;
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.10));
+  background: var(--glass-soft, rgba(255, 255, 255, 0.06));
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+}
+.rp-top-avatar {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.20), rgba(255, 255, 255, 0.04));
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.rp-top-avatar img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: none;
+}
+.rp-top-avatar-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary, #f3f3f3);
+}
+.rp-top-actor-copy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.rp-top-actor-name {
+  max-width: 72px;
+  font-size: 13px;
+  line-height: 1.15;
+  font-weight: 700;
+  color: var(--text-primary, #f7f7f7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rp-top-actor-hint {
+  font-size: 9.5px;
+  line-height: 1.15;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.56));
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.rp-top-caret {
+  flex-shrink: 0;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.55));
+}
+.rp-top-actor .rp-actor-select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+.rp-top-setting-btn {
+  flex-shrink: 0;
+  height: 30px;
+  padding: 0 9px;
+  border-radius: 10px;
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.10));
+  background: var(--glass-soft, rgba(255, 255, 255, 0.06));
+  color: var(--text-primary, #f3f3f3);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.rp-top-setting-btn:active {
+  background: var(--accent-soft, rgba(255, 255, 255, 0.12));
+}
+
+/* ===== 输入区 + 号按钮 ===== */
+.rp-plus-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-default);
+  background: var(--glass-soft, rgba(255, 255, 255, 0.06));
+  color: var(--text-secondary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, transform 0.12s ease;
+}
+.rp-plus-btn:active {
+  transform: scale(0.92);
+  background: var(--accent-soft);
+  color: var(--accent-primary);
+}
+
+/* ===== 引用回复提示条 ===== */
+.rp-quote-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 12px;
+  background: var(--glass-soft, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--border-default);
+  border-left: 3px solid var(--accent-primary);
+}
+.rp-quote-copy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  overflow: hidden;
+}
+.rp-quote-tag {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent-primary);
+}
+.rp-quote-snippet {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+.rp-quote-close {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+}
+.rp-quote-close:active { background: var(--glass-strong, rgba(255, 255, 255, 0.1)); }
+
+/* ===== 多选底部操作栏 ===== */
+.rp-multi-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 45;
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 16px calc(14px + env(safe-area-inset-bottom, 8px));
+  background: var(--bg-elevated);
+  border-top: 0.5px solid var(--border-default);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.22);
+  box-sizing: border-box;
+}
+.rp-theater-screen.rp-multi-mode .rp-multi-bar { display: flex; }
+.rp-theater-screen.rp-multi-mode .rp-composer-shell { display: none; }
+.rp-multi-btn {
+  border: 0;
+  border-radius: 12px;
+  padding: 9px 15px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--text-primary);
+  background: var(--glass-soft, rgba(255, 255, 255, 0.08));
+}
+.rp-multi-btn.delete {
+  color: #fff;
+  background: #c0392b;
+}
+.rp-multi-count {
+  flex: 1;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* ===== 剧场 + 抽屉 ===== */
+.rp-plus-drawer {
+  max-height: 78vh;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.rp-plus-drawer::-webkit-scrollbar { display: none; }
+.rp-plus-item-soon { opacity: 0.58; }
+.rp-plus-note {
+  margin-left: auto;
+  padding: 2px 7px;
+  border-radius: 8px;
+  font-size: 10px;
+  color: var(--text-secondary);
+  background: var(--glass-soft, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--border-default);
+  flex-shrink: 0;
+}
+.rp-plus-item-narration { cursor: default; }
+
+/* ===== 剧场消息长按菜单 ===== */
+.rp-msg-menu-mask {
+  position: absolute;
+  inset: 0;
+  z-index: 700;
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0 14px calc(18px + env(safe-area-inset-bottom, 8px));
+  background: rgba(0, 0, 0, 0.52);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-sizing: border-box;
+}
+.rp-msg-menu-mask.open { display: flex; }
+.rp-msg-menu-card {
+  width: 100%;
+  max-width: 340px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 18px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.42);
+  overflow: hidden;
+  padding: 5px;
+  box-sizing: border-box;
+  animation: rpMenuUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes rpMenuUp {
+  from { transform: translateY(18px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.rp-msg-menu-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 12px;
+  border-radius: 12px;
+  font-size: 14px;
+  color: var(--text-primary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.rp-msg-menu-row:active { background: var(--glass-strong, rgba(255, 255, 255, 0.1)); }
+.rp-msg-menu-icon {
+  width: 20px;
+  text-align: center;
+  font-size: 15px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+.rp-msg-menu-row.danger { color: #ff6b5e; }
+.rp-msg-menu-row.danger .rp-msg-menu-icon { color: #ff6b5e; }
+.rp-msg-menu-divider {
+  height: 0.5px;
+  margin: 3px 8px;
+  background: var(--border-default);
+}
+
+/* 多选时消息卡片状态 */
+.rp-card-entry {
+  -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-user-select: none;
+  padding: 16px 18px;
+  gap: 10px;
+  font-size: 15px;
+  line-height: 1.85;
+}
+/* 剧场正文排版：保留模型输出的自然分段，不要把整段压成一块 */
+.rp-action-text,
+.rp-spoken-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+.rp-action-text {
+  font-size: 14.5px;
+  line-height: 1.8;
+}
+.rp-spoken-text {
+  font-size: 16px;
+  line-height: 1.95;
+  font-weight: 400;
+  letter-spacing: 0.015em;
+}
+.rp-card-top {
+  padding-bottom: 8px;
+}
+.rp-theater-screen.rp-multi-mode .rp-card-entry {
+  cursor: pointer;
+}
+.rp-card-entry.rp-selected {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 1px var(--accent-primary), 0 4px 14px rgba(0, 0, 0, 0.12);
+}
+
+/* ===== 编辑消息弹窗 ===== */
+.rp-edit-card {
+  width: 100%;
+  max-width: 340px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 18px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.42);
+  padding: 16px;
+  box-sizing: border-box;
+  animation: rpMenuUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.rp-edit-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+}
+.rp-edit-textarea {
+  width: 100%;
+  min-height: 110px;
+  box-sizing: border-box;
+  resize: vertical;
+  border-radius: 12px;
+  border: 1px solid var(--border-default);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13.5px;
+  line-height: 1.6;
+  padding: 10px 12px;
+  outline: none;
+}
+.rp-edit-textarea:focus { border-color: var(--accent-primary); }
+.rp-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+.rp-edit-btn {
+  border: 0;
+  border-radius: 11px;
+  padding: 9px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.rp-edit-btn.cancel {
+  color: var(--text-secondary);
+  background: var(--glass-soft, rgba(255, 255, 255, 0.08));
+}
+.rp-edit-btn.save {
+  color: #fff;
+  background: var(--accent-primary);
+}
+
+/* ===== 此时此刻：独立背景层 + 透明顶栏 / 底栏 ===== */
+#page-rp {
+  isolation: isolate;
+}
+.rp-wallpaper-layer {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  display: none;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  pointer-events: none;
+}
+.rp-wallpaper-layer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.34) 0%, rgba(0, 0, 0, 0) 24%, rgba(0, 0, 0, 0) 70%, rgba(0, 0, 0, 0.42) 100%),
+    rgba(4, 8, 12, var(--rp-wall-dim, 0.38));
+}
+
+/* 有自定义背景时，让剧场画布整层透明，别用深色渐变挡住壁纸 */
+#page-rp.rp-has-wallpaper .rp-input-bubble-card {
+  background: rgba(10, 16, 20, 0.52) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.26) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(130%) !important;
+  backdrop-filter: blur(16px) saturate(130%) !important;
+}
+#page-rp.rp-has-wallpaper .rp-input-area {
+  color: #f4f6f7 !important;
+  -webkit-text-fill-color: #f4f6f7 !important;
+}
+#page-rp.rp-has-wallpaper .rp-input-area::placeholder {
+  color: rgba(244, 246, 247, 0.52) !important;
+  -webkit-text-fill-color: rgba(244, 246, 247, 0.52) !important;
+}
+#page-rp.rp-has-wallpaper .rp-top-actor {
+  background: rgba(9, 15, 19, 0.40) !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(130%) !important;
+  backdrop-filter: blur(14px) saturate(130%) !important;
+}
+#page-rp.rp-has-wallpaper .rp-top-setting-btn {
+  background: rgba(9, 15, 19, 0.34) !important;
+  color: #f2f4f5 !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  backdrop-filter: blur(14px) !important;
+}
+#page-rp.rp-has-wallpaper .rp-topbar .wechat-back-btn {
+  color: rgba(255, 255, 255, 0.86) !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+}
+#page-rp.rp-has-wallpaper .rp-card-entry,
+#page-rp.rp-has-wallpaper .rp-action-text,
+#page-rp.rp-has-wallpaper .rp-spoken-text {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.62), 0 0 12px rgba(0, 0, 0, 0.28);
+}
+
+/* 背景卡片标题太长时，把「只作用于此时此刻」收成下一行右侧 */
+.rp-wall-heading {
+  flex-wrap: wrap;
+  row-gap: 2px;
+}
+.rp-wall-heading > span:first-child {
+  flex: 1 1 100%;
+}
+.rp-wall-heading .rp-wall-scope {
+  flex: 1 1 100%;
+  text-align: right;
+}
+#page-rp.rp-has-wallpaper {
+  background: transparent !important;
+}
+#page-rp.rp-has-wallpaper .rp-theater-screen {
+  background: transparent !important;
+}
+#page-rp.rp-has-wallpaper .rp-theater-screen::before {
+  display: none !important;
+}
+
+/* 顶栏和底栏不再铺整块底色，让背景图直接透出来 */
+#page-rp .wechat-header.rp-topbar,
+#page-rp[data-story-skin] .wechat-header.rp-topbar {
+  background: transparent !important;
+  border-bottom: 0 !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+#page-rp .rp-composer-shell,
+#page-rp[data-story-skin] .rp-composer-shell {
+  background: transparent !important;
+  border-top: 0 !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+#page-rp .rp-topbar .wechat-back-btn {
+  background: transparent !important;
+  border: 0 !important;
+  padding: 4px 5px;
+  font-size: 12px;
+  color: var(--text-primary, #f5f5f5);
+}
+
+/* ===== 故事设定：剧场背景卡片 ===== */
+.rp-wall-scope {
+  font-size: 10.5px;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.48));
+  white-space: nowrap;
+}
+.rp-wall-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 0 10px;
+}
+.rp-wall-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+}
+.rp-wall-swatch {
+  display: block;
+  height: 52px;
+  border-radius: 10px;
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.12));
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.16);
+}
+.rp-wall-name {
+  font-size: 11px;
+  line-height: 1.2;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.52));
+  text-align: center;
+}
+.rp-wall-tile.active .rp-wall-swatch {
+  border: 2px solid var(--accent-primary, #4fd1c5);
+  box-shadow: 0 2px 10px rgba(79, 209, 197, 0.28);
+}
+.rp-wall-tile.active .rp-wall-name {
+  color: var(--accent-primary, #4fd1c5);
+  font-weight: 700;
+}
+.rp-wall-solid-wrap {
+  position: relative;
+}
+.rp-wall-solid-wrap input[type="color"] {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 52px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.rp-wall-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.rp-wall-mini-btn {
+  padding: 4px 9px;
+  border-radius: 8px;
+  font-size: 11px;
+  background: var(--glass-soft, rgba(255, 255, 255, 0.07));
+  border: 0.5px solid var(--border-default, rgba(255, 255, 255, 0.10));
+  color: var(--text-secondary, rgba(255, 255, 255, 0.56));
+  cursor: pointer;
+}
+.rp-wall-apply {
+  padding: 4px 12px;
+  border-radius: 8px;
+  border: 0;
+  background: var(--accent-primary, #4fd1c5);
+  color: #101617;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.rp-wall-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.48));
+}
+.rp-wall-colors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 2px 2px;
+}
+.rp-wall-color-dot {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: 8px;
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.14));
+  cursor: pointer;
+}
+.rp-wall-color-dot.active {
+  border: 2px solid var(--accent-primary, #4fd1c5);
+  box-shadow: 0 0 0 2px rgba(79, 209, 197, 0.20);
+}
+.rp-wall-empty {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  font-size: 11px;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.42));
+}
+.rp-wall-preview {
+  height: 84px;
+  margin-top: 10px;
+  border-radius: 12px;
+  border: 0.5px solid var(--border-default, rgba(255, 255, 255, 0.12));
+  background: rgba(255, 255, 255, 0.04);
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.rp-wall-preview span {
+  padding: 4px 12px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.58);
+  font-size: 12px;
+  color: #f3f3f3;
+}
+.rp-wall-photos {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  min-height: 58px;
+  padding: 6px 2px 2px;
+}
+.rp-wall-photo {
+  position: relative;
+  width: 58px;
+  height: 58px;
+  flex: none;
+  border-radius: 10px;
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.14));
+  background-size: cover;
+  background-position: center;
+  cursor: pointer;
+}
+.rp-wall-photo.active {
+  border: 2px solid var(--accent-primary, #4fd1c5);
+}
+.rp-wall-photo-del {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff;
+  font-size: 10px;
+  line-height: 18px;
+  text-align: center;
+}
+.rp-wall-hint {
+  margin-top: 8px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.48));
+}
+.rp-wall-dim-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.48));
+}
+.rp-wall-dim-row input {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--accent-primary, #4fd1c5);
+}
+.rp-wall-dim-row b {
+  min-width: 34px;
+  text-align: right;
+  color: var(--text-primary, #f3f3f3);
+  font-weight: 600;
+}
+

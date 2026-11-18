@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>chat real probe</title>
+  <style>
+    html, body { margin: 0; padding: 0; width: 500px; height: 1000px; overflow: hidden; background: #000; }
+    iframe { display: block; width: 500px; height: 1000px; border: 0; }
+  </style>
+</head>
+<body>
+<script>
+  const chars = [
+    { id: 'c-a', name: '阿岚', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=160&auto=format&fit=crop&q=80', tag: '角色', intro: '我爱你', prompt: '', directives: '', relations: [], starred: false, createdAt: 1 },
+    { id: 'c-b', name: '小夏', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=160&auto=format&fit=crop&q=80', tag: '角色', intro: '另一个角色', prompt: '', directives: '', relations: [], starred: false, createdAt: 2 }
+  ];
+  const history = [
+    { role: 'user', content: '我昨天画到凌晨三点，手都快断了。', time: '22:10', reactions: [{ emoji: '❤️', by: 'char', charId: 'c-a' }] },
+    { role: 'assistant', content: '先别画了，过来。', time: '22:11', reactions: [{ emoji: '❤️', by: 'user' }] },
+    { role: 'user', content: '我有点困了', time: '22:15' },
+    { role: 'assistant', content: '那就睡吧，我把灯关小一点。', time: '22:16', reactions: [{ emoji: '😆', by: 'char', charId: 'c-a' }] },
+    { role: 'user', content: '晚安', time: '22:17', reactions: [{ emoji: '🔥', by: 'char', charId: 'c-a' }] }
+  ];
+  const historyB = [
+    { role: 'user', content: '你好呀', time: '21:00' },
+    { role: 'assistant', content: '你好，末末。', time: '21:01' }
+  ];
+  localStorage.setItem('momo_characters', JSON.stringify(chars));
+  localStorage.setItem('momo_characters_trash', '[]');
+  localStorage.setItem('momo_active_char', 'c-a');
+  localStorage.setItem('momo_user_nick', '末末');
+  localStorage.setItem('momo_char_remarks_v1', '{}');
+  localStorage.setItem('momo_chat_histories', JSON.stringify({ 'c-a': history, 'c-b': historyB }));
+  localStorage.setItem('momo_chat_history', JSON.stringify(history));
+  localStorage.setItem('momo_chat_history_scoped_v1', '1');
+  localStorage.setItem('momo_chat_groups', JSON.stringify([{
+    id: 'g-a', name: '小群', members: ['me', 'c-a'], settings: { story: '测试群', relations: [], limits: { 'c-a': { min: 1, max: 2 } } },
+    history: [
+      { role: 'user', speakerId: 'me', name: '末末', content: '你们在吗', time: '22:00' },
+      { role: 'assistant', speakerId: 'c-a', name: '阿岚', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=160&auto=format&fit=crop&q=80', content: '在。', time: '22:01', reactions: [{ emoji: '❤️', by: 'user' }] },
+      { role: 'assistant', speakerId: 'c-a', name: '阿岚', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=160&auto=format&fit=crop&q=80', content: '刚想问你画完了没。', time: '22:02', recalled: true, hiddenFromAI: true },
+      { role: 'user', speakerId: 'me', name: '末末', content: '画了一天', time: '22:03', reactions: [{ emoji: '😆', by: 'char', charId: 'c-a' }] },
+      { role: 'system', content: '阿岚把你的备注改成了「小末」', time: '22:04', hiddenFromAI: true }
+    ]
+  }]));
+  localStorage.setItem('momo_wechat_friends', JSON.stringify(['c-a', 'c-b']));
+  localStorage.setItem('momo_wechat_pins', JSON.stringify([]));
+  localStorage.setItem('momo_wechat_hidden_convs', '[]');
+
+  const view = new URLSearchParams(location.search).get('view') || 'chatreal';
+  const f = document.createElement('iframe');
+  f.src = '/index.html';
+  f.addEventListener('load', function () {
+    setTimeout(function () {
+      try {
+        const w = f.contentWindow;
+        if (view === 'chatreal' || view === 'chatmenu' || view === 'chatrecall' || view === 'chatreaction') {
+          if (typeof w.openFriendChat === 'function') w.openFriendChat('c-a');
+          if (view === 'chatreal' || view === 'chatrecall') {
+            setTimeout(function () {
+              if (typeof w.recallLastCharacterMessage === 'function') w.recallLastCharacterMessage();
+              if (typeof w.applyChatUserRemark === 'function') w.applyChatUserRemark('小末');
+              if (typeof w.pushChatSystemNotice === 'function') w.pushChatSystemNotice(null, '阿岚把你的备注改成了「小末」');
+            }, 600);
+          }
+          if (view === 'chatmenu' || view === 'chatreaction') {
+            setTimeout(function () {
+              w.openBubbleContextMenu(0);
+              if (view === 'chatreaction') {
+                setTimeout(function () { w.onBubbleReaction('😆'); }, 500);
+              }
+            }, 500);
+          }
+        }
+        if (view === 'chatremark') {
+          if (typeof w.openFriendChat === 'function') w.openFriendChat('c-a');
+          setTimeout(function () {
+            if (typeof w.applyChatUserRemark === 'function') w.applyChatUserRemark('小末');
+            if (typeof w.pushChatSystemNotice === 'function') w.pushChatSystemNotice(null, '阿岚把你的备注改成了「小末」');
+          }, 600);
+        }
+        if (view === 'groupreal' || view === 'groupmenu' || view === 'groupreact') {
+          if (typeof w.enterGroupChat === 'function') w.enterGroupChat('g-a');
+          if (view === 'groupmenu' || view === 'groupreact') {
+            setTimeout(function () {
+              if (typeof w.openBubbleContextMenu === 'function') w.openBubbleContextMenu(1, 'g-a');
+              if (view === 'groupreact') setTimeout(function () { w.onBubbleReaction('😆'); }, 500);
+            }, 700);
+          }
+        }
+        if (view === 'remarkscope') {
+          if (typeof w.openFriendChat === 'function') w.openFriendChat('c-a');
+          setTimeout(function () {
+            try {
+              if (typeof w.applyChatUserRemark === 'function') w.applyChatUserRemark('小末');
+              if (typeof w.openFriendChat === 'function') w.openFriendChat('c-b');
+              setTimeout(function () {
+                const sub = w.document.getElementById('chat-sync-sub-hint');
+                if (sub) sub.innerText = 'A=' + w.userRemarkForChar('c-a') + ' / B=' + w.userRemarkForChar('c-b');
+              }, 500);
+            } catch (e) { document.title = 'remarkscope error: ' + e.message; }
+          }, 500);
+        }
+        if (view === 'chatcmd') {
+          if (typeof w.openFriendChat === 'function') w.openFriendChat('c-a');
+          setTimeout(function () {
+            try {
+              if (w.appData) { w.appData.apiKey = 'probe-key'; w.appData.apiBase = 'http://probe.local/v1'; }
+              w.fetch = function () {
+                return Promise.resolve({
+                  ok: true,
+                  json: function () {
+                    return Promise.resolve({ choices: [{ message: { content: '收到。\n[RECALL]\n[REMARK:小末]' } }] });
+                  }
+                });
+              };
+              var input = w.document.getElementById('chat-input');
+              if (input) input.value = '测试一下';
+              if (typeof w.handleTriggerGenerate === 'function') w.handleTriggerGenerate();
+            } catch (e) { document.title = 'chatcmd error: ' + e.message; }
+          }, 700);
+        }
+        if (view === 'groupcmd' || view === 'groupcmdreact') {
+          if (typeof w.enterGroupChat === 'function') w.enterGroupChat('g-a');
+          setTimeout(function () {
+            try {
+              if (w.appData) { w.appData.apiKey = 'probe-key'; w.appData.apiBase = 'http://probe.local/v1'; }
+              w.fetch = function (url, opts) {
+                var body = JSON.parse((opts && opts.body) || '{}');
+                var first = body.messages && body.messages[0] && body.messages[0].content || '';
+                var isScheduler = first.indexOf('中控调度器') >= 0;
+                var reply = isScheduler
+                  ? '{"speakers":[{"id":"c-a","count":1}]}'
+                  : (view === 'groupcmdreact'
+                    ? '{"messages":["收到。\\n[REACTION:😆]"]}'
+                    : '{"messages":["收到。\\n[RECALL]\\n[REMARK:小末]"]}');
+                return Promise.resolve({
+                  ok: true,
+                  json: function () { return Promise.resolve({ choices: [{ message: { content: reply } }] }); }
+                });
+              };
+              var input = w.document.getElementById('chat-input');
+              if (input) input.value = '测试一下';
+              if (typeof w.groupHandleSend === 'function') w.groupHandleSend();
+            } catch (e) { document.title = 'groupcmd error: ' + e.message; }
+          }, 700);
+        }
+        if (view === 'grouppopup' || view === 'grouppopupclick') {
+          w.openPage('page-home');
+          setTimeout(function () {
+            var origSetTimeout = w.setTimeout;
+            w.setTimeout = function (fn, ms) {
+              if (ms >= 3000) return 0;
+              return origSetTimeout.call(w, fn, ms);
+            };
+            if (typeof w.showReplyArrivalToast === 'function') {
+              w.showReplyArrivalToast('在群里发来一条新消息', { groupId: 'g-a', senderName: '小群', avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=160&auto=format&fit=crop&q=80' });
+            }
+            if (view === 'grouppopupclick') {
+              origSetTimeout.call(w, function () {
+                var toast = w.document.getElementById('ai-reply-arrival-toast');
+                if (toast) toast.click();
+              }, 700);
+            }
+          }, 500);
+        }
+        if (view === 'chatpopup' || view === 'chatpopupclick') {
+          w.openPage('page-home');
+          setTimeout(function () {
+            var origSetTimeout = w.setTimeout;
+            w.setTimeout = function (fn, ms) {
+              if (ms >= 3000) return 0;
+              return origSetTimeout.call(w, fn, ms);
+            };
+            if (typeof w.showReplyArrivalToast === 'function') w.showReplyArrivalToast('先别画了，过来。');
+            if (view === 'chatpopupclick') {
+              origSetTimeout.call(w, function () {
+                var toast = w.document.getElementById('ai-reply-arrival-toast');
+                if (toast) toast.click();
+              }, 700);
+            }
+          }, 500);
+        }
+        try {
+          const st = w.document.createElement('style');
+          st.textContent = '*,*::before,*::after{animation:none!important;transition:none!important;} .page{opacity:1!important;transform:none!important;} #page-wechat-main,#page-chat-setting,#page-group-setting{background:#0b0d0f!important;}';
+          w.document.head.appendChild(st);
+        } catch (e) {}
+      } catch (e) {
+        document.title = 'probe error: ' + e.message;
+      }
+    }, 900);
+  });
+  document.body.appendChild(f);
+</script>
+</body>
+</html>

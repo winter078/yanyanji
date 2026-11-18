@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>周绪言 · 手机端跨屏中枢连接诊断</title>
+  <style>
+    body {
+      background: #0d0d12;
+      color: #f3f4f6;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: 20px;
+      margin: 0;
+      line-height: 1.5;
+    }
+    h2 { color: #a855f7; margin-top: 0; font-size: 20px; }
+    .btn {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #9333ea, #7c3aed);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 15px;
+      cursor: pointer;
+    }
+    .btn:active { opacity: 0.8; }
+    .box {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 14px;
+      font-size: 13px;
+      word-break: break-all;
+    }
+    .status-ok { color: #4ade80; font-weight: bold; }
+    .status-err { color: #f87171; font-weight: bold; }
+    .log-item { margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  </style>
+</head>
+<body>
+  <h2>📱 手机 ⇄ 电脑中枢 极速诊断</h2>
+  <div class="box">
+    <div><b>当前手机访问地址：</b></div>
+    <div id="cur-url" style="color: #93c5fd;">检测中...</div>
+  </div>
+
+  <button class="btn" onclick="runDiagnosis()">▶ 点此立即测试：手机向电脑发送消息</button>
+
+  <div class="box" id="result-box">
+    <div style="color: #9ca3af;">点击上方紫色按钮后，测试结果会一条条显现在这里。</div>
+  </div>
+
+  <script>
+    document.getElementById('cur-url').innerText = window.location.href;
+
+    async function runDiagnosis() {
+      const box = document.getElementById('result-box');
+      box.innerHTML = '<div style="color: #eab308;">⏳ 正在测试手机与电脑黑窗口的连通性...</div>';
+
+      const logs = [];
+      function addLog(title, ok, detail) {
+        logs.push('<div class="log-item">' +
+          '<span class="' + (ok ? 'status-ok' : 'status-err') + '">' + (ok ? '✔ 成功' : '✖ 失败') + '</span>: <b>' + title + '</b>' +
+          '<div style="margin-top:4px; color:' + (ok ? '#9ca3af' : '#fca5a5') + ';">' + detail + '</div>' +
+          '</div>');
+      }
+
+      // 测试 1: 检查是否能读取电脑中枢数据 (/api/chat_sync GET)
+      try {
+        const t0 = Date.now();
+        const res = await fetch('/api/chat_sync?t=' + t0);
+        if (res.ok) {
+          const data = await res.json();
+          addLog('测试1: 手机读取电脑数据', true, '耗时: ' + (Date.now() - t0) + 'ms，电脑端当前消息数: ' + (data.chatHistory ? data.chatHistory.length : 0));
+        } else {
+          addLog('测试1: 手机读取电脑数据', false, 'HTTP 状态码: ' + res.status + ' ' + res.statusText);
+        }
+      } catch (e) {
+        addLog('测试1: 手机读取电脑数据', false, '请求被手机阻断或网络超时: ' + e.message);
+      }
+
+      // 测试 2: 手机直接向电脑黑窗口发送一条测试消息 (/api/chat_sync POST)
+      try {
+        const testPayload = {
+          chatHistory: [
+            { role: 'user', content: '手机诊断测试消息_' + new Date().toLocaleTimeString(), time: '诊断中' }
+          ]
+        };
+        const t1 = Date.now();
+        const postRes = await fetch('/api/chat_sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(testPayload)
+        });
+
+        if (postRes.ok) {
+          const pData = await postRes.json();
+          addLog('测试2: 手机向电脑黑窗口发送消息', true, '发送成功！耗时: ' + (Date.now() - t1) + 'ms。此时电脑黑窗口应该立即弹出日志！');
+        } else {
+          addLog('测试2: 手机向电脑黑窗口发送消息', false, 'HTTP 错误: ' + postRes.status + '。请确认电脑黑窗口是否启动');
+        }
+      } catch (e) {
+        addLog('测试2: 手机向电脑黑窗口发送消息', false, '手机发送被拦截: ' + e.message + ' (通常是 cpolar 穿透不支持跨域 POST 或断开)');
+      }
+
+      box.innerHTML = logs.join('');
+    }
+  </script>
+</body>
+</html>

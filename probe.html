@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="屏幕测试">
+<title>屏幕测试</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #0b0b10; color: #eaeaea; }
+  #out {
+    position: fixed; left: 0; right: 0; top: 0; z-index: 9;
+    padding: 54px 10px 8px; background: rgba(0,0,0,.85);
+    font: 13px/1.7 ui-monospace, Menlo, monospace; white-space: pre-wrap;
+  }
+  /* 蓝条：钉在页面顶端 top:0 */
+  #blue { position: fixed; left: 0; right: 0; top: 0; height: 6px; background: #2563eb; z-index: 10; }
+  /* 红条：钉在页面底端 bottom:0 —— 它落在哪，就是页面能画到哪 */
+  #red { position: fixed; left: 0; right: 0; bottom: 0; height: 44px; background: #e11d48; z-index: 10; }
+  #mid { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+  #mid span { font: 15px/1.5 -apple-system, "PingFang SC", sans-serif; color: #6b7280; text-align: center; padding: 0 30px; }
+  #__t, #__b { position: fixed; left: 0; width: 1px; opacity: 0; pointer-events: none; }
+  #__t { top: 0; height: env(safe-area-inset-top, 0px); }
+  #__b { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
+</style>
+</head>
+<body>
+<div id="blue"></div>
+<div id="out">读秒中…</div>
+<div id="mid"><span>这是一个空白测试页<br>没有任何你自己的代码<br><br>看最底下那条红：<br>它贴着屏幕最底 = 页面能给到 844<br>它离底还有一截 = 系统只给了 797</span></div>
+<div id="red"></div>
+<div id="__t"></div>
+<div id="__b"></div>
+<script>
+  function h(el) { return el ? Math.round(el.getBoundingClientRect().height) : -1; }
+  function upd() {
+    var red = document.getElementById('red');
+    var rr = red.getBoundingClientRect();
+    var vv = window.visualViewport;
+    var gapBottom = Math.round(screen.height - rr.bottom);
+    var gapTop = Math.round(rr.top) - Math.round(screen.height - innerHeight);
+    document.getElementById('out').textContent =
+      'innerH ' + window.innerHeight + ' · 屏高 ' + screen.height + ' · dpr ' + window.devicePixelRatio +
+      '\n屏宽 ' + screen.width + ' · vv ' + (vv ? Math.round(vv.height) : '-') +
+      '\n文档高 ' + document.documentElement.scrollHeight +
+      '\n安全区 上' + h(document.getElementById('__t')) + ' / 下' + h(document.getElementById('__b')) +
+      '\n红条 顶' + Math.round(rr.top) + ' 底' + Math.round(rr.bottom) +
+      '\n红条底到屏幕底: ' + gapBottom + 'px' +
+      '\nstandalone ' + (navigator.standalone === true);
+  }
+  upd();
+  window.addEventListener('load', upd);
+  window.addEventListener('resize', upd);
+  setInterval(upd, 500);
+</script>
+</body>
+</html>

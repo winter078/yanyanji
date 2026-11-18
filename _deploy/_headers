@@ -1,0 +1,11 @@
+/phone
+  Cache-Control: no-store, must-revalidate
+
+/phone.html
+  Cache-Control: no-store, must-revalidate
+
+/index.html
+  Cache-Control: no-store, must-revalidate
+
+/full.html
+  Cache-Control: no-store, must-revalidate

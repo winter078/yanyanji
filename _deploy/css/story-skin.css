@@ -1,0 +1,370 @@
+/* =========================================================
+   故事设定 · 故事皮肤包
+   开关放在 #page-story-setting；皮肤只作用于 #page-rp（此时此刻·故事剧场）。
+   ========================================================= */
+
+/* 故事设定页本身不换肤；这里只防止卡片被纵向 flex 压扁 */
+#page-story-setting .story-card-box {
+  flex-shrink: 0;
+}
+
+#page-story-setting .story-skin-switcher {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 14px;
+  border-radius: 18px;
+  background: var(--bg-surface);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+  flex-shrink: 0;
+}
+
+#page-story-setting .story-skin-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+#page-story-setting .story-skin-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: 0.01em;
+}
+
+#page-story-setting .story-skin-current {
+  font-size: 11.5px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+#page-story-setting .story-skin-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+#page-story-setting .story-skin-chip {
+  appearance: none;
+  -webkit-appearance: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 7px;
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  padding: 8px;
+  font-size: 11.5px;
+  line-height: 1.2;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  background: var(--bg-base);
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+#page-story-setting .story-skin-chip:active {
+  transform: scale(0.975);
+}
+
+#page-story-setting .story-skin-swatch {
+  display: block;
+  width: 100%;
+  height: 31px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+#page-story-setting .story-swatch-glass {
+  background:
+    radial-gradient(circle at 78% 18%, rgba(94, 226, 209, 0.34), transparent 54%),
+    linear-gradient(150deg, #18252b, #0a1014 72%);
+}
+
+#page-story-setting .story-swatch-moon {
+  background:
+    radial-gradient(circle at 24% 16%, rgba(200, 231, 241, 0.28), transparent 54%),
+    linear-gradient(150deg, #1b2a38, #0a111a 72%);
+}
+
+#page-story-setting .story-swatch-origin {
+  background: linear-gradient(150deg, #f7f7fa, #e5e5ea);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+#page-story-setting .story-skin-chip-text {
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#page-story-setting .story-skin-chip.active {
+  color: #fff;
+  background: var(--accent-primary);
+  border-color: transparent;
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.16);
+}
+
+#page-story-setting .story-skin-chip.active .story-skin-swatch {
+  border-color: rgba(255, 255, 255, 0.38);
+}
+
+#page-story-setting .story-skin-note {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+/* 雾面玻璃 */
+#page-rp[data-story-skin="glass"] {
+  --story-page-bg: #070b0f;
+  --story-canvas:
+    radial-gradient(ellipse 90% 62% at 86% -4%, rgba(77, 208, 193, 0.18), transparent 66%),
+    radial-gradient(ellipse 78% 54% at -8% 30%, rgba(112, 158, 191, 0.13), transparent 68%),
+    radial-gradient(ellipse 100% 62% at 50% 108%, rgba(196, 171, 128, 0.11), transparent 70%),
+    linear-gradient(160deg, #0a0e12 0%, #11171e 48%, #090d12 100%);
+  --story-nav: rgba(8, 13, 17, 0.62);
+  --story-card: linear-gradient(145deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.035));
+  --story-card-border: rgba(255, 255, 255, 0.13);
+  --story-ink: #e9f4f5;
+  --story-muted: rgba(205, 226, 228, 0.68);
+  --story-accent: #67d9cb;
+  --story-accent-2: #2b9a9d;
+  --story-accent-ink: #04110f;
+  --story-input: rgba(3, 9, 12, 0.42);
+  --story-chip: rgba(255, 255, 255, 0.065);
+  --story-glow: rgba(51, 190, 176, 0.20);
+  --story-shadow: 0 16px 38px rgba(0, 0, 0, 0.36);
+}
+
+/* 月白玻璃 */
+#page-rp[data-story-skin="moon"] {
+  --story-page-bg: #080d14;
+  --story-canvas:
+    radial-gradient(ellipse 82% 58% at 80% 0%, rgba(183, 219, 229, 0.14), transparent 64%),
+    radial-gradient(ellipse 76% 54% at 10% 22%, rgba(126, 174, 201, 0.16), transparent 68%),
+    radial-gradient(ellipse 96% 58% at 50% 106%, rgba(205, 216, 230, 0.10), transparent 72%),
+    linear-gradient(158deg, #090f17 0%, #151f2a 48%, #080d13 100%);
+  --story-nav: rgba(8, 14, 21, 0.64);
+  --story-card: linear-gradient(145deg, rgba(194, 222, 240, 0.105), rgba(121, 159, 188, 0.035));
+  --story-card-border: rgba(194, 224, 238, 0.14);
+  --story-ink: #e8f1f6;
+  --story-muted: rgba(191, 214, 226, 0.66);
+  --story-accent: #b9dfe6;
+  --story-accent-2: #7da8bd;
+  --story-accent-ink: #071014;
+  --story-input: rgba(4, 10, 16, 0.42);
+  --story-chip: rgba(190, 222, 238, 0.075);
+  --story-glow: rgba(126, 175, 199, 0.20);
+  --story-shadow: 0 16px 38px rgba(0, 0, 0, 0.36);
+}
+
+#page-rp[data-story-skin="glass"],
+#page-rp[data-story-skin="moon"] {
+  background: var(--story-page-bg);
+}
+
+#page-rp[data-story-skin="glass"] .wechat-header,
+#page-rp[data-story-skin="moon"] .wechat-header {
+  background: var(--story-nav);
+  border-bottom: 1px solid var(--story-card-border);
+  -webkit-backdrop-filter: blur(24px) saturate(145%);
+  backdrop-filter: blur(24px) saturate(145%);
+}
+
+#page-rp[data-story-skin="glass"] .wechat-title,
+#page-rp[data-story-skin="moon"] .wechat-title {
+  color: var(--story-ink);
+  letter-spacing: 0.03em;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+}
+
+#page-rp[data-story-skin="glass"] .wechat-sub-hint,
+#page-rp[data-story-skin="moon"] .wechat-sub-hint {
+  color: var(--story-muted);
+}
+
+#page-rp[data-story-skin="glass"] .wechat-back-btn,
+#page-rp[data-story-skin="moon"] .wechat-back-btn {
+  color: var(--story-accent) !important;
+  border-color: rgba(255, 255, 255, 0.10) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+
+#page-rp[data-story-skin="glass"] .rp-theater-screen,
+#page-rp[data-story-skin="moon"] .rp-theater-screen {
+  background: var(--story-canvas);
+  color: var(--story-ink);
+}
+
+#page-rp[data-story-skin="glass"] .rp-theater-screen::before,
+#page-rp[data-story-skin="moon"] .rp-theater-screen::before {
+  content: "";
+  position: absolute;
+  inset: -18% -12% 12% -12%;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 44% 32% at 78% 22%, rgba(116, 235, 218, 0.14), transparent 68%),
+    radial-gradient(ellipse 38% 28% at 16% 66%, rgba(130, 176, 205, 0.12), transparent 70%);
+  filter: blur(10px);
+  z-index: 0;
+}
+
+#page-rp[data-story-skin="glass"] .rp-dialog-stream,
+#page-rp[data-story-skin="moon"] .rp-dialog-stream {
+  position: relative;
+  z-index: 1;
+}
+
+#page-rp[data-story-skin="glass"] .rp-card-entry,
+#page-rp[data-story-skin="moon"] .rp-card-entry {
+  border: 1px solid var(--story-card-border);
+  border-radius: 20px;
+  background: var(--story-card);
+  box-shadow:
+    var(--story-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  -webkit-backdrop-filter: blur(22px) saturate(145%);
+  backdrop-filter: blur(22px) saturate(145%);
+  color: var(--story-ink);
+}
+
+#page-rp[data-story-skin="glass"] .rp-card-top,
+#page-rp[data-story-skin="moon"] .rp-card-top {
+  border-bottom-color: rgba(255, 255, 255, 0.10);
+}
+
+#page-rp[data-story-skin="glass"] .rp-char-name,
+#page-rp[data-story-skin="moon"] .rp-char-name {
+  color: var(--story-accent);
+}
+
+#page-rp[data-story-skin="glass"] .rp-action-text,
+#page-rp[data-story-skin="moon"] .rp-action-text {
+  color: var(--story-muted);
+}
+
+#page-rp[data-story-skin="glass"] .rp-spoken-text,
+#page-rp[data-story-skin="moon"] .rp-spoken-text {
+  color: var(--story-ink);
+}
+
+#page-rp[data-story-skin="glass"] .rp-composer-shell,
+#page-rp[data-story-skin="moon"] .rp-composer-shell {
+  position: relative;
+  z-index: 30;
+  background: linear-gradient(to top, rgba(6, 11, 14, 0.88), rgba(7, 12, 16, 0.34));
+  border-top: 1px solid var(--story-card-border);
+  -webkit-backdrop-filter: blur(26px) saturate(150%);
+  backdrop-filter: blur(26px) saturate(150%);
+}
+
+#page-rp[data-story-skin="glass"] .rp-chip-pill,
+#page-rp[data-story-skin="moon"] .rp-chip-pill {
+  color: var(--story-ink);
+  background: var(--story-chip);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.18);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+#page-rp[data-story-skin="glass"] .rp-chip-pill.alt,
+#page-rp[data-story-skin="moon"] .rp-chip-pill.alt {
+  color: var(--story-muted);
+  background: rgba(255, 255, 255, 0.045);
+  border-color: rgba(255, 255, 255, 0.10);
+}
+
+#page-rp[data-story-skin="glass"] .rp-chip-pill:active,
+#page-rp[data-story-skin="moon"] .rp-chip-pill:active {
+  background: var(--story-chip);
+}
+
+#page-rp[data-story-skin="glass"] .rp-actor-select,
+#page-rp[data-story-skin="moon"] .rp-actor-select {
+  color: inherit;
+}
+
+#page-rp[data-story-skin="glass"] .rp-actor-select option,
+#page-rp[data-story-skin="moon"] .rp-actor-select option {
+  background: #111920;
+  color: #f2fbff;
+}
+
+#page-rp[data-story-skin="glass"] .rp-chevron-btn,
+#page-rp[data-story-skin="moon"] .rp-chevron-btn {
+  color: var(--story-accent);
+  background: var(--story-chip);
+  border-color: rgba(255, 255, 255, 0.10);
+}
+
+#page-rp[data-story-skin="glass"] .rp-input-bubble-card,
+#page-rp[data-story-skin="moon"] .rp-input-bubble-card {
+  border: 1px solid var(--story-card-border);
+  border-radius: 22px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04));
+  box-shadow:
+    0 14px 32px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.17);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  backdrop-filter: blur(20px) saturate(140%);
+}
+
+#page-rp[data-story-skin="glass"] .rp-input-area,
+#page-rp[data-story-skin="moon"] .rp-input-area {
+  color: var(--story-ink);
+}
+
+#page-rp[data-story-skin="glass"] .rp-input-area::placeholder,
+#page-rp[data-story-skin="moon"] .rp-input-area::placeholder {
+  color: rgba(192, 216, 218, 0.46);
+}
+
+#page-rp[data-story-skin="glass"] .rp-send-plane-btn,
+#page-rp[data-story-skin="moon"] .rp-send-plane-btn {
+  color: var(--story-accent-ink);
+  background: linear-gradient(135deg, var(--story-accent), var(--story-accent-2));
+  border: 1px solid rgba(220, 255, 250, 0.28);
+  box-shadow:
+    0 8px 20px var(--story-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.38);
+}
+
+#page-rp[data-story-skin="glass"] .rp-bottom-bar,
+#page-rp[data-story-skin="moon"] .rp-bottom-bar {
+  background: var(--story-nav);
+  border-top-color: var(--story-card-border);
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+}
+
+#page-rp[data-story-skin="glass"] .rp-text-input,
+#page-rp[data-story-skin="moon"] .rp-text-input {
+  color: var(--story-ink);
+  background: var(--story-input);
+  border-color: var(--story-card-border);
+}
+
+/* 原生卡片：恢复剧场页原样，只保留故事设定页的皮肤开关 */
+#page-story-setting .story-skin-chip.active {
+  color: #fff;
+  background: var(--accent-primary);
+}
+
+@media (max-width: 380px) {
+  #page-rp[data-story-skin="glass"] .rp-composer-shell,
+  #page-rp[data-story-skin="moon"] .rp-composer-shell {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  #page-rp[data-story-skin="glass"] .rp-dialog-stream,
+  #page-rp[data-story-skin="moon"] .rp-dialog-stream {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}

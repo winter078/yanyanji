@@ -1,0 +1,19 @@
+{
+  "name": "言言机",
+  "short_name": "言言机",
+  "description": "黑猫趴在书上的本地小手机",
+  "id": "/",
+  "start_url": "/index.html",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["fullscreen", "standalone"],
+  "background_color": "#15171b",
+  "theme_color": "#15171b",
+  "orientation": "portrait",
+  "categories": ["entertainment", "social"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

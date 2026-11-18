@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>sticker view probe</title>
+  <style>
+    html, body { margin: 0; padding: 0; width: 500px; height: 1000px; overflow: hidden; background: #000; }
+    iframe { display: block; width: 500px; height: 1000px; border: 0; }
+  </style>
+</head>
+<body>
+<script>
+  const A = 'assets/stickers/';
+  const IMG_A = 'https://images.unsplash.com/photo-1518791841217-8f162f1e1131?w=240&auto=format&fit=crop&q=80';
+  const bunny = 'https://images.unsplash.com/photo-1585110396000-c9ffd4e4b308?w=240&auto=format&fit=crop&q=80';
+  const chars = [{ id: 'c-a', name: '阿岚', avatar: IMG_A, tag: '角色', intro: '会陪你熬夜聊天', prompt: '', directives: '', relations: [], starred: false, createdAt: 1 }];
+  const history = [
+    { role: 'assistant', content: '你终于回来了。', time: '22:10' },
+    { role: 'user', content: '[STICKER:s1|猫猫探头]', time: '22:11' },
+    { role: 'assistant', content: '[表情包: 猫猫探头]', time: '22:11' }
+  ];
+  const stickers = [
+    { id: 's1', name: '猫猫探头', category: '猫猫', note: '在门口偷偷看你，想被你发现', url: A + 'cat_tietie.png' },
+    { id: 's2', name: '猫猫炸毛', category: '猫猫', note: '被逗急了但没真生气', url: A + 'cat_hate_you.png' },
+    { id: 's3', name: '猫猫贴贴', category: '猫猫', note: '主动蹭过来撒娇', url: A + 'cat_clingy.png' },
+    { id: 's4', name: '猫猫装死', category: '猫猫', note: '不想理你，但耳朵在听', url: A + 'cat_douyin_sleep.png' },
+    { id: 's5', name: '猫猫大哭', category: '猫猫', note: '委屈到手机都拿不稳', url: A + 'cat_phone_cry.png' },
+    { id: 's6', name: '兔兔冒头', category: '兔兔', note: '从背后悄悄冒出来', url: bunny }
+  ];
+  const view = new URLSearchParams(location.search).get('view') || 'drawer';
+  localStorage.setItem('momo_characters', JSON.stringify(chars));
+  localStorage.setItem('momo_characters_trash', '[]');
+  localStorage.setItem('momo_active_char', 'c-a');
+  localStorage.setItem('momo_user_nick', '末末');
+  localStorage.setItem('momo_chat_histories', JSON.stringify({ 'c-a': history }));
+  localStorage.setItem('momo_chat_history', JSON.stringify(history));
+  localStorage.setItem('momo_chat_history_scoped_v1', '1');
+  localStorage.setItem('momo_wechat_friends', JSON.stringify(['c-a']));
+  localStorage.setItem('momo_stickers_v10', JSON.stringify(stickers));
+  localStorage.setItem('momo_sticker_categories_v6', JSON.stringify(['猫猫', '兔兔', '默认']));
+  localStorage.setItem('momo_deleted_sticker_ids', '[]');
+
+  const f = document.createElement('iframe');
+  f.src = '/index.html?v=2026111150';
+  f.addEventListener('load', function () {
+    setTimeout(function () {
+      const w = f.contentWindow;
+      const d = f.contentDocument;
+      try {
+        const calm = d.createElement('style');
+        calm.textContent = '*,*::before,*::after{transition:none!important;animation:none!important}';
+        (d.head || d.documentElement).appendChild(calm);
+        if (typeof w.openFriendChat === 'function') w.openFriendChat('c-a');
+        setTimeout(function () {
+          w.toggleStickerDrawer();
+          setTimeout(function () {
+            if (view === 'editor') {
+              w.openStickerEditor('s1');
+            } else if (view === 'new') {
+              w.openStickerEditor();
+              fetch(A + 'cat_cute_upsidedown.png').then(r => r.blob()).then(function (blob) {
+                const file = new File([blob], 'user-bunny.png', { type: blob.type || 'image/png' });
+                const input = d.getElementById('input-sticker-pic');
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                input.files = dt.files;
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+                setTimeout(function () {
+                  d.getElementById('input-editor-sticker-name').value = '猫猫歪头';
+                  d.getElementById('input-editor-sticker-note').value = '被你夸到有点不好意思';
+                  const sel = d.getElementById('select-editor-sticker-cat');
+                  if (sel) sel.value = '猫猫';
+                }, 260);
+              });
+            } else {
+              Array.from(d.querySelectorAll('#sticker-category-tabs-bar button')).forEach(function (b) {
+                if (b.innerText.trim() === '猫猫') b.click();
+              });
+            }
+          }, 350);
+        }, 600);
+      } catch (e) {
+        const pre = document.createElement('pre');
+        pre.textContent = 'ERROR ' + e.message;
+        pre.style.cssText = 'position:fixed;left:0;top:0;background:#000;color:#f66;font:14px monospace;z-index:9999;';
+        document.body.appendChild(pre);
+      }
+    }, 900);
+  });
+  document.body.appendChild(f);
+</script>
+</body>
+</html>

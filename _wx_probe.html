@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>wx probe</title>
+  <style>
+    html, body { margin: 0; padding: 0; width: 500px; height: 1000px; overflow: hidden; background: #000; }
+    iframe { display: block; width: 500px; height: 1000px; border: 0; }
+  </style>
+</head>
+<body>
+<script>
+  const chars = [
+    { id: 'c-a', name: '新角色', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=160&auto=format&fit=crop&q=80', tag: '角色', intro: '我爱你', prompt: '', directives: '', relations: [], starred: false, createdAt: 1 },
+    { id: 'c-b', name: '测试人员b', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=160&auto=format&fit=crop&q=80', tag: '角色', intro: '', prompt: '', directives: '', relations: [], starred: false, createdAt: 2 },
+    { id: 'c-c', name: '新角色', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=160&auto=format&fit=crop&q=80', tag: '角色', intro: '', prompt: '', directives: '', relations: [], starred: false, createdAt: 3 },
+    { id: 'c-d', name: '周绪言', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=160&auto=format&fit=crop&q=80', tag: '老公', intro: '', prompt: '你是周绪言。在所有对话中必须严格保持此身份，绝对不能出戏。', directives: '', relations: [], starred: false, createdAt: 4 }
+  ];
+  const histories = {
+    'c-a': [{ role: 'assistant', content: '还是根本就眨着眼睛熬到了现在?', time: '04:59' }],
+    'c-b': [{ role: 'assistant', content: '今天先这样，明天再说。', time: '02:50' }],
+    'c-c': [{ role: 'assistant', content: '你好，我是另一个新角色。', time: '01:18' }],
+    'c-d': [{ role: 'assistant', content: '刷完没有？刷完了伸手，抱你回床上去。', time: '03:22' }]
+  };
+  const groups = [{
+    id: 'g-1', name: '周绪言、新角色 等 3 人', members: ['c-b', 'c-c', 'me'], createdAt: 5,
+    history: [{ role: 'assistant', name: '测试人员b', content: '群里的最后一条消息', time: '02:50' }]
+  }];
+  const palaceCards = [
+    { id: 'pen-a-1', category: 'pen', chatScope: 'single', targetId: 'c-a', targetName: '新角色', title: '关于称呼', summary: '用户希望被叫“宝宝”，这是亲笔写下的重要设定。', tags: ['亲笔', '角色'], layer: 'core', pinned: true, importance: 5, source: 'pen-manual', createdAt: 10 },
+    { id: 'pen-g-1', category: 'pen', chatScope: 'group', targetId: 'g-1', targetName: '周绪言、新角色 等 3 人', title: '群里的约定', summary: '群聊里不许替用户做决定，先问再答。', tags: ['亲笔', '群聊'], layer: 'core', pinned: true, importance: 5, source: 'pen-manual', createdAt: 11 }
+  ];
+  localStorage.setItem('momo_characters', JSON.stringify(chars));
+  localStorage.setItem('momo_characters_trash', '[]');
+  localStorage.setItem('momo_palace_memories', JSON.stringify(palaceCards));
+  localStorage.setItem('momo_active_char', 'c-a');
+  localStorage.setItem('momo_chat_histories', JSON.stringify(histories));
+  localStorage.setItem('momo_chat_history', JSON.stringify(histories['c-a']));
+  localStorage.setItem('momo_chat_history_scoped_v1', '1');
+  localStorage.setItem('momo_chat_groups', JSON.stringify(groups));
+  localStorage.setItem('momo_wechat_friends', JSON.stringify(['c-a', 'c-b', 'c-c', 'c-d', 'c-a']));
+  localStorage.setItem('momo_wechat_pins', JSON.stringify(['c-a']));
+  localStorage.setItem('momo_wechat_hidden_convs', '[]');
+
+  const view = new URLSearchParams(location.search).get('view') || 'list';
+  const f = document.createElement('iframe');
+  f.src = '/index.html';
+  f.addEventListener('load', function () {
+    setTimeout(function () {
+      try {
+        const w = f.contentWindow;
+        const page = (view === 'setting') ? 'page-chat-setting'
+          : (view === 'groupsetting' || view === 'grouppin' || view === 'groupclear') ? 'page-group-setting'
+          : (view === 'chat') ? 'page-chat'
+          : (view === 'editor' || view === 'editorx') ? 'page-char-setting'
+          : (view === 'api' || view === 'apiroute' || view === 'apitest') ? 'page-api'
+          : (view === 'palace' || view === 'palacegroup' || view === 'palacemem' || view === 'palaceadd') ? 'page-palace'
+          : 'page-wechat-main';
+        if (typeof w.openPage === 'function') w.openPage(page);
+        if (view === 'groupback') {
+          setTimeout(function () {
+            w.openGroupChat('g-1');
+            setTimeout(function () {
+              w.openGroupSettings();
+              setTimeout(function () { w.closeGroupSettings(); }, 450);
+            }, 350);
+          }, 250);
+        }
+        if (view === 'apiroute') {
+          setTimeout(function () {
+            const body = w.document.querySelector('#page-api .page-generic-body');
+            if (body) body.scrollTop = Math.max(0, body.scrollHeight - body.clientHeight - 40);
+          }, 450);
+        }
+        if (view === 'apitest') {
+          setTimeout(function () {
+            var out = [];
+            try {
+              out.push('apiPresets=' + (!!w.ApiPresets));
+              out.push('presets=' + w.ApiPresets.list().length);
+              out.push('active=' + w.ApiPresets.active().name);
+              w.prompt = function () { return '测试线路B'; };
+              w.createApiPreset();
+              out.push('afterCreate=' + w.ApiPresets.list().length);
+              out.push('active2=' + w.ApiPresets.active().name);
+              var sel = w.document.getElementById('api-route-memory-preset');
+              var model = w.document.getElementById('api-route-memory-model');
+              if (sel) sel.value = w.ApiPresets.activeId();
+              if (model) model.value = 'deepseek-reasoner';
+              w.ApiPresets.captureForm();
+              var cfg = w.ApiPresets.resolve('memory');
+              out.push('memoryPreset=' + cfg.name);
+              out.push('memoryModel=' + cfg.model);
+              out.push('legacyModel=' + w.appData.model);
+              out.push('routeSource=' + cfg.source);
+            } catch (e) {
+              out.push('ERROR=' + e.message);
+            }
+            w.document.body.innerHTML = '<pre style="white-space:pre-wrap;color:#eee;font-size:13px;line-height:1.7;padding:18px;">' + out.join('\n') + '</pre>';
+          }, 500);
+        }
+        if (view === 'palace' || view === 'palacegroup' || view === 'palacemem' || view === 'palaceadd') {
+          if (typeof w.switchPalaceCategory === 'function') w.switchPalaceCategory('pen');
+          if ((view === 'palacegroup') && typeof w.switchPalaceWechatScope === 'function') w.switchPalaceWechatScope('group');
+        }
+        if (view === 'palaceadd') {
+          setTimeout(function () {
+            w.alert = function () {};
+            const title = w.document.getElementById('input-palace-title');
+            const body = w.document.getElementById('input-palace-body');
+            if (title) title.value = '刚写下的亲笔';
+            if (body) body.value = '这是用户亲手输入、应该排在自动总结前面的重要内容。';
+            if (typeof w.saveCreatePalace === 'function') w.saveCreatePalace();
+          }, 500);
+        }
+        if (view === 'palacemem' && w.MemoryEngine && w.MemoryEngine.buildText) {
+          setTimeout(function () {
+            const text = w.MemoryEngine.buildText('single', 'c-a', {});
+            const box = w.document.getElementById('palace-cards-flow');
+            if (box) box.innerHTML = '<pre style="white-space:pre-wrap;color:#eee;font-size:12px;line-height:1.6;">' + text.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</pre>';
+          }, 400);
+        }
+        if (view === 'chat') {
+          if (typeof w.openFriendChat === 'function') w.openFriendChat('c-a');
+        }
+        if (view === 'editor' || view === 'editorx') {
+          if (typeof w.openCharacterEditor === 'function') w.openCharacterEditor(view === 'editorx' ? 'c-d' : 'c-a');
+          if (/fill=1/.test(location.search) && typeof w.fillDefaultRomanticDirectives === 'function') {
+            w.fillDefaultRomanticDirectives();
+          }
+        }
+        if (view === 'contacts' && typeof w.openContacts === 'function') w.openContacts();
+        if (view === 'groupopen' && typeof w.openContacts === 'function') w.openContacts();
+        if (view === 'groupsetting' || view === 'grouppin' || view === 'groupclear') {
+          w.__groupMode = 'g-1';
+          if (typeof w.openGroupSettings === 'function') w.openGroupSettings();
+        }
+        if (view === 'groupopen') {
+          setTimeout(function () {
+            const card = w.document.querySelector('#wx-groups-list .contact-card-item');
+            if (card) card.click();
+          }, 400);
+        }
+        if (view === 'grouppin') {
+          setTimeout(function () {
+            if (typeof w.togglePinGroup === 'function') w.togglePinGroup();
+          }, 400);
+        }
+        if (view === 'groupclear') {
+          setTimeout(function () {
+            w.confirm = function () { return true; };
+            if (typeof w.clearGroupChatHistory === 'function') w.clearGroupChatHistory();
+            setTimeout(function () { if (typeof w.openGroupChat === 'function') w.openGroupChat('g-1'); }, 150);
+          }, 400);
+        }
+        try {
+          const st = w.document.createElement('style');
+          st.textContent = '*,*::before,*::after{animation:none!important;transition:none!important;} .page{opacity:1!important;transform:none!important;} #page-wechat-main,#page-chat-setting,#page-group-setting{background:#0b0d0f!important;}';
+          w.document.head.appendChild(st);
+        } catch (e) {}
+        if (view === 'swipe') {
+          setTimeout(function () {
+            const row = w.document.querySelector('#wechat-session-list .wechat-chat-item');
+            if (row) row.classList.add('swiped');
+          }, 250);
+        }
+        if (view === 'clear') {
+          setTimeout(function () {
+            try {
+              w.confirm = function () { return true; };
+              if (typeof w.clearChatHistory === 'function') w.clearChatHistory();
+            } catch (e) { document.title = 'clear error: ' + e.message; }
+          }, 500);
+        }
+        if (view === 'plus') {
+          setTimeout(function () {
+            try {
+              w.confirm = function () { return true; };
+              w.deleteWechatConversation('g-1', 'group');
+              if (w.syncWechatPlusMenu) w.syncWechatPlusMenu();
+              const dd = w.document.getElementById('wechat-plus-dropdown');
+              if (dd) dd.style.display = 'block';
+            } catch (e) { document.title = 'plus error: ' + e.message; }
+          }, 500);
+        }
+        if (view === 'gesture') {
+          setTimeout(function () {
+            const row = w.document.querySelector('#wechat-session-list .wechat-chat-item');
+            if (!row) return;
+            const r = row.getBoundingClientRect();
+            const y = r.top + r.height / 2;
+            const opts = function (x) { return { bubbles: true, cancelable: true, pointerType: 'touch', clientX: x, clientY: y, pointerId: 1, isPrimary: true }; };
+            row.dispatchEvent(new PointerEvent('pointerdown', opts(r.right - 30)));
+            w.document.getElementById('wechat-session-list').dispatchEvent(new PointerEvent('pointermove', opts(r.right - 150)));
+            w.document.getElementById('wechat-session-list').dispatchEvent(new PointerEvent('pointerup', opts(r.right - 150)));
+          }, 400);
+        }
+      } catch (e) {
+        document.title = 'probe error: ' + e.message;
+      }
+    }, 500);
+  });
+  document.body.appendChild(f);
+</script>
+</body>
+</html>

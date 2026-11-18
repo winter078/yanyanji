@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>avatar vault functional probe</title>
+  <style>
+    html, body { margin: 0; padding: 0; width: 500px; height: 1000px; overflow: hidden; background: #000; }
+    iframe { display: block; width: 500px; height: 1000px; border: 0; }
+    #probe-result { position: fixed; left: 0; top: 0; z-index: 9999; width: 500px; max-height: 1000px; overflow: auto; margin: 0; padding: 16px; background: #101014; color: #9be7a8; font: 12px/1.55 monospace; white-space: pre-wrap; box-sizing: border-box; }
+  </style>
+</head>
+<body>
+<script>
+  const img = {
+    zhou1: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80',
+    zhou2: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&auto=format&fit=crop&q=80',
+    alan: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=160&auto=format&fit=crop&q=80'
+  };
+  const chars = [
+    { id: 'c-zhou', name: '周绪言', avatar: img.zhou1, tag: '角色', intro: '总爱管着你的那个人', prompt: '', directives: '', relations: [], starred: true, createdAt: 1 },
+    { id: 'c-alan', name: '阿岚', avatar: img.alan, tag: '角色', intro: '会陪你熬夜聊天', prompt: '', directives: '', relations: [], starred: false, createdAt: 2 }
+  ];
+  const zhouVault = [
+    { id: 'zv1', name: '白衬衫 · 日常', tag: '日常温润', emotion: '日常温润', tagClass: '', note: '', url: img.zhou1 },
+    { id: 'zv2', name: '别过头去 · 黑白大衣', tag: '吃醋', emotion: '吃醋', tagClass: 'badge-angry', note: '', url: img.zhou2 }
+  ];
+  localStorage.setItem('momo_characters', JSON.stringify(chars));
+  localStorage.setItem('momo_characters_trash', '[]');
+  localStorage.setItem('momo_active_char', 'c-zhou');
+  localStorage.setItem('momo_user_nick', '末末');
+  localStorage.setItem('momo_char_remarks_v1', '{}');
+  localStorage.setItem('momo_chat_histories', JSON.stringify({ 'c-zhou': [] }));
+  localStorage.setItem('momo_chat_history', '[]');
+  localStorage.setItem('momo_wechat_friends', JSON.stringify(['c-zhou', 'c-alan']));
+  localStorage.setItem('momo_wechat_pins', '[]');
+  localStorage.setItem('momo_wechat_hidden_convs', '[]');
+  localStorage.setItem('momo_vault_list_momo_v2', '[]');
+  localStorage.setItem('momo_vault_char_c-zhou_v1', JSON.stringify(zhouVault));
+  localStorage.setItem('momo_vault_current_char_v1', 'c-zhou');
+  localStorage.setItem('momo_vault_active_tab_v2', 'momo');
+  localStorage.removeItem('momo_vault_list_couple_v2');
+
+  const f = document.createElement('iframe');
+  f.src = '/index.html?v=2026111130';
+  f.addEventListener('load', function () {
+    setTimeout(function () {
+      const out = [];
+      const ok = (name, cond, extra) => out.push((cond ? 'PASS  ' : 'FAIL  ') + name + (extra ? '  ' + extra : ''));
+      try {
+        const w = f.contentWindow;
+        const d = f.contentDocument;
+        if (typeof w.openPage === 'function') w.openPage('page-avatar-vault');
+        if (typeof w.switchVaultTab === 'function') w.switchVaultTab('xuyan');
+        if (typeof w.renderVaultView === 'function') w.renderVaultView();
+
+        ok('role tab renders role cards', d.querySelectorAll('#vault-grid-container .vault-photo-card').length === 2,
+          'count=' + d.querySelectorAll('#vault-grid-container .vault-photo-card').length);
+        ok('switch char button visible on role tab', d.getElementById('vault-switch-char-btn').style.display !== 'none');
+        ok('current card shows role name', /周绪言/.test(d.getElementById('vault-current-name').innerText),
+          d.getElementById('vault-current-name').innerText);
+
+        const hit = w.findAvatarForEmotion('c-zhou', '吃醋');
+        ok('find avatar by exact emotion', hit && hit.id === 'zv2', hit ? hit.name : 'null');
+        const fuzzy = w.findAvatarForEmotion('c-zhou', '有点吃醋');
+        ok('find avatar by fuzzy emotion', fuzzy && fuzzy.id === 'zv2', fuzzy ? fuzzy.name : 'null');
+        const miss = w.findAvatarForEmotion('c-zhou', '完全不存在');
+        ok('unknown emotion returns null', miss === null || miss === undefined, String(miss && miss.id));
+
+        const cmd1 = w.extractChatTrailingCommands('你今天都不理我\n[换头像: 吃醋]');
+        ok('single-chat parser reads avatar command', cmd1 && cmd1.avatar === '吃醋' && cmd1.text === '你今天都不理我',
+          JSON.stringify(cmd1));
+        const cmd2 = w.extractChatTrailingCommands('正文\n[AVATAR:委屈]');
+        ok('single-chat parser accepts AVATAR alias', cmd2 && cmd2.avatar === '委屈' && cmd2.text === '正文',
+          JSON.stringify(cmd2));
+
+        const beforeBot = w.appData.botAvatar;
+        w.updateCharacterAvatar('c-alan', img.alan);
+        ok('non-active character avatar saved', w.findCharacterById('c-alan').avatar === img.alan);
+        ok('non-active character does not overwrite global avatar', w.appData.botAvatar === beforeBot);
+        const zhouAfter = w.findCharacterById('c-zhou');
+        ok('active character current avatar unchanged', zhouAfter.avatar === img.zhou1);
+
+        let lastAlert = '';
+        w.alert = function (msg) { lastAlert = String(msg || ''); };
+        const pngB64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=';
+        const bytes = Uint8Array.from(atob(pngB64), c => c.charCodeAt(0));
+        const file = new File([bytes], 'tiny.png', { type: 'image/png' });
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        const fileInput = d.getElementById('input-vault-file');
+        w.handleVaultFileSelect({ target: { files: dt.files } });
+
+        setTimeout(function () {
+          const listBefore = w.loadCharVaultList('c-zhou').length;
+          const emotionInput = d.getElementById('vault-upload-emotion');
+          const nameInput = d.getElementById('vault-upload-name');
+          if (nameInput) nameInput.value = '测试头像';
+          if (emotionInput) emotionInput.value = '';
+          w.submitVaultNewAvatar();
+          ok('role tab rejects upload without emotion', lastAlert.indexOf('情绪') >= 0 && w.loadCharVaultList('c-zhou').length === listBefore, lastAlert);
+
+          if (emotionInput) emotionInput.value = '开心';
+          w.submitVaultNewAvatar();
+          const listAfter = w.loadCharVaultList('c-zhou');
+          const added = listAfter.filter(function (it) { return it.emotion === '开心'; })[0];
+          ok('role tab accepts upload with emotion', listAfter.length === listBefore + 1 && !!added,
+            'count=' + listAfter.length + ' added=' + (added ? added.name + '/' + added.emotion : 'none'));
+
+          let modalPromise = w.askAvatarChange('c-zhou', hit);
+          w.resolveAvatarChange(true);
+          modalPromise.then(function (allowed) {
+            if (allowed) w.applyCharacterAvatar('c-zhou', hit.url);
+            setTimeout(function () {
+              ok('agree applies avatar to active character', w.findCharacterById('c-zhou').avatar === img.zhou2);
+              ok('agree also syncs global avatar', w.appData.botAvatar === img.zhou2);
+              ok('character vault stored under per-char key', JSON.parse(localStorage.getItem('momo_vault_char_c-zhou_v1')).length >= 2);
+              ok('couple key is never written', localStorage.getItem('momo_vault_list_couple_v2') === null);
+              ok('empty vault for other character starts empty', w.loadCharVaultList('c-alan').length === 0);
+
+              const pre = document.createElement('pre');
+              pre.id = 'probe-result';
+              pre.textContent = out.join('\n');
+              document.body.appendChild(pre);
+            }, 30);
+          });
+        }, 500);
+      } catch (e) {
+        out.push('ERROR ' + e.message);
+        const pre = document.createElement('pre');
+        pre.id = 'probe-result';
+        pre.textContent = out.join('\n');
+        document.body.appendChild(pre);
+      }
+    }, 1600);
+  });
+  document.body.appendChild(f);
+</script>
+</body>
+</html>

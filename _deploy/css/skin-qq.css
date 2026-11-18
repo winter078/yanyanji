@@ -1,0 +1,739 @@
+/* =========================================================
+   QQ 整套皮肤 · 结构层
+   这里只写“QQ 的骨架特征”，颜色仍由 js/desktop/desktop.js 的
+   SKIN_PACKS 提供；切回原皮肤时只要把 data-qq-skin 去掉即可。
+   ========================================================= */
+
+/* ---------- 聊天列表：顶部头像 / 昵称 / 在线状态 ---------- */
+#page-wechat-main[data-qq-skin="1"] .wechat-main-header {
+  height: 88px;
+  padding-left: 14px;
+  padding-right: 14px;
+  justify-content: flex-start;
+  background: var(--wechat-bg-bar, #111114) !important;
+  border-bottom: 0.5px solid var(--sys-separator, rgba(255, 255, 255, 0.06)) !important;
+}
+
+#page-wechat-main[data-qq-skin="1"] .wechat-header-star-btn {
+  width: 14px;
+  padding: 0;
+  font-size: 0;
+  color: #12b7f5;
+  flex-shrink: 0;
+}
+
+#page-wechat-main[data-qq-skin="1"] .wechat-header-star-btn::before {
+  content: "‹";
+  font-size: 22px;
+  line-height: 1;
+}
+
+#page-wechat-main[data-qq-skin="1"] .wechat-main-title {
+  margin-left: 58px;
+  font-size: 0;
+  line-height: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+#page-wechat-main[data-qq-skin="1"] .wechat-main-title::before {
+  content: var(--qq-name, "我的小手机");
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--color-text-primary, #f2f3f5);
+  letter-spacing: 0.2px;
+}
+
+#page-wechat-main[data-qq-skin="1"] .wechat-main-title::after {
+  content: "● 在线 · 4G";
+  margin-top: 4px;
+  font-size: 10.5px;
+  font-weight: 500;
+  color: #12b7f5;
+}
+
+/* 切到联系人 / 动态时，顶栏跟着 QQ 的叫法走，不再挂自己的昵称 */
+body[data-wx-tab="contacts"] #page-wechat-main[data-qq-skin="1"] .wechat-main-title::before {
+  content: "联系人";
+}
+
+body[data-wx-tab="contacts"] #page-wechat-main[data-qq-skin="1"] .wechat-main-title::after,
+body[data-wx-tab="discover"] #page-wechat-main[data-qq-skin="1"] .wechat-main-title::after {
+  display: none;
+}
+
+body[data-wx-tab="discover"] #page-wechat-main[data-qq-skin="1"] .wechat-main-title::before {
+  content: "动态";
+}
+
+#page-wechat-main[data-qq-skin="1"] .wechat-main-actions {
+  margin-left: auto;
+}
+
+#page-wechat-main[data-qq-skin="1"] .wechat-header-icon-btn {
+  font-size: 26px;
+  color: var(--color-text-primary, #f2f3f5);
+}
+
+/* QQ 右上角：消息是 ＋，联系人是人形＋，动态 / 我 是四宫格 */
+body[data-wx-tab="contacts"] #page-wechat-main[data-qq-skin="1"] .wechat-header-icon-btn,
+body[data-wx-tab="discover"] #page-wechat-main[data-qq-skin="1"] .wechat-header-icon-btn,
+body[data-wx-tab="me"] #page-wechat-main[data-qq-skin="1"] .wechat-header-icon-btn {
+  font-size: 0;
+}
+
+body[data-wx-tab="contacts"] #page-wechat-main[data-qq-skin="1"] .wechat-header-icon-btn::before {
+  content: "人＋";
+  font-size: 18px;
+  font-weight: 500;
+}
+
+body[data-wx-tab="discover"] #page-wechat-main[data-qq-skin="1"] .wechat-header-icon-btn::before,
+body[data-wx-tab="me"] #page-wechat-main[data-qq-skin="1"] .wechat-header-icon-btn::before {
+  content: "⊞";
+  font-size: 20px;
+}
+
+#page-wechat-main[data-qq-skin="1"] #qq-skin-avatar {
+  position: absolute;
+  left: 34px;
+  top: 65px;
+  transform: translateY(-50%);
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 50%;
+  overflow: hidden;
+  background: #2b2b30 center / cover no-repeat;
+  z-index: 60;
+  cursor: pointer;
+}
+
+#page-wechat-main[data-qq-skin="1"] #qq-skin-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ---------- 搜索：QQ 式单行搜索，不要微信签名横幅 ---------- */
+#page-wechat-main[data-qq-skin="1"] .wechat-status-motto-banner {
+  display: none !important;
+}
+
+#page-wechat-main[data-qq-skin="1"] .wechat-search-wrap {
+  padding: 10px 16px 8px;
+}
+
+#page-wechat-main[data-qq-skin="1"] .wechat-search-bar {
+  height: 38px;
+  border-radius: 8px;
+  background: var(--bg-elevated, #232326) !important;
+  border: none !important;
+}
+
+#page-wechat-main[data-qq-skin="1"] .wechat-search-input {
+  font-size: 13px;
+  color: var(--color-text-primary, #d9d9dd);
+}
+
+#page-wechat-main[data-qq-skin="1"] .wechat-search-input::placeholder {
+  color: var(--text-muted, #8a8b90);
+}
+
+#page-wechat-main[data-qq-skin="1"] .search-icon {
+  opacity: 0.45;
+  font-size: 15px;
+}
+
+/* ---------- 会话行：大圆头像、无分割线、QQ 式信息层级 ---------- */
+#page-wechat-main[data-qq-skin="1"] .wechat-chat-item,
+#page-wechat-main[data-qq-skin="1"] .wechat-chat-item.pinned {
+  padding: 13px 18px;
+  gap: 14px;
+  background: var(--sys-bg-primary, #0d0d0f) !important;
+  border-bottom: none !important;
+}
+
+#page-wechat-main[data-qq-skin="1"] .wechat-chat-item:active {
+  background: var(--bg-elevated, #1a1a1d) !important;
+}
+
+#page-wechat-main[data-qq-skin="1"] .wechat-avatar-wrapper {
+  width: 54px;
+  height: 54px;
+}
+
+#page-wechat-main[data-qq-skin="1"] .wechat-item-avatar {
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+#page-wechat-main[data-qq-skin="1"] .wechat-online-badge {
+  left: -1px;
+  right: auto;
+  width: 12px;
+  height: 12px;
+  background: #39d353;
+  border-color: var(--sys-bg-primary, #0d0d0f);
+}
+
+#page-wechat-main[data-qq-skin="1"] .wechat-item-top {
+  align-items: center;
+}
+
+#page-wechat-main[data-qq-skin="1"] .wechat-item-name {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+#page-wechat-main[data-qq-skin="1"] .wechat-item-time {
+  font-size: 11px;
+  color: var(--text-muted, #8b8c91);
+}
+
+#page-wechat-main[data-qq-skin="1"] .wechat-item-lastmsg {
+  font-size: 13.5px;
+  color: var(--color-text-secondary, #9b9ca2);
+  line-height: 1.45;
+}
+
+#page-wechat-main[data-qq-skin="1"] .wechat-pinned-star {
+  display: none;
+}
+
+/* ---------- 底栏：只留 消息 / 联系人 / 动态 ---------- */
+#page-wechat-main[data-qq-skin="1"] .wechat-bottom-tabbar {
+  height: 72px;
+  background: var(--bg-elevated, #161618) !important;
+  border-top: 0.5px solid var(--sys-separator, rgba(255, 255, 255, 0.06)) !important;
+}
+
+#page-wechat-main[data-qq-skin="1"] #btn-tab-me {
+  display: none;
+}
+
+#page-wechat-main[data-qq-skin="1"] .wechat-tab-btn {
+  color: var(--text-muted, #6d6e73) !important;
+}
+
+#page-wechat-main[data-qq-skin="1"] .wechat-tab-btn.active {
+  color: #12b7f5 !important;
+}
+
+#page-wechat-main[data-qq-skin="1"] #btn-tab-chats .tab-label,
+#page-wechat-main[data-qq-skin="1"] #btn-tab-contacts .tab-label,
+#page-wechat-main[data-qq-skin="1"] #btn-tab-discover .tab-label {
+  font-size: 0;
+}
+
+#page-wechat-main[data-qq-skin="1"] #btn-tab-chats .tab-label::after {
+  content: "消息";
+  font-size: 10px;
+}
+
+#page-wechat-main[data-qq-skin="1"] #btn-tab-contacts .tab-label::after {
+  content: "联系人";
+  font-size: 10px;
+}
+
+#page-wechat-main[data-qq-skin="1"] #btn-tab-discover .tab-label::after {
+  content: "动态";
+  font-size: 10px;
+}
+
+/* ---------- 聊天页：左侧昵称 + 在线，中间关系胶囊，右侧菜单 ---------- */
+#page-chat[data-qq-skin="1"] .wechat-header {
+  position: relative;
+  height: 62px;
+  padding: 0 14px;
+  justify-content: flex-start;
+  background: var(--wechat-bg-bar, #111114) !important;
+  border-bottom: 0.5px solid var(--sys-separator, rgba(255, 255, 255, 0.06)) !important;
+}
+
+#page-chat[data-qq-skin="1"] .wechat-header > .wechat-back-btn:first-child {
+  width: 26px;
+  padding: 0;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+#page-chat[data-qq-skin="1"] .wechat-title-wrap {
+  flex: 0 1 auto;
+  max-width: 140px;
+  margin-left: 8px;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+#page-chat[data-qq-skin="1"] .wechat-title {
+  font-size: 16px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#page-chat[data-qq-skin="1"] .wechat-sub-hint {
+  margin-top: 2px;
+  font-size: 0;
+}
+
+#page-chat[data-qq-skin="1"] .wechat-sub-hint::after {
+  content: "● 在线";
+  font-size: 10px;
+  font-weight: 500;
+  color: #12b7f5;
+}
+
+#page-chat[data-qq-skin="1"] #sync-dot-status {
+  display: none !important;
+}
+
+#page-chat[data-qq-skin="1"] .wechat-header::after {
+  content: "陪伴你们的关系成长";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 5px 12px;
+  border-radius: 14px;
+  background: #2a9df4;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(18, 183, 245, 0.35);
+}
+
+#page-chat[data-qq-skin="1"] .wechat-header > .wechat-back-btn:last-child {
+  margin-left: auto;
+  padding: 0;
+  font-size: 0 !important;
+  flex-shrink: 0;
+}
+
+#page-chat[data-qq-skin="1"] .wechat-header > .wechat-back-btn:last-child::before {
+  content: "☰";
+  font-size: 20px;
+  color: var(--color-text-primary, #eaeaea);
+}
+
+/* ---------- 聊天页：圆头像 + QQ 白右气泡 ---------- */
+#page-chat[data-qq-skin="1"] .wechat-chat-screen {
+  background: var(--wechat-bg-chat, #0d0d0f) !important;
+}
+
+#page-chat[data-qq-skin="1"] .msg-avatar {
+  border-radius: 50% !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+#page-chat[data-qq-skin="1"] .msg-group.bot .msg-bubble-wechat {
+  background: #2b2b2f !important;
+  color: #f1f1f3 !important;
+  border: none !important;
+  border-radius: 18px 18px 18px 4px !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+
+#page-chat[data-qq-skin="1"] .msg-group.user .msg-bubble-wechat {
+  background: #ffffff !important;
+  color: #111111 !important;
+  border: none !important;
+  border-radius: 18px 18px 4px 18px !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+
+#page-chat[data-qq-skin="1"] .msg-time-hint {
+  color: var(--text-muted, #77787e);
+}
+
+/* ---------- 聊天页底栏：QQ 深灰输入槽 + 方形圆角 ---------- */
+#page-chat[data-qq-skin="1"] .wechat-input-bar-v2 {
+  background: var(--bg-elevated, #17171a) !important;
+  border-top: 0.5px solid var(--sys-separator, rgba(255, 255, 255, 0.06)) !important;
+  padding: 8px 12px calc(7px + env(safe-area-inset-bottom, 10px));
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+#page-chat[data-qq-skin="1"] .chat-pill-input-box {
+  order: 1;
+  flex: 1 0 100%;
+  min-height: 40px;
+  background: var(--bg-elevated-solid, #242427) !important;
+  border: none !important;
+  border-radius: 8px !important;
+  padding: 4px 6px 4px 12px;
+}
+
+#page-chat[data-qq-skin="1"] .chat-circle-btn {
+  order: 2;
+  width: 32px;
+  height: 32px;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: var(--color-text-secondary, #c5c6cb);
+}
+
+#page-chat[data-qq-skin="1"] .chat-capsule-textarea {
+  color: var(--color-text-primary, #e8e8ea);
+}
+
+#page-chat[data-qq-skin="1"] .chat-inner-action-btn {
+  color: var(--color-text-secondary, #b7b8bd);
+}
+
+#page-chat[data-qq-skin="1"] .send-plane-btn {
+  color: #12b7f5;
+}
+
+/* =========================================================
+   联系人 / 动态 / 我的：三屏的 QQ 骨架
+   ========================================================= */
+
+/* ---------- 联系人顶栏：扩列 / 联系人 两个页签 ---------- */
+body[data-wx-tab="contacts"] #page-wechat-main[data-qq-skin="1"] .wechat-main-title {
+  margin-left: 58px;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 20px;
+}
+
+body[data-wx-tab="contacts"] #page-wechat-main[data-qq-skin="1"] .wechat-main-title::before {
+  content: "扩列";
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--color-text-secondary, #8e8e93);
+  letter-spacing: 0;
+}
+
+body[data-wx-tab="contacts"] #page-wechat-main[data-qq-skin="1"] .wechat-main-title::after {
+  content: "联系人";
+  display: inline-block;
+  margin-top: 0;
+  padding-bottom: 4px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-primary, #f2f3f5);
+  border-bottom: 2px solid #12b7f5;
+}
+
+/* ---------- 联系人列表：QQ 式整行分组，不要微信卡片 ---------- */
+body[data-wx-tab="contacts"] #page-wechat-main[data-qq-skin="1"] .wechat-contacts-scroll {
+  padding: 0 0 30px;
+  gap: 0;
+}
+
+body[data-wx-tab="contacts"] #page-wechat-main[data-qq-skin="1"] .wx-graph-entry {
+  width: 100%;
+  margin: 0;
+  padding: 14px 18px;
+  border: none !important;
+  border-bottom: 0.5px solid var(--sys-separator, rgba(255, 255, 255, 0.06)) !important;
+  border-radius: 0 !important;
+  background: var(--sys-bg-primary, #0b1017) !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+body[data-wx-tab="contacts"] #page-wechat-main[data-qq-skin="1"] .wx-graph-entry-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(18, 183, 245, 0.16);
+  color: #12b7f5;
+}
+
+body[data-wx-tab="contacts"] #page-wechat-main[data-qq-skin="1"] .wx-graph-entry-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+body[data-wx-tab="contacts"] #page-wechat-main[data-qq-skin="1"] .wx-graph-entry-sub {
+  font-size: 12px;
+  color: var(--color-text-secondary, #8e8e93);
+}
+
+body[data-wx-tab="contacts"] #page-wechat-main[data-qq-skin="1"] .contacts-category-header {
+  padding: 16px 18px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--color-text-secondary, #8e8e93);
+}
+
+body[data-wx-tab="contacts"] #page-wechat-main[data-qq-skin="1"] .wx-contact-list {
+  gap: 0;
+}
+
+body[data-wx-tab="contacts"] #page-wechat-main[data-qq-skin="1"] .contact-card-item {
+  padding: 12px 18px;
+  gap: 12px;
+  border: none !important;
+  border-bottom: 0.5px solid var(--sys-separator, rgba(255, 255, 255, 0.06)) !important;
+  border-radius: 0 !important;
+  background: var(--sys-bg-primary, #0b1017) !important;
+}
+
+body[data-wx-tab="contacts"] #page-wechat-main[data-qq-skin="1"] .contact-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+body[data-wx-tab="contacts"] #page-wechat-main[data-qq-skin="1"] .contact-name {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+body[data-wx-tab="contacts"] #page-wechat-main[data-qq-skin="1"] .contact-role-tag,
+body[data-wx-tab="contacts"] #page-wechat-main[data-qq-skin="1"] .wx-card-active {
+  display: none;
+}
+
+body[data-wx-tab="contacts"] #page-wechat-main[data-qq-skin="1"] .contact-sub-detail {
+  font-size: 12.5px;
+  color: var(--color-text-secondary, #8e8e93);
+}
+
+body[data-wx-tab="contacts"] #page-wechat-main[data-qq-skin="1"] .contact-action-arrow {
+  font-size: 16px;
+  color: var(--text-muted, #7d8590);
+}
+
+/* ---------- 动态：空间动态 / 漫剧 两行，搜索框回来 ---------- */
+body[data-wx-tab="discover"] #page-wechat-main[data-qq-skin="1"] .wechat-search-wrap {
+  display: block !important;
+}
+
+body[data-wx-tab="discover"] #page-wechat-main[data-qq-skin="1"] .wechat-main-title::before {
+  content: "动态";
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-text-primary, #f2f3f5);
+}
+
+body[data-wx-tab="discover"] #page-wechat-main[data-qq-skin="1"] .wechat-main-title::after {
+  display: none;
+}
+
+body[data-wx-tab="discover"] #page-wechat-main[data-qq-skin="1"] .wechat-main-title {
+  margin-left: 58px;
+}
+
+body[data-wx-tab="discover"] #page-wechat-main[data-qq-skin="1"] .wechat-discover-list {
+  padding: 0 0 40px;
+  gap: 0;
+}
+
+body[data-wx-tab="discover"] #page-wechat-main[data-qq-skin="1"] .discover-item {
+  padding: 16px 18px;
+  border: none !important;
+  border-bottom: 0.5px solid var(--sys-separator, rgba(255, 255, 255, 0.06)) !important;
+  border-radius: 0 !important;
+  background: var(--sys-bg-primary, #0b1017) !important;
+  box-shadow: none !important;
+}
+
+body[data-wx-tab="discover"] #page-wechat-main[data-qq-skin="1"] .discover-left {
+  gap: 14px;
+}
+
+body[data-wx-tab="discover"] #page-wechat-main[data-qq-skin="1"] .discover-icon {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: var(--bg-elevated, #1a222d);
+  font-size: 0;
+}
+
+body[data-wx-tab="discover"] #page-wechat-main[data-qq-skin="1"] .discover-item:nth-child(1) .discover-icon::before {
+  content: "★";
+  font-size: 22px;
+  color: #f5c518;
+}
+
+body[data-wx-tab="discover"] #page-wechat-main[data-qq-skin="1"] .discover-item:nth-child(3) .discover-icon::before {
+  content: "▶";
+  font-size: 15px;
+  color: #ff5a5f;
+}
+
+body[data-wx-tab="discover"] #page-wechat-main[data-qq-skin="1"] .moments-compass {
+  background: none;
+  -webkit-text-fill-color: currentColor;
+  font-size: 0;
+}
+
+body[data-wx-tab="discover"] #page-wechat-main[data-qq-skin="1"] .discover-group-gap {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+body[data-wx-tab="discover"] #page-wechat-main[data-qq-skin="1"] .discover-title {
+  font-size: 0;
+}
+
+body[data-wx-tab="discover"] #page-wechat-main[data-qq-skin="1"] .discover-item:nth-child(1) .discover-title::before {
+  content: "空间动态";
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-primary, #f2f3f5);
+}
+
+body[data-wx-tab="discover"] #page-wechat-main[data-qq-skin="1"] .discover-item:nth-child(3) .discover-title::before {
+  content: "漫剧";
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-primary, #f2f3f5);
+}
+
+body[data-wx-tab="discover"] #page-wechat-main[data-qq-skin="1"] .discover-item:nth-child(1) .discover-title::after {
+  content: "1";
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: #ff5a5f;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  vertical-align: 2px;
+}
+
+body[data-wx-tab="discover"] #page-wechat-main[data-qq-skin="1"][data-moments-unread="1"] .discover-item:nth-child(1) .discover-title::after {
+  display: inline-flex;
+}
+
+body[data-wx-tab="discover"] #page-wechat-main[data-qq-skin="1"] .discover-item:nth-child(1) .discover-right::before {
+  content: "99人新发表";
+  display: none;
+  margin-right: 2px;
+  font-size: 11px;
+  color: var(--color-text-secondary, #8e8e93);
+}
+
+body[data-wx-tab="discover"] #page-wechat-main[data-qq-skin="1"][data-moments-unread="1"] .discover-item:nth-child(1) .discover-right::before {
+  display: inline;
+}
+
+body[data-wx-tab="discover"] #page-wechat-main[data-qq-skin="1"] .discover-preview-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+}
+
+body[data-wx-tab="discover"] #page-wechat-main[data-qq-skin="1"] .discover-arrow {
+  font-size: 16px;
+  color: var(--text-muted, #7d8590);
+}
+
+/* ---------- 我的：QQ 空间式大卡 + 整行菜单 ---------- */
+body[data-wx-tab="me"] #page-wechat-main[data-qq-skin="1"] .wechat-main-title::before {
+  content: "我的";
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-text-primary, #f2f3f5);
+}
+
+body[data-wx-tab="me"] #page-wechat-main[data-qq-skin="1"] .wechat-main-title::after {
+  display: none;
+}
+
+body[data-wx-tab="me"] #page-wechat-main[data-qq-skin="1"] .wechat-me-profile-card {
+  margin: 14px 12px 18px;
+  padding: 20px 16px;
+  gap: 14px;
+  border: 1px solid var(--sys-separator, rgba(255, 255, 255, 0.06)) !important;
+  border-radius: 18px !important;
+  background: var(--bg-surface, #161d26) !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+}
+
+body[data-wx-tab="me"] #page-wechat-main[data-qq-skin="1"] .me-card-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+body[data-wx-tab="me"] #page-wechat-main[data-qq-skin="1"] .me-card-name {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+body[data-wx-tab="me"] #page-wechat-main[data-qq-skin="1"] .me-card-wxid {
+  font-size: 11.5px;
+  color: var(--color-text-secondary, #8e8e93);
+}
+
+body[data-wx-tab="me"] #page-wechat-main[data-qq-skin="1"] .me-card-tag {
+  padding: 3px 9px;
+  border-radius: 9px;
+  background: rgba(18, 183, 245, 0.13);
+  color: #12b7f5;
+  font-size: 10.5px;
+}
+
+body[data-wx-tab="me"] #page-wechat-main[data-qq-skin="1"] .me-card-qr {
+  align-self: flex-start;
+  font-size: 0;
+}
+
+body[data-wx-tab="me"] #page-wechat-main[data-qq-skin="1"] .me-card-qr::before {
+  content: "切换账号";
+  display: inline-block;
+  padding: 5px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  font-size: 11px;
+  color: var(--color-text-secondary, #8e8e93);
+}
+
+body[data-wx-tab="me"] #page-wechat-main[data-qq-skin="1"] .wechat-me-menu-list {
+  margin: 0;
+  padding: 0 12px;
+  gap: 0;
+}
+
+body[data-wx-tab="me"] #page-wechat-main[data-qq-skin="1"] .me-menu-item {
+  padding: 16px 8px;
+  border: none !important;
+  border-bottom: 0.5px solid var(--sys-separator, rgba(255, 255, 255, 0.06)) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  gap: 14px;
+}
+
+body[data-wx-tab="me"] #page-wechat-main[data-qq-skin="1"] .me-menu-icon {
+  width: 26px;
+  text-align: center;
+  font-size: 18px;
+}
+
+body[data-wx-tab="me"] #page-wechat-main[data-qq-skin="1"] .me-menu-label {
+  font-size: 15px;
+}
+
+body[data-wx-tab="me"] #page-wechat-main[data-qq-skin="1"] .me-menu-arrow {
+  font-size: 16px;
+  color: var(--text-muted, #7d8590);
+}

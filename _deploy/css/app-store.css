@@ -1,0 +1,583 @@
+/* ==========================================================================
+   应用商店 · App Store 版
+   ========================================================================== */
+
+#page-app-store {
+  --asa-bg: #000;
+  --asa-card: #1c1c1e;
+  --asa-card-2: #232326;
+  --asa-line: rgba(255, 255, 255, .08);
+  --asa-text: #f5f5f7;
+  --asa-sub: #9b9aa2;
+  --asa-accent: #bdb4ee;
+  --asa-tile: rgba(255, 255, 255, .10);
+  --asa-tile-line: rgba(255, 255, 255, .16);
+  --asa-ico: #efeafc;
+  --asa-hero-a: #7568ab;
+  --asa-hero-b: #4a4177;
+  --asa-hero-c: #383153;
+  --asa-hero-text: #fbf9ff;
+  background: var(--asa-bg);
+  color: var(--asa-text);
+  display: flex;
+  flex-direction: column;
+}
+
+html[data-theme="light"] #page-app-store {
+  --asa-bg: #f2f2f7;
+  --asa-card: #ffffff;
+  --asa-card-2: #faf9ff;
+  --asa-line: rgba(0, 0, 0, .07);
+  --asa-text: #1b1a22;
+  --asa-sub: #77747f;
+  --asa-accent: #6b60a8;
+  --asa-tile: rgba(120, 112, 170, .13);
+  --asa-tile-line: rgba(120, 112, 170, .20);
+  --asa-ico: #403a5c;
+  --asa-hero-a: #d6d0f2;
+  --asa-hero-b: #c2bae6;
+  --asa-hero-c: #aea6d8;
+  --asa-hero-text: #2e2747;
+}
+
+.asa-wrap {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.asa-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 18px 78px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.asa-scroll::-webkit-scrollbar { display: none; }
+
+.asa-topline {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 6px 2px 14px;
+}
+.asa-eyebrow {
+  font-size: 12px;
+  letter-spacing: .4px;
+  color: var(--asa-sub);
+  margin-bottom: 4px;
+}
+.asa-bigtitle {
+  font-size: 32px;
+  line-height: 1.06;
+  font-weight: 800;
+  letter-spacing: -.8px;
+  color: var(--asa-text);
+}
+.asa-branddot {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.9), rgba(190,180,238,.6));
+  border: 1px solid var(--asa-tile-line);
+  margin-top: 6px;
+}
+
+/* ---------- 今日大卡 ---------- */
+.asa-hero {
+  position: relative;
+  border-radius: 22px;
+  padding: 20px 20px 18px;
+  background:
+    radial-gradient(120% 90% at 12% 0%, rgba(255,255,255,.30), rgba(255,255,255,0) 62%),
+    linear-gradient(155deg, var(--asa-hero-a) 0%, var(--asa-hero-b) 62%, var(--asa-hero-c) 100%);
+  color: var(--asa-hero-text);
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: 0 16px 34px rgba(30, 22, 60, .18);
+}
+.asa-hero-art {
+  position: absolute;
+  right: 16px;
+  top: 46px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  opacity: .92;
+}
+.asa-hero-chip {
+  width: 46px; height: 46px;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255, 255, 255, .18);
+  border: 1px solid rgba(255, 255, 255, .28);
+  backdrop-filter: blur(10px);
+}
+.asa-hero-chip svg { width: 21px; height: 21px; stroke: currentColor; stroke-width: 1.55; fill: none; opacity: .92; }
+html[data-theme="light"] .asa-hero-chip { background: rgba(255,255,255,.5); border-color: rgba(255,255,255,.7); }
+
+.asa-hero-label {
+  display: inline-block;
+  font-size: 11px;
+  letter-spacing: 1.2px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, .18);
+  border: 1px solid rgba(255, 255, 255, .26);
+  margin-bottom: 10px;
+}
+html[data-theme="light"] .asa-hero-label { background: rgba(255,255,255,.55); border-color: rgba(255,255,255,.75); }
+
+.asa-hero-title {
+  font-size: 25px;
+  font-weight: 800;
+  line-height: 1.24;
+  letter-spacing: -.4px;
+}
+.asa-hero-desc {
+  margin-top: 8px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  opacity: .82;
+  max-width: 250px;
+}
+.asa-hero-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+.asa-hero-hint { font-size: 11.5px; opacity: .72; }
+.asa-hero .asa-get {
+  background: rgba(255, 255, 255, .94);
+  color: #463c72;
+}
+.asa-hero .asa-get.is-open {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, .55);
+  color: #fbf9ff;
+}
+.asa-hero-title, .asa-hero-desc, .asa-hero-foot { position: relative; z-index: 1; max-width: 60%; }
+.asa-hero-desc { max-width: 56%; font-size: 12px; line-height: 1.5; }
+
+/* ---------- 通用小标题 ---------- */
+.asa-sec-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 26px 2px 12px;
+  font-size: 19px;
+  font-weight: 750;
+  letter-spacing: -.2px;
+  color: var(--asa-text);
+}
+.asa-sec-head:first-child { margin-top: 4px; }
+.asa-sec-more, .asa-sec-count {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--asa-sub);
+}
+.asa-sec-more { cursor: pointer; }
+
+/* ---------- 图标块 ---------- */
+.asa-ico-tile {
+  width: 52px; height: 52px;
+  border-radius: 13px;
+  flex: none;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--asa-tile);
+  border: 1px solid var(--asa-tile-line);
+}
+.asa-ico-tile svg {
+  width: 25px; height: 25px;
+  stroke: var(--asa-ico);
+  stroke-width: 1.55;
+  fill: none;
+}
+.asa-ico-tile.asa-ico-lg { width: 84px; height: 84px; border-radius: 19px; }
+.asa-ico-tile.asa-ico-lg svg { width: 40px; height: 40px; }
+
+/* ---------- 获取按钮 ---------- */
+.asa-get {
+  flex: none;
+  min-width: 62px;
+  height: 30px;
+  padding: 0 14px;
+  border-radius: 15px;
+  border: none;
+  background: var(--asa-tile);
+  color: var(--asa-accent);
+  font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: .2px;
+  cursor: pointer;
+}
+.asa-get.is-open {
+  background: transparent;
+  border: 1px solid var(--asa-tile-line);
+  color: var(--asa-text);
+}
+.asa-get:active { transform: scale(.96); }
+
+/* ---------- 2 列卡片 ---------- */
+.asa-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.asa-card {
+  background: var(--asa-card);
+  border: 1px solid var(--asa-line);
+  border-radius: 16px;
+  padding: 13px;
+  min-width: 0;
+}
+.asa-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.asa-card-top .asa-ico-tile { width: 44px; height: 44px; border-radius: 11px; }
+.asa-card-top .asa-ico-tile svg { width: 21px; height: 21px; }
+.asa-card-top .asa-get { min-width: 0; height: 26px; padding: 0 11px; font-size: 12.5px; border-radius: 13px; }
+.asa-card-name {
+  font-size: 14.5px;
+  font-weight: 700;
+  letter-spacing: -.1px;
+  color: var(--asa-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.asa-card-cat {
+  font-size: 11.5px;
+  color: var(--asa-sub);
+  margin-top: 2px;
+}
+.asa-card-desc {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--asa-sub);
+  margin-top: 7px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ---------- 列表行 ---------- */
+.asa-rows {
+  background: var(--asa-card);
+  border: 1px solid var(--asa-line);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.asa-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 13px;
+  border-bottom: 1px solid var(--asa-line);
+}
+.asa-row:last-child { border-bottom: none; }
+.asa-row-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+.asa-row .asa-ico-tile { width: 48px; height: 48px; border-radius: 12px; }
+.asa-row .asa-ico-tile svg { width: 23px; height: 23px; }
+.asa-row-txt { min-width: 0; }
+.asa-row-name {
+  font-size: 14.5px;
+  font-weight: 650;
+  color: var(--asa-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.asa-row-sub {
+  font-size: 11.5px;
+  color: var(--asa-sub);
+  margin-top: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- 分类 chip ---------- */
+.asa-chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 0 4px;
+  margin-bottom: 6px;
+  scrollbar-width: none;
+}
+.asa-chips::-webkit-scrollbar { display: none; }
+.asa-chip {
+  flex: none;
+  padding: 6px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--asa-tile-line);
+  background: transparent;
+  color: var(--asa-sub);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.asa-chip.on {
+  background: var(--asa-tile);
+  color: var(--asa-text);
+  border-color: transparent;
+}
+
+/* ---------- 搜索 ---------- */
+.asa-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 12px;
+  background: var(--asa-card);
+  border: 1px solid var(--asa-line);
+  color: var(--asa-sub);
+  margin-bottom: 6px;
+}
+.asa-search svg { width: 17px; height: 17px; flex: none; }
+.asa-search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--asa-text);
+  font-size: 16px;
+  outline: none;
+}
+.asa-empty {
+  text-align: center;
+  color: var(--asa-sub);
+  font-size: 13px;
+  padding: 40px 0;
+}
+
+/* ---------- 底部 Tab ---------- */
+.asa-tabbar {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding-bottom: 8px;
+  background: rgba(20, 20, 22, .82);
+  border-top: 1px solid var(--asa-line);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  z-index: 3;
+}
+html[data-theme="light"] .asa-tabbar { background: rgba(248, 247, 252, .86); }
+
+.asa-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  border: none;
+  background: none;
+  color: var(--asa-sub);
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 4px 20px;
+  cursor: pointer;
+}
+.asa-tab svg { width: 21px; height: 21px; }
+.asa-tab.active { color: var(--asa-accent); }
+
+/* ---------- 详情页 ---------- */
+.asa-detail {
+  position: absolute;
+  inset: 0;
+  background: var(--asa-bg);
+  transform: translateY(100%);
+  transition: transform .34s cubic-bezier(.3, .8, .2, 1);
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+}
+.asa-detail.show { transform: translateY(0); }
+
+.asa-detail-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 20px 40px;
+  scrollbar-width: none;
+}
+.asa-detail-scroll::-webkit-scrollbar { display: none; }
+
+.asa-detail-top { display: flex; justify-content: flex-end; padding: 4px 0 2px; }
+.asa-detail-close {
+  border: none;
+  background: none;
+  color: var(--asa-accent);
+  font-size: 14.5px;
+  font-weight: 650;
+  padding: 6px 2px;
+  cursor: pointer;
+}
+
+.asa-detail-head { display: flex; gap: 15px; align-items: center; margin: 8px 0 18px; }
+.asa-detail-titlebox { min-width: 0; }
+.asa-detail-name {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -.4px;
+  line-height: 1.2;
+  color: var(--asa-text);
+}
+.asa-detail-sub { font-size: 12.5px; color: var(--asa-sub); margin-top: 3px; }
+.asa-detail-by { font-size: 12px; color: var(--asa-accent); margin-top: 5px; }
+
+.asa-detail-actions { display: flex; gap: 10px; align-items: center; margin-bottom: 20px; }
+.asa-detail-actions .asa-get { height: 36px; border-radius: 18px; font-size: 14px; }
+.asa-ghost {
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 18px;
+  border: 1px solid var(--asa-tile-line);
+  background: transparent;
+  color: var(--asa-text);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.asa-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  padding: 12px 0 14px;
+  border-top: 1px solid var(--asa-line);
+  border-bottom: 1px solid var(--asa-line);
+  margin-bottom: 18px;
+}
+.asa-stat { text-align: center; }
+.asa-stat b { display: block; font-size: 17px; font-weight: 750; color: var(--asa-text); letter-spacing: -.3px; }
+.asa-stat span { display: block; font-size: 10.5px; color: var(--asa-sub); margin-top: 2px; letter-spacing: .3px; }
+
+.asa-shots {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  margin-bottom: 18px;
+  scrollbar-width: none;
+}
+.asa-shots::-webkit-scrollbar { display: none; }
+.asa-shot {
+  flex: none;
+  width: 132px;
+  height: 208px;
+  border-radius: 15px;
+  border: 1px solid var(--asa-tile-line);
+  background:
+    radial-gradient(90% 60% at 20% 0%, rgba(255,255,255,.20), rgba(255,255,255,0) 70%),
+    linear-gradient(160deg, rgba(150,140,200,.26), rgba(120,108,170,.12));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 12px 10px;
+  box-sizing: border-box;
+}
+.asa-shot-frame {
+  flex: 1;
+  width: 100%;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .10);
+  border: 1px solid rgba(255, 255, 255, .16);
+  padding: 12px 10px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+html[data-theme="light"] .asa-shot-frame { background: rgba(255,255,255,.56); border-color: rgba(255,255,255,.75); }
+.asa-shot-bar {
+  display: block;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, .34);
+  width: 76%;
+}
+html[data-theme="light"] .asa-shot-bar { background: rgba(90,80,130,.22); }
+.asa-shot-bar.short { width: 46%; }
+.asa-shot-block {
+  display: block;
+  height: 46px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .16);
+  margin: 4px 0;
+}
+html[data-theme="light"] .asa-shot-block { background: rgba(120,112,170,.16); }
+.asa-shot-cap {
+  font-size: 9.5px;
+  letter-spacing: .4px;
+  color: var(--asa-sub);
+  margin-top: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.asa-detail-desc {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--asa-text);
+  opacity: .86;
+  margin-bottom: 20px;
+}
+
+.asa-info { border-top: 1px solid var(--asa-line); }
+.asa-info-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--asa-line);
+  font-size: 12.5px;
+}
+.asa-info-row span:first-child { color: var(--asa-sub); }
+.asa-info-row span:last-child { color: var(--asa-text); font-weight: 600; }
+
+/* ---------- toast ---------- */
+.asa-toast {
+  position: absolute;
+  left: 50%;
+  bottom: 84px;
+  transform: translate(-50%, 10px);
+  max-width: 78%;
+  padding: 9px 16px;
+  border-radius: 18px;
+  background: rgba(28, 24, 46, .92);
+  color: #f5f1ff;
+  font-size: 12.5px;
+  letter-spacing: .2px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .22s, transform .22s;
+  z-index: 9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.asa-toast.show { opacity: 1; transform: translate(-50%, 0); }

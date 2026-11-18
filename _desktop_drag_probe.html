@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>desktop drag probe</title>
+  <style>
+    html, body { margin: 0; padding: 0; width: 500px; height: 1200px; overflow: hidden; background: #000; }
+    iframe { display: block; width: 500px; height: 1200px; border: 0; }
+    #probe-result { position: fixed; left: 0; top: 0; z-index: 9999; margin: 0; padding: 4px; background: rgba(0,0,0,.82); color: #8f8; font: 11px/1.45 monospace; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+<script>
+  const clean = new URLSearchParams(location.search).get('clean') === '1';
+  const debug = [];
+  const f = document.createElement('iframe');
+  f.src = '/index.html?v=2026111197';
+
+  function wait(ms) { return new Promise(function(resolve) { setTimeout(resolve, ms); }); }
+
+  function center(el) {
+    const r = el.getBoundingClientRect();
+    return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+  }
+
+  function fire(name, target, x, y, pointerId) {
+    let PE = PointerEvent;
+    try {
+      if (target.ownerDocument && target.ownerDocument.defaultView) PE = target.ownerDocument.defaultView.PointerEvent || PE;
+      else if (target.document && target.document.defaultView) PE = target.document.defaultView.PointerEvent || PE;
+      else if (target.PointerEvent) PE = target.PointerEvent;
+    } catch (e) {}
+    target.dispatchEvent(new PE(name, {
+      bubbles: true,
+      cancelable: true,
+      pointerId: pointerId || 1,
+      pointerType: 'touch',
+      button: 0,
+      buttons: name === 'pointerup' ? 0 : 1,
+      clientX: x,
+      clientY: y
+    }));
+  }
+
+  async function drag(w, fromEl, toEl, holdMs) {
+    const a = center(fromEl);
+    const b = center(toEl);
+    const tag = (fromEl.getAttribute('data-dock-index') !== null ? 'dock' + fromEl.getAttribute('data-dock-index') : 'slot' + fromEl.getAttribute('data-slot-index')) + '->' + (toEl.getAttribute('data-dock-index') !== null ? 'dock' + toEl.getAttribute('data-dock-index') : 'slot' + toEl.getAttribute('data-slot-index'));
+    debug.push('[drag] start ' + tag + ' ' + JSON.stringify(a) + ' -> ' + JSON.stringify(b));
+    fromEl.addEventListener('pointerdown', function(ev) { debug.push('[evt] down pid=' + ev.pointerId); }, { once: true });
+    w.addEventListener('pointermove', function(ev) { debug.push('[evt] win move pid=' + ev.pointerId); }, { once: true });
+    w.addEventListener('pointerup', function(ev) { debug.push('[evt] win up pid=' + ev.pointerId); }, { once: true });
+    fire('pointerdown', fromEl, a.x, a.y, 7);
+    await wait(holdMs || 720);
+    debug.push('[drag] hold ' + tag + ' ' + JSON.stringify({
+      ghost: !!w.document.querySelector('.grid-drag-ghost'),
+      dockPlaceholder: !!w.document.querySelector('.dock-item-placeholder'),
+      gridPlaceholder: !!w.document.querySelector('.grid-item-placeholder'),
+      edit: w.document.body.classList.contains('ios-edit-mode')
+    }));
+    fire('pointermove', w, b.x - 20, b.y - 12, 7);
+    await wait(60);
+    debug.push('[drag] move ' + tag + ' ' + JSON.stringify({
+      ghost: !!w.document.querySelector('.grid-drag-ghost'),
+      drop: !!w.document.querySelector('.ios-drop-target, .dock-drop-target'),
+      state: w.__momoDragDebug ? w.__momoDragDebug() : null,
+      target: (function(){ const el = w.document.elementsFromPoint(b.x, b.y); return el && el.length ? el.slice(0,3).map(function(x){return x.className || x.id || x.tagName;}) : null; })()
+    }));
+    fire('pointermove', w, b.x, b.y, 7);
+    await wait(80);
+    fire('pointerup', w, b.x, b.y, 7);
+    await wait(700);
+    debug.push('[drag] done ' + tag + ' ' + JSON.stringify({
+      ghost: !!w.document.querySelector('.grid-drag-ghost'),
+      dock: Array.from(w.document.querySelectorAll('#home-dock-bar .dock-app-item')).map(function(el){ const n = el.querySelector('.dock-label'); return n ? n.textContent.trim() : '(空)'; })
+    }));
+  }
+
+  f.addEventListener('load', async function() {
+    const w = f.contentWindow;
+    const d = f.contentDocument;
+    const lines = [];
+    function ok(name, cond, extra) { lines.push((cond ? 'PASS ' : 'FAIL ') + name + (extra ? ' :: ' + extra : '')); }
+
+    try {
+      await wait(500);
+      if (typeof w.closeAllModals === 'function') w.closeAllModals();
+      w.addEventListener('error', function(ev) {
+        debug.push('[ERR] ' + ev.message + ' @ ' + (ev.filename || '') + ':' + (ev.lineno || ''));
+      });
+      w.addEventListener('unhandledrejection', function(ev) {
+        debug.push('[REJ] ' + (ev.reason && ev.reason.message ? ev.reason.message : ev.reason));
+      });
+      const calm = d.createElement('style');
+      calm.textContent = '*,*::before,*::after{transition:none!important;animation:none!important}';
+      (d.head || d.documentElement).appendChild(calm);
+
+      const bar = d.getElementById('home-dock-bar');
+      ok('Dock 已动态渲染', !!bar && bar.querySelectorAll('.dock-app-item').length === 4,
+        bar ? bar.querySelectorAll('.dock-app-item').length + ' 项' : '无 bar');
+
+      const names = function() {
+        return Array.from(bar.querySelectorAll('.dock-app-item')).map(function(el) {
+          const label = el.querySelector('.dock-label');
+          return label ? label.textContent.trim() : '(空)';
+        });
+      };
+      const before = names();
+      ok('Dock 默认四项', before.join('|') === '微信|字卡|此时此刻|记忆宫殿', before.join('|'));
+
+      // Dock 0 <-> Dock 1
+      await drag(w, bar.querySelector('.dock-app-item[data-dock-index="0"]'), bar.querySelector('.dock-app-item[data-dock-index="1"]'), 750);
+      const afterDock = names();
+      ok('Dock 内拖动互换', afterDock[0] === '字卡' && afterDock[1] === '微信', afterDock.join('|'));
+      const savedDock = JSON.parse(localStorage.getItem('momo_dock_slots_v1') || '[]');
+      ok('Dock 互换已持久化', savedDock.length === 4 && savedDock[0].id === 'app-wordcards', savedDock.map(function(i){return i && i.id;}).join('|'));
+
+      // 桌面 0 -> 桌面 2（同页让位换位）
+      const grid = d.querySelector('.ios-page-slide[data-page-index="0"] .ios-dynamic-grid');
+      const tile0 = grid.querySelector('.grid-drag-item[data-slot-index="0"]');
+      const tile2 = grid.querySelector('.grid-drag-item[data-slot-index="2"]');
+      const desktopBefore = Array.from(grid.querySelectorAll('.grid-drag-item[data-slot-index]')).slice(0, 4).map(function(el) {
+        const name = el.querySelector('.ios-app-name');
+        return name ? name.textContent.trim() : '(空)';
+      });
+      await drag(w, tile0, tile2, 200);
+      const desktopAfter = Array.from(d.querySelector('.ios-page-slide[data-page-index="0"] .ios-dynamic-grid').querySelectorAll('.grid-drag-item[data-slot-index]')).slice(0, 4).map(function(el) {
+        const name = el.querySelector('.ios-app-name');
+        return name ? name.textContent.trim() : '(空)';
+      });
+      ok('桌面同页拖动换位', desktopAfter.join('|') === '世界书|设置|应用商店|外观',
+        desktopBefore.join('|') + ' -> ' + desktopAfter.join('|'));
+
+      // 桌面 0 -> Dock 0（跨区互换）
+      const dock0 = d.querySelector('#home-dock-bar .dock-app-item[data-dock-index="0"]');
+      const desk0 = d.querySelector('.ios-page-slide[data-page-index="0"] .ios-dynamic-grid .grid-drag-item[data-slot-index="0"]');
+      await drag(w, desk0, dock0, 200);
+      const crossDock = names();
+      const crossDesk = Array.from(d.querySelector('.ios-page-slide[data-page-index="0"] .ios-dynamic-grid').querySelectorAll('.grid-drag-item[data-slot-index]')).slice(0, 1).map(function(el) {
+        const name = el.querySelector('.ios-app-name');
+        return name ? name.textContent.trim() : '(空)';
+      });
+      ok('桌面拖入 Dock 互换', crossDock[0] === '世界书' && crossDesk[0] === '字卡', crossDock.join('|') + ' / 桌面0=' + crossDesk.join('|'));
+
+      // Dock 1 -> 桌面 1（跨区互换）
+      const dock1 = d.querySelector('#home-dock-bar .dock-app-item[data-dock-index="1"]');
+      const desk1 = d.querySelector('.ios-page-slide[data-page-index="0"] .ios-dynamic-grid .grid-drag-item[data-slot-index="1"]');
+      await drag(w, dock1, desk1, 200);
+      const finalDock = names();
+      const finalDesk = Array.from(d.querySelector('.ios-page-slide[data-page-index="0"] .ios-dynamic-grid').querySelectorAll('.grid-drag-item[data-slot-index]')).slice(0, 2).map(function(el) {
+        const name = el.querySelector('.ios-app-name');
+        return name ? name.textContent.trim() : '(空)';
+      });
+      ok('Dock 拖回桌面互换', finalDock[1] === '设置' && finalDesk[1] === '微信', finalDock.join('|') + ' / 桌面=' + finalDesk.join('|'));
+
+      ok('拖拽后 Dock 仍为 4 项', bar.querySelectorAll('.dock-app-item').length === 4);
+      ok('无遗留拖拽 ghost', !d.querySelector('.grid-drag-ghost'));
+
+      // 落到无效区域：应回弹并清理，不改数据
+      const srcTile = d.querySelector('.ios-page-slide[data-page-index="0"] .ios-dynamic-grid .grid-drag-item[data-slot-index="0"]');
+      const srcCenter = center(srcTile);
+      const beforeBack = srcTile.querySelector('.ios-app-name').textContent.trim();
+      fire('pointerdown', srcTile, srcCenter.x, srcCenter.y, 7);
+      await wait(200);
+      fire('pointermove', w, 250, 300, 7);
+      await wait(80);
+      fire('pointerup', w, 250, 300, 7);
+      await wait(700);
+      const backTile = d.querySelector('.ios-page-slide[data-page-index="0"] .ios-dynamic-grid .grid-drag-item[data-slot-index="0"]');
+      const afterBack = backTile && backTile.querySelector('.ios-app-name') ? backTile.querySelector('.ios-app-name').textContent.trim() : '(空)';
+      ok('无效落点回弹清理', beforeBack === afterBack && !d.querySelector('.grid-drag-ghost'), beforeBack + ' -> ' + afterBack);
+
+      lines.push('--- debug ---');
+      debug.forEach(function(item) { lines.push(item); });
+
+      if (!clean) {
+        const pre = document.createElement('pre');
+        pre.id = 'probe-result';
+        pre.textContent = lines.join('\n');
+        document.body.appendChild(pre);
+      }
+    } catch (e) {
+      lines.push('ERROR ' + (e && e.stack ? e.stack : e));
+      if (!clean) {
+        const pre = document.createElement('pre');
+        pre.id = 'probe-result';
+        pre.textContent = lines.join('\n');
+        document.body.appendChild(pre);
+      }
+    }
+  });
+  document.body.appendChild(f);
+</script>
+</body>
+</html>

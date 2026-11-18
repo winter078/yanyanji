@@ -1,0 +1,22 @@
+# 大文件 / 构建产物，不进仓库
+小手机-便携版.zip
+小手机-便携版/
+ocr_vendor/
+node_modules/
+_deploy/.wrangler/
+_wrangler_tmp/
+.wrangler/
+*.zip
+*.pyd
+*.dll
+
+# 备份与临时
+*.bak*
+_backup/
+_restore/
+shots/
+*.log
+# 开发期的截图/预览，不进仓库
+_shots/
+_photo_widgets_preview*
+

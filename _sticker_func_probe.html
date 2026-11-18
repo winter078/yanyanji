@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>sticker library probe</title>
+  <style>
+    html, body { margin: 0; padding: 0; width: 500px; height: 1000px; overflow: hidden; background: #000; }
+    iframe { display: block; width: 500px; height: 1000px; border: 0; }
+  </style>
+</head>
+<body>
+<script>
+  const IMG_A = 'https://images.unsplash.com/photo-1518791841217-8f162f1e1131?w=220&auto=format&fit=crop&q=80';
+  const IMG_B = 'https://images.unsplash.com/photo-1585110396000-c9ffd4e4b308?w=220&auto=format&fit=crop&q=80';
+  const chars = [{ id: 'c-a', name: '阿岚', avatar: IMG_A, tag: '角色', intro: '会陪你熬夜聊天', prompt: '', directives: '', relations: [], starred: false, createdAt: 1 }];
+  const group = { id: 'g1', name: '周末局', members: ['me', 'c-a'], history: [], settings: {}, createdAt: 1 };
+  localStorage.setItem('momo_characters', JSON.stringify(chars));
+  localStorage.setItem('momo_characters_trash', '[]');
+  localStorage.setItem('momo_active_char', 'c-a');
+  localStorage.setItem('momo_user_nick', '末末');
+  localStorage.setItem('momo_chat_histories', JSON.stringify({ 'c-a': [] }));
+  localStorage.setItem('momo_chat_history', '[]');
+  localStorage.setItem('momo_chat_history_scoped_v1', '1');
+  localStorage.setItem('momo_wechat_friends', JSON.stringify(['c-a']));
+  localStorage.setItem('momo_chat_groups', JSON.stringify([group]));
+  localStorage.removeItem('momo_stickers_v10');
+  localStorage.removeItem('momo_sticker_categories_v6');
+  localStorage.removeItem('momo_deleted_sticker_ids');
+
+  const f = document.createElement('iframe');
+  f.src = '/index.html?v=2026111150';
+  f.addEventListener('load', function () {
+    setTimeout(run, 900);
+  });
+
+  function run() {
+    const w = f.contentWindow;
+    const d = f.contentDocument;
+    const out = [];
+    const ok = function (label, cond, extra) { out.push((cond ? 'PASS ' : 'FAIL ') + label + (extra ? ' :: ' + extra : '')); };
+    const lib = function () { return JSON.parse(localStorage.getItem('momo_stickers_v10') || '[]'); };
+    try {
+      if (typeof w.openFriendChat === 'function') w.openFriendChat('c-a');
+      w.toggleStickerDrawer();
+      w.openStickerEditor();
+
+      // 1. 用户选本地图 + 自己写名称/分类/说明，保存
+      const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=';
+      const file = new File([atob(png.split(',')[1])], 'bunny.png', { type: 'image/png' });
+      const input = d.getElementById('input-sticker-pic');
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      input.files = dt.files;
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+
+      setTimeout(function () {
+        const preview = d.getElementById('sticker-editor-preview');
+        ok('editor preview gets local image', !!preview && /^data:image\//.test(preview.src || ''), preview ? preview.src.slice(0, 24) : 'no preview');
+        d.getElementById('input-editor-sticker-name').value = '兔兔生气';
+        d.getElementById('input-editor-sticker-note').value = '炸毛但没真生气';
+        const catSel = d.getElementById('select-editor-sticker-cat');
+        ok('category select populated', !!catSel && catSel.options.length > 0, catSel ? catSel.options.length + ' options' : 'none');
+        w.submitStickerEditor();
+
+        const list = lib();
+        ok('saved exactly one user sticker', list.length === 1, 'length=' + list.length);
+        const item = list[0] || {};
+        ok('saved name is user-typed, not filename', item.name === '兔兔生气', item.name || 'missing');
+        ok('saved category', item.category === '默认', item.category || 'missing');
+        ok('saved note', item.note === '炸毛但没真生气', item.note || 'missing');
+        ok('saved image as local data url', /^data:image\//.test(item.url || ''));
+        ok('no built-in preset injected', !list.some(s => /^st_cat_momo_|^st_[1-4]$/.test(s.id)), list.map(s => s.id).join(','));
+
+        const summary = w.getStickerSummaryForAi();
+        ok('AI summary sees name + note', summary.indexOf('兔兔生气') >= 0 && summary.indexOf('炸毛但没真生气') >= 0, summary.replace(/\n/g, ' / '));
+        ok('AI summary sees category', summary.indexOf('默认组') >= 0);
+
+        const aiText = w.stickerContentToAiText('[STICKER:' + item.id + '|' + item.name + ']');
+        ok('AI sticker context is text only', aiText.indexOf('兔兔生气') >= 0 && aiText.indexOf('data:image') < 0 && aiText.indexOf('base64') < 0, aiText);
+
+        // 2. 用户发送：历史里不存图片 URL
+        w.sendStickerMessage(item);
+        const last = (w.appData.chatHistory || []).slice(-1)[0] || {};
+        ok('user send history stores id+name, not image', last.content === '[STICKER:' + item.id + '|兔兔生气]', last.content || 'missing');
+        ok('user send history has no base64', String(last.content || '').indexOf('data:image') < 0 && String(last.content || '').indexOf('base64') < 0);
+
+        // 3. 角色按文字名发：渲染成真实图片
+        w.renderMessageBubble('assistant', '[表情包: 兔兔生气]');
+        const stickerImgs = Array.from(d.querySelectorAll('#message-container .msg-sticker-bubble img'));
+        ok('character sticker command renders image', stickerImgs.length > 0, 'count=' + stickerImgs.length);
+        ok('renderer resolves saved data url', stickerImgs.length > 0 && /^data:image\//.test(stickerImgs[stickerImgs.length - 1].src || ''));
+
+        // 4. 编辑名称/分类/说明，不改图片；旧消息通过 id 仍解析到新名称
+        w.openStickerEditor(item.id);
+        d.getElementById('input-editor-sticker-name').value = '兔兔炸毛';
+        d.getElementById('input-editor-sticker-note').value = '被逗到炸毛';
+        const cat2 = d.getElementById('select-editor-sticker-cat');
+        const opt = document.createElement('option'); opt.value = '兔子'; opt.text = '兔子'; cat2.appendChild(opt); cat2.value = '兔子';
+        w.submitStickerEditor();
+        const edited = lib()[0] || {};
+        ok('edit updates name', edited.name === '兔兔炸毛', edited.name || 'missing');
+        ok('edit updates category', edited.category === '兔子', edited.category || 'missing');
+        ok('edit keeps image', /^data:image\//.test(edited.url || ''));
+        const aiAfterEdit = w.stickerContentToAiText('[STICKER:' + item.id + '|兔兔生气]');
+        ok('old message id resolves to new name', aiAfterEdit.indexOf('兔兔炸毛') >= 0 && aiAfterEdit.indexOf('兔子') >= 0, aiAfterEdit);
+
+        // 5. 全局：换角色不影响库
+        w.appData.currentCharId = 'c-b';
+        const summaryAfterSwitch = w.getStickerSummaryForAi();
+        ok('library is global, not per character', summaryAfterSwitch === w.getStickerSummaryForAi() && summaryAfterSwitch.indexOf('兔兔炸毛') >= 0);
+
+        // 6. 群聊：用户发 + 角色按名字发
+        w.enterGroupChat('g1');
+        const g = w.findGroup('g1');
+        w.groupSendStickerMessage(edited);
+        ok('group user sticker stored as text', !!(g && g.history.length) && /^\[STICKER:/.test(g.history[g.history.length - 1].content || ''));
+        g.history.push({ role: 'assistant', speakerId: 'c-a', name: '阿岚', content: '[表情包: 兔兔炸毛]', time: '22:20' });
+        w.enterGroupChat('g1');
+        setTimeout(function () {
+          const groupStickerImgs = Array.from(d.querySelectorAll('#message-container .msg-sticker-bubble img'));
+          ok('group character sticker renders image', groupStickerImgs.length > 0, 'count=' + groupStickerImgs.length);
+          render();
+        }, 300);
+      }, 350);
+    } catch (e) {
+      out.push('ERROR ' + e.message);
+      render();
+    }
+
+    function render() {
+      const pre = document.createElement('pre');
+      pre.id = 'probe-result';
+      pre.style.cssText = 'position:fixed;left:0;bottom:0;z-index:9999;width:500px;margin:0;padding:10px 14px;background:rgba(16,16,20,.94);color:#b9f7c1;font:12px/1.45 monospace;white-space:pre-wrap;box-sizing:border-box;';
+      pre.textContent = out.join('\n');
+      document.body.appendChild(pre);
+      document.title = 'sticker probe done';
+    }
+  }
+  document.body.appendChild(f);
+</script>
+</body>
+</html>
