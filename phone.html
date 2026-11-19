@@ -7239,8 +7239,8 @@ html.ios .home-dock-bar {
   -webkit-box-shadow: none !important;
   margin-bottom: 0 !important;
 }
+/* 画布底色交给取色脚本决定（这里不再钉死颜色，否则会把取样结果盖掉） */
 html.ios, html.ios body {
-  background-color: rgb(21, 23, 27) !important;
   background-image: none !important;
 }
 </style>
@@ -7272,9 +7272,26 @@ html.ios, html.ios body {
     if (!ps) return;
 
     function wallpaperUrl() {
-      var im = getComputedStyle(ps).backgroundImage || '';
-      var m = /url\(["']?([^"')]+)["']?\)/.exec(im);
-      return m ? m[1] : null;
+      /* 每次重新取节点：壁纸层可能被页面重绘替换 */
+      var cur = document.getElementById('phone-screen-root');
+      if (cur) {
+        var im = getComputedStyle(cur).backgroundImage || '';
+        var m = /url\(["']?([^"')]+)["']?\)/.exec(im);
+        if (m && im !== 'none') return m[1];
+      }
+      /* 兜底：找覆盖大半屏、且带图片的元素（壁纸可能挂在别的层） */
+      var W = window.innerWidth, H2 = window.innerHeight;
+      var all = document.querySelectorAll('div, section, body, html');
+      for (var i = 0; i < all.length; i++) {
+        var el = all[i], r = el.getBoundingClientRect();
+        if (r.width < W * 0.9 || r.height < H2 * 0.85) continue;
+        var bgi = getComputedStyle(el).backgroundImage || '';
+        if (bgi !== 'none' && bgi.indexOf('url(') === 0) {
+          var mm = /url\(["']?([^"')]+)["']?\)/.exec(bgi);
+          if (mm) return mm[1];
+        }
+      }
+      return null;
     }
 
     function hex2(n) { return ('0' + n).toString(16).slice(-2); }
@@ -7415,6 +7432,9 @@ html.ios, html.ios body {
       lines.push(probePt(20, 30));
       lines.push(probePt(195, 400));
       lines.push(probePt(195, 820));
+      lines.push('取样色 ' + (window.__momStripColor ? String(window.__momStripColor()) : '未跑') +
+        ' | 画布html ' + getComputedStyle(document.documentElement).backgroundColor +
+        ' | body ' + getComputedStyle(document.body).backgroundColor);
       lines.push('脚本已跑 ' + (window.__momFullBleed ? 'yes' : 'no') + ' | 轻点可收起');
       } else {
         lines.push('…轻点固定可看壁纸挂在哪一层');
