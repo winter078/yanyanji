@@ -5237,8 +5237,8 @@
               </div>
               <div class="mz-scroll">
                 <div class="mz-h1">唱片墙</div>
-                <div class="mz-shelf" id="mz-shelf-user"></div>
-                <div class="mz-shelf" id="mz-shelf-bot" style="display: none;"></div>
+                <div class="mz-shelf-wrap" id="mz-shelf-user"></div>
+                <div class="mz-shelf-wrap" id="mz-shelf-bot" style="display: none;"></div>
               </div>
             </div>
 
@@ -5332,6 +5332,11 @@
                   <span class="music-volume-icon" id="music-volume-icon" onclick="toggleMuteMusic()" title="静音/恢复">🔈</span>
                   <input type="range" class="music-volume-slider" id="music-volume-slider" min="0" max="100" value="80" oninput="changeMusicVolume(this.value)" />
                   <span class="music-volume-val" id="music-volume-val">80%</span>
+                </div>
+
+                <div class="mz-sheet-row mz-sheet-actions">
+                  <button class="mz-wall-btn" id="mz-wall-user" onclick="mzShelfToggle('user')">摆到我的唱片墙</button>
+                  <button class="mz-wall-btn" id="mz-wall-bot" onclick="mzShelfToggle('bot')">摆到角色的唱片墙</button>
                 </div>
 
                 <div class="mz-sheet-row mz-sheet-actions">
