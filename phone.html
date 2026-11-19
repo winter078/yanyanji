@@ -143,14 +143,13 @@
     })();
   </script>
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
   <meta name="apple-mobile-web-app-title" content="言言机" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="theme-color" content="#15171b" />
-  <!-- 这套组合照着开源小手机 ai-virtual-phone（float）抄：
-       black-translucent = 内容画到状态栏下面（顶栏透明、白字压在壁纸上，就是"图一"那种）；
-       manifest 里的 display_override:fullscreen = 整屏 844（不是 797）；
-       viewport-fit=cover = 让 env(safe-area-inset-*) 生效。三样缺一样，就退回浅色实心条或多一条底带。 -->
+  <!-- 2026-11-20 决定：用 black（黑底白字、内容从状态栏下沿开始）。
+      理由：black 模式下系统把页面放在 47~844，底栏能贴屏幕底（用户选的"图一底栏"）；
+      而 black-translucent 会把页面放在 0~797，底部永远空出 47（系统用 manifest 底色填，页面改不到）。 -->
   <link rel="manifest" href="/manifest.json" />
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
