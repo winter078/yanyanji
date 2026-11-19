@@ -2763,3 +2763,10 @@ body.ios-edit-mode .dw-avatar .dw-avatar-edit { opacity: 1; }
   text-align: center;
 }
 
+
+/* 相片组件与其正下方那排图标之间补出和图标行一致的呼吸，避免大卡片贴着下一行图标 */
+#page-home .ios-dynamic-grid .photo-widget.pw-single,
+#page-home .ios-dynamic-grid .photo-widget.pw-pair {
+  min-height: 174px;
+  margin-bottom: 8px;
+}
