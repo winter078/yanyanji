@@ -7192,20 +7192,42 @@
     try { new MutationObserver(build).observe(ph, { attributes: true, attributeFilter: ['style', 'class'] }); } catch (e) {}
   })();
 </script>
+<!--__PROBE_START-->
 <script>
-  /* 临时探针：打开页面后自动显示 12 秒，把真实数字写在屏幕上（不用手势、不用网址参数）。
-     目的：确认 iOS 到底给页面多少高度（797 还是 844）、壁纸挂在哪一层、那 47 由谁填。 */
+  /* 临时探针 v2：打开页面自动出现，把真实数字写在屏幕上。
+     如果是在浏览器里打开的（standalone=0），第一行会红字提示“数据不算数”。
+     轻点一下可以固定住不消失，再点一下恢复自动消失。 */
   (function () {
+    var PIN = false;
+    function findBgs() {
+      var out = [], all = document.querySelectorAll('*');
+      for (var i = 0; i < all.length && out.length < 6; i++) {
+        var el = all[i], cs = getComputedStyle(el), bg = cs.backgroundImage;
+        if (bg && bg !== 'none' && bg.indexOf('url(') >= 0) {
+          var tag = el.tagName.toLowerCase();
+          var id = el.id ? '#' + el.id : '';
+          var cls = (el.className && typeof el.className === 'string') ? '.' + el.className.trim().split(/\s+/).join('.') : '';
+          var u = bg.replace(/^url\(["']?/, '').slice(0, 42);
+          out.push(tag + id + cls + ' → ' + u);
+        }
+      }
+      return out.length ? out : ['(整页没有 background-image)'];
+    }
     function show() {
       var t = document.getElementById('__probe');
       if (!t) {
         t = document.createElement('div');
         t.id = '__probe';
         t.style.cssText = 'position:fixed;left:0;right:0;top:56px;z-index:2147483647;' +
-          'background:rgba(0,0,0,.92);color:#7cf6ff;font:13px/1.6 monospace;' +
-          'padding:10px 12px;white-space:pre-wrap;pointer-events:none;';
+          'background:rgba(0,0,0,.94);color:#7cf6ff;font:12px/1.55 monospace;' +
+          'padding:9px 11px;white-space:pre-wrap;';
+        t.addEventListener('click', function () { PIN = true; paint(); });
         (document.body || document.documentElement).appendChild(t);
       }
+      paint();
+    }
+    function paint() {
+      var t = document.getElementById('__probe');
       var ph = document.getElementById('phone-screen-root');
       var home = document.getElementById('page-home');
       var dock = document.getElementById('home-dock-bar');
@@ -7215,30 +7237,38 @@
       var r = ph ? ph.getBoundingClientRect() : null;
       var rh = home ? home.getBoundingClientRect() : null;
       var rd = dock ? dock.getBoundingClientRect() : null;
-      var img = cs ? (cs.backgroundImage || 'none') : 'none';
-      img = img.replace(/^url\(["']?/, '').slice(0, 55);
-      var lines = [
-        '视口 ' + window.innerWidth + ' x ' + window.innerHeight + ' | screen ' + screen.width + ' x ' + screen.height + ' | dpr ' + devicePixelRatio,
-        '安全区 上' + (top ? Math.round(top.getBoundingClientRect().height) : '-') +
-          ' 下' + (bot ? Math.round(bot.getBoundingClientRect().height) : '-') +
-          ' | standalone ' + (navigator.standalone ? 1 : 0),
-        '手机屏 top' + (r ? Math.round(r.top) : -1) + ' h' + (r ? Math.round(r.height) : -1) + ' 底' + (r ? Math.round(r.bottom) : -1),
-        '首页 top' + (rh ? Math.round(rh.top) : -1) + ' h' + (rh ? Math.round(rh.height) : -1) + ' 底' + (rh ? Math.round(rh.bottom) : -1),
-        'dock 底' + (rd ? Math.round(rd.bottom) : -1) + ' | 缝 ' + (r && rd ? Math.round(r.bottom - rd.bottom) : -1),
-        '壁纸 ' + img,
-        '手机屏底色 ' + (cs ? cs.backgroundColor : '-') + ' | 尺寸 ' + (cs ? cs.backgroundSize : '-'),
-        'html ' + document.documentElement.clientHeight + '/' + getComputedStyle(document.documentElement).backgroundColor +
-          ' | body ' + document.body.clientHeight + '/' + getComputedStyle(document.body).backgroundColor,
-        '脚本已跑 ' + (window.__momFullBleed ? 'yes' : 'no')
-      ];
-      t.textContent = lines.join('\n');
+      var standalone = (navigator.standalone === true) ? 1 : 0;
+      var lines = [];
+      lines.push('<span style="color:' + (standalone ? '#6ff39b' : '#ff5d5d') + '">' +
+        (standalone ? '✅ 主屏独立模式（这份数据才算数）' : '⚠ 这是在浏览器里打开的，数据不算数 → 请点主屏上的言言机图标') +
+        '</span>');
+      lines.push('视口 ' + window.innerWidth + ' x ' + window.innerHeight + ' | screen ' + screen.width + ' x ' + screen.height + ' | dpr ' + devicePixelRatio + ' | standalone ' + standalone);
+      lines.push('安全区 上' + (top ? Math.round(top.getBoundingClientRect().height) : '-') +
+        ' 下' + (bot ? Math.round(bot.getBoundingClientRect().height) : '-'));
+      lines.push('手机屏 top' + (r ? Math.round(r.top) : -1) + ' h' + (r ? Math.round(r.height) : -1) + ' 底' + (r ? Math.round(r.bottom) : -1));
+      lines.push('首页 top' + (rh ? Math.round(rh.top) : -1) + ' h' + (rh ? Math.round(rh.height) : -1) + ' 底' + (rh ? Math.round(rh.bottom) : -1));
+      lines.push('dock 底' + (rd ? Math.round(rd.bottom) : -1) + ' | 缝 ' + (r && rd ? Math.round(r.bottom - rd.bottom) : -1));
+      lines.push('手机屏底色 ' + (cs ? cs.backgroundColor : '-') + ' | 尺寸 ' + (cs ? cs.backgroundSize : '-'));
+      lines.push('html ' + document.documentElement.clientHeight + '/' + getComputedStyle(document.documentElement).backgroundColor +
+        ' | body ' + document.body.clientHeight + '/' + getComputedStyle(document.body).backgroundColor);
+      if (PIN) {
+        lines.push('── 带 background-image 的元素 ──');
+        lines.push(findBgs().join('\n'));
+        lines.push('脚本已跑 ' + (window.__momFullBleed ? 'yes' : 'no') + ' | 轻点可收起');
+      } else {
+        lines.push('…轻点固定可看壁纸挂在哪一层');
+      }
+      t.innerHTML = lines.join('\n');
       t.style.display = 'block';
-      setTimeout(function () { t.style.display = 'none'; }, 12000);
+      t.style.pointerEvents = 'auto';
+      if (!PIN) setTimeout(function () { if (!PIN) t.style.display = 'none'; }, 25000);
     }
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { setTimeout(show, 800); });
-    else setTimeout(show, 800);
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { setTimeout(show, 600); });
+    else setTimeout(show, 600);
   })();
 </script>
+<!--__PROBE_END-->
+
 <script src="js/version-watch.js?v=2026112001"></script>
 </body>
 </html>
