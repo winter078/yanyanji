@@ -15,6 +15,16 @@
 
   
   <meta charset="UTF-8" />
+  <!-- 入口统一：旧页面（根地址与 /index.html）直接跳到新版 /phone。
+       原因：manifest 的 start_url 指向 /index.html，主屏图标打开的是没做过新版音乐的旧页。
+       回滚：删掉下面这个 script 即可恢复旧页独立打开。 -->
+  <script>
+    (function () {
+      var p = location.pathname;
+      if (p === '/phone' || p === '/phone.html') return;
+      location.replace('/phone' + (location.search || '') + (location.hash || ''));
+    })();
+  </script>
   <meta http-equiv="Cache-Control" content="no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
