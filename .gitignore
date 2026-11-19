@@ -20,3 +20,5 @@ shots/
 _shots/
 _photo_widgets_preview*
 
+# 本地密钥，永不入库
+.env
