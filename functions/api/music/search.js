@@ -1,4 +1,4 @@
-// /api/music/search?kw=关键词
+﻿// /api/music/search?kw=关键词
 // 由 Cloudflare Pages Functions 在服务端请求网易云音乐搜索接口，前端不直接跨域访问。
 // 搜索不需要登录态；返回歌名/歌手/封面/时长/fee（fee=1 表示需要会员）。
 
@@ -14,7 +14,7 @@ function json(data, status = 200) {
   });
 }
 
-async function netease(path, cookie) {
+async function netease(path, cookie, debug) {
   const resp = await fetch('https://music.163.com' + path, {
     headers: {
       'User-Agent': UA,
@@ -23,16 +23,23 @@ async function netease(path, cookie) {
       'Accept': 'application/json, text/plain, */*'
     }
   });
+  const text = await resp.text();
+  if (debug) {
+    return { __debug: { status: resp.status, head: text.slice(0, 300), len: text.length } };
+  }
   if (!resp.ok) throw new Error('upstream_' + resp.status);
-  return await resp.json();
+  try { return JSON.parse(text); } catch (e) { throw new Error('not_json'); }
 }
 
 export async function onRequestGet(context) {
-  const kw = (new URL(context.request.url).searchParams.get('kw') || '').trim();
+  const url = new URL(context.request.url);
+  const kw = (url.searchParams.get('kw') || '').trim();
   if (!kw) return json({ error: 'empty_query', songs: [] }, 400);
 
   try {
-    const data = await netease('/api/search/get/web?s=' + encodeURIComponent(kw) + '&type=1&offset=0&total=true&limit=8');
+    const debug = url.searchParams.get('debug') === '1';
+    const data = await netease('/api/search/get/web?s=' + encodeURIComponent(kw) + '&type=1&offset=0&total=true&limit=8', null, debug);
+    if (debug) return json({ debug: true, info: data.__debug });
     const raw = (data && data.result && data.result.songs) || [];
     if (raw.length === 0) return json({ songs: [] });
 
