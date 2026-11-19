@@ -4580,7 +4580,7 @@ html.ios.sb-native .view-container {
 /* black-translucent 模式：页面和最底层画布共用同一套壁纸几何。
    壁纸按整屏高度画，页面只显示上面 797，画布把底下那 47 接上，接缝对得齐 */
 html.ios:not(.sb-native) .phone-screen {
-  background-size: 100% var(--mom-screen-h, 844px) !important;
+  background-size: 100% 100% !important;
   background-position: center top !important;
 }
 
