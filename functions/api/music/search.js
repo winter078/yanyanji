@@ -47,7 +47,7 @@ export async function onRequestGet(context) {
       name: it.name || '',
       artist: ((it.ar || []).map(a => a.name).join('/')) || '',
       album: (it.al && it.al.name) || '',
-      cover: (it.al && (it.al.picUrl || it.al.img1v1Url)) || '',
+      cover: String((it.al && (it.al.picUrl || it.al.img1v1Url)) || '').replace(/^http:/, 'https:'),
       duration: it.dt || 0,
       fee: it.fee
     }));
