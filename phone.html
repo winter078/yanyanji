@@ -7050,6 +7050,90 @@
     if (ph) { try { new MutationObserver(build).observe(ph, { attributes: true, attributeFilter: ['style', 'class'] }); } catch (e) {} }
   })();
 </script>
+<script>
+  /* 底部那 47（版面 797 与屏幕 844 的差）：WebKit 不让页面元素画进去，
+     但最底层画布的颜色是能画进去的（洋红探针已验证）。
+     所以这里改成：取“页面最后一行的真实颜色”去填，再渐变到壁纸最底行的颜色，
+     接缝处就是同一个像素色，理论上完全看不见。 */
+  (function () {
+    var root = document.documentElement;
+    var ph = document.getElementById('phone-screen-root');
+    if (!ph) return;
+    /* 最底层画布不再铺壁纸图片（页面已经盖满 0~797），免得把我们设的渐变盖掉 */
+    window.__momPageBg = function () {
+      if (window.innerWidth > 600) return;
+      root.style.removeProperty('background-image');
+    };
+    var stripEl = document.getElementById('__mom_strip');
+    if (stripEl) stripEl.style.display = 'none';
+
+    function sample(url) {
+      return new Promise(function (res) {
+        var img = new Image();
+        img.onload = function () {
+          try {
+            var w = Math.max(1, Math.round(window.innerWidth || 390));
+            var h = Math.round(window.screen.height || 844);
+            var vh = Math.round(window.innerHeight || h);
+            var c = document.createElement('canvas');
+            c.width = w; c.height = h;
+            var x = c.getContext('2d');
+            /* 和 CSS 里 background-size:100% <整屏高>px 完全同一套几何 */
+            x.drawImage(img, 0, 0, w, h);
+            var rowColor = function (y) {
+              var yy = Math.min(h - 1, Math.max(0, y));
+              var d = x.getImageData(0, yy, w, 1).data;
+              var r = 0, g = 0, b = 0;
+              for (var i = 0; i < d.length; i += 4) { r += d[i]; g += d[i + 1]; b += d[i + 2]; }
+              var n = d.length / 4;
+              return 'rgb(' + Math.round(r / n) + ',' + Math.round(g / n) + ',' + Math.round(b / n) + ')';
+            };
+            res({ pageBottom: rowColor(vh - 1), screenBottom: rowColor(h - 1), pct: (vh / h * 100) });
+          } catch (e) { res(null); }
+        };
+        img.onerror = function () { res(null); };
+        img.src = url;
+      });
+    }
+
+    function applyColor(col) {
+      root.style.setProperty('--mom-device-bottom', col);
+      root.style.setProperty('background-color', col, 'important');
+      try {
+        document.body.style.setProperty('background', col, 'important');
+        document.body.style.setProperty('background-color', col, 'important');
+      } catch (e) {}
+    }
+
+    window.__momStripColor = function () {
+      if (window.innerWidth > 600) return;
+      var cs = getComputedStyle(ph);
+      var m = /url\("?([^")]+)"?\)/.exec(cs.backgroundImage || '');
+      if (!m) {
+        root.style.removeProperty('background-image');
+        var solid = cs.backgroundColor;
+        if (solid && solid !== 'rgba(0, 0, 0, 0)') applyColor(solid);
+        return;
+      }
+      sample(m[1]).then(function (s) {
+        if (!s) return;
+        var sh = Math.round(window.screen.height || 844);
+        applyColor(s.pageBottom);
+        /* 0~页面底边：纯页面底边色（被页面盖住，无所谓）；
+           从页面底边那条线开始渐变到壁纸最底色，那 47 就顺着壁纸走出去 */
+        root.style.setProperty('background-image',
+          'linear-gradient(to bottom,' + s.pageBottom + ' ' + s.pct.toFixed(2) + '%,' +
+          s.screenBottom + ' 100%)', 'important');
+        root.style.setProperty('background-size', '100% ' + sh + 'px', 'important');
+        root.style.setProperty('background-position', 'center top', 'important');
+        root.style.setProperty('background-repeat', 'no-repeat', 'important');
+      });
+    };
+    window.__momStripColor();
+    window.addEventListener('load', window.__momStripColor);
+    try { new MutationObserver(window.__momStripColor).observe(ph, { attributes: true, attributeFilter: ['style', 'class'] }); } catch (e) {}
+  })();
+</script>
 <script src="js/version-watch.js?v=2026112001"></script>
 </body>
 </html>
