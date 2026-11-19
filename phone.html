@@ -7331,6 +7331,21 @@ html.ios, html.ios body {
       lines.push('100vh ' + m('100vh') + ' | 100dvh ' + m('100dvh') + ' | 100svh ' + m('100svh') +
         ' | visualViewport ' + (window.visualViewport ? Math.round(window.visualViewport.height) : '-'));
       lines.push('dock 投影 ' + (dock ? getComputedStyle(dock).boxShadow.slice(0, 40) : '-'));
+      /* 底部那 47pt 究竟属于谁：直接问浏览器那个点上是哪个元素 */
+      var probePt = function (x, y) {
+        var el = document.elementFromPoint(x, y);
+        if (!el) return x + ',' + y + ' → null';
+        var tag = el.tagName.toLowerCase();
+        var id = el.id ? '#' + el.id : '';
+        var cls = (typeof el.className === 'string' && el.className) ? '.' + el.className.trim().split(/\s+/)[0] : '';
+        var cs2 = getComputedStyle(el);
+        var bg = cs2.backgroundColor;
+        var im = (cs2.backgroundImage || 'none').replace(/^url\(["']?/, '');
+        return x + ',' + y + ' → ' + tag + id + cls + ' bg' + bg + (im !== 'none' ? ' img:' + im.slice(0, 26) : ' img:none');
+      };
+      lines.push(probePt(20, 30));
+      lines.push(probePt(195, 400));
+      lines.push(probePt(195, 820));
       lines.push('脚本已跑 ' + (window.__momFullBleed ? 'yes' : 'no') + ' | 轻点可收起');
       } else {
         lines.push('…轻点固定可看壁纸挂在哪一层');
