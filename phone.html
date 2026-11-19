@@ -7257,7 +7257,76 @@ html.ios, html.ios body {
     document.addEventListener('DOMContentLoaded', kill);
     setTimeout(kill, 1200);
   })();
-</script><!--__PROBE_START-->
+</script><script>
+  /* ===== 底部 47pt 取色收口（真机实测结论）=====
+     事实（本机 390x844，iPhone 14）：
+       · 主屏模式给页面的绘制区只有 0~797，797~844 里任何元素都画不进去（elementFromPoint 返回 null）；
+       · 那 47 只有最底层画布能上色，而且实测：画布能吃纯色，吃不了图片/渐变（html 上挂了 data:jpeg 也画不出来）；
+       · default（白条）模式正好相反：页面被放到 47~844，底栏贴底，但顶部 47 被系统占掉。
+     所以在"顶部透明"这一版里，唯一能让那条缝消失的办法是：
+       把壁纸第 796 行（也就是页面能画到的最后一行）的颜色取样出来，刷到画布上。
+     壁纸是 data: URL，不会被 canvas 跨域污染，取色是准的。 */
+  (function () {
+    var root = document.documentElement;
+    var ps = document.getElementById('phone-screen-root');
+    if (!ps) return;
+
+    function wallpaperUrl() {
+      var im = getComputedStyle(ps).backgroundImage || '';
+      var m = /url\(["']?([^"')]+)["']?\)/.exec(im);
+      return m ? m[1] : null;
+    }
+
+    function hex2(n) { return ('0' + n).toString(16).slice(-2); }
+
+    function sampleAndPaint() {
+      if (!root.classList.contains('ios')) return;
+      var url = wallpaperUrl();
+      if (!url) return;
+      var W = Math.round(window.innerWidth);
+      var H = Math.round(window.innerHeight);           /* 797 */
+      var screenH = Math.round(window.screen.height);   /* 844 */
+      var img = new Image();
+      img.onload = function () {
+        try {
+          var c = document.createElement('canvas');
+          c.width = W; c.height = screenH;
+          var ctx = c.getContext('2d');
+          /* 与 CSS 完全同一套几何：background-size: 100% 100vh，position: center top */
+          ctx.drawImage(img, 0, 0, W, screenH);
+          /* 取页面最后一行（innerHeight-1 附近）的横向平均色，多取几行更稳 */
+          var y0 = Math.max(0, H - 3), y1 = Math.min(screenH - 1, H + 1);
+          var r = 0, g = 0, b = 0, n = 0;
+          for (var y = y0; y <= y1; y++) {
+            for (var x = 8; x < W - 8; x += 6) {
+              var p = ctx.getImageData(x, y, 1, 1).data;
+              r += p[0]; g += p[1]; b += p[2]; n++;
+            }
+          }
+          if (!n) return;
+          var col = 'rgb(' + Math.round(r / n) + ',' + Math.round(g / n) + ',' + Math.round(b / n) + ')';
+          root.style.setProperty('background-color', col, 'important');
+          if (document.body) document.body.style.setProperty('background-color', col, 'important');
+          root.style.setProperty('background-image', 'none', 'important');
+          if (document.body) document.body.style.setProperty('background-image', 'none', 'important');
+          window.__momStripColor = function () { return col; };
+        } catch (e) { /* 万一被跨域污染就放弃，不报错、不改任何东西 */ }
+      };
+      img.onerror = function () {};
+      img.src = url;
+    }
+
+    sampleAndPaint();
+    window.addEventListener('load', sampleAndPaint);
+    window.addEventListener('resize', sampleAndPaint);
+    setTimeout(sampleAndPaint, 900);
+    setTimeout(sampleAndPaint, 2200);
+    try {
+      new MutationObserver(sampleAndPaint).observe(ps, { attributes: true, attributeFilter: ['style', 'class'] });
+    } catch (e) {}
+  })();
+</script>
+<!--__PROBE_START-->
 <script>
   /* 临时探针 v2：打开页面自动出现，把真实数字写在屏幕上。
      如果是在浏览器里打开的（standalone=0），第一行会红字提示“数据不算数”。
