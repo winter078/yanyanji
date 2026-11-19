@@ -273,7 +273,11 @@
       return false;
     }
     try {
-      const resp = await fetch('/api/music/url?id=' + encodeURIComponent(song.neId), { cache: 'no-store' });
+      const nc = (typeof window.__mzNeteaseCookie === 'function' && window.__mzNeteaseCookie()) || '';
+      const resp = await fetch('/api/music/url?id=' + encodeURIComponent(song.neId), {
+        cache: 'no-store',
+        headers: nc ? { 'x-netease-cookie': nc } : {}
+      });
       const data = await resp.json().catch(() => ({}));
       if (data && data.url) {
         song.url = data.url;
