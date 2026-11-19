@@ -7298,7 +7298,24 @@
     } catch (e) {}
   })();
 </script>
-<!--__PROBE_START-->
+<style id="__momNoGradient">
+/* 删掉底部那条渐变（是上一版 momBottomSeam 留下的），并保持 dock 无投影 */
+html.ios #page-home {
+  background-image: none !important;
+  background-color: transparent !important;
+  padding-bottom: 0 !important;
+}
+html.ios .view-container::after {
+  content: none !important;
+  display: none !important;
+  background: none !important;
+}
+html.ios #home-dock-bar,
+html.ios .home-dock-bar {
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+}
+</style><!--__PROBE_START-->
 <script>
   /* 临时探针 v2：打开页面自动出现，把真实数字写在屏幕上。
      如果是在浏览器里打开的（standalone=0），第一行会红字提示“数据不算数”。
