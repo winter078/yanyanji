@@ -26,6 +26,7 @@ $Map = [ordered]@{
   'manifest.json'              = 'verify\manifest.json'
   'phone.html'                 = 'verify\phone.html'
   'css/music-app.css'          = 'verify\music\music-app.css'
+  'css/desktop.css'            = 'verify\desktop\desktop.css'
   'css/music.css'              = 'verify\music\css_music.css'
   'js/media/music-ui.js'       = 'verify\music\music-ui.js'
   'js/media/music.js'          = 'verify\music\music_new.js'
