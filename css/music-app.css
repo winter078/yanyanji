@@ -232,6 +232,29 @@
 }
 #page-music .mz-lib-body .music-tab-pane { padding: 0 !important; }
 
+/* ---------- 换封面：封面卡右上角的小铅笔 ---------- */
+#page-music .mz-cover-edit {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 5;
+  width: 32px;
+  height: 32px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.42);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+}
+#page-music .mz-cover-edit:active { background: rgba(0, 0, 0, 0.66); }
+
 /* ---------- 资料库：行式歌曲列表 ---------- */
 #music-playlist-list {
   display: flex;
