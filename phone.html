@@ -7199,7 +7199,45 @@
     window.addEventListener('resize', function () { try { document.body.style.removeProperty('height'); } catch (e) {} });
   })();
 </script>
-<!--__PROBE_START-->
+<style id="__momFullBleedInline">
+/* ===== 真满屏：外层全部改用 100vh（实测本机 100vh=844，100dvh=797） ===== */
+html.ios .device-wrapper {
+  position: fixed !important;
+  top: 0 !important; left: 0 !important; right: 0 !important; bottom: auto !important;
+  width: auto !important; height: 100vh !important;
+  padding: 0 !important; border-radius: 0 !important; box-shadow: none !important;
+  background: transparent !important; overflow: hidden !important;
+}
+html.ios .phone-screen {
+  position: absolute !important;
+  top: 0 !important; left: 0 !important; right: 0 !important; bottom: auto !important;
+  width: auto !important; height: 100vh !important;
+  max-height: none !important;
+  border-radius: 0 !important;
+  background-size: 100% 100vh !important;
+  background-position: center top !important;
+}
+html.ios .view-container {
+  position: absolute !important;
+  top: max(env(safe-area-inset-top, 0px), 47px) !important;
+  left: 0 !important; right: 0 !important; bottom: 0 !important;
+  height: auto !important;
+  overflow: hidden !important;
+}
+html.ios #page-home {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 20px) !important;
+  background-image: none !important;
+  background-color: transparent !important;
+}
+html.ios .home-dock-bar {
+  box-shadow: none !important;
+  margin-bottom: 0 !important;
+}
+html.ios, html.ios body {
+  background-color: rgb(21, 23, 27) !important;
+  background-image: none !important;
+}
+</style><!--__PROBE_START-->
 <script>
   /* 临时探针 v2：打开页面自动出现，把真实数字写在屏幕上。
      如果是在浏览器里打开的（standalone=0），第一行会红字提示“数据不算数”。
