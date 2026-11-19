@@ -171,7 +171,7 @@
   <link rel="stylesheet" href="css/moments.css?v=2026111652" />
   <link rel="stylesheet" href="css/album.css?v=2026111432" />
   <link rel="stylesheet" href="css/music.css?v=1789840833455" />
-<link rel="stylesheet" href="css/music-app.css?v=2026111916" />
+<link rel="stylesheet" href="css/music-app.css?v=2026112010" />
   <link rel="stylesheet" href="css/watch.css?v=1789854172623" />
   <link rel="stylesheet" href="css/theater.css?v=2026111421" />
   <link rel="stylesheet" href="css/xhs.css?v=2026111010" />
@@ -5235,6 +5235,17 @@
                 <button class="mz-seg-btn" id="mz-seg-bot" onclick="mzSwitchShelf('bot')">角色的</button>
               </div>
               <div class="mz-scroll">
+                <div class="mz-nc-card" id="mz-nc-card">
+                  <div class="mz-nc-row">
+                    <span class="mz-nc-dot" id="mz-nc-dot"></span>
+                    <span class="mz-nc-name" id="mz-nc-name">还没连网易云</span>
+                  </div>
+                  <div class="mz-nc-state" id="mz-nc-state">很多歌现在放不出来，扫一下码就能连上</div>
+                  <div class="mz-nc-btns">
+                    <button class="mz-nc-btn primary" id="mz-nc-login" onclick="mzNeteaseOpen()">扫码登录网易云</button>
+                    <button class="mz-nc-btn" id="mz-nc-out" onclick="mzNeteaseLogout()" style="display: none;">断开</button>
+                  </div>
+                </div>
                 <div class="mz-h1">唱片墙</div>
                 <div class="mz-shelf-wrap" id="mz-shelf-user"></div>
                 <div class="mz-shelf-wrap" id="mz-shelf-bot" style="display: none;"></div>
@@ -6180,6 +6191,8 @@
   <script src="js/wechat/group-chat.js?v=2026111652"></script>
   <script src="js/media/music.js?v=2026111102"></script>
 <script src="js/media/music-ui.js?v=2026111916"></script>
+<script src="js/qrcode.js?v=2026112010"></script>
+<script src="js/media/netease-login.js?v=2026112010"></script>
   <script src="js/media/watch.js?v=1789856078493"></script>
   <script src="js/theater/theater.js?v=2026111421"></script>
   <script src="js/theater/palace.js?v=2026111121"></script>
