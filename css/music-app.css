@@ -733,3 +733,133 @@
 #page-music .mz-shelf .mz-empty {
   align-self: center;
 }
+
+/* ===== 网易云登录卡 / 扫码弹层（2026112010） ===== */
+#page-music .mz-nc-card {
+  margin: 0 0 14px 0;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+#page-music .mz-nc-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#page-music .mz-nc-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #777;
+  flex: none;
+}
+#page-music .mz-nc-card.logged .mz-nc-dot {
+  background: #34d07a;
+  box-shadow: 0 0 8px rgba(52, 208, 122, 0.6);
+}
+#page-music .mz-nc-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #f2f2f4;
+}
+#page-music .mz-nc-state {
+  font-size: 11.5px;
+  color: #9a9aa2;
+  line-height: 1.5;
+}
+#page-music .mz-nc-state.ok {
+  color: #57c98a;
+}
+#page-music .mz-nc-btns {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+#page-music .mz-nc-btn {
+  flex: none;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.08);
+  color: #e9e9ee;
+  font-size: 12px;
+  padding: 7px 14px;
+  border-radius: 999px;
+}
+#page-music .mz-nc-btn.primary {
+  background: #e8464f;
+  border-color: #e8464f;
+  color: #fff;
+}
+
+.mz-nc-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 99998;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.mz-nc-card {
+  width: 100%;
+  max-width: 300px;
+  background: #1b1c20;
+  border-radius: 22px;
+  padding: 22px 20px 18px;
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+}
+.mz-nc-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #f5f5f7;
+}
+.mz-nc-sub {
+  margin-top: 6px;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: #93939b;
+}
+.mz-nc-qr-box {
+  width: 190px;
+  height: 190px;
+  margin: 14px auto 10px;
+  background: #fff;
+  border-radius: 14px;
+  padding: 8px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mz-nc-qr-status {
+  font-size: 12px;
+  color: #a8a8b0;
+  min-height: 18px;
+}
+.mz-nc-qr-status.warn { color: #f0b34e; }
+.mz-nc-qr-status.ok { color: #57c98a; }
+.mz-nc-qr-status.bad { color: #f07a7a; }
+.mz-nc-refresh, .mz-nc-close {
+  margin-top: 12px;
+  border: none;
+  border-radius: 999px;
+  padding: 9px 0;
+  width: 100%;
+  font-size: 13px;
+}
+.mz-nc-refresh {
+  background: rgba(255, 255, 255, 0.1);
+  color: #d8d8de;
+}
+.mz-nc-close {
+  margin-top: 8px;
+  background: transparent;
+  color: #8a8a92;
+  font-size: 12px;
+}
