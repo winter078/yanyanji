@@ -1,4 +1,4 @@
-
+﻿
   // ================= 浏览器永久音乐曲库 (IndexedDB 持久存储) =================
   const DB_NAME = 'MomoMusicDB';
   const DB_VERSION = 1;
@@ -187,8 +187,10 @@
         title: s.title,
         artist: s.artist,
         cover: s.cover,
-        url: s.isLocalFav ? '' : s.url,
-        isLocalFav: !!s.isLocalFav
+        url: (s.isLocalFav || s.source === 'netease') ? '' : s.url,
+        isLocalFav: !!s.isLocalFav,
+        source: s.source || '',
+        neId: s.neId || ''
       }));
       localStorage.setItem('momo_music_playlist', JSON.stringify(safeList));
     } catch(e) {}
@@ -216,6 +218,14 @@
   });
 
   audio.addEventListener('error', (e) => {
+    // 网易云真实曲目失败时不能偷偷换成伴奏（那会放错歌、用户还以为是原曲）
+    if (currentSong && currentSong.source === 'netease') {
+      const sEl = document.getElementById('music-status-badge');
+      if (sEl) sEl.innerText = '这首网易云音频打不开（版权或链接过期）';
+      isPlaying = false;
+      updatePlayStateUI();
+      return;
+    }
     console.warn('Audio playback error fallback:', e);
     const statusEl = document.getElementById('music-status-badge');
     if (statusEl) statusEl.innerText = 'QQ音乐版权限制，绪言已为你切为浪漫电台伴听流～';
@@ -254,9 +264,43 @@
     return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
   }
 
+  // 网易云：播放前换取真实音频地址（地址有有效期，每次播放都重新取）
+  async function ensureNeteaseUrl(song) {
+    const statusEl = document.getElementById('music-status-badge');
+    if (song.url && /^https?:/i.test(song.url)) return true;
+    if (!song.neId) {
+      if (statusEl) statusEl.innerText = '这首歌缺少网易云 id';
+      return false;
+    }
+    try {
+      const resp = await fetch('/api/music/url?id=' + encodeURIComponent(song.neId), { cache: 'no-store' });
+      const data = await resp.json().catch(() => ({}));
+      if (data && data.url) {
+        song.url = data.url;
+        return true;
+      }
+      if (data && data.error === 'no_login') {
+        if (statusEl) statusEl.innerText = '网易云登录态还没配置';
+        alert('《' + (song.title || '这首歌') + '》是网易云的真实曲目，但登录态还没配置，所以取不到音频。\n\n等配置好，这首就能真放。');
+        return false;
+      }
+      if (statusEl) statusEl.innerText = '这首取不到音频（可能无版权或需要会员）';
+      alert('《' + (song.title || '这首歌') + '》取不到音频：' + ((data && data.message) || '可能无版权或需要会员'));
+      return false;
+    } catch (err) {
+      if (statusEl) statusEl.innerText = '取音频地址失败';
+      alert('取音频地址失败：' + ((err && err.message) ? err.message : err));
+      return false;
+    }
+  }
+
   // 加载并播放指定歌曲
-  function playSong(song, autoPlay = true, queueContext = null) {
+  async function playSong(song, autoPlay = true, queueContext = null) {
     if (!song) return;
+    if (song.source === 'netease' && song.neId) {
+      const ok = await ensureNeteaseUrl(song);
+      if (!ok) return;
+    }
     currentSong = song;
     if (queueContext && Array.isArray(queueContext) && queueContext.length > 0) {
       activeQueue = queueContext;
@@ -779,7 +823,8 @@
   };
 
   // ================= 搜索功能 (QQ 音乐官方原生 JSONP) =================
-  window.searchMusicOnline = function() {
+  // ================= 搜索：走自家 Cloudflare 函数（服务端代理网易云，前端不跨域）=================
+  window.searchMusicOnline = async function() {
     const inputEl = document.getElementById('music-search-input');
     if (!inputEl) return;
     const kw = (inputEl.value || '').trim();
@@ -789,64 +834,51 @@
     }
 
     const badgeEl = document.getElementById('music-status-badge');
-    if (badgeEl) badgeEl.innerText = '正在为user从 QQ音乐 检索《' + kw + '》...';
+    if (badgeEl) badgeEl.innerText = '正在网易云音乐里检索《' + kw + '》…';
 
-    const cbName = 'qq_music_cb_' + Date.now();
-    window[cbName] = function(res) {
-      try {
-        const list = (res.data && res.data.song && res.data.song.list) || [];
-        if (list.length === 0) {
-          alert('没有搜到《' + kw + '》，user可以直接导入下载好的本地歌曲哦！');
-          if (badgeEl) badgeEl.innerText = '共同佩戴一副耳机';
-          return;
-        }
-
-        const newSongs = list.map(item => {
-          const title = item.songname;
-          const artist = (item.singer || []).map(s => s.name).join('/');
-          const albummid = item.albummid;
-          const cover = albummid ? 'https://y.gtimg.cn/music/photo_new/T002R300x300M000' + albummid + '.jpg' : 'https://y.gtimg.cn/music/photo_new/T002R300x300M0000024bjiL2aocxT.jpg';
-          
-          const sampleUrls = [
-            'https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3?filename=romantic-dinner-6019.mp3',
-            'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3',
-            'https://cdn.pixabay.com/download/audio/2021/08/04/audio_bb630cc098.mp3?filename=relaxing-guitar-loop-7833.mp3'
-          ];
-          const chosenUrl = sampleUrls[Math.abs(item.songmid.split('').reduce((a,c)=>a+c.charCodeAt(0), 0)) % sampleUrls.length];
-          return {
-            id: 'qq-' + item.songmid,
-            title: title,
-            artist: artist + ' · QQ音乐',
-            cover: cover,
-            url: chosenUrl
-          };
-        });
-
-        allSongs.unshift(newSongs[0]);
-        saveSongs();
-        playSong(newSongs[0], true, allSongs);
-        inputEl.value = '';
-
-        if (badgeEl) badgeEl.innerText = '已为user换上《' + newSongs[0].title + '》';
-        const bubbleEl = document.getElementById('music-live-bubble-text');
-        if (bubbleEl) bubbleEl.innerText = '“《' + newSongs[0].title + '》……我也很喜欢这首。user，耳机分你一半。”';
-      } finally {
-        delete window[cbName];
-        if (script.parentNode) script.parentNode.removeChild(script);
+    try {
+      const resp = await fetch('/api/music/search?kw=' + encodeURIComponent(kw), { cache: 'no-store' });
+      const data = await resp.json().catch(() => ({}));
+      const list = (data && data.songs) || [];
+      if (list.length === 0) {
+        alert('没有搜到《' + kw + '》，换个关键词试试，或者直接导入本地歌曲。');
+        if (badgeEl) badgeEl.innerText = '共同佩戴一副耳机';
+        return;
       }
-    };
 
-    const script = document.createElement('script');
-    script.src = 'https://c.y.qq.com/soso/fcgi-bin/client_search_cp?p=1&n=8&w=' + encodeURIComponent(kw) + '&format=jsonp&jsonpCallback=' + cbName;
-    script.onerror = function() {
-      alert('QQ音乐搜索通道遇到微弱延迟，user可以导入下载好的本地歌曲，音质也是最高的！');
+      let addedCount = 0;
+      list.forEach(item => {
+        const sid = 'ne-' + item.id;
+        if (allSongs.some(s => s.id === sid)) return;
+        allSongs.unshift({
+          id: sid,
+          neId: String(item.id),
+          source: 'netease',
+          title: item.name,
+          artist: (item.artist || '网易云音乐') + ' · 网易云',
+          cover: item.cover || '',
+          url: ''
+        });
+        addedCount++;
+      });
+
+      saveSongs();
+      renderPlaylistDrawer();
+      inputEl.value = '';
+
+      const first = allSongs.find(s => s.id === 'ne-' + list[0].id);
+      if (badgeEl) badgeEl.innerText = '搜到 ' + list.length + ' 首，已放进曲库（' + addedCount + ' 首新增）';
+
+      if (first) {
+        const bubbleEl = document.getElementById('music-live-bubble-text');
+        if (bubbleEl) bubbleEl.innerText = '“《' + first.title + '》……这首我想和你一起听。”';
+        await playSong(first, true, allSongs);
+      }
+    } catch (err) {
+      alert('搜索失败：' + ((err && err.message) ? err.message : err));
       if (badgeEl) badgeEl.innerText = '共同佩戴一副耳机';
-      delete window[cbName];
-      if (script.parentNode) script.parentNode.removeChild(script);
-    };
-    document.body.appendChild(script);
+    }
   };
-
   // ================= 本地音频与 VIP 歌曲导入 (持久化至 IndexedDB) =================
   window.handleImportLocalSong = async function(e) {
     const file = e.target.files && e.target.files[0];
