@@ -19,7 +19,11 @@ export async function onRequestGet(context) {
   if (!id || !/^\d+$/.test(id)) return json({ error: 'bad_id', message: '歌曲 id 不合法' }, 400);
 
   const cookie = (context.env && context.env.NETEASE_COOKIE) || '';
-  if (!cookie) {
+
+  // 临时诊断：debug=1 时即便没配登录态，也看一下上游到底回什么
+  const debug = (new URL(context.request.url).searchParams.get('debug') === '1');
+
+  if (!cookie && !debug) {
     return json({
       error: 'no_login',
       message: '网易云登录态还没配置（Cloudflare 环境变量 NETEASE_COOKIE 为空）'
@@ -36,8 +40,13 @@ export async function onRequestGet(context) {
   // 接口一：老的 player/url（登录态下多数免费歌曲可用）
   try {
     const r = await fetch('https://music.163.com/api/song/enhance/player/url?ids=[' + id + ']&br=320000', { headers });
+    const rawText = await r.text();
+    if (debug) {
+      return json({ debug: true, which: 'player/url', status: r.status, head: rawText.slice(0, 300), len: rawText.length });
+    }
     if (r.ok) {
-      const d = await r.json();
+      let d = null;
+      try { d = JSON.parse(rawText); } catch (e) {}
       const item = d && d.data && d.data[0];
       if (item && item.url) {
         return json({ url: item.url, br: item.br || 0, type: item.type || '', code: item.code });
@@ -48,8 +57,13 @@ export async function onRequestGet(context) {
   // 接口二：新版 player/url/v1（带上 level 参数）
   try {
     const r2 = await fetch('https://music.163.com/api/song/enhance/player/url/v1?ids=[' + id + ']&level=standard&encodeType=aac', { headers });
+    const raw2 = await r2.text();
+    if (debug) {
+      return json({ debug: true, which: 'player/url/v1', status: r2.status, head: raw2.slice(0, 300), len: raw2.length });
+    }
     if (r2.ok) {
-      const d2 = await r2.json();
+      let d2 = null;
+      try { d2 = JSON.parse(raw2); } catch (e) {}
       const item2 = d2 && d2.data && d2.data[0];
       if (item2 && item2.url) {
         return json({ url: item2.url, br: item2.br || 0, type: item2.type || '', code: item2.code });
