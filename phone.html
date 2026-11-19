@@ -7129,9 +7129,67 @@
         root.style.setProperty('background-repeat', 'no-repeat', 'important');
       });
     };
-    window.__momStripColor();
-    window.addEventListener('load', window.__momStripColor);
-    try { new MutationObserver(window.__momStripColor).observe(ph, { attributes: true, attributeFilter: ['style', 'class'] }); } catch (e) {}
+    /* 已改用页面收口方案，这里不再取样刷色 */
+  })();
+</script>
+<script>
+  /* 底部 47（版面 797 与屏幕 844 的差）只有最底层画布的颜色能画进去（洋红探针已验证）。
+     不再试图让壁纸“延续”进去，改成让页面自己先收口：
+     页面最后 112px 渐隐成同一个纯色，画布那条也刷成这个纯色 —— 两边同色，接缝必然消失。 */
+  (function () {
+    var root = document.documentElement;
+    var ph = document.getElementById('phone-screen-root');
+    if (!ph) return;
+
+    function parseColor(col) {
+      var ctx = document.createElement('canvas').getContext('2d');
+      ctx.fillStyle = '#000000';
+      ctx.fillStyle = col;
+      var norm = ctx.fillStyle;
+      if (norm.charAt(0) === '#') {
+        return [parseInt(norm.substr(1, 2), 16), parseInt(norm.substr(3, 2), 16), parseInt(norm.substr(5, 2), 16)];
+      }
+      var m = norm.match(/[0-9.]+/g) || [0, 0, 0];
+      return [Math.round(+m[0]), Math.round(+m[1]), Math.round(+m[2])];
+    }
+
+    function baseColor() {
+      var bg = getComputedStyle(ph).backgroundColor;
+      if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') return bg;
+      var v = getComputedStyle(root).getPropertyValue('--theme-global-bg').trim();
+      if (v) return v;
+      return '#15171b';
+    }
+
+    function build() {
+      if (window.innerWidth > 600) return;
+      var rgb = parseColor(baseColor());
+      var solid = 'rgb(' + rgb.join(',') + ')';
+      var clear = 'rgba(' + rgb.join(',') + ',0)';
+      root.style.setProperty('background-color', solid, 'important');
+      root.style.removeProperty('background-image');
+      try {
+        document.body.style.setProperty('background', solid, 'important');
+        document.body.style.setProperty('background-color', solid, 'important');
+      } catch (e) {}
+      var f = document.getElementById('__mom_fade');
+      if (!f) {
+        f = document.createElement('div');
+        f.id = '__mom_fade';
+        ph.insertBefore(f, ph.firstChild);
+      }
+      f.style.cssText = 'position:absolute;left:0;right:0;bottom:0;height:112px;margin:0;padding:0;' +
+        'pointer-events:none;background-image:linear-gradient(to bottom,' +
+        clear + ' 0%,' + solid + ' 55%,' + solid + ' 100%);';
+    }
+
+    /* 取样刷色那套全部停用，颜色统一由这层收口决定 */
+    window.__momStripColor = function () {};
+    window.__momFade = build;
+    build();
+    window.addEventListener('load', build);
+    window.addEventListener('resize', build);
+    try { new MutationObserver(build).observe(ph, { attributes: true, attributeFilter: ['style', 'class'] }); } catch (e) {}
   })();
 </script>
 <script src="js/version-watch.js?v=2026112001"></script>
