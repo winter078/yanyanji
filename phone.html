@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 
@@ -7190,6 +7190,53 @@
     window.addEventListener('load', build);
     window.addEventListener('resize', build);
     try { new MutationObserver(build).observe(ph, { attributes: true, attributeFilter: ['style', 'class'] }); } catch (e) {}
+  })();
+</script>
+<script>
+  /* 临时探针：打开页面后自动显示 12 秒，把真实数字写在屏幕上（不用手势、不用网址参数）。
+     目的：确认 iOS 到底给页面多少高度（797 还是 844）、壁纸挂在哪一层、那 47 由谁填。 */
+  (function () {
+    function show() {
+      var t = document.getElementById('__probe');
+      if (!t) {
+        t = document.createElement('div');
+        t.id = '__probe';
+        t.style.cssText = 'position:fixed;left:0;right:0;top:56px;z-index:2147483647;' +
+          'background:rgba(0,0,0,.92);color:#7cf6ff;font:13px/1.6 monospace;' +
+          'padding:10px 12px;white-space:pre-wrap;pointer-events:none;';
+        (document.body || document.documentElement).appendChild(t);
+      }
+      var ph = document.getElementById('phone-screen-root');
+      var home = document.getElementById('page-home');
+      var dock = document.getElementById('home-dock-bar');
+      var top = document.getElementById('__sa_top');
+      var bot = document.getElementById('__sa_bot');
+      var cs = ph ? getComputedStyle(ph) : null;
+      var r = ph ? ph.getBoundingClientRect() : null;
+      var rh = home ? home.getBoundingClientRect() : null;
+      var rd = dock ? dock.getBoundingClientRect() : null;
+      var img = cs ? (cs.backgroundImage || 'none') : 'none';
+      img = img.replace(/^url\(["']?/, '').slice(0, 55);
+      var lines = [
+        '视口 ' + window.innerWidth + ' x ' + window.innerHeight + ' | screen ' + screen.width + ' x ' + screen.height + ' | dpr ' + devicePixelRatio,
+        '安全区 上' + (top ? Math.round(top.getBoundingClientRect().height) : '-') +
+          ' 下' + (bot ? Math.round(bot.getBoundingClientRect().height) : '-') +
+          ' | standalone ' + (navigator.standalone ? 1 : 0),
+        '手机屏 top' + (r ? Math.round(r.top) : -1) + ' h' + (r ? Math.round(r.height) : -1) + ' 底' + (r ? Math.round(r.bottom) : -1),
+        '首页 top' + (rh ? Math.round(rh.top) : -1) + ' h' + (rh ? Math.round(rh.height) : -1) + ' 底' + (rh ? Math.round(rh.bottom) : -1),
+        'dock 底' + (rd ? Math.round(rd.bottom) : -1) + ' | 缝 ' + (r && rd ? Math.round(r.bottom - rd.bottom) : -1),
+        '壁纸 ' + img,
+        '手机屏底色 ' + (cs ? cs.backgroundColor : '-') + ' | 尺寸 ' + (cs ? cs.backgroundSize : '-'),
+        'html ' + document.documentElement.clientHeight + '/' + getComputedStyle(document.documentElement).backgroundColor +
+          ' | body ' + document.body.clientHeight + '/' + getComputedStyle(document.body).backgroundColor,
+        '脚本已跑 ' + (window.__momFullBleed ? 'yes' : 'no')
+      ];
+      t.textContent = lines.join('\n');
+      t.style.display = 'block';
+      setTimeout(function () { t.style.display = 'none'; }, 12000);
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { setTimeout(show, 800); });
+    else setTimeout(show, 800);
   })();
 </script>
 <script src="js/version-watch.js?v=2026112001"></script>
