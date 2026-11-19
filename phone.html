@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 
@@ -172,6 +172,7 @@
   <link rel="stylesheet" href="css/moments.css?v=2026111652" />
   <link rel="stylesheet" href="css/album.css?v=2026111432" />
   <link rel="stylesheet" href="css/music.css?v=1789840833455" />
+<link rel="stylesheet" href="css/music-app.css?v=2026111916" />
   <link rel="stylesheet" href="css/watch.css?v=1789854172623" />
   <link rel="stylesheet" href="css/theater.css?v=2026111421" />
   <link rel="stylesheet" href="css/xhs.css?v=2026111010" />
@@ -5139,168 +5140,227 @@
 
 </section>
 
-<section class="view-page" id="page-music">
-          <header class="music-header">
-            <button class="music-header-btn" onclick="openPage('page-home')" title="返回桌面">‹ 桌面</button>
-            <div class="music-header-title">🎧 一起听 · QQ音乐</div>
-            <button class="music-header-btn" onclick="toggleMusicPlaylistDrawer()" title="播放列表">☰ 歌单</button>
-          </header>
+        <section class="view-page" id="page-music">
+          <div class="mz-app" id="mz-app">
 
-          <div class="music-container">
-            <!-- 顶部日系心愿气泡 -->
-            <div class="music-wish-bubble" id="music-wish-bubble" onclick="changeMusicWishQuote()" title="点击自定义浪漫情话">
-              <span id="music-wish-text">今度会う時に花を送ってくれませんか。</span>
-            </div>
-
-            <!-- 两人紧挨的羁绊双人头像区 (优雅无缝布局 · 彻底杜绝穿模重叠) -->
-            <div class="music-couple-wrap">
-              <div class="music-earphone-stage">
-                <div class="earphone-wire wire-left"></div>
-                <div class="music-avatars-row">
-                  <div class="music-avatar-card">
-                    <img id="music-avatar-user" src="" alt="user" />
-                    <span class="music-avatar-name" id="music-name-user">user</span>
+            <!-- ========== 首页 ========== -->
+            <div class="mz-page active" id="mz-page-home">
+              <header class="mz-head">
+                <button class="mz-round-btn" onclick="openPage('page-home')" title="回桌面">‹</button>
+                <div class="mz-head-title">音乐</div>
+                <button class="mz-round-btn" onclick="mzOpenMoreSheet()" title="更多">⋯</button>
+              </header>
+              <div class="mz-scroll">
+                <div class="mz-h1">专属精选</div>
+                <div class="mz-cards">
+                  <div class="mz-card" onclick="mzPlayRandom()">
+                    <div class="mz-card-cover" id="mz-card-cover-1"></div>
+                    <div class="mz-card-txt"><b>今日推荐</b><span>随手一起听</span></div>
                   </div>
-                  <div class="music-avatar-card">
-                    <img id="music-avatar-bot" src="" alt="角色" />
-                    <span class="music-avatar-name" id="music-name-bot">角色</span>
+                  <div class="mz-card" onclick="mzTab('search')">
+                    <div class="mz-card-cover" id="mz-card-cover-2"></div>
+                    <div class="mz-card-txt"><b>去搜一首</b><span>在线搜索</span></div>
                   </div>
                 </div>
-                <div class="earphone-wire wire-right"></div>
+
+                <div class="mz-h1">最近常听<span class="mz-h1-more" onclick="mzTab('lib')">›</span></div>
+                <div class="mz-hscroll" id="mz-home-recent"></div>
+
+                <div class="mz-h1">歌曲</div>
+                <div class="mz-list" id="mz-home-songs"></div>
+              </div>
+            </div>
+
+            <!-- ========== 资料库 ========== -->
+            <div class="mz-page" id="mz-page-lib">
+              <header class="mz-head">
+                <div class="mz-head-side"></div>
+                <div class="mz-head-title">资料库</div>
+                <button class="mz-round-btn" onclick="mzOpenMoreSheet()" title="更多">⋯</button>
+              </header>
+              <div class="mz-scroll mz-lib-scroll">
+                <div class="music-playlist-drawer mz-lib-body" id="music-playlist-drawer">
+                  <div class="music-drawer-tabs mz-lib-tabs">
+                    <button class="music-tab-btn active" id="tab-btn-songs" onclick="switchMusicTab('songs')">🎵 全部歌曲</button>
+                    <button class="music-tab-btn" id="tab-btn-fav" onclick="switchMusicTab('fav')">❤️ 我喜欢</button>
+                    <button class="music-tab-btn" id="tab-btn-playlists" onclick="switchMusicTab('playlists')">📁 歌单分类</button>
+                  </div>
+
+                  <div class="music-tab-pane active" id="pane-songs">
+                    <div class="music-pane-subbar" id="music-current-folder-bar" style="display: none;">
+                      <button class="music-back-folder-btn" onclick="exitFolderView()">‹ 返回歌单列表</button>
+                      <span class="music-folder-title-tag" id="music-current-folder-title">歌单名</span>
+                    </div>
+                    <div class="music-playlist-list" id="music-playlist-list"></div>
+                  </div>
+
+                  <div class="music-tab-pane" id="pane-playlists" style="display: none;">
+                    <div class="playlist-create-bar">
+                      <input type="text" id="new-playlist-input" class="new-playlist-input" placeholder="输入新歌单名称，如：睡前听 / 角色唱的" onkeydown="if(event.key==='Enter') createNewPlaylist()" />
+                      <button class="new-playlist-btn" onclick="createNewPlaylist()">＋ 新建歌单</button>
+                    </div>
+                    <div class="custom-playlists-grid" id="custom-playlists-grid"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ========== 搜索 ========== -->
+            <div class="mz-page" id="mz-page-search">
+              <header class="mz-head">
+                <div class="mz-head-side"></div>
+                <div class="mz-head-title">搜索</div>
+                <div class="mz-head-side"></div>
+              </header>
+              <div class="mz-scroll">
+                <div class="mz-search-row">
+                  <input type="text" id="music-search-input" class="mz-search-input" placeholder="搜歌曲 / 歌手" onkeydown="if(event.key==='Enter') searchMusicOnline()" />
+                  <button class="mz-search-go" onclick="searchMusicOnline()">搜索</button>
+                </div>
+                <div class="mz-search-hint" id="mz-search-hint">支持中文歌名、歌手。会员歌需要网易云登录态才能播。</div>
+                <div class="mz-list" id="mz-search-results"></div>
+              </div>
+            </div>
+
+            <!-- ========== 我的 ========== -->
+            <div class="mz-page" id="mz-page-mine">
+              <div class="mz-mine-hero" id="mz-mine-hero">
+                <div class="mz-mine-avatar-wrap">
+                  <img id="mz-mine-avatar" class="mz-mine-avatar" src="" alt="我" />
+                </div>
+                <div class="mz-mine-name" id="mz-mine-name">我</div>
+                <div class="mz-mine-stat" id="mz-mine-stat">一起听过 0 首</div>
+              </div>
+              <div class="mz-seg">
+                <button class="mz-seg-btn active" id="mz-seg-user" onclick="mzSwitchShelf('user')">我的</button>
+                <button class="mz-seg-btn" id="mz-seg-bot" onclick="mzSwitchShelf('bot')">角色的</button>
+              </div>
+              <div class="mz-scroll">
+                <div class="mz-h1">唱片墙</div>
+                <div class="mz-shelf" id="mz-shelf-user"></div>
+                <div class="mz-shelf" id="mz-shelf-bot" style="display: none;"></div>
+              </div>
+            </div>
+
+            <!-- ========== 一起听播放页（覆盖层） ========== -->
+            <div class="mz-player" id="mz-player">
+              <div class="mz-player-bg" id="mz-player-bg"></div>
+              <div class="mz-player-shade"></div>
+
+              <header class="mz-player-head">
+                <button class="mz-round-btn" onclick="mzClosePlayer()" title="返回">‹</button>
+                <div class="mz-player-head-title" id="mz-player-head-title">一起听</div>
+                <button class="mz-round-btn" onclick="mzTab('lib')" title="歌单">☰</button>
+              </header>
+
+              <div class="mz-player-body">
+                <div class="mz-cover-wrap">
+                  <div class="music-vinyl-disk mz-cover-card" id="music-vinyl-disk" onclick="togglePlayMusic()">
+                    <img id="music-disk-cover" src="" alt="封面" />
+                  </div>
+                  <div class="mz-cover-avatars">
+                    <div class="music-avatar-card"><img id="music-avatar-user" src="" alt="user" /><span class="music-avatar-name" id="music-name-user">user</span></div>
+                    <div class="music-avatar-card"><img id="music-avatar-bot" src="" alt="角色" /><span class="music-avatar-name" id="music-name-bot">角色</span></div>
+                  </div>
+                </div>
+
+                <div class="mz-song">
+                  <div class="mz-song-title" id="music-current-title">晴天</div>
+                  <div class="mz-song-artist" id="music-current-artist">周杰伦 · 叶惠美</div>
+                </div>
+
+                <div class="mz-wish" id="music-wish-bubble" onclick="changeMusicWishQuote()"><span id="music-wish-text">今度会う時に花を送ってくれませんか。</span></div>
+
+                <div class="mz-live-bubble" id="music-live-bubble" onclick="openMusicWhisperInput()">
+                  <span class="mz-live-tag">💬 角色耳语</span>
+                  <span id="music-live-bubble-text">“把音量调小一点，别震着耳朵。好听吗？”</span>
+                </div>
+
+                <div class="mz-progress">
+                  <span class="mz-time" id="music-cur-time">00:00</span>
+                  <div class="mz-track" id="music-progress-track" onclick="seekMusicProgress(event)">
+                    <div class="mz-track-bar" id="music-progress-bar" style="width:0%;"></div>
+                    <div class="mz-track-handle" id="music-progress-handle" style="left:0%;"></div>
+                  </div>
+                  <span class="mz-time" id="music-total-time">04:29</span>
+                </div>
+
+                <div class="mz-ctrls">
+                  <button class="mz-ctrl" id="music-fav-cur-btn" onclick="toggleFavoriteCurrentSong()" title="收藏">🤍</button>
+                  <button class="mz-ctrl" onclick="prevMusicSong()" title="上一首">⏮</button>
+                  <button class="mz-ctrl mz-ctrl-play" id="music-play-btn" onclick="togglePlayMusic()" title="播放/暂停">▶</button>
+                  <button class="mz-ctrl" onclick="nextMusicSong()" title="下一首">⏭</button>
+                  <button class="mz-ctrl" id="music-addto-cur-btn" onclick="openAddToFolderModalForCurrent()" title="加入歌单">＋</button>
+                </div>
+
+                <div class="mz-badge" id="music-status-badge">共同佩戴一副耳机 · 点击耳语</div>
               </div>
 
-              <!-- 角色耳边实时对话气泡 (带微尾巴，温润自然) -->
-              <div class="music-live-bubble" id="music-live-bubble" onclick="openMusicWhisperInput()" title="点击与角色耳语">
-                <span class="music-live-bubble-quote-tag">💬 角色耳语：</span>
-                <span class="music-live-bubble-text" id="music-live-bubble-text">“把音量调小一点，别震着耳朵。好听吗，user？”</span>
-              </div>
-
-              <!-- 一起听耳语输入浮条 (可折叠) -->
-              <div class="music-whisper-input-bar" id="music-whisper-bar" style="display: none;">
-                <input type="text" id="music-whisper-input" placeholder="在耳边对角色轻声说..." onkeydown="if(event.key==='Enter') sendMusicWhisper()" />
+              <div class="music-whisper-input-bar mz-whisper" id="music-whisper-bar" style="display:none;">
+                <input type="text" id="music-whisper-input" placeholder="在耳边轻声说..." onkeydown="if(event.key==='Enter') sendMusicWhisper()" />
                 <button class="music-whisper-send" onclick="sendMusicWhisper()">轻语</button>
                 <button class="music-whisper-close" onclick="closeMusicWhisperInput()">✕</button>
               </div>
+            </div>
 
-              <div class="music-listen-badge" onclick="openMusicWhisperInput()">
-                <span class="music-badge-dot"></span>
-                <span id="music-status-badge">角色 & user · 共同佩戴一副耳机 · 点击耳语</span>
+            <!-- ========== 底部：迷你播放条 ========== -->
+            <div class="mz-mini" id="mz-mini" onclick="mzOpenPlayer()">
+              <img class="mz-mini-cover" id="mz-mini-cover" src="" alt="" />
+              <div class="mz-mini-txt">
+                <b id="mz-mini-title">还没在听</b>
+                <span id="mz-mini-artist">点一首歌开始</span>
+              </div>
+              <button class="mz-mini-btn" onclick="event.stopPropagation(); mzMiniToggle()" id="mz-mini-play">▶</button>
+              <button class="mz-mini-btn" onclick="event.stopPropagation(); nextMusicSong()">⏭</button>
+            </div>
+
+            <!-- ========== 底部：胶囊 tab 栏 ========== -->
+            <div class="mz-tabbar">
+              <button class="mz-tab active" id="mz-tab-home" onclick="mzTab('home')"><span class="mz-tab-ico">⌂</span><span>首页</span></button>
+              <button class="mz-tab" id="mz-tab-lib" onclick="mzTab('lib')"><span class="mz-tab-ico">⧉</span><span>资料库</span></button>
+              <button class="mz-tab" id="mz-tab-search" onclick="mzTab('search')"><span class="mz-tab-ico">⌕</span><span>搜索</span></button>
+              <button class="mz-tab" id="mz-tab-mine" onclick="mzTab('mine')"><span class="mz-tab-ico">☺</span><span>我的</span></button>
+            </div>
+
+            <!-- ========== 更多（音量 / 导入 / 直链） ========== -->
+            <div class="mz-sheet-mask" id="mz-more-sheet" onclick="mzCloseMoreSheet(event)">
+              <div class="mz-sheet" onclick="event.stopPropagation()">
+                <div class="mz-sheet-bar"></div>
+                <div class="mz-sheet-title">更多</div>
+
+                <div class="mz-sheet-row">
+                  <span class="music-volume-icon" id="music-volume-icon" onclick="toggleMuteMusic()" title="静音/恢复">🔈</span>
+                  <input type="range" class="music-volume-slider" id="music-volume-slider" min="0" max="100" value="80" oninput="changeMusicVolume(this.value)" />
+                  <span class="music-volume-val" id="music-volume-val">80%</span>
+                </div>
+
+                <div class="mz-sheet-row mz-sheet-actions">
+                  <button class="music-tool-btn" onclick="document.getElementById('input-local-song').click()">📂 导入本地歌曲</button>
+                  <button class="music-tool-btn" onclick="promptAddMusicUrl()">🔗 贴音频直链</button>
+                </div>
+                <input type="file" id="input-local-song" accept="audio/*,.mp3,.flac,.m4a,.wav,.ogg" style="display: none;" onchange="handleImportLocalSong(event)" />
               </div>
             </div>
 
-            <!-- 中心黑胶自转唱片 -->
-            <div class="music-vinyl-container">
-              <div class="music-vinyl-disk" id="music-vinyl-disk" onclick="togglePlayMusic()">
-                <div class="vinyl-groove-rings"></div>
-                <div class="vinyl-center-cover">
-                  <img id="music-disk-cover" src="" alt="封面" />
+            <!-- ========== 添加到歌单弹窗 ========== -->
+            <div class="music-modal-mask" id="music-add-to-folder-modal" style="display: none;" onclick="closeAddToFolderModal(event)">
+              <div class="music-modal-box" onclick="event.stopPropagation()">
+                <div class="music-modal-header">
+                  <span>➕ 添加到歌单</span>
+                  <button class="music-modal-close" onclick="closeAddToFolderModal()">✕</button>
+                </div>
+                <div class="music-modal-subtitle" id="add-to-folder-song-name">歌曲名</div>
+                <div class="music-modal-folder-list" id="music-modal-folder-list"></div>
+                <div class="music-modal-new-row">
+                  <input type="text" id="modal-quick-folder-name" placeholder="快速创建并加入新歌单..." onkeydown="if(event.key==='Enter') quickCreateAndAddSong()" />
+                  <button onclick="quickCreateAndAddSong()">创建并加入</button>
                 </div>
               </div>
             </div>
 
-            <!-- 歌曲信息 -->
-            <div class="music-info-box">
-              <div class="music-song-title" id="music-current-title">晴天</div>
-              <div class="music-song-artist" id="music-current-artist">周杰伦 · 经典收录</div>
-            </div>
-
-            <!-- 极简进度条 -->
-            <div class="music-progress-wrap">
-              <span class="music-time-tag" id="music-cur-time">00:00</span>
-              <div class="music-progress-track" id="music-progress-track" onclick="seekMusicProgress(event)">
-                <div class="music-progress-bar" id="music-progress-bar" style="width: 0%;"></div>
-                <div class="music-progress-handle" id="music-progress-handle" style="left: 0%;"></div>
-              </div>
-              <span class="music-time-tag" id="music-total-time">04:29</span>
-            </div>
-
-            <!-- 控制按键：上一首 / 播放暂停 / 下一首 -->
-            <div class="music-controls-row">
-              <button class="music-ctrl-btn" id="music-fav-cur-btn" onclick="toggleFavoriteCurrentSong()" title="收藏这首歌" style="font-size: 16px; margin-right: 4px;">🤍</button>
-              <button class="music-ctrl-btn" onclick="prevMusicSong()" title="上一首">⏮</button>
-              <button class="music-ctrl-btn play-main" id="music-play-btn" onclick="togglePlayMusic()" title="播放/暂停">▶</button>
-              <button class="music-ctrl-btn" onclick="nextMusicSong()" title="下一首">⏭</button>
-              <button class="music-ctrl-btn" id="music-addto-cur-btn" onclick="openAddToFolderModalForCurrent()" title="加入歌单" style="font-size: 16px; margin-left: 4px;">➕</button>
-            </div>
-
-            <!-- 🔊 音量调节滑块 -->
-            <div class="music-volume-row">
-              <span class="music-volume-icon" id="music-volume-icon" onclick="toggleMuteMusic()" title="静音/恢复">🔈</span>
-              <input type="range" class="music-volume-slider" id="music-volume-slider" min="0" max="100" value="80" oninput="changeMusicVolume(this.value)" />
-              <span class="music-volume-val" id="music-volume-val">80%</span>
-            </div>
-
-            <!-- 底部搜索与本地导入栏 -->
-            <div class="music-search-section">
-              <div class="music-search-bar">
-                <input type="text" id="music-search-input" class="music-input" placeholder="搜首歌... 比如：夜曲 / 晴天" onkeydown="if(event.key==='Enter') searchMusicOnline()" />
-                <button class="music-search-btn" onclick="searchMusicOnline()">搜索</button>
-              </div>
-              <div class="music-bottom-actions">
-                <button class="music-tool-btn" onclick="document.getElementById('input-local-song').click()">📂 导入本地/VIP歌曲</button>
-                <button class="music-tool-btn" onclick="promptAddMusicUrl()">🔗 贴音频直链</button>
-              </div>
-              <input type="file" id="input-local-song" accept="audio/*,.mp3,.flac,.m4a,.wav,.ogg" style="display: none;" onchange="handleImportLocalSong(event)" />
-            </div>
-
-            <div class="music-bottom-hint">
-              <span>❤ 緒言心语：戴上一只耳机，剩下的交给我。</span>
-            </div>
-          </div>
-
-          <!-- 歌单与搜索结果抽屉 -->
-          <!-- 歌单与收藏夹管理抽屉 (支持：全部歌曲、我喜欢/收藏、自定义歌单分类) -->
-          <div class="music-playlist-drawer" id="music-playlist-drawer">
-            <div class="music-drawer-header">
-              <div class="music-drawer-tabs">
-                <button class="music-tab-btn active" id="tab-btn-songs" onclick="switchMusicTab('songs')">🎵 全部歌曲</button>
-                <button class="music-tab-btn" id="tab-btn-fav" onclick="switchMusicTab('fav')">❤️ 我喜欢</button>
-                <button class="music-tab-btn" id="tab-btn-playlists" onclick="switchMusicTab('playlists')">📁 歌单分类</button>
-              </div>
-              <button class="wechat-back-btn" onclick="toggleMusicPlaylistDrawer()">✕</button>
-            </div>
-
-            <!-- TAB 1 & 2: 歌曲列表区 (全部歌曲 / 我喜欢 / 歌单内歌曲) -->
-            <div class="music-tab-pane active" id="pane-songs">
-              <div class="music-pane-subbar" id="music-current-folder-bar" style="display: none;">
-                <button class="music-back-folder-btn" onclick="exitFolderView()">‹ 返回歌单列表</button>
-                <span class="music-folder-title-tag" id="music-current-folder-title">歌单名</span>
-              </div>
-              <div class="music-playlist-list" id="music-playlist-list">
-                <!-- 动态歌曲列表 -->
-              </div>
-            </div>
-
-            <!-- TAB 3: 歌单分类管理区 -->
-            <div class="music-tab-pane" id="pane-playlists" style="display: none;">
-              <div class="playlist-create-bar">
-                <input type="text" id="new-playlist-input" class="new-playlist-input" placeholder="输入新歌单名称，如：睡前听 / 角色唱的" onkeydown="if(event.key==='Enter') createNewPlaylist()" />
-                <button class="new-playlist-btn" onclick="createNewPlaylist()">＋ 新建歌单</button>
-              </div>
-              <div class="custom-playlists-grid" id="custom-playlists-grid">
-                <!-- 动态歌单卡片 -->
-              </div>
-            </div>
-          </div>
-
-          <!-- 添加到歌单模态弹窗 -->
-          <div class="music-modal-mask" id="music-add-to-folder-modal" style="display: none;" onclick="closeAddToFolderModal(event)">
-            <div class="music-modal-box" onclick="event.stopPropagation()">
-              <div class="music-modal-header">
-                <span>➕ 添加到歌单</span>
-                <button class="music-modal-close" onclick="closeAddToFolderModal()">✕</button>
-              </div>
-              <div class="music-modal-subtitle" id="add-to-folder-song-name">歌曲名</div>
-              <div class="music-modal-folder-list" id="music-modal-folder-list">
-                <!-- 动态展示可加入的歌单 -->
-              </div>
-              <div class="music-modal-new-row">
-                <input type="text" id="modal-quick-folder-name" placeholder="快速创建并加入新歌单..." onkeydown="if(event.key==='Enter') quickCreateAndAddSong()" />
-                <button onclick="quickCreateAndAddSong()">创建并加入</button>
-              </div>
-            </div>
           </div>
         </section>
+
 
         
         <!-- ================= 页面：小紫书 (page-xhs) ================= -->
@@ -6097,6 +6157,7 @@
   <script src="js/wechat/characters.js?v=2026111655"></script>
   <script src="js/wechat/group-chat.js?v=2026111652"></script>
   <script src="js/media/music.js?v=2026111102"></script>
+<script src="js/media/music-ui.js?v=2026111916"></script>
   <script src="js/media/watch.js?v=1789856078493"></script>
   <script src="js/theater/theater.js?v=2026111421"></script>
   <script src="js/theater/palace.js?v=2026111121"></script>
