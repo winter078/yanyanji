@@ -2813,3 +2813,13 @@ html.ios .view-container::after {
   background: linear-gradient(to bottom, rgba(21, 23, 27, 0), rgb(21, 23, 27));
   z-index: 0;
 }
+/* ===== momDockShadow：dock 的投影就是底部那条“黑边”的来源 =====
+   实测截图逐像素扫描（1170x2532）：dock 圆角底边线在 y≈2332(777pt)，
+   往下 777~797 是一条 #121317 的暗带 —— 那是 dock 的 box-shadow: 0 10px 30px rgba(0,0,0,.4)
+   在页面底色 #15171b 上压出来的；再往下 797~844 才是画布 #16171b。
+   所以真正看得见的“黑边”是 dock 投影 + 画布两段不同色。主屏模式下把投影去掉，
+   777 往下一整片就都是同一个 #15171b，界线消失。 */
+html.ios .home-dock-bar,
+html.ios.standalone .home-dock-bar {
+  box-shadow: none !important;
+}
