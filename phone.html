@@ -7133,9 +7133,9 @@
   })();
 </script>
 <script>
-  /* 底部 47（版面 797 与屏幕 844 的差）只有最底层画布的颜色能画进去（洋红探针已验证）。
-     不再试图让壁纸“延续”进去，改成让页面自己先收口：
-     页面最后 112px 渐隐成同一个纯色，画布那条也刷成这个纯色 —— 两边同色，接缝必然消失。 */
+  /* 真满屏尝试：把壁纸铺到 body 的“整屏高度”上（844），而不是只铺页面那块（797）。
+     body 的盒子一旦变成 844，它的背景就能画到 797~844 那 47 里，
+     并且和页面用的是同一套几何（整屏高、居中顶对齐），所以是壁纸真正的延续。 */
   (function () {
     var root = document.documentElement;
     var ph = document.getElementById('phone-screen-root');
@@ -7153,39 +7153,39 @@
       return [Math.round(+m[0]), Math.round(+m[1]), Math.round(+m[2])];
     }
 
-    function baseColor() {
-      var bg = getComputedStyle(ph).backgroundColor;
-      if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') return bg;
-      var v = getComputedStyle(root).getPropertyValue('--theme-global-bg').trim();
-      if (v) return v;
-      return '#15171b';
-    }
-
     function build() {
       if (window.innerWidth > 600) return;
-      var rgb = parseColor(baseColor());
+      var sh = Math.round(window.screen.height || 844);
+      var cs = getComputedStyle(ph);
+      var img = cs.backgroundImage;
+      var bg = cs.backgroundColor;
+      var rgb = parseColor((bg && bg !== 'rgba(0, 0, 0, 0)') ? bg : '#15171b');
       var solid = 'rgb(' + rgb.join(',') + ')';
-      var clear = 'rgba(' + rgb.join(',') + ',0)';
+      /* 画布兜底色：和页面底色一致 */
       root.style.setProperty('background-color', solid, 'important');
       root.style.removeProperty('background-image');
-      try {
-        document.body.style.setProperty('background', solid, 'important');
-        document.body.style.setProperty('background-color', solid, 'important');
-      } catch (e) {}
+      /* 页面自己那层收口（上一版的渐隐）先撤掉，交给 body 的整屏壁纸接管 */
       var f = document.getElementById('__mom_fade');
-      if (!f) {
-        f = document.createElement('div');
-        f.id = '__mom_fade';
-        ph.insertBefore(f, ph.firstChild);
-      }
-      f.style.cssText = 'position:absolute;left:0;right:0;bottom:0;height:112px;margin:0;padding:0;' +
-        'pointer-events:none;background-image:linear-gradient(to bottom,' +
-        clear + ' 0%,' + solid + ' 55%,' + solid + ' 100%);';
+      if (f) f.style.display = 'none';
+      var s = document.getElementById('__mom_strip');
+      if (s) s.style.display = 'none';
+      try {
+        document.body.style.setProperty('height', sh + 'px', 'important');
+        document.body.style.setProperty('bottom', 'auto', 'important');
+        document.body.style.setProperty('background-color', solid, 'important');
+        if (img && img !== 'none') {
+          document.body.style.setProperty('background-image', img, 'important');
+          document.body.style.setProperty('background-size', '100% ' + sh + 'px', 'important');
+          document.body.style.setProperty('background-position', 'center top', 'important');
+          document.body.style.setProperty('background-repeat', 'no-repeat', 'important');
+        } else {
+          document.body.style.setProperty('background-image', 'none', 'important');
+        }
+      } catch (e) {}
     }
 
-    /* 取样刷色那套全部停用，颜色统一由这层收口决定 */
     window.__momStripColor = function () {};
-    window.__momFade = build;
+    window.__momFullBleed = build;
     build();
     window.addEventListener('load', build);
     window.addEventListener('resize', build);
