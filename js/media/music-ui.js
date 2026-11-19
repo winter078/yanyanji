@@ -88,6 +88,7 @@
     }
     if (miniPlay) miniPlay.textContent = isPlaying() ? '⏸' : '▶';
     if (playBtn) playBtn.textContent = isPlaying() ? '⏸' : '▶';
+    updateWallButtons();
   }
 
   window.mzMiniToggle = function () {
@@ -257,6 +258,79 @@
   /* ---------------- 我的 / 角色的 ---------------- */
   let shelfOwner = 'user';
 
+  const WALL_KEY = { user: 'mz_shelf_user', bot: 'mz_shelf_bot' };
+
+  function wallIds(owner) {
+    try {
+      const raw = localStorage.getItem(WALL_KEY[owner]);
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr.map(String) : [];
+    } catch (e) { return []; }
+  }
+  function saveWall(owner, ids) {
+    try { localStorage.setItem(WALL_KEY[owner], JSON.stringify(ids.slice(0, 90))); } catch (e) {}
+  }
+
+  function wallText(owner, on) {
+    if (owner === 'user') return on ? '已在我的唱片墙 · 点此取下' : '摆到我的唱片墙';
+    return on ? '已在角色唱片墙 · 点此取下' : '摆到角色的唱片墙';
+  }
+
+  function updateWallButtons() {
+    const s = current();
+    ['user', 'bot'].forEach(function (owner) {
+      const b = $('mz-wall-' + owner);
+      if (!b) return;
+      const on = !!(s && wallIds(owner).indexOf(String(s.id)) >= 0);
+      const txt = wallText(owner, on);
+      if (b.textContent !== txt) b.textContent = txt;
+      b.classList.toggle('on', on);
+    });
+  }
+
+  window.mzShelfToggle = function (owner) {
+    const s = current();
+    if (!s) { window.mzTab('search'); return; }
+    const ids = wallIds(owner);
+    const key = String(s.id);
+    const i = ids.indexOf(key);
+    if (i >= 0) ids.splice(i, 1);
+    else ids.unshift(key);
+    saveWall(owner, ids);
+    shelfOwner = owner;
+    renderMine();
+    updateWallButtons();
+  };
+
+  function renderWall(owner) {
+    const wrap = $(owner === 'user' ? 'mz-shelf-user' : 'mz-shelf-bot');
+    if (!wrap) return;
+    wrap.innerHTML = '';
+    const list = songs();
+    const picked = wallIds(owner)
+      .map(function (id) { return list.find(function (s) { return String(s.id) === id; }); })
+      .filter(Boolean);
+
+    if (!picked.length) {
+      fillEmpty(wrap, owner === 'user'
+        ? '还没有唱片。播放页右上角 ⋯ → “摆到我的唱片墙”'
+        : '角色的唱片墙空着。播放页 ⋯ → “摆到角色的唱片墙”');
+      return;
+    }
+    for (let i = 0; i < picked.length; i += 3) {
+      const row = document.createElement('div');
+      row.className = 'mz-shelf';
+      picked.slice(i, i + 3).forEach(function (s) {
+        const d = document.createElement('div');
+        d.className = 'mz-disc';
+        const c = safeCover(s);
+        if (c) d.style.backgroundImage = 'url("' + c + '")';
+        row.appendChild(d);
+      });
+      wrap.appendChild(row);
+    }
+  }
+
   window.mzSwitchShelf = function (owner) {
     shelfOwner = owner === 'bot' ? 'bot' : 'user';
     const u = $('mz-shelf-user');
@@ -292,30 +366,15 @@
     }
     if (statEl) statEl.textContent = '一起听过 ' + list.length + ' 首';
 
-    const u = $('mz-shelf-user');
-    if (u) {
-      u.innerHTML = '';
-      if (!list.length) fillEmpty(u, '还没有唱片，去搜一首吧');
-      else list.slice(0, 9).forEach(function (s) {
-        const d = document.createElement('div');
-        d.className = 'mz-disc';
-        const c = safeCover(s);
-        if (c) d.style.backgroundImage = 'url("' + c + '")';
-        u.appendChild(d);
-      });
-    }
-
-    const b = $('mz-shelf-bot');
-    if (b) {
-      b.innerHTML = '';
-      fillEmpty(b, '角色的唱片墙还没开张（下一步做）');
-    }
+    renderWall('user');
+    renderWall('bot');
     window.mzSwitchShelf(shelfOwner);
   }
 
   /* ---------------- 更多 sheet ---------------- */
   window.mzOpenMoreSheet = function () {
     const m = $('mz-more-sheet');
+    updateWallButtons();
     if (m) m.classList.add('open');
   };
   window.mzCloseMoreSheet = function (ev) {
