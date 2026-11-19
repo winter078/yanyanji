@@ -73,7 +73,7 @@
               }
               if (wantImg && wantImg !== 'none') {
                 d.style.setProperty('background-image', wantImg, 'important');
-                d.style.setProperty('background-size', '100% ' + (sh || 844) + 'px', 'important');
+                d.style.setProperty('background-size', '100% 100%', 'important');
                 d.style.setProperty('background-position', 'center top', 'important');
                 d.style.setProperty('background-repeat', 'no-repeat', 'important');
                 d.style.setProperty('--mom-screen-h', (sh || 844) + 'px');
@@ -160,7 +160,7 @@
 
   
   <!-- 模块化分类样式表 (清晰规整，对应各业务模块) -->
-  <link rel="stylesheet" href="css/base.css?v=2026111904" />
+  <link rel="stylesheet" href="css/base.css?v=2026111905" />
   <link rel="stylesheet" href="css/story-skin.css?v=2026111408" />
   <link rel="stylesheet" href="css/world.css?v=2026111013" />
   <link rel="stylesheet" href="css/themes.css?v=2026111001" />
@@ -6905,7 +6905,7 @@
       var img = cs.backgroundImage;
       if (img && img !== 'none') {
         root.style.setProperty('background-image', img, 'important');
-        root.style.setProperty('background-size', '100% ' + (sh || 844) + 'px', 'important');
+        root.style.setProperty('background-size', '100% 100%', 'important');
         root.style.setProperty('background-position', 'center bottom', 'important');
         root.style.setProperty('background-repeat', 'no-repeat', 'important');
       }
