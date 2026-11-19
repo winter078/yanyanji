@@ -265,7 +265,7 @@
   }
 
   // 网易云：播放前换取真实音频地址（地址有有效期，每次播放都重新取）
-  async function ensureNeteaseUrl(song) {
+  async function ensureNeteaseUrl(song, silent) {
     const statusEl = document.getElementById('music-status-badge');
     if (song.url && /^https?:/i.test(song.url)) return true;
     if (!song.neId) {
@@ -279,13 +279,9 @@
         song.url = data.url;
         return true;
       }
-      if (data && data.error === 'no_login') {
-        if (statusEl) statusEl.innerText = '网易云登录态还没配置';
-        alert('《' + (song.title || '这首歌') + '》是网易云的真实曲目，但登录态还没配置，所以取不到音频。\n\n等配置好，这首就能真放。');
-        return false;
-      }
-      if (statusEl) statusEl.innerText = '这首取不到音频（可能无版权或需要会员）';
-      alert('《' + (song.title || '这首歌') + '》取不到音频：' + ((data && data.message) || '可能无版权或需要会员'));
+      const failMsg = (data && data.message) || '可能无版权或需要会员';
+      if (statusEl) statusEl.innerText = (data && data.needs_login) ? '这首需要网易云登录态' : '这首取不到音频（可能无版权或需要会员）';
+      if (!silent) alert('《' + (song.title || '这首歌') + '》取不到音频：' + failMsg);
       return false;
     } catch (err) {
       if (statusEl) statusEl.innerText = '取音频地址失败';
@@ -295,11 +291,11 @@
   }
 
   // 加载并播放指定歌曲
-  async function playSong(song, autoPlay = true, queueContext = null) {
-    if (!song) return;
+  async function playSong(song, autoPlay = true, queueContext = null, silent = false) {
+    if (!song) return false;
     if (song.source === 'netease' && song.neId) {
-      const ok = await ensureNeteaseUrl(song);
-      if (!ok) return;
+      const ok = await ensureNeteaseUrl(song, silent);
+      if (!ok) return false;
     }
     currentSong = song;
     if (queueContext && Array.isArray(queueContext) && queueContext.length > 0) {
@@ -331,6 +327,7 @@
     } else {
       pauseMusic();
     }
+    return true;
   }
 
   function playMusic() {
@@ -866,13 +863,20 @@
       renderPlaylistDrawer();
       inputEl.value = '';
 
-      const first = allSongs.find(s => s.id === 'ne-' + list[0].id);
       if (badgeEl) badgeEl.innerText = '搜到 ' + list.length + ' 首，已放进曲库（' + addedCount + ' 首新增）';
 
-      if (first) {
+      // 自动挑一首现在就能播的（免费歌免登录即可；版权歌要登录态）
+      const candidates = list.map(it => allSongs.find(s => s.id === 'ne-' + it.id)).filter(Boolean);
+      let started = null;
+      for (const c of candidates.slice(0, 5)) {
+        const okPlay = await playSong(c, true, allSongs, true);
+        if (okPlay) { started = c; break; }
+      }
+      if (started) {
         const bubbleEl = document.getElementById('music-live-bubble-text');
-        if (bubbleEl) bubbleEl.innerText = '“《' + first.title + '》……这首我想和你一起听。”';
-        await playSong(first, true, allSongs);
+        if (bubbleEl) bubbleEl.innerText = '“《' + started.title + '》……这首我想和你一起听。”';
+      } else if (badgeEl) {
+        badgeEl.innerText = '这几首都要登录态，配好网易云 cookie 就能播';
       }
     } catch (err) {
       alert('搜索失败：' + ((err && err.message) ? err.message : err));
