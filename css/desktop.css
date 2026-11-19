@@ -1,4 +1,4 @@
-﻿/* iOS 桌面与小组件拓展样式 */
+/* iOS 桌面与小组件拓展样式 */
 
 /* ================= 周绪言 · 赛博机体神经中枢 (Neural Nexus) ================= */
 .neural-nexus-card {
@@ -2778,4 +2778,38 @@ body.ios-edit-mode .dw-avatar .dw-avatar-edit { opacity: 1; }
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
+}
+/* ===== momBottomSeam：底部收口（iOS 主屏模式专用） =====
+   实测（2026-11-20 真机）：iPhone 14 主屏模式下 screen.height=844，但页面只拿到 797，
+   多出的 47pt 由最底层画布 (html 背景色) 填充，页面里的元素一律被裁在 797 以内。
+   因此在页面上把那 47pt 拉高、铺壁纸、放补缝层全都无效。
+   唯一可行的做法：让页面自己的底边渐隐成与画布完全相同的纯色 (#15171b)，
+   两边同一个颜色，视觉上就没有那条带了。
+   渐变挂在 #page-home 的 background 上：它在 dock 之下，不会压住 dock 的毛玻璃。 */
+html.ios #page-home,
+html.ios.standalone #page-home {
+  background-image: linear-gradient(
+    to bottom,
+    rgba(21, 23, 27, 0) 0%,
+    rgba(21, 23, 27, 0) calc(100% - 96px),
+    rgb(21, 23, 27) calc(100% - 2px)
+  ) !important;
+  background-color: transparent !important;
+}
+
+/* 画布色钉死成同一个值，保证 797~844 那条带与页面收口处的颜色分毫不差 */
+html.ios,
+html.ios body {
+  background-color: rgb(21, 23, 27) !important;
+}
+
+/* 兜底：任何页面（聊天/设置等）底边也做同样的收口，避免换页时又冒出一条带 */
+html.ios .view-container::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 96px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(21, 23, 27, 0), rgb(21, 23, 27));
+  z-index: 0;
 }
