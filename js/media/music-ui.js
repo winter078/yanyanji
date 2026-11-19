@@ -22,9 +22,133 @@
   function isPlaying() {
     try { return !!(window.mzBridge && window.mzBridge.playing()); } catch (e) { return false; }
   }
-  function safeCover(song) {
+  /* ---------------- 自定义封面（纯本机存储） ---------------- */
+  const COVER_PREFIX = 'mz_cover_';
+  const COVER_INDEX = 'mz_cover_index';
+  const COVER_BUDGET = 3.2 * 1024 * 1024;   // 自定义封面总占用上限
+  const COVER_SIDE = 400;                   // 压到 400×400 jpg
+
+  function coverKey(id) { return COVER_PREFIX + String(id); }
+
+  function customCover(id) {
+    if (id === undefined || id === null) return '';
+    try { return localStorage.getItem(coverKey(id)) || ''; } catch (e) { return ''; }
+  }
+
+  function coverIndex() {
+    try { return JSON.parse(localStorage.getItem(COVER_INDEX) || '{}') || {}; } catch (e) { return {}; }
+  }
+  function saveCoverIndex(o) { try { localStorage.setItem(COVER_INDEX, JSON.stringify(o)); } catch (e) {} }
+  function coverTotal(o) {
+    return Object.keys(o).reduce(function (n, k) { return n + (o[k].s || 0); }, 0);
+  }
+
+  function saveCover(id, dataUrl) {
+    const key = String(id);
+    const idx = coverIndex();
+    idx[key] = { t: Date.now(), s: dataUrl.length };
+    let total = coverTotal(idx);
+    while (total > COVER_BUDGET) {
+      const oldest = Object.keys(idx)
+        .filter(function (k) { return k !== key; })
+        .sort(function (a, b) { return idx[a].t - idx[b].t; })[0];
+      if (!oldest) break;
+      try { localStorage.removeItem(coverKey(oldest)); } catch (e) {}
+      total -= idx[oldest].s || 0;
+      delete idx[oldest];
+    }
+    try {
+      localStorage.setItem(coverKey(key), dataUrl);
+    } catch (e) {
+      return false;
+    }
+    saveCoverIndex(idx);
+    return true;
+  }
+
+  function dropCover(id) {
+    const key = String(id);
+    const idx = coverIndex();
+    try { localStorage.removeItem(coverKey(key)); } catch (e) {}
+    if (idx[key]) { delete idx[key]; saveCoverIndex(idx); }
+  }
+
+  function fixRowCovers() {
+    const list = $('music-playlist-list');
+    if (!list) return;
+    const rows = list.querySelectorAll('.playlist-song-item');
+    for (let i = 0; i < rows.length; i++) {
+      const id = rowSongId(rows[i]);
+      if (!id) continue;
+      const img = rows[i].querySelector('.playlist-song-cover');
+      if (!img) continue;
+      const want = safeCover(songById(id));
+      if (want && img.getAttribute('src') !== want) img.src = want;
+    }
+  }
+
+  function refreshCovers() {
+    lastCover = '';
+    syncPlayerView();
+    renderHome();
+    renderMine();
+    injectRowWallButtons();
+    fixRowCovers();
+  }
+
+  window.mzPickCover = function (ev) {
+    if (ev && ev.stopPropagation) ev.stopPropagation();
+    if (!current()) return;
+    const inp = $('mz-cover-input');
+    if (inp) { inp.value = ''; inp.click(); }
+  };
+
+  window.mzOnCoverFile = function (ev) {
+    const file = ev && ev.target && ev.target.files && ev.target.files[0];
+    if (!file) return;
+    const s = current();
+    if (!s) return;
+    const reader = new FileReader();
+    reader.onload = function () {
+      const img = new Image();
+      img.onload = function () {
+        const cv = document.createElement('canvas');
+        cv.width = COVER_SIDE;
+        cv.height = COVER_SIDE;
+        const ctx = cv.getContext('2d');
+        const side = Math.min(img.width, img.height);
+        const sx = (img.width - side) / 2;
+        const sy = (img.height - side) / 2;
+        ctx.drawImage(img, sx, sy, side, side, 0, 0, COVER_SIDE, COVER_SIDE);
+        let url = cv.toDataURL('image/jpeg', 0.82);
+        if (url.length > 240 * 1024) url = cv.toDataURL('image/jpeg', 0.64);
+        if (!saveCover(s.id, url)) {
+          alert('本机存储快满了，先在别的歌里恢复几张原封面再试');
+          return;
+        }
+        refreshCovers();
+      };
+      img.onerror = function () { alert('这张图片读不出来，换一张试试'); };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  window.mzResetCover = function () {
+    const s = current();
+    if (!s) return;
+    dropCover(s.id);
+    refreshCovers();
+  };
+
+  function origCover(song) {
     const c = (song && song.cover) || '';
     return c ? String(c).replace(/^http:/, 'https:') : '';
+  }
+
+  function safeCover(song) {
+    const custom = song ? customCover(song.id) : '';
+    return custom || origCover(song);
   }
   function isVip(song) {
     return !!(song && song.source === 'netease' && song.fee && Number(song.fee) > 0);
@@ -81,6 +205,17 @@
       }
       if (headTitle) headTitle.textContent = '一起听';
       if (s.title && s.title !== lastTitle) lastTitle = s.title;
+
+      const diskImg = $('music-disk-cover');
+      if (diskImg) {
+        const cc = customCover(s.id);
+        const nowSrc = diskImg.getAttribute('src') || '';
+        if (cc && nowSrc !== cc) diskImg.src = cc;
+        else if (!cc && nowSrc.indexOf('data:') === 0) {
+          const o = origCover(s);
+          if (o) diskImg.src = o;
+        }
+      }
     } else {
       if (miniTitle) miniTitle.textContent = '还没在听';
       if (miniArtist) miniArtist.textContent = '点一首歌开始';
@@ -88,6 +223,8 @@
     }
     if (miniPlay) miniPlay.textContent = isPlaying() ? '⏸' : '▶';
     if (playBtn) playBtn.textContent = isPlaying() ? '⏸' : '▶';
+    const editBtn = $('mz-cover-edit');
+    if (editBtn) editBtn.style.display = s ? 'flex' : 'none';
     updateWallButtons();
   }
 
@@ -385,6 +522,7 @@
       btn.classList.toggle('on', onAnyWall(id));
       btn.title = onAnyWall(id) ? '已上墙，点击可取下' : '摆到唱片墙';
     }
+    fixRowCovers();
   }
 
   function refreshPickLabels() {
