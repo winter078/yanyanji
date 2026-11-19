@@ -7185,11 +7185,18 @@
     }
 
     window.__momStripColor = function () {};
-    window.__momFullBleed = build;
-    build();
-    window.addEventListener('load', build);
-    window.addEventListener('resize', build);
-    try { new MutationObserver(build).observe(ph, { attributes: true, attributeFilter: ['style', 'class'] }); } catch (e) {}
+    /* 整屏铺壁纸方案已废弃：实测 canvas 那 47pt 只能显示纯色，图片/渐变都画不进去。
+       改由 desktop.css 的 momBottomSeam（页面底边渐隐到画布色）收口。
+       这里只把上一版写进 body 的尺寸/背景清干净，不再参与布局。 */
+    window.__momFullBleed = function () { return 'disabled'; };
+    try {
+      ['height', 'bottom', 'background-image', 'background-size', 'background-position',
+       'background-repeat', 'background-color'].forEach(function (p) {
+        document.body.style.removeProperty(p);
+      });
+    } catch (e) {}
+    window.addEventListener('load', function () { try { document.body.style.removeProperty('height'); } catch (e) {} });
+    window.addEventListener('resize', function () { try { document.body.style.removeProperty('height'); } catch (e) {} });
   })();
 </script>
 <!--__PROBE_START-->
