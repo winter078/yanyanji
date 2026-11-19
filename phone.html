@@ -164,7 +164,7 @@
   <link rel="stylesheet" href="css/story-skin.css?v=2026111408" />
   <link rel="stylesheet" href="css/world.css?v=2026111013" />
   <link rel="stylesheet" href="css/themes.css?v=2026111001" />
-  <link rel="stylesheet" href="css/desktop.css?v=2026112003" />
+  <link rel="stylesheet" href="css/desktop.css?v=2026112004" />
   <link rel="stylesheet" href="css/notify.css" />
   <link rel="stylesheet" href="css/wechat.css?v=2026111652" />
   <link rel="stylesheet" href="css/call.css?v=2026111649" />
@@ -7261,7 +7261,19 @@
       if (PIN) {
         lines.push('── 带 background-image 的元素 ──');
         lines.push(findBgs().join('\n'));
-        lines.push('脚本已跑 ' + (window.__momFullBleed ? 'yes' : 'no') + ' | 轻点可收起');
+        /* 决定性问题：100vh / 100dvh / 100svh 在这台机上分别是多少；dock 投影是否已关掉 */
+      var m = function (unit) {
+        var d = document.createElement('div');
+        d.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:' + unit + ';visibility:hidden;pointer-events:none;';
+        document.documentElement.appendChild(d);
+        var h = d.getBoundingClientRect().height;
+        d.remove();
+        return Math.round(h);
+      };
+      lines.push('100vh ' + m('100vh') + ' | 100dvh ' + m('100dvh') + ' | 100svh ' + m('100svh') +
+        ' | visualViewport ' + (window.visualViewport ? Math.round(window.visualViewport.height) : '-'));
+      lines.push('dock 投影 ' + (dock ? getComputedStyle(dock).boxShadow.slice(0, 40) : '-'));
+      lines.push('脚本已跑 ' + (window.__momFullBleed ? 'yes' : 'no') + ' | 轻点可收起');
       } else {
         lines.push('…轻点固定可看壁纸挂在哪一层');
       }
