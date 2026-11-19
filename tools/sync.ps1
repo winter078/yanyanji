@@ -22,6 +22,8 @@ $H = @{ Authorization = "Bearer $env:GH_TOKEN"; 'User-Agent' = 'doubao' }
 
 # 仓库路径 -> 本地路径（相对仓库根的本地副本目录）
 $Map = [ordered]@{
+  'index.html'                 = 'verify\index.html'
+  'manifest.json'              = 'verify\manifest.json'
   'phone.html'                 = 'verify\phone.html'
   'css/music-app.css'          = 'verify\music\music-app.css'
   'css/music.css'              = 'verify\music\css_music.css'
