@@ -69,7 +69,7 @@ foreach ($kv in $Map.GetEnumerator()) {
       Write-Host "↓ 拉取 $($kv.Key)"
     }
     elseif ($Mode -eq 'push') {
-      $api = "https://api.github.com/repos/$Repo/contents/$($path = $kv.Key)"
+      $api = "https://api.github.com/repos/$Repo/contents/$($kv.Key)"
       $body = @{ message = $Msg; content = [Convert]::ToBase64String([IO.File]::ReadAllBytes($localPath)); sha = $remote.sha }
       $r = Invoke-RestMethod -Uri $api -Headers $H -Method Put -Body ($body | ConvertTo-Json -Compress) -ContentType 'application/json'
       Write-Host "↑ 推送 $($kv.Key) -> $($r.commit.sha.Substring(0,7))"
