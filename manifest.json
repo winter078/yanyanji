@@ -3,7 +3,7 @@
   "short_name": "言言机",
   "description": "黑猫趴在书上的本地小手机",
   "id": "/",
-  "start_url": "/index.html",
+  "start_url": "/phone",
   "scope": "/",
   "display": "standalone",
   "display_override": ["fullscreen", "standalone"],
