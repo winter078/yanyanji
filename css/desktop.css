@@ -2770,3 +2770,9 @@ body.ios-edit-mode .dw-avatar .dw-avatar-edit { opacity: 1; }
   min-height: 174px;
   margin-bottom: 8px;
 }
+/* 桌面这一屏禁止长按选中文字：拖动图标时不再冒出蓝色高亮，拖拽/跨页/建文件夹不受影响 */
+#page-home {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
