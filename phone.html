@@ -5347,6 +5347,18 @@
               </div>
             </div>
 
+            <!-- ========== 唱片墙选择（资料库行内用） ========== -->
+            <div class="mz-sheet-mask" id="mz-wall-picker" onclick="mzCloseWallPicker()">
+              <div class="mz-sheet" onclick="event.stopPropagation()">
+                <div class="mz-sheet-bar"></div>
+                <div class="mz-sheet-title" id="mz-wall-picker-title">摆到哪面墙？</div>
+                <div class="mz-sheet-row mz-sheet-actions">
+                  <button class="mz-wall-btn" id="mz-pick-user" onclick="mzPickWall('user')">我的唱片墙</button>
+                  <button class="mz-wall-btn" id="mz-pick-bot" onclick="mzPickWall('bot')">角色的唱片墙</button>
+                </div>
+              </div>
+            </div>
+
             <!-- ========== 添加到歌单弹窗 ========== -->
             <div class="music-modal-mask" id="music-add-to-folder-modal" style="display: none;" onclick="closeAddToFolderModal(event)">
               <div class="music-modal-box" onclick="event.stopPropagation()">
