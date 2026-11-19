@@ -5257,6 +5257,7 @@
                 <div class="mz-cover-wrap">
                   <div class="music-vinyl-disk mz-cover-card" id="music-vinyl-disk" onclick="togglePlayMusic()">
                     <img id="music-disk-cover" src="" alt="封面" />
+                    <button class="mz-cover-edit" id="mz-cover-edit" onclick="mzPickCover(event)" title="换封面">✎</button>
                   </div>
                   <div class="mz-cover-avatars">
                     <div class="music-avatar-card"><img id="music-avatar-user" src="" alt="user" /><span class="music-avatar-name" id="music-name-user">user</span></div>
@@ -5340,10 +5341,15 @@
                 </div>
 
                 <div class="mz-sheet-row mz-sheet-actions">
+                  <button class="music-tool-btn" onclick="mzResetCover()">🖼 恢复这首歌的原封面</button>
+                </div>
+
+                <div class="mz-sheet-row mz-sheet-actions">
                   <button class="music-tool-btn" onclick="document.getElementById('input-local-song').click()">📂 导入本地歌曲</button>
                   <button class="music-tool-btn" onclick="promptAddMusicUrl()">🔗 贴音频直链</button>
                 </div>
                 <input type="file" id="input-local-song" accept="audio/*,.mp3,.flac,.m4a,.wav,.ogg" style="display: none;" onchange="handleImportLocalSong(event)" />
+                <input type="file" id="mz-cover-input" accept="image/*" style="display: none;" onchange="mzOnCoverFile(event)" />
               </div>
             </div>
 
