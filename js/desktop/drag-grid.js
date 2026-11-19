@@ -748,7 +748,7 @@
       <div class="hero-profile-card" style="margin: 0; box-shadow: none; border: none; height: 260px;">
         <div class="hero-card-banner" id="hero-card-banner" onclick="triggerPick('heroBanner')" title="更换背景"></div>
         <div class="hero-avatar-wrap" onclick="triggerPick('heroAvatar')" title="更换头像">
-          <img id="hero-avatar-img" src="" alt="头像" />
+          <img id="hero-avatar-img" src="${(window.appData && window.appData.heroAvatar) || localStorage.getItem('momo_hero_avatar') || ''}" alt="头像" />
         </div>
         <div class="hero-info-plate">
           <div class="editable-text-name" onclick="openHeroEditModal('userName')">
@@ -3324,4 +3324,23 @@
   } else {
     window.renderDynamicPages();
   }
+})();
+
+/* ===== 修复（2026-11-19）：桌面卡片头像靠别处代码填 src，执行顺序一变就空白。
+   这里在卡片生成时直接取存档值，并在回到前台/重新载入后再兜底补一次。 ===== */
+(function () {
+  function refillHeroAvatar() {
+    try {
+      var el = document.getElementById('hero-avatar-img');
+      if (!el) return;
+      var cur = el.getAttribute('src') || '';
+      if (cur) return;
+      var av = (window.appData && window.appData.heroAvatar) || localStorage.getItem('momo_hero_avatar') || '';
+      if (av) el.setAttribute('src', av);
+    } catch (e) {}
+  }
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') setTimeout(refillHeroAvatar, 80);
+  });
+  window.addEventListener('pageshow', function () { setTimeout(refillHeroAvatar, 80); });
 })();
