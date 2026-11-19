@@ -343,6 +343,98 @@
     if (bb) bb.classList.toggle('active', shelfOwner === 'bot');
   };
 
+  /* ---------------- 资料库：行内“摆到唱片墙” ---------------- */
+  let pickSongId = null;
+
+  function rowSongId(row) {
+    const oc = row.getAttribute('onclick') || '';
+    const m = oc.match(/playSongById\('([^']+)'\)/);
+    return m ? m[1] : null;
+  }
+
+  function songById(id) {
+    return songs().find(function (s) { return String(s.id) === String(id); }) || null;
+  }
+
+  function onAnyWall(id) {
+    return wallIds('user').indexOf(String(id)) >= 0 || wallIds('bot').indexOf(String(id)) >= 0;
+  }
+
+  function injectRowWallButtons() {
+    const list = $('music-playlist-list');
+    if (!list) return;
+    const rows = list.querySelectorAll('.playlist-song-item');
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const id = rowSongId(row);
+      if (!id) continue;
+      const acts = row.querySelector('.playlist-song-actions');
+      if (!acts) continue;
+      let btn = acts.querySelector('.mz-row-wall');
+      if (!btn) {
+        btn = document.createElement('button');
+        btn.className = 'song-action-btn mz-row-wall';
+        btn.title = '摆到唱片墙';
+        btn.textContent = '💿';
+        btn.addEventListener('click', function (ev) {
+          ev.stopPropagation();
+          window.mzOpenWallPicker(id);
+        });
+        acts.insertBefore(btn, acts.firstChild);
+      }
+      btn.classList.toggle('on', onAnyWall(id));
+      btn.title = onAnyWall(id) ? '已上墙，点击可取下' : '摆到唱片墙';
+    }
+  }
+
+  function refreshPickLabels() {
+    ['user', 'bot'].forEach(function (o) {
+      const b = $('mz-pick-' + o);
+      if (!b) return;
+      const on = pickSongId ? wallIds(o).indexOf(pickSongId) >= 0 : false;
+      const base = o === 'user' ? '我的唱片墙' : '角色的唱片墙';
+      const txt = base + (on ? ' · 已上墙，点此取下' : ' · 点此摆上');
+      if (b.textContent !== txt) b.textContent = txt;
+      b.classList.toggle('on', on);
+    });
+  }
+
+  window.mzOpenWallPicker = function (songId) {
+    pickSongId = String(songId);
+    const s = songById(pickSongId);
+    const t = $('mz-wall-picker-title');
+    if (t) t.textContent = (s && s.title ? '《' + s.title + '》' : '这首歌') + '，摆到哪面墙？';
+    refreshPickLabels();
+    const m = $('mz-wall-picker');
+    if (m) m.classList.add('open');
+  };
+
+  window.mzCloseWallPicker = function () {
+    const m = $('mz-wall-picker');
+    if (m) m.classList.remove('open');
+  };
+
+  window.mzPickWall = function (owner) {
+    if (!pickSongId) return;
+    const ids = wallIds(owner);
+    const i = ids.indexOf(pickSongId);
+    if (i >= 0) ids.splice(i, 1);
+    else ids.unshift(pickSongId);
+    saveWall(owner, ids);
+    shelfOwner = owner;
+    renderMine();
+    refreshPickLabels();
+    injectRowWallButtons();
+  };
+
+  function watchLibList() {
+    injectRowWallButtons();
+    const list = $('music-playlist-list');
+    if (!list || !window.MutationObserver) return;
+    new MutationObserver(function () { injectRowWallButtons(); })
+      .observe(list, { childList: true, subtree: true });
+  }
+
   function renderMine() {
     const list = songs();
     const avatar = $('mz-mine-avatar');
@@ -417,6 +509,8 @@
     renderHome();
     renderMine();
     syncPlayerView();
+    watchLibList();
+    setTimeout(watchLibList, 800);
   }
 
   if (document.readyState === 'loading') {
