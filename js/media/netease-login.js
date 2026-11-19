@@ -1,5 +1,5 @@
 // 网易云扫码登录（登录态存在本机 localStorage，不上传服务器）
-// 流程：/api/netease/qr/key 取 unikey → 画二维码 → 轮询 /api/netease/qr/check → 803 成功拿到 cookie
+// 流程：/api/music/qr-key 取 unikey → 画二维码 → 轮询 /api/music/qr-check → 803 成功拿到 cookie
 
 (function () {
   'use strict';
@@ -96,7 +96,7 @@
     var box = document.getElementById('mz-nc-qr-box');
     if (box) box.innerHTML = '';
     try {
-      var r = await fetch('/api/netease/qr/key?cb=' + Date.now(), { cache: 'no-store' });
+      var r = await fetch('/api/music/qr-key?cb=' + Date.now(), { cache: 'no-store' });
       var d = await r.json().catch(function () { return {}; });
       if (!d || !d.unikey) {
         setStatus('拿不到二维码：' + ((d && d.message) || '接口没返回'), 'bad');
@@ -118,7 +118,7 @@
       if (!currentKey) return;
       if (Date.now() > expireAt) { closeMask(); return; }
       try {
-        var r = await fetch('/api/netease/qr/check?key=' + encodeURIComponent(currentKey) + '&cb=' + Date.now(), { cache: 'no-store' });
+        var r = await fetch('/api/music/qr-check?key=' + encodeURIComponent(currentKey) + '&cb=' + Date.now(), { cache: 'no-store' });
         var d = await r.json().catch(function () { return {}; });
         var code = d && d.code;
         if (code === 802) {
