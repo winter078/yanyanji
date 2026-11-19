@@ -1,0 +1,646 @@
+/* ============================================================
+   music-app.css —— 音乐模块新版布局（四个 tab + 悬浮播放条 + 一起听播放页）
+   说明：本文件只服务 #page-music，与 music.css 共存；music.css 保持原样不动。
+   回滚方式：删掉 phone.html 里对本文件的 <link>，页面立即回到旧版。
+   ============================================================ */
+
+#page-music {
+  padding: 0 !important;
+  overflow: hidden;
+  --mz-glass: rgba(255, 255, 255, 0.10);
+  --mz-glass-line: rgba(255, 255, 255, 0.14);
+  --mz-radius: 26px;
+}
+
+.mz-app {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ---------- 子页面容器 ---------- */
+.mz-page {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+}
+.mz-page.active {
+  display: flex;
+  animation: mzFade 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes mzFade {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ---------- 顶部标题 ---------- */
+.mz-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: max(env(safe-area-inset-top, 0px), 10px) 16px 8px;
+}
+.mz-head-side { width: 36px; }
+.mz-head-title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  opacity: 0.85;
+}
+.mz-round-btn {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--mz-glass-line);
+  background: var(--mz-glass);
+  color: inherit;
+  font-size: 16px;
+  line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+.mz-round-btn:active { transform: scale(0.94); }
+
+/* ---------- 滚动区 ---------- */
+.mz-scroll {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 16px calc(160px + env(safe-area-inset-bottom, 0px));
+}
+
+/* ---------- 区块标题 ---------- */
+.mz-h1 {
+  font-size: 19px;
+  font-weight: 700;
+  margin: 14px 2px 10px;
+  display: flex; align-items: center; gap: 6px;
+}
+.mz-h1-more {
+  font-size: 14px; font-weight: 400; opacity: 0.5; margin-left: auto;
+}
+
+/* ---------- 首页大卡 ---------- */
+.mz-cards { display: flex; gap: 10px; }
+.mz-card {
+  flex: 1 1 0;
+  min-width: 0;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #1c1c20;
+  position: relative;
+  aspect-ratio: 3 / 4;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+}
+.mz-card-cover {
+  position: absolute; inset: 0;
+  background: linear-gradient(140deg, #6d5b8a, #2a2436);
+  background-size: cover;
+  background-position: center;
+}
+.mz-card::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,0.72) 100%);
+}
+.mz-card-txt {
+  position: absolute; left: 12px; right: 12px; bottom: 12px; z-index: 2;
+  display: flex; flex-direction: column; gap: 2px;
+  color: #fff;
+}
+.mz-card-txt b { font-size: 14px; font-weight: 600; }
+.mz-card-txt span { font-size: 11px; opacity: 0.7; }
+
+/* ---------- 横向小卡 ---------- */
+.mz-hscroll {
+  display: flex; gap: 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 2px 0 6px;
+  scrollbar-width: none;
+}
+.mz-hscroll::-webkit-scrollbar { display: none; }
+.mz-tile {
+  flex: none; width: 104px;
+  text-align: left;
+  border: none; background: none; padding: 0; color: inherit;
+}
+.mz-tile-cover {
+  width: 104px; height: 104px;
+  border-radius: 16px;
+  background-size: cover; background-position: center;
+  background-color: #232327;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
+  position: relative;
+  overflow: hidden;
+}
+.mz-tile-badge {
+  position: absolute; left: 6px; top: 6px;
+  font-size: 9px; padding: 1px 6px; border-radius: 8px;
+  background: rgba(255, 90, 90, 0.9); color: #fff;
+}
+.mz-tile-name {
+  font-size: 12.5px; font-weight: 600;
+  margin-top: 6px; line-height: 1.3;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.mz-tile-artist { font-size: 11px; opacity: 0.55; margin-top: 2px; }
+
+/* ---------- 行式歌曲列表 ---------- */
+.mz-list { display: flex; flex-direction: column; gap: 4px; }
+.mz-row {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%;
+  padding: 7px 4px;
+  border: none; background: none; color: inherit;
+  border-radius: 14px;
+  text-align: left;
+}
+.mz-row:active { background: rgba(255, 255, 255, 0.08); }
+.mz-row-cover {
+  flex: none; width: 46px; height: 46px; border-radius: 12px;
+  background-size: cover; background-position: center;
+  background-color: #232327;
+}
+.mz-row-txt { flex: 1; min-width: 0; }
+.mz-row-name {
+  font-size: 14px; font-weight: 600;
+  display: flex; align-items: center; gap: 6px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mz-row-artist { font-size: 11.5px; opacity: 0.55; margin-top: 2px; }
+.mz-row-vip {
+  flex: none; font-size: 9px; padding: 1px 5px; border-radius: 5px;
+  border: 1px solid rgba(255, 120, 120, 0.75); color: #ff8080;
+}
+.mz-row-play {
+  flex: none; width: 28px; height: 28px; border-radius: 50%;
+  border: 1px solid var(--mz-glass-line);
+  background: none; color: inherit; font-size: 11px;
+  display: flex; align-items: center; justify-content: center;
+}
+.mz-empty {
+  font-size: 12.5px; opacity: 0.5; padding: 18px 4px;
+}
+
+/* ---------- 搜索页 ---------- */
+.mz-search-row { display: flex; gap: 8px; margin: 4px 0 10px; }
+.mz-search-input {
+  flex: 1;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 20px;
+  border: 1px solid var(--mz-glass-line);
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+  font-size: 14px;
+  outline: none;
+}
+.mz-search-go {
+  flex: none; height: 40px; padding: 0 16px;
+  border-radius: 20px; border: none;
+  background: #fff; color: #111; font-size: 14px; font-weight: 600;
+}
+.mz-search-hint { font-size: 11.5px; opacity: 0.45; margin: 0 4px 12px; line-height: 1.5; }
+
+/* ---------- 资料库（复用旧抽屉内容，改为静态流） ---------- */
+.mz-lib-scroll { padding-top: 0; }
+#page-music .mz-lib-body {
+  position: static !important;
+  display: block !important;
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 0 !important;
+  height: auto !important;
+  max-height: none !important;
+  width: auto !important;
+  transform: none !important;
+}
+#page-music .mz-lib-tabs {
+  display: flex; gap: 8px; padding: 0 0 12px;
+  background: none !important;
+  border: none !important;
+}
+#page-music .mz-lib-body .music-tab-pane { padding: 0 !important; }
+
+/* ---------- 我的 ---------- */
+.mz-mine-hero {
+  flex: none;
+  padding: max(env(safe-area-inset-top, 0px), 26px) 16px 18px;
+  margin: 0 16px;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  border-radius: 24px;
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 70%),
+    linear-gradient(160deg, #3a3350, #17161d 70%);
+  color: #fff;
+}
+.mz-mine-avatar-wrap { width: 76px; height: 76px; border-radius: 50%; padding: 2px; background: rgba(255,255,255,.22); }
+.mz-mine-avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; }
+.mz-mine-name { font-size: 16px; font-weight: 700; margin-top: 4px; }
+.mz-mine-stat { font-size: 11.5px; opacity: 0.6; }
+
+.mz-seg {
+  flex: none;
+  display: flex; gap: 8px; justify-content: center;
+  padding: 14px 16px 6px;
+}
+.mz-seg-btn {
+  padding: 7px 18px;
+  border-radius: 18px;
+  border: 1px solid var(--mz-glass-line);
+  background: transparent;
+  color: inherit; font-size: 13px;
+}
+.mz-seg-btn.active {
+  background: rgba(255, 255, 255, 0.92);
+  color: #111;
+  border-color: transparent;
+  font-weight: 600;
+}
+
+/* 唱片墙：三层置物架 */
+.mz-shelf {
+  position: relative;
+  display: flex; gap: 10px;
+  padding: 6px 8px 16px;
+  margin-bottom: 14px;
+}
+.mz-shelf::after {
+  content: '';
+  position: absolute; left: 0; right: 0; bottom: 0;
+  height: 12px; border-radius: 3px;
+  background: linear-gradient(180deg, #6a6a72, #3c3c44);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.35);
+}
+.mz-disc {
+  flex: none;
+  width: 84px; height: 84px;
+  border-radius: 8px;
+  background-size: cover; background-position: center;
+  background-color: #232327;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  align-self: flex-end;
+  margin-bottom: 9px;
+}
+
+/* ---------- 一起听播放页 ---------- */
+.mz-player {
+  position: absolute; inset: 0;
+  z-index: 30;
+  display: flex; flex-direction: column;
+  color: #f5f5f7;
+  background: #0b0b0e;
+  transform: translateY(100%);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.34s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s ease;
+}
+.mz-player.open { transform: none; opacity: 1; pointer-events: auto; }
+
+.mz-player-bg {
+  position: absolute; inset: -12%;
+  background-color: #0b0b0e;
+  background-size: cover;
+  background-position: center;
+  filter: blur(46px) saturate(1.35) brightness(0.7);
+  transform: scale(1.05);
+  transition: background-image 0.5s ease;
+}
+.mz-player-shade {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.35) 0%, rgba(0, 0, 0, 0.72) 62%, rgba(0, 0, 0, 0.9) 100%);
+}
+
+.mz-player-head {
+  position: relative; z-index: 2;
+  flex: none;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px;
+  padding: max(env(safe-area-inset-top, 0px), 10px) 16px 6px;
+}
+.mz-player-head-title { font-size: 13px; opacity: 0.65; letter-spacing: 1px; }
+
+.mz-player-body {
+  position: relative; z-index: 2;
+  flex: 1;
+  display: flex; flex-direction: column;
+  align-items: center;
+  padding: 6px 22px calc(20px + env(safe-area-inset-bottom, 0px));
+  overflow: hidden;
+}
+
+.mz-cover-wrap {
+  flex: none;
+  display: flex; flex-direction: column; align-items: center;
+  margin-top: 8px;
+}
+#page-music .mz-cover-card {
+  width: min(66vw, 288px);
+  height: min(66vw, 288px);
+  border-radius: var(--mz-radius);
+  overflow: hidden;
+  background: #000;
+  animation: none !important;
+  box-shadow: 0 26px 60px rgba(0, 0, 0, 0.55);
+  position: relative;
+}
+#page-music .mz-cover-card .vinyl-groove-rings { display: none !important; }
+#page-music .mz-cover-card img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  border-radius: var(--mz-radius);
+  display: block;
+}
+
+.mz-cover-avatars {
+  display: flex; gap: 10px; justify-content: center;
+  margin-top: -26px;
+  position: relative; z-index: 3;
+}
+#page-music .mz-cover-avatars .music-avatar-card {
+  position: static !important;
+  background: none !important;
+  border: none !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+}
+#page-music .mz-cover-avatars img {
+  width: 54px; height: 54px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+  display: block;
+}
+#page-music .mz-cover-avatars .music-avatar-name {
+  display: none !important;
+}
+
+.mz-song { text-align: center; margin-top: 16px; }
+.mz-song-title {
+  font-size: 21px; font-weight: 700; letter-spacing: 0.5px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 76vw;
+}
+.mz-song-artist { font-size: 12.5px; opacity: 0.55; margin-top: 4px; }
+
+.mz-wish {
+  font-size: 10.5px; opacity: 0.4;
+  margin-top: 10px; text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 78vw;
+}
+
+.mz-live-bubble {
+  margin-top: 14px;
+  max-width: 84vw;
+  padding: 9px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  font-size: 12px; line-height: 1.5;
+}
+.mz-live-tag { display: block; font-size: 10px; opacity: 0.5; margin-bottom: 3px; }
+
+.mz-progress {
+  width: 100%;
+  margin-top: auto;
+  display: flex; align-items: center; gap: 10px;
+  padding-top: 14px;
+}
+.mz-time { flex: none; font-size: 10.5px; opacity: 0.5; font-variant-numeric: tabular-nums; }
+.mz-track {
+  position: relative; flex: 1; height: 18px;
+  display: flex; align-items: center;
+}
+.mz-track::before {
+  content: ''; position: absolute; left: 0; right: 0; height: 3px;
+  border-radius: 2px; background: rgba(255, 255, 255, 0.18);
+}
+#page-music .mz-track-bar {
+  position: absolute; left: 0; height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #ffffff, #d8c9ff);
+}
+#page-music .mz-track-handle {
+  position: absolute; width: 9px; height: 9px; border-radius: 50%;
+  background: #fff; margin-left: -4.5px;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+}
+
+.mz-ctrls {
+  width: 100%;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px;
+  padding: 10px 4px 0;
+}
+.mz-ctrl {
+  flex: none;
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  border: none; background: none;
+  color: #f5f5f7;
+  font-size: 17px;
+  display: flex; align-items: center; justify-content: center;
+}
+.mz-ctrl:active { opacity: 0.6; }
+#page-music .mz-ctrl-play {
+  width: 60px; height: 60px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #111;
+  font-size: 21px;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45);
+}
+
+.mz-badge {
+  flex: none;
+  font-size: 10.5px; opacity: 0.42;
+  text-align: center;
+  margin-top: 10px;
+}
+
+/* 耳语输入（从底部升起） */
+#page-music .mz-whisper {
+  position: absolute; left: 14px; right: 14px;
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  z-index: 5;
+  display: flex; gap: 6px; align-items: center;
+  padding: 8px;
+  border-radius: 20px;
+  background: rgba(30, 30, 34, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+
+/* ---------- 悬浮迷你播放条 ---------- */
+.mz-mini {
+  position: absolute; left: 12px; right: 12px;
+  bottom: calc(74px + env(safe-area-inset-bottom, 0px));
+  z-index: 20;
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px;
+  border-radius: 20px;
+  background: rgba(28, 28, 32, 0.72);
+  border: 1px solid var(--mz-glass-line);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  color: #f2f2f4;
+}
+.mz-mini-cover {
+  flex: none; width: 34px; height: 34px; border-radius: 10px;
+  object-fit: cover; background: #2a2a2e;
+}
+.mz-mini-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.mz-mini-txt b {
+  font-size: 12.5px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mz-mini-txt span { font-size: 10.5px; opacity: 0.55; }
+.mz-mini-btn {
+  flex: none; width: 32px; height: 32px; border-radius: 50%;
+  border: none; background: none; color: inherit; font-size: 15px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ---------- 胶囊 tab 栏 ---------- */
+.mz-tabbar {
+  position: absolute; left: 12px; right: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  z-index: 21;
+  display: flex; align-items: center; justify-content: space-around;
+  padding: 6px;
+  border-radius: 22px;
+  background: rgba(28, 28, 32, 0.72);
+  border: 1px solid var(--mz-glass-line);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+}
+.mz-tab {
+  flex: 1;
+  border: none; background: none;
+  color: #f2f2f4;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 6px 2px;
+  border-radius: 16px;
+  font-size: 10.5px;
+  opacity: 0.6;
+}
+.mz-tab .mz-tab-ico { font-size: 15px; line-height: 1; }
+.mz-tab.active {
+  background: rgba(255, 255, 255, 0.16);
+  opacity: 1;
+  font-weight: 600;
+}
+
+/* ---------- 底部 sheet（更多） ---------- */
+.mz-sheet-mask {
+  position: absolute; inset: 0;
+  z-index: 40;
+  display: none;
+  align-items: flex-end;
+  background: rgba(0, 0, 0, 0.5);
+}
+.mz-sheet-mask.open { display: flex; }
+.mz-sheet {
+  width: 100%;
+  padding: 10px 18px calc(20px + env(safe-area-inset-bottom, 0px));
+  border-radius: 24px 24px 0 0;
+  background: #1b1b1f;
+  color: #f2f2f4;
+  animation: mzSheet 0.26s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes mzSheet {
+  from { transform: translateY(100%); }
+  to   { transform: none; }
+}
+.mz-sheet-bar {
+  width: 38px; height: 4px; border-radius: 2px;
+  background: rgba(255, 255, 255, 0.28);
+  margin: 0 auto 12px;
+}
+.mz-sheet-title { font-size: 13px; opacity: 0.6; margin-bottom: 14px; }
+.mz-sheet-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 0;
+}
+.mz-sheet-actions { flex-direction: column; gap: 8px; align-items: stretch; }
+
+/* ============================================================
+   与旧 music.css 的冲突修正（只覆盖必需的属性）
+   注意：#page-music 的背景色保持原样，不改动，避免影响顶部状态栏取样。
+   ============================================================ */
+#page-music {
+  background-image: none !important;
+}
+#page-music .mz-track {
+  background: none !important;
+  border-radius: 0 !important;
+}
+#page-music .mz-track-handle {
+  width: 10px;
+  height: 10px;
+  top: 50%;
+  right: auto;
+  border: none !important;
+  margin-left: 0 !important;
+  padding: 0;
+  background: #fff !important;
+  transform: translate(-50%, -50%);
+}
+#page-music .mz-cover-card {
+  background: #000 !important;
+}
+#page-music .mz-whisper {
+  width: auto !important;
+  max-width: none !important;
+  margin-top: 0 !important;
+}
+#page-music .mz-whisper input {
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  border: none;
+  background: transparent;
+  color: #f2f2f4;
+  font-size: 13px;
+  outline: none;
+}
+#page-music .mz-whisper .music-whisper-send,
+#page-music .mz-whisper .music-whisper-close {
+  flex: none;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 16px;
+  border: none;
+  background: rgba(255, 255, 255, 0.14);
+  color: #f2f2f4;
+  font-size: 12px;
+}
+#page-music .mz-lib-body .music-tab-btn {
+  flex: 1;
+  border-radius: 14px;
+  font-size: 12px;
+  padding: 9px 6px;
+  white-space: nowrap;
+}
+#page-music .mz-lib-body .music-playlist-list {
+  max-height: none !important;
+}
+#page-music .mz-shelf .mz-empty {
+  align-self: center;
+}
