@@ -20,6 +20,18 @@ jobs:
         with:
           node-version: 22
 
+      # 你在仓库根目录改的文件（phone.html / index.html / css/ ...）自动同步到发布目录
+      - name: Sync root files into _deploy
+        run: |
+          set -e
+          for f in phone.html index.html _headers manifest.json manifest-full.json sw.js full.html preview.html; do
+            if [ -f "$f" ]; then cp -f "$f" "_deploy/$f"; fi
+          done
+          for d in css js assets icons media data functions; do
+            if [ -d "$d" ]; then mkdir -p "_deploy/$d"; rsync -a --delete "$d"/ "_deploy/$d"/; fi
+          done
+          echo "root -> _deploy synced"
+
       - name: Deploy to Cloudflare Pages
         working-directory: _deploy
         run: npx --yes wrangler@latest pages deploy . --project-name=momo-phone --branch=main --commit-dirty=true
