@@ -1,4 +1,4 @@
-/phone
+﻿/phone
   Cache-Control: no-store, must-revalidate
 
 /phone.html
@@ -8,4 +8,10 @@
   Cache-Control: no-store, must-revalidate
 
 /full.html
+  Cache-Control: no-store, must-revalidate
+
+/js/version-watch.js
+  Cache-Control: no-store, must-revalidate
+
+/api/version
   Cache-Control: no-store, must-revalidate
