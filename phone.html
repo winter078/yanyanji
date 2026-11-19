@@ -7199,51 +7199,7 @@
     window.addEventListener('resize', function () { try { document.body.style.removeProperty('height'); } catch (e) {} });
   })();
 </script>
-<style id="__momFullBleedInline">
-/* ===== 真满屏：外层全部改用 100vh（实测本机 100vh=844，100dvh=797） ===== */
-html.ios .device-wrapper {
-  position: fixed !important;
-  top: 0 !important; left: 0 !important; right: 0 !important; bottom: auto !important;
-  width: auto !important; height: 100vh !important;
-  padding: 0 !important; border-radius: 0 !important; box-shadow: none !important;
-  background: transparent !important; overflow: hidden !important;
-}
-html.ios .phone-screen {
-  position: absolute !important;
-  top: 0 !important; left: 0 !important; right: 0 !important; bottom: auto !important;
-  width: auto !important; height: 100vh !important;
-  max-height: none !important;
-  border-radius: 0 !important;
-  background-size: 100% 100vh !important;
-  background-position: center top !important;
-}
-html.ios .view-container {
-  position: absolute !important;
-  top: max(env(safe-area-inset-top, 0px), 47px) !important;
-  left: 0 !important; right: 0 !important; bottom: 0 !important;
-  height: auto !important;
-  overflow: hidden !important;
-}
-/* WebKit 只在 797 以内作画（实测：元素能到 844，但 797 之后一律被裁），
-   所以内容区必须收回到 797。用 100vh-100dvh 得到这 47pt，跨机型通用。 */
-html.ios #page-home {
-  padding-bottom: 47px !important;
-  padding-bottom: calc(100vh - 100dvh) !important;
-  background-image: none !important;
-  background-color: transparent !important;
-}
-/* dock 去投影：必须用 id，类名那条被同优先级规则挡住了 */
-html.ios #home-dock-bar,
-html.ios .home-dock-bar {
-  box-shadow: none !important;
-  -webkit-box-shadow: none !important;
-  margin-bottom: 0 !important;
-}
-/* 画布底色交给取色脚本决定（这里不再钉死颜色，否则会把取样结果盖掉） */
-html.ios, html.ios body {
-  background-image: none !important;
-}
-</style>
+
 <script>
   /* dock 投影：样式表里的 !important 压不住时，用内联 !important 收尾（内联重要声明优先级最高） */
   (function () {
