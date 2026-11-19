@@ -26,7 +26,15 @@ export async function onRequestGet(context) {
   const id = (url.searchParams.get('id') || '').trim();
   if (!id || !/^\d+$/.test(id)) return json({ error: 'bad_id', message: '歌曲 id 不合法' }, 400);
 
-  const cookie = (context.env && context.env.NETEASE_COOKIE) || '';
+  // 登录态来源（优先级从高到低）：
+  //   1) 请求头 x-netease-cookie —— 用户在小手机里扫码登录后存在本机的 cookie
+  //   2) Cloudflare 环境变量 NETEASE_COOKIE —— 想全站共用一份登录态时用
+  const headerCookie = (context.request.headers.get('x-netease-cookie') || '').trim();
+  const envCookie = (context.env && context.env.NETEASE_COOKIE) || '';
+  let cookie = headerCookie || envCookie;
+  if (cookie.length > 4000) cookie = cookie.slice(0, 4000);
+  // 网易云接口都要求带 appver/os，缺了会取不到地址
+  if (cookie && !/appver=/.test(cookie)) cookie = 'appver=8.9.7; os=pc; ' + cookie;
   const hasLogin = !!cookie;
 
   const headers = {
@@ -77,7 +85,7 @@ export async function onRequestGet(context) {
         error: 'no_audio',
         message: hasLogin
           ? '这首没有可播地址（可能无版权或需要会员）'
-          : '这首需要网易云登录态才能取到音频（NETEASE_COOKIE 还没配）',
+          : '这首要你的网易云登录态才播得了：去「我的」里扫码登录一下',
         needs_login: !hasLogin,
         code: (item2 && item2.code) || 0,
         fee: (item2 && item2.fee) || 0
