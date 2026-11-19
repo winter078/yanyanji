@@ -227,8 +227,11 @@ body.ios-edit-mode .desktop-page-header-bar {
 /* 桌面顶部：一条固定预留的空白带（不再画假时间/电量），长按编辑时工具条出现在同一块里，图标不会跳 */
 .desktop-status-bar {
   position: relative;
-  flex: 0 0 44px;
-  height: 44px;
+  /* 白条修复（black-translucent）：内容已顶到屏幕物理顶部，这条预留带要跟着状态栏安全区走。
+     浏览器里 env() 为 0 → 仍是 44px，布局与改动前完全一致；
+     主屏沉浸模式下 env() 返回状态栏真实高度 → 自动加高，小组件不会被状态栏图标压住 */
+  flex: 0 0 max(44px, env(safe-area-inset-top, 0px));
+  height: max(44px, env(safe-area-inset-top, 0px));
   z-index: 130;
   color: #f3f5f7;
   text-shadow: 0 1px 4px rgba(0, 0, 0, .55);
@@ -239,8 +242,8 @@ body.ios-edit-mode .desktop-page-header-bar {
 /* 手机上：这条 44px 的带子刚好用来放编辑工具条，小组件从它下面开始，工具条不会压住小组件，图标也不动 */
 @media (max-width: 600px) {
   .desktop-status-bar {
-    flex: 0 0 44px;
-    height: 44px;
+    flex: 0 0 max(44px, env(safe-area-inset-top, 0px));
+    height: max(44px, env(safe-area-inset-top, 0px));
   }
 }
 .desktop-status-icons {
