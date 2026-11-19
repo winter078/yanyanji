@@ -232,6 +232,49 @@
 }
 #page-music .mz-lib-body .music-tab-pane { padding: 0 !important; }
 
+/* ---------- 资料库：行式歌曲列表 ---------- */
+#music-playlist-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 2px 0 18px;
+}
+#music-playlist-list .playlist-song-item {
+  padding: 6px 10px 6px 8px !important;
+  border: none !important;
+  border-radius: 14px !important;
+  background: transparent !important;
+  gap: 11px;
+  transition: background 0.18s ease;
+}
+#music-playlist-list .playlist-song-item:hover { background: rgba(255,255,255,.06) !important; }
+#music-playlist-list .playlist-song-item.active {
+  background: rgba(255,255,255,.10) !important;
+  border: none !important;
+}
+#music-playlist-list .playlist-song-cover {
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 11px !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,.35);
+}
+#music-playlist-list .playlist-song-meta { min-width: 0; }
+#music-playlist-list .playlist-song-title { font-size: 13.5px !important; font-weight: 600 !important; }
+#music-playlist-list .playlist-song-sub { font-size: 11px !important; opacity: .55; margin-top: 1px !important; }
+#music-playlist-list .playlist-song-actions { gap: 2px !important; flex: none; }
+#music-playlist-list .song-action-btn {
+  width: 30px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  padding: 0;
+  font-size: 12.5px;
+  line-height: 1;
+  background: rgba(255,255,255,.05);
+}
+#music-playlist-list .song-action-btn.del { opacity: .5; }
+#music-playlist-list .mz-row-wall { font-size: 13px; }
+#music-playlist-list .mz-row-wall.on { background: rgba(255,255,255,.20); box-shadow: 0 0 0 1px rgba(255,255,255,.28) inset; }
+
 /* ---------- 我的 ---------- */
 .mz-mine-hero {
   flex: none;
