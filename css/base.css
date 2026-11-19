@@ -4615,3 +4615,6 @@ html.ios.sb-native .home-dock-bar {
   margin-bottom: max(env(safe-area-inset-bottom, 0px), 20px) !important;
 }
 
+
+/* ===== iOS 状态栏配色实验 2026-11-19（只此一条，可整块删除回滚）===== */
+html { color-scheme: dark; }
