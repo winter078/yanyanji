@@ -7224,20 +7224,40 @@ html.ios .view-container {
   height: auto !important;
   overflow: hidden !important;
 }
+/* WebKit 只在 797 以内作画（实测：元素能到 844，但 797 之后一律被裁），
+   所以内容区必须收回到 797。用 100vh-100dvh 得到这 47pt，跨机型通用。 */
 html.ios #page-home {
-  padding-bottom: max(env(safe-area-inset-bottom, 0px), 20px) !important;
+  padding-bottom: 47px !important;
+  padding-bottom: calc(100vh - 100dvh) !important;
   background-image: none !important;
   background-color: transparent !important;
 }
+/* dock 去投影：必须用 id，类名那条被同优先级规则挡住了 */
+html.ios #home-dock-bar,
 html.ios .home-dock-bar {
   box-shadow: none !important;
+  -webkit-box-shadow: none !important;
   margin-bottom: 0 !important;
 }
 html.ios, html.ios body {
   background-color: rgb(21, 23, 27) !important;
   background-image: none !important;
 }
-</style><!--__PROBE_START-->
+</style>
+<script>
+  /* dock 投影：样式表里的 !important 压不住时，用内联 !important 收尾（内联重要声明优先级最高） */
+  (function () {
+    function kill() {
+      var dk = document.getElementById('home-dock-bar');
+      if (!dk) return;
+      dk.style.setProperty('box-shadow', 'none', 'important');
+      dk.style.setProperty('-webkit-box-shadow', 'none', 'important');
+    }
+    kill();
+    document.addEventListener('DOMContentLoaded', kill);
+    setTimeout(kill, 1200);
+  })();
+</script><!--__PROBE_START-->
 <script>
   /* 临时探针 v2：打开页面自动出现，把真实数字写在屏幕上。
      如果是在浏览器里打开的（standalone=0），第一行会红字提示“数据不算数”。
