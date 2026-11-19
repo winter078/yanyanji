@@ -580,6 +580,29 @@
 }
 .mz-sheet-actions { flex-direction: column; gap: 8px; align-items: stretch; }
 
+/* ---------- 唱片墙：容器与"上墙"按钮 ---------- */
+.mz-shelf-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.mz-shelf-wrap .mz-empty { padding: 6px 4px 16px; }
+.mz-wall-btn {
+  width: 100%;
+  height: 44px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f2f2f4;
+  font-size: 13px;
+}
+.mz-wall-btn.on {
+  background: rgba(255, 255, 255, 0.92);
+  color: #111;
+  border-color: transparent;
+  font-weight: 600;
+}
+
 /* ============================================================
    与旧 music.css 的冲突修正（只覆盖必需的属性）
    注意：#page-music 的背景色保持原样，不改动，避免影响顶部状态栏取样。
