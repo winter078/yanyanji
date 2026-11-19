@@ -1110,6 +1110,16 @@
     }
   };
 
+  // 供新版 UI 层（music-ui.js）读取数据与触发播放，不改动任何播放逻辑
+  window.mzBridge = {
+    songs: () => allSongs,
+    playlists: () => customPlaylists,
+    favoriteIds: () => favoriteSongIds,
+    current: () => currentSong,
+    playing: () => isPlaying,
+    play: (song, ctx) => playSong(song, true, ctx || null, true)
+  };
+
   document.addEventListener('DOMContentLoaded', () => {
     initMusicPlayer();
   });
