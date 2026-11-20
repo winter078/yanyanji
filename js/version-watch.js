@@ -1,6 +1,8 @@
-/* 新版本提示：页面开着时，发现线上已换版本就弹一行“点我刷新”。不自动刷新，不打断播放。 */
+/* 新版本提示：页面开着时，比对"我自己这版"和"线上那版"，不一样就弹一行“点我刷新”。不自动刷新，不打断播放。
+   旧做法是拿第一次请求到的线上版本当基线，于是旧页面永远以为自己是最新的 —— 所以从来没弹过。
+   现在改成：页面里写死 window.__BUILD__，线上 /js/build.txt 是当前发布版本，两者一比就知道自己是不是旧的。 */
 (function () {
-  var baseline = null;
+  var mine = (typeof window.__BUILD__ === 'string' && window.__BUILD__ !== '__BUILD_SHA__') ? window.__BUILD__ : null;
   var shown = false;
   var box = null;
 
@@ -42,18 +44,19 @@
 
   function check() {
     if (document.hidden) return;
-    fetch('/api/version?t=' + Date.now(), { cache: 'no-store' })
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (d) {
-        if (!d || !d.v) return;
-        if (!baseline) { baseline = d.v; return; }
-        if (d.v !== baseline) show();
+    if (!mine) return;
+    fetch('/js/build.txt?t=' + Date.now(), { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.text() : null; })
+      .then(function (txt) {
+        if (!txt) return;
+        var live = String(txt).trim();
+        if (live && live !== mine) show();
       })
       .catch(function () {});
   }
 
   if (window.addEventListener) {
-    window.addEventListener('load', function () { setTimeout(check, 2500); });
+    window.addEventListener('load', function () { setTimeout(check, 1500); });
     document.addEventListener('visibilitychange', function () { if (!document.hidden) check(); });
   }
   setInterval(check, 60000);
