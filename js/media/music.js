@@ -969,21 +969,96 @@
     }
 
     // 头像与称谓同步
-    const botAvatarEl = document.getElementById('music-avatar-bot');
     const userAvatarEl = document.getElementById('music-avatar-user');
-    const botNameEl = document.getElementById('music-name-bot');
     const userNameEl = document.getElementById('music-name-user');
-
-    const botAvatar = localStorage.getItem('momo_bot_avatar') || (window.appData && window.appData.botAvatar) || '';
     const userAvatar = localStorage.getItem('momo_user_avatar') || (window.appData && window.appData.hero && window.appData.hero.userAvatar) || '';
-
-    if (botAvatarEl && botAvatar) botAvatarEl.src = botAvatar;
     if (userAvatarEl && userAvatar) userAvatarEl.src = userAvatar;
-    if (botNameEl && window.appData) botNameEl.innerText = window.appData.botRemark || '角色';
     if (userNameEl && window.appData) userNameEl.innerText = (window.appData.hero && (window.appData.hero.userName || window.appData.hero.userHandle)) || '我';
+
+    // 角色侧头像/名字/页头按钮跟着“一起听的人”走
+    refreshMusicCompanionUI();
 
     if (allSongs.length > 0) {
       playSong(allSongs[0], false, allSongs);
+    }
+  };
+
+  // ================= 一起听：和谁一起（同伴层） =================
+  function musicCompanionId() {
+    return localStorage.getItem('momo_music_companion') || '';
+  }
+
+  function musicCompanionChar() {
+    if (!window.Companion) return null;
+    return window.Companion.byId(musicCompanionId());
+  }
+
+  function musicCompanionName() {
+    const c = musicCompanionChar();
+    if (window.Companion) return window.Companion.displayName(c);
+    return (window.appData && window.appData.botRemark) || '周绪言';
+  }
+
+  function musicBotAvatar() {
+    const c = musicCompanionChar();
+    const byCompanion = (window.Companion && window.Companion.avatarOf(c)) || '';
+    return byCompanion
+      || localStorage.getItem('momo_bot_avatar')
+      || (window.appData && window.appData.botAvatar) || '';
+  }
+
+  function musicCompanionFaceHTML() {
+    const av = musicBotAvatar();
+    if (av) return '<img src="' + av + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">';
+    return '<span style="font-size:13px;">' + (musicCompanionName().charAt(0) || '伴') + '</span>';
+  }
+
+  window.refreshMusicCompanionUI = function() {
+    const name = musicCompanionName();
+    const avatarEl = document.getElementById('music-avatar-bot');
+    const nameEl = document.getElementById('music-name-bot');
+    const av = musicBotAvatar();
+    if (avatarEl && av) avatarEl.src = av;
+    if (nameEl) nameEl.innerText = name;
+
+    const btn = document.getElementById('music-companion-btn');
+    if (btn) {
+      btn.title = '一起听的人：' + name;
+      btn.innerHTML = musicCompanionFaceHTML();
+    }
+
+    const tag = document.getElementById('music-live-tag');
+    if (tag) tag.innerText = musicCompanionId() ? ('💬 ' + name + '的耳语') : '💬 角色耳语';
+  };
+
+  window.openMusicCompanionPicker = function() {
+    if (!window.Companion || !window.Companion.openPicker) return;
+    window.Companion.openPicker(musicCompanionId(), function(id) {
+      window.switchMusicCompanion(id);
+    }, {
+      title: '这段路和谁一起听',
+      defaultName: (window.appData && window.appData.botRemark) || '周绪言',
+      defaultTag: '默认同伴',
+      defaultAvatar: localStorage.getItem('momo_bot_avatar') || (window.appData && window.appData.botAvatar) || ''
+    });
+  };
+
+  window.switchMusicCompanion = function(id) {
+    id = String(id == null ? '' : id);
+    if (id === musicCompanionId()) {
+      if (window.Companion && window.Companion.closePicker) window.Companion.closePicker();
+      return;
+    }
+    localStorage.setItem('momo_music_companion', id);
+    window.refreshMusicCompanionUI();
+    if (window.Companion && window.Companion.closePicker) window.Companion.closePicker();
+    // 换成新人时，旧耳语不要留在气泡里冒充他说的
+    const bubble = document.getElementById('music-live-bubble-text');
+    const name = musicCompanionName();
+    if (bubble) {
+      bubble.innerText = musicCompanionId()
+        ? ('“换我了？耳机分你一半，我是' + name + '。”')
+        : ('“还是我。耳机一直给你留着。”');
     }
   };
 
@@ -1020,13 +1095,28 @@
     let apiBase = dataHub.apiBase || localStorage.getItem('momo_api_base') || 'https://api.openai.com/v1';
     const model = dataHub.model || localStorage.getItem('momo_api_model') || 'deepseek-chat';
 
-    if (userText && dataHub.chatHistory) {
+    // 耳语记录按“和谁听”分开存；默认同伴仍并入微信主聊天（保持原体验）
+    const whisperKey = musicCompanionId();
+    const pushWhisperLine = function(role, content) {
       const timeStr = (typeof getNowStr === 'function') ? getNowStr() : '刚刚';
-      dataHub.chatHistory.push({ role: 'user', content: '「🎧 一起听《' + song.title + '》耳语」：' + userText, time: timeStr });
       try {
-        if (typeof window.saveChatHistoryNow === 'function') window.saveChatHistoryNow();
-        else localStorage.setItem('momo_chat_history', JSON.stringify(dataHub.chatHistory.slice(-50)));
+        const storeKey = 'momo_music_whisper' + (whisperKey ? '_' + whisperKey : '_default');
+        const arr = JSON.parse(localStorage.getItem(storeKey) || '[]');
+        arr.push({ role: role, content: content, time: timeStr });
+        localStorage.setItem(storeKey, JSON.stringify(arr.slice(-80)));
       } catch(e){}
+      if (whisperKey) return; // 换了伴，就不写进微信主聊天，免得串台
+      if (dataHub.chatHistory) {
+        dataHub.chatHistory.push({ role: role, content: content, time: timeStr });
+        try {
+          if (typeof window.saveChatHistoryNow === 'function') window.saveChatHistoryNow();
+          else localStorage.setItem('momo_chat_history', JSON.stringify(dataHub.chatHistory.slice(-50)));
+        } catch(e){}
+      }
+    };
+
+    if (userText) {
+      pushWhisperLine('user', '「🎧 一起听《' + song.title + '》耳语」：' + userText);
     }
 
     const romanticPool = [
@@ -1047,12 +1137,22 @@
 
         let promptInstruction = '';
         const userDisplayName = (window.appData && window.appData.hero && window.appData.hero.userName) || '用户';
-        const botDisplayName = (window.appData && window.appData.botRemark) || '角色';
+        const compChar = musicCompanionChar();
+        const compPersona = (window.Companion && window.Companion.persona(compChar)) || '';
+        const botDisplayName = musicCompanionName();
         if (userText) {
-          promptInstruction = '【情境】：你正和' + userDisplayName + '共戴一副耳机听《' + song.title + '》。对方贴着你耳边说了：“' + userText + '”。请以' + botDisplayName + '的身份，极简耳语回复1句温存陪伴的话（20字以内）：';
+          promptInstruction = '【情境】：你正和' + userDisplayName + '共戴一副耳机听《' + song.title + '》。对方贴着你耳边说了：“' + userText + '”。';
         } else {
-          promptInstruction = '【情境】：你正和' + userDisplayName + '共戴一副耳机听《' + song.title + '》。请以' + botDisplayName + '的身份，随旋律对TA耳语1句温存陪伴的话（20字以内）：';
+          promptInstruction = '【情境】：你正和' + userDisplayName + '共戴一副耳机听《' + song.title + '》。你们靠得很近，只有一颗耳机给TA。';
         }
+        promptInstruction += '请以' + botDisplayName + '的身份，极简耳语回复1句温存陪伴的话（20字以内，只输出这句话，不要引号、不要旁白）：';
+
+        // 有角色卡时按人设说话，没选人时保持原来的“专属伴侣”口吻
+        const whisperSystem = compPersona
+          ? ('你是' + botDisplayName + '。\n' + compPersona
+            + '\n【场景约束】你们共用一副耳机听歌，说话要贴着耳朵、很轻、很短。'
+            + '\n【禁止】不要旁白、不要动作描写、不要解释、不要AI套话、不要自称“本角色/助手”。')
+          : '你是用户的专属伴侣。输出极简真切的耳边温存陪伴语，不要AI套话。';
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 7000);
@@ -1067,7 +1167,7 @@
           body: JSON.stringify({
             model: model,
             messages: [
-              { role: 'system', content: '你是用户的专属伴侣。输出极简真切的耳边温存陪伴语，不要AI套话。' },
+              { role: 'system', content: whisperSystem },
               { role: 'user', content: promptInstruction }
             ],
             temperature: 0.85,
@@ -1085,13 +1185,7 @@
           if (reply) {
             gotReply = true;
             if (bubbleTextEl) bubbleTextEl.innerText = '“' + reply + '”';
-            if (dataHub.chatHistory) {
-              dataHub.chatHistory.push({ role: 'assistant', content: '「🎧 一起听耳语」：' + reply, time: (typeof getNowStr === 'function') ? getNowStr() : '刚刚' });
-              try {
-                if (typeof window.saveChatHistoryNow === 'function') window.saveChatHistoryNow();
-                else localStorage.setItem('momo_chat_history', JSON.stringify(dataHub.chatHistory.slice(-50)));
-              } catch(e){}
-            }
+            pushWhisperLine('assistant', '「🎧 一起听耳语」：' + reply);
           }
         }
       } catch(err) {
@@ -1103,13 +1197,7 @@
       setTimeout(() => {
         const finalAns = userText ? ('“听到了……' + userText.slice(0, 10) + '，靠过来点，我都在。”') : fallbackText;
         if (bubbleTextEl) bubbleTextEl.innerText = finalAns;
-        if (dataHub.chatHistory) {
-          dataHub.chatHistory.push({ role: 'assistant', content: '「🎧 一起听耳语」：' + finalAns.replace(/^“|”$/g, ''), time: (typeof getNowStr === 'function') ? getNowStr() : '刚刚' });
-          try {
-            if (typeof window.saveChatHistoryNow === 'function') window.saveChatHistoryNow();
-            else localStorage.setItem('momo_chat_history', JSON.stringify(dataHub.chatHistory.slice(-50)));
-          } catch(e){}
-        }
+        pushWhisperLine('assistant', '「🎧 一起听耳语」：' + finalAns.replace(/^“|”$/g, ''));
       }, 600);
     }
   };
