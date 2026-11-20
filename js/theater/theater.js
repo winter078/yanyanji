@@ -1042,6 +1042,66 @@ ${worldBookPrompt}
     };
     window.getTheaterBookStage = readRpBookStage;
 
+    // 2026-11-20 图书联动：把剧场整段剧情存成书架里的一本书（+ 抽屉「存成书，去阅读看」）
+    window.exportRpStoryToBook = function () {
+      const history = (appData.rpHistory || []).slice();
+      if (!history.length) { alert('剧场里还没有内容，先演一段再存。'); return; }
+      if (typeof window.importRpStoryAsBook !== 'function') {
+        alert('阅读模块还没准备好，等一下再试。');
+        return;
+      }
+      const charName = (typeof theaterCharacterName === 'function' && theaterCharacterName()) || '角色';
+      const perChapter = 10;
+      const chapters = [];
+      for (let i = 0; i < history.length; i += perChapter) {
+        const slice = history.slice(i, i + perChapter);
+        const paragraphs = [];
+        let firstLine = '';
+        slice.forEach(function (item) {
+          const action = extractRpStoryText(item.action || '').trim();
+          const spoken = extractRpStoryText(item.spoken || '').trim();
+          if (!firstLine && (action || spoken)) firstLine = (action || spoken).replace(/\s+/g, ' ');
+          if (action) paragraphs.push(action);
+          if (spoken) paragraphs.push(/^[“「]/.test(spoken) ? spoken : '“' + spoken + '”');
+        });
+        if (!paragraphs.length) continue;
+        const num = chapters.length + 1;
+        let suffix = '';
+        if (firstLine) {
+          const frag = firstLine.slice(0, 14);
+          suffix = ' · ' + frag + (firstLine.length > 14 ? '…' : '');
+        }
+        chapters.push({ title: '第' + num + '章' + suffix, paragraphs: paragraphs });
+      }
+      if (!chapters.length) { alert('这段剧场没有可导出的正文。'); return; }
+
+      const d = new Date();
+      const title = charName + '的剧场 · ' + (d.getMonth() + 1) + '月' + d.getDate() + '日';
+      const s = appData.storySettings || {};
+      const preamble = [
+        '角色：' + charName,
+        '文风：' + (s.style || '小说体') + '　人称：' + (s.pov || '跟随文风'),
+        '回复长度：' + (s.minWords || 300) + '-' + (s.maxWords || 800) + ' 字',
+        s.stylePrompt ? '笔触：' + String(s.stylePrompt).slice(0, 140) : '',
+        s.scenario ? '起始场景：' + String(s.scenario).slice(0, 140) : '',
+        history.length ? '共 ' + history.length + ' 条剧场记录' : ''
+      ].filter(Boolean).join('\n');
+
+      const res = window.importRpStoryAsBook({
+        title: title,
+        author: '言言机 · 此时此刻',
+        charName: charName,
+        chapters: chapters,
+        preamble: preamble,
+        savedAt: Date.now()
+      });
+      if (res && res.ok) {
+        alert('《' + title + '》已存进书架，共 ' + chapters.length + ' 章。\n去「阅读」里翻就能看到。');
+      } else {
+        alert('存失败了：' + ((res && res.error) || '未知原因'));
+      }
+    };
+
     function bootRpBookStageBar() {
       renderRpBookStageBar();
       if (typeof window.openPage === 'function' && !window.openPage.__rpBookStageWrapped) {
