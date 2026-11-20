@@ -930,7 +930,7 @@
             '<div class="xianguo-feed-name">' + onlineEsc(b.title) +
               (inShelf ? '<span class="xianguo-feed-own">已在书架</span>' : '') + '</div>' +
             '<div class="xianguo-feed-author-tag">' + onlineEsc(b.author || '佚名') +
-              (b.chapterCount ? ' · ' + b.chapterCount + ' 回' : '') + '</div>' +
+              (b.chapterCount ? ' · ' + b.chapterCount + ' 章' : '') + '</div>' +
             '<div class="xianguo-feed-intro">' + onlineEsc(b.desc || '') + '</div>' +
           '</div>' +
           '<div class="xianguo-feed-update">' + (inShelf ? '点一下回到上次那一页' : '点一下搬到小手机，直接读') + '</div>' +
@@ -1190,6 +1190,153 @@
     return { title, author };
   }
 
+  // ================= 🧩 轻量 ZIP 读取（EPUB 用，纯前端无依赖） =================
+  async function openEpubZip(arrayBuffer) {
+    const u8 = new Uint8Array(arrayBuffer);
+    const dv = new DataView(arrayBuffer);
+    const u16 = (o) => dv.getUint16(o, true);
+    const u32 = (o) => dv.getUint32(o, true);
+
+    let eocd = -1;
+    const minStart = Math.max(0, u8.length - 65558);
+    for (let i = u8.length - 22; i >= minStart; i--) {
+      if (u32(i) === 0x06054b50) { eocd = i; break; }
+    }
+    if (eocd < 0) throw new Error('这不是有效的 EPUB（找不到压缩包目录）');
+
+    const count = u16(eocd + 10);
+    const cdOff = u32(eocd + 16);
+    const entries = {};
+    let p = cdOff;
+    for (let i = 0; i < count; i++) {
+      if (u32(p) !== 0x02014b50) break;
+      const method = u16(p + 10);
+      const csize = u32(p + 20);
+      const nameLen = u16(p + 28);
+      const extraLen = u16(p + 30);
+      const commentLen = u16(p + 32);
+      const lho = u32(p + 42);
+      const name = new TextDecoder('utf-8').decode(u8.subarray(p + 46, p + 46 + nameLen)).replace(/\\/g, '/');
+      const lnLen = u16(lho + 26), leLen = u16(lho + 28);
+      const dataOff = lho + 30 + lnLen + leLen;
+      entries[name] = { method, csize, dataOff };
+      p += 46 + nameLen + extraLen + commentLen;
+    }
+
+    const names = Object.keys(entries);
+    const findName = (n) => {
+      if (entries[n]) return n;
+      const lower = String(n).toLowerCase();
+      return names.find((k) => k.toLowerCase() === lower) || null;
+    };
+
+    async function get(n) {
+      const key = findName(n);
+      if (!key) return null;
+      const e = entries[key];
+      const raw = u8.subarray(e.dataOff, e.dataOff + e.csize);
+      if (e.method === 0) return raw;
+      if (e.method === 8) {
+        if (typeof DecompressionStream !== 'function') {
+          throw new Error('这个系统版本解不开 EPUB 压缩，请改用 TXT 导入（或升级到 iOS 16.4 以上）');
+        }
+        const stream = new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+        const ab = await new Response(stream).arrayBuffer();
+        return new Uint8Array(ab);
+      }
+      throw new Error('EPUB 使用了不支持的压缩方式（' + e.method + '）');
+    }
+
+    return { names, get };
+  }
+
+  function htmlToParagraphs(html) {
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    div.querySelectorAll('script,style,img,svg,figure,table,footnote').forEach((e) => e.remove());
+    const ps = Array.from(div.querySelectorAll('p')).map((p) => p.textContent.replace(/[\s\u3000]+/g, ' ').trim()).filter(Boolean);
+    if (ps.length >= 2) return ps;
+    const text = div.innerHTML
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/(p|div|h[1-6]|li|blockquote|section)>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+    return text.split('\n').map((s) => s.replace(/[\s\u3000]+/g, ' ').trim()).filter(Boolean);
+  }
+
+  function htmlChapterTitle(html) {
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    const h = div.querySelector('h1,h2,h3,h4');
+    if (h) {
+      const t = h.textContent.replace(/[\s\u3000]+/g, ' ').trim();
+      if (t && t.length <= 60) return t;
+    }
+    const t2 = div.querySelector('title');
+    if (t2) {
+      const t = t2.textContent.trim();
+      if (t && t.length <= 60) return t;
+    }
+    return '';
+  }
+
+  async function parseEpubToChapters(file) {
+    const zip = await openEpubZip(await file.arrayBuffer());
+    const dec = (b) => new TextDecoder('utf-8').decode(b);
+
+    let opfPath = null;
+    const container = await zip.get('META-INF/container.xml');
+    if (container) {
+      const m = dec(container).match(/full-path="([^"]+)"/i);
+      if (m) opfPath = m[1];
+    }
+    if (!opfPath) opfPath = zip.names.find((n) => n.toLowerCase().endsWith('.opf')) || null;
+    if (!opfPath) throw new Error('EPUB 缺少 opf 描述文件');
+
+    const opfText = dec(await zip.get(opfPath));
+    const manifest = {};
+    opfText.replace(/<item\b[^>]*>/gi, (tag) => {
+      const id = (tag.match(/\bid="([^"]*)"/i) || [])[1];
+      const href = (tag.match(/\bhref="([^"]*)"/i) || [])[1];
+      if (id && href) manifest[id] = href;
+      return tag;
+    });
+    const spineIds = [];
+    const spineBlock = (opfText.match(/<spine\b[\s\S]*?<\/spine>/i) || [''])[0];
+    spineBlock.replace(/<itemref\b[^>]*>/gi, (tag) => {
+      const id = (tag.match(/idref="([^"]*)"/i) || [])[1];
+      if (id) spineIds.push(id);
+      return tag;
+    });
+
+    const order = spineIds.length ? spineIds : Object.keys(manifest);
+    const chapters = [];
+    for (let i = 0; i < order.length; i++) {
+      const id = order[i];
+      const href = manifest[id];
+      if (!href) continue;
+      let full;
+      try {
+        full = decodeURIComponent(new URL(href, 'http://epub.local/' + opfPath).pathname.replace(/^\//, ''));
+      } catch (e) {
+        full = (opfPath.includes('/') ? opfPath.slice(0, opfPath.lastIndexOf('/') + 1) : '') + href;
+      }
+      const bytes = await zip.get(full);
+      if (!bytes) continue;
+      const html = dec(bytes);
+      const paras = htmlToParagraphs(html);
+      const textLen = paras.reduce((s, x) => s + x.length, 0);
+      if (textLen < 30) continue; // 封面、版权页这类跳过
+      const title = htmlChapterTitle(html) || ('第 ' + (chapters.length + 1) + ' 章');
+      chapters.push({ title, paragraphs: paras });
+    }
+
+    if (!chapters.length) throw new Error('EPUB 里没抽到正文');
+    return chapters;
+  }
+
   // ================= 📖 智能编码自适应与正则分章解析器 =================
   async function parseNovelFileToChapters(file) {
     return new Promise((resolve) => {
@@ -1211,60 +1358,85 @@
           }
         }
 
+        text = text.replace(/^\uFEFF/, '');
         text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-        const chapterRegex = /^[ \t　]*(?:(Part\s*[0-9]+|第[0-9一二三四五六七八九十百千万零]+[章回卷节集幕篇部折]|Chapter\s+[0-9]+|番外[0-9一二三四五六七八九十]*|引子|序言|楔子|尾声|后记)[\s:：、._-]*[^\n\r]{0,45})$/gmi;
+        text = text.replace(/[\u200b-\u200f\u2028\u2029]/g, '');
 
-        const matches = [];
-        let match;
-        while ((match = chapterRegex.exec(text)) !== null) {
-          const rawTitle = match[0].trim();
-          if (!/^["'“‘「]/.test(rawTitle)) {
-            matches.push({ index: match.index, title: rawTitle });
+        // 盗版站常见水印 / 广告行，进正文前先剔掉
+        const NOISE_RE = /^(?:本书由|本书首发|首发|最新章节|请记住|手机版|电脑版|手机阅读|手机用户|访问|欢迎收藏|全文阅读|无弹窗|下载|笔趣阁|顶点|铅笔|书包|掌阅|书友|感谢|求收藏|求订阅|求月票|投推荐票|打赏|本章完|本章未完|www\.|http|https|m\.|wap\.)/i;
+        const rawLines = text.split('\n');
+        const lines = [];
+        for (let li = 0; li < rawLines.length; li++) {
+          const l = rawLines[li].replace(/[\u3000\t]+/g, ' ').trim();
+          if (!l) continue;
+          if (l.length <= 60 && NOISE_RE.test(l)) continue;
+          if (l.length <= 40 && /^[（(【\[]?(本章完|未完待续|全文完|全文终)[）)】\]]?/.test(l)) continue;
+          // 一行字数过长（某些 txt 全篇不断行），按句号先劈开
+          if (l.length > 3000) {
+            const pieces = l.split(/(?<=[。！？…”』」])/).map((s) => s.trim()).filter(Boolean);
+            for (const pc of pieces) if (pc) lines.push(pc);
+            continue;
           }
+          lines.push(l);
         }
 
-        const chapters = [];
-        if (matches.length > 0) {
-          if (matches[0].index > 0) {
-            const intro = text.substring(0, matches[0].index).trim();
-            if (intro.length > 15) {
-              chapters.push({
-                title: '序言 / 引子',
-                paragraphs: intro.split('\n').map(p => p.trim()).filter(Boolean)
-              });
-            }
-          }
+        const TITLE_RES = [
+          /^(?:Part\s*\d+|Chapter\s*\d+|CHAPTER\s+[IVXLC]+)/i,
+          /^第[〇零一二三四五六七八九十百千万两0-9]+[章回卷节集幕篇部折話话]/,
+          /^(?:卷|回|章|节|篇)[〇零一二三四五六七八九十百0-9]+/,
+          /^(?:序章|序言|序幕|序|引子|楔子|前言|后记|尾声|终章|结局|番外|外传|附录|小引|凡例)/,
+          /^\d{1,4}[、.．]\s*\S/
+        ];
+        const isTitle = (l) => {
+          if (l.length > 42) return false;
+          if (TITLE_RES.some((re) => re.test(l))) return true;
+          return false;
+        };
 
-          for (let i = 0; i < matches.length; i++) {
-            const cur = matches[i];
-            const nxt = matches[i + 1];
-            const rawChunk = text.substring(cur.index, nxt ? nxt.index : text.length);
-            const lines = rawChunk.split('\n');
-            const title = lines[0].trim();
-            const paragraphs = lines.slice(1).map(p => p.trim()).filter(Boolean);
-            chapters.push({
-              title: title || ('第 ' + (i + 1) + ' 章'),
-              paragraphs: paragraphs.length > 0 ? paragraphs : ['（本章无段落内容）']
-            });
-          }
-        } else {
-          const allParagraphs = text.split('\n').map(p => p.trim()).filter(Boolean);
-          const chunkSize = 80;
-          if (allParagraphs.length > chunkSize) {
-            let chapCounter = 1;
-            for (let i = 0; i < allParagraphs.length; i += chunkSize) {
-              chapters.push({
-                title: '第 ' + chapCounter + ' 部分',
-                paragraphs: allParagraphs.slice(i, i + chunkSize)
-              });
-              chapCounter++;
+        const marks = [];
+        for (let li = 0; li < lines.length; li++) {
+          const l = lines[li];
+          if (/^["'“‘「『]/.test(l)) continue;
+          if (isTitle(l)) marks.push({ i: li, title: l });
+        }
+
+        // 标题太密（正文里误命中的情况）就视为没标题
+        const marksUsable = marks.length > 0 && marks.length <= Math.max(4, Math.floor(lines.length / 6));
+
+        let chapters = [];
+        if (marksUsable) {
+          const firstMarks = marks[0].i;
+          if (firstMarks > 0) {
+            const intro = lines.slice(0, firstMarks).join('\n').trim();
+            if (intro.length > 10) {
+              chapters.push({ title: '序言 / 引子', paragraphs: lines.slice(0, firstMarks) });
             }
-          } else {
+          }
+          for (let k = 0; k < marks.length; k++) {
+            const cur = marks[k];
+            const nxt = marks[k + 1];
+            const body = lines.slice(cur.i + 1, nxt ? nxt.i : lines.length);
             chapters.push({
-              title: '全本阅读',
-              paragraphs: allParagraphs.length > 0 ? allParagraphs : ['（空书籍文件）']
+              title: cur.title || ('第 ' + (k + 1) + ' 章'),
+              paragraphs: body.length ? body : ['（本章无段落内容）']
             });
           }
+        } else if (lines.length > 0) {
+          // 没有章节标记：按字数切，约 2000 字一节，读起来不至于一屏几千字
+          const CHUNK_CHARS = 2000;
+          let buf = [], n = 0;
+          for (const l of lines) {
+            buf.push(l);
+            n += l.length;
+            if (n >= CHUNK_CHARS) {
+              chapters.push({ title: '第 ' + (chapters.length + 1) + ' 节', paragraphs: buf });
+              buf = []; n = 0;
+            }
+          }
+          if (buf.length) chapters.push({ title: '第 ' + (chapters.length + 1) + ' 节', paragraphs: buf });
+          if (chapters.length <= 1) chapters = [{ title: '全本阅读', paragraphs: lines }];
+        } else {
+          chapters = [{ title: '空书籍文件', paragraphs: ['这个文件里没有文字。'] }];
         }
 
         resolve(chapters);
@@ -1332,6 +1504,7 @@
 
     let successCount = 0;
     const addedBooks = [];
+    const failures = [];
 
     for (let i = 0; i < fileList.length; i++) {
       const file = fileList[i];
@@ -1342,7 +1515,20 @@
       showXianguoToast('📖 (' + (i + 1) + '/' + fileList.length + ') 正在智能分章《' + file.name + '》...', 8000);
 
       const meta = parseBookMetaFromFileName(file.name);
-      const chapters = await parseNovelFileToChapters(file);
+      let chapters = [];
+      try {
+        chapters = /\.epub$/i.test(file.name)
+          ? await parseEpubToChapters(file)
+          : await parseNovelFileToChapters(file);
+      } catch (err) {
+        console.warn('导入失败', file.name, err);
+        failures.push(file.name + '：' + (err && err.message ? err.message : '读取失败'));
+        continue;
+      }
+      if (!chapters || !chapters.length) {
+        failures.push(file.name + '：抽不出正文');
+        continue;
+      }
       const bookId = 'book-local-' + Date.now() + '-' + Math.floor(Math.random() * 10000);
 
       // 1. 大文本正文异步写入 IndexedDB (永不占用 localStorage 宝贵配额)
@@ -1370,10 +1556,13 @@
     if (successCount > 0) {
       saveLocalShelf();
       renderShelfUI();
-      showXianguoToast('✨ 成功将 ' + successCount + ' 本小说收纳进书架！', 3000);
+      showXianguoToast('✨ 成功将 ' + successCount + ' 本收纳进书架' + (failures.length ? '，' + failures.length + ' 本失败' : '') + '！', failures.length ? 5000 : 3000);
       closeXianguoAddSheet();
+      if (failures.length) setTimeout(function () { alert('这些没导进去：\n· ' + failures.join('\n· ')); }, 600);
+    } else if (failures.length) {
+      alert('一本都没导进去：\n· ' + failures.join('\n· '));
     } else {
-      showXianguoToast('⚠️ 未检测到有效的 txt 或小说文本文件', 2500);
+      showXianguoToast('⚠️ 没找到能读的 txt / epub 文件', 2500);
     }
   };
 
