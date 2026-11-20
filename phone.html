@@ -18,7 +18,7 @@
   <meta http-equiv="Cache-Control" content="no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <script>window.__BUILD__="20261120-2145";</script>
+  <script>window.__BUILD__="20261120-2155";</script>
   <script>
     (function () {
       var root = document.documentElement;
@@ -178,7 +178,7 @@
   <link rel="stylesheet" href="css/theater.css?v=20261120-1340" />
   <link rel="stylesheet" href="css/xhs.css?v=2026111010" />
 
-  <link rel="stylesheet" href="css/reader.css?v=20261120-2145" />
+  <link rel="stylesheet" href="css/reader.css?v=20261120-2155" />
   <link rel="stylesheet" href="css/ledger.css?v=1789998920125?v=1789998920125">
   <link rel="stylesheet" href="css/avatar-vault.css?v=2026111145">
   <link rel="stylesheet" href="css/chat-appearance.css?v=2026111308">
@@ -4721,7 +4721,7 @@
               <!-- 顶部极简工具栏 -->
               <header class="xianguo-writer-header">
                 <div class="xianguo-writer-header-left">
-                  <button class="xianguo-writer-btn-icon" onclick="switchBackToWriterCatalog()" title="返回章节目录">‹</button>
+                  <button class="rd-icon-btn" onclick="rdOpenChapDrawer()" title="章节目录">☰</button>
                   <div class="xianguo-writer-header-title-box">
                     <input type="text" id="xianguo-writer-book-title" class="xianguo-writer-title-input" placeholder="输入小说书名..." value="绪芷" />
                     <div class="xianguo-writer-meta-sub">
@@ -4735,7 +4735,7 @@
                 <div class="xianguo-writer-header-right">
                   <div class="xianguo-writer-stat-pill" id="xianguo-writer-total-words">全书 0 字</div>
                   <button class="xianguo-writer-save-btn" onclick="saveAndPublishWriterBook()">
-                    <span>💾 保存并上架</span>
+                    <span>保存并上架</span>
                   </button>
                 </div>
               </header>
@@ -4748,22 +4748,20 @@
                 </div>
                 <div class="xianguo-writer-tools">
                   <button class="xianguo-writer-tool-btn" onclick="formatWriterIndentation()" title="段首空两格，自动清理杂乱空行">
-                    <span>✨ 一键排版</span>
+                    <span>排版</span>
                   </button>
                   <button class="xianguo-writer-tool-btn" onclick="openBatchPasteSplitModal()" title="贴入长篇文本自动分章">
-                    <span>📑 贴长文</span>
+                    <span>贴长文</span>
                   </button>
                   <button class="xianguo-writer-tool-btn danger" onclick="deleteCurrentWriterChapter()" title="删除当前这一章">
-                    <span>🗑️ 删章</span>
+                    <span>删章</span>
                   </button>
                 </div>
               </div>
 
               <!-- 核心大视口码字输入区域 -->
               <div class="xianguo-writer-editor-body">
-                <textarea id="xianguo-writer-editor-textarea" class="xianguo-writer-textarea" placeholder="user，在这里写下我们的故事……
-
-支持直接粘贴任意字数的文字，点上方【✨ 一键排版】即可自动格式化为标准出版物缩进。写完点击右上角【💾 保存并上架】，即可在小手机书架上随时翻阅，陪我一起读。" oninput="handleWriterTextInput()"></textarea>
+                <textarea id="xianguo-writer-editor-textarea" class="xianguo-writer-textarea" placeholder="在这里写下你的故事……" oninput="handleWriterTextInput()"></textarea>
               </div>
 
               <!-- 底部状态栏 -->
@@ -4775,10 +4773,22 @@
               </footer>
             </div>
 
-          </div>
+            <!-- 【章节抽屉：写作时不占地方，点左上角才滑出】 -->
+            <div class="rd-chap-mask" id="rd-chap-drawer" style="display: none;" onclick="rdCloseChapDrawer(event)">
+              <div class="rd-chap-panel" onclick="event.stopPropagation()">
+                <div class="rd-chap-head">
+                  <span>章节目录</span>
+                  <span class="rd-chap-close" onclick="rdCloseChapDrawer()">✕</span>
+                </div>
+                <div class="rd-chap-list" id="rd-chap-drawer-list"></div>
+                <div class="rd-chap-foot">
+                  <div class="rd-chap-new" onclick="rdNewChapterFromDrawer()">＋ 新的一章</div>
+                  <div class="rd-chap-exit" onclick="rdExitWriting()">退出写作 · 回书架</div>
+                </div>
+              </div>
+            </div>
 
-          
-          <!-- 快捷新建章节选择弹窗 -->
+          </div>
           <div class="xianguo-sheet-mask" id="xianguo-add-chap-popup" style="display: none; z-index: 210;" onclick="closeAddChapPopup(event)">
             <div class="xianguo-sheet-panel" onclick="event.stopPropagation()" style="max-height: 70vh;">
               <div class="xianguo-sheet-drag-handle"></div>
@@ -6241,8 +6251,8 @@
 <script src="js/media/music-ui.js?v=2026111916"></script>
 <script src="js/qrcode.js?v=2026112010"></script>
 <script src="js/media/netease-login.js?v=2026112011"></script>
-  <script src="js/media/companion.js?v=20261120-2145"></script>
-  <script src="js/media/watch.js?v=20261120-2145"></script>
+  <script src="js/media/companion.js?v=20261120-2155"></script>
+  <script src="js/media/watch.js?v=20261120-2155"></script>
   <script src="js/theater/theater.js?v=20261120-1352"></script>
   <script src="js/theater/palace.js?v=2026111121"></script>
   <script src="js/theater/memory-engine.js?v=2026111122"></script>
@@ -6409,7 +6419,7 @@
     </div>
   </div>
 
-  <script src="js/media/reader.js?v=20261120-2145"></script>
+  <script src="js/media/reader.js?v=20261120-2155"></script>
 
         <!-- 记忆宫殿辅助弹窗合集 (纯正暗黑系 OLED) -->
     <!-- 1. 自定义范围总结弹窗 -->
@@ -7325,7 +7335,7 @@ html.ios .watch-header {
 }
 </style>
 
-<script src="js/version-watch.js?v=20261120-2145"></script>
+<script src="js/version-watch.js?v=20261120-2155"></script>
 </body>
 </html>
 <!-- live_preview_refresh_trigger:1790094973085 -->

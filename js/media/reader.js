@@ -476,10 +476,16 @@
 
     const catView = document.getElementById('xianguo-writer-catalog-view');
     const editorView = document.getElementById('xianguo-writer-editor-view');
-    if (catView) catView.style.display = 'flex';
-    if (editorView) editorView.style.display = 'none';
-
     if (modal) modal.style.display = 'flex';
+
+    // 单栏沉浸：进写作直接到正文，章节目录走左上角抽屉
+    if (writerChapters.length) {
+      if (catView) catView.style.display = 'none';
+      if (editorView) editorView.style.display = 'flex';
+    } else {
+      if (catView) catView.style.display = 'flex';
+      if (editorView) editorView.style.display = 'none';
+    }
   };
 
   window.closeXianguoWriterModal = function() {
@@ -547,7 +553,13 @@
     const cur = writerChapters[currentWriterChapIdx] || { title: '第1章', text: '' };
 
     if (chapNumTag) chapNumTag.innerText = '第 ' + (currentWriterChapIdx + 1) + ' 章';
-    if (inChapTitle) inChapTitle.value = cur.title || ('第 ' + (currentWriterChapIdx + 1) + ' 章');
+    if (inChapTitle) {
+      const t = cur.title || '';
+      const plainNum = /^第\s*\d+\s*章$/.test(t) || /^第1章$/.test(t);
+      // 章号已经单独显示在左边，标题若是“第 N 章”就留空，避免重复
+      inChapTitle.value = plainNum ? '' : t;
+      inChapTitle.placeholder = '给这一章起个名字';
+    }
     if (textarea) textarea.value = cur.text || '';
   }
 
@@ -3793,6 +3805,53 @@
     rdSaveCats();
     rdRenderCatBody();
     rdRenderShelf();
+  };
+
+  // ============================================================
+  // ✍️ 写作工作台 · 单栏沉浸版（章节收进抽屉）
+  // ============================================================
+  window.rdOpenChapDrawer = function () {
+    try { syncCurrentChapterFromEditor(); } catch (e) {}
+    const list = document.getElementById('rd-chap-drawer-list');
+    if (list) {
+      const chapters = (typeof writerChapters !== 'undefined' && writerChapters) || [];
+      list.innerHTML = chapters.length ? chapters.map((c, i) => {
+        const words = String(c.text || '').replace(/\s/g, '').length;
+        return `<div class="rd-chap-row ${i === currentWriterChapIdx ? 'active' : ''}" onclick="rdJumpChapter(${i})">
+          <span class="rd-chap-row-num">${i + 1}</span>
+          <span class="rd-chap-row-title">${c.title || '无标题'}</span>
+          <span class="rd-chap-row-words">${words}字</span>
+        </div>`;
+      }).join('') : '<div class="rd-empty">还没有章节<br>点下面新建一章</div>';
+    }
+    const mask = document.getElementById('rd-chap-drawer');
+    if (mask) mask.style.display = 'flex';
+  };
+
+  window.rdCloseChapDrawer = function (e) {
+    if (e && e.target && e.target.id !== 'rd-chap-drawer') return;
+    const mask = document.getElementById('rd-chap-drawer');
+    if (mask) mask.style.display = 'none';
+  };
+
+  window.rdJumpChapter = function (idx) {
+    try { syncCurrentChapterFromEditor(); } catch (e) {}
+    window.selectChapterToEdit(idx);
+    window.rdCloseChapDrawer();
+  };
+
+  window.rdNewChapterFromDrawer = function () {
+    window.rdCloseChapDrawer();
+    window.promptAddNewWriterChapter();
+  };
+
+  window.rdExitWriting = function () {
+    try { syncCurrentChapterFromEditor(); } catch (e) {}
+    window.rdCloseChapDrawer();
+    // 存草稿再退出，回到书架
+    window.closeXianguoWriterModal();
+    window.renderShelfUI();
+    showXianguoToast('草稿已存，回书架了', 1600);
   };
 
   // ---------- 计时挂钩：进出阅读页 ----------
