@@ -1,6 +1,6 @@
 {
   "updatedAt": "2026-11-20",
-  "source": "hunterhug/china-literary + 言言机整理",
+  "source": "维基文库 zh.wikisource.org + hunterhug/china-literary",
   "books": [
     {
       "id": "hongloumeng",
@@ -84,6 +84,244 @@
       "desc": "四百六十余篇狐鬼花妖，短篇志怪之极。"
     },
     {
+      "id": "rulinwaishi",
+      "title": "儒林外史",
+      "author": "吴敬梓",
+      "alias": [],
+      "tags": [
+        "古典文学",
+        "明清小说",
+        "讽刺"
+      ],
+      "chapterCount": 56,
+      "file": "data/books/rulinwaishi.json",
+      "desc": "五十六回，一部读书人的众生相。"
+    },
+    {
+      "id": "jinghuayuan",
+      "title": "镜花缘",
+      "author": "李汝珍",
+      "alias": [],
+      "tags": [
+        "古典文学",
+        "神魔",
+        "明清小说"
+      ],
+      "chapterCount": 100,
+      "file": "data/books/jinghuayuan.json",
+      "desc": "百位才女，海外奇国，一部奇书。"
+    },
+    {
+      "id": "fengshen",
+      "title": "封神演义",
+      "author": "许仲琳",
+      "alias": [
+        "封神榜",
+        "封神"
+      ],
+      "tags": [
+        "古典文学",
+        "神魔",
+        "演义"
+      ],
+      "chapterCount": 103,
+      "file": "data/books/fengshen.json",
+      "desc": "商周之交，神仙打架，封神榜上一百位。"
+    },
+    {
+      "id": "dongzhou",
+      "title": "东周列国志",
+      "author": "冯梦龙",
+      "alias": [
+        "东周列国"
+      ],
+      "tags": [
+        "古典文学",
+        "演义"
+      ],
+      "chapterCount": 110,
+      "file": "data/books/dongzhou.json",
+      "desc": "五百年春秋战国，一百零八回。"
+    },
+    {
+      "id": "suitang",
+      "title": "隋唐演义",
+      "author": "褚人获",
+      "alias": [],
+      "tags": [
+        "古典文学",
+        "演义"
+      ],
+      "chapterCount": 102,
+      "file": "data/books/suitang.json",
+      "desc": "隋末群雄，秦琼程咬金的一百回。"
+    },
+    {
+      "id": "sanxiawuyi",
+      "title": "三侠五义",
+      "author": "石玉昆",
+      "alias": [
+        "七侠五义"
+      ],
+      "tags": [
+        "古典文学",
+        "侠义",
+        "公案"
+      ],
+      "chapterCount": 120,
+      "file": "data/books/sanxiawuyi.json",
+      "desc": "包公断案，五鼠闹东京。"
+    },
+    {
+      "id": "ernvyingxiong",
+      "title": "儿女英雄传",
+      "author": "文康",
+      "alias": [],
+      "tags": [
+        "古典文学",
+        "侠义"
+      ],
+      "chapterCount": 42,
+      "file": "data/books/ernvyingxiong.json",
+      "desc": "十三妹与安公子的侠义姻缘。"
+    },
+    {
+      "id": "shuoyue",
+      "title": "说岳全传",
+      "author": "钱彩",
+      "alias": [
+        "岳传"
+      ],
+      "tags": [
+        "古典文学",
+        "演义"
+      ],
+      "chapterCount": 80,
+      "file": "data/books/shuoyue.json",
+      "desc": "岳飞一生，从枪挑小梁王到风波亭。"
+    },
+    {
+      "id": "yinglie",
+      "title": "英烈传",
+      "author": "佚名",
+      "alias": [],
+      "tags": [
+        "古典文学",
+        "演义"
+      ],
+      "chapterCount": 80,
+      "file": "data/books/yinglie.json",
+      "desc": "朱元璋起兵到开国的一批英烈。"
+    },
+    {
+      "id": "jigong",
+      "title": "济公全传",
+      "author": "郭小亭",
+      "alias": [
+        "济公传"
+      ],
+      "tags": [
+        "古典文学",
+        "神魔"
+      ],
+      "chapterCount": 240,
+      "file": "data/books/jigong.json",
+      "desc": "疯和尚济颠，一路惩恶扬善。"
+    },
+    {
+      "id": "guanchang",
+      "title": "官场现形记",
+      "author": "李宝嘉",
+      "alias": [],
+      "tags": [
+        "古典文学",
+        "明清小说",
+        "讽刺"
+      ],
+      "chapterCount": 60,
+      "file": "data/books/guanchang.json",
+      "desc": "晚清官场，六十回的现形。"
+    },
+    {
+      "id": "ershimu",
+      "title": "二十年目睹之怪现状",
+      "author": "吴趼人",
+      "alias": [],
+      "tags": [
+        "古典文学",
+        "明清小说",
+        "讽刺"
+      ],
+      "chapterCount": 108,
+      "file": "data/books/ershimu.json",
+      "desc": "一百零八回的晚清怪现状。"
+    },
+    {
+      "id": "niehaihua",
+      "title": "孽海花",
+      "author": "曾朴",
+      "alias": [],
+      "tags": [
+        "古典文学",
+        "明清小说"
+      ],
+      "chapterCount": 35,
+      "file": "data/books/niehaihua.json",
+      "desc": "状元郎与名妓的三十年见闻。"
+    },
+    {
+      "id": "haishanghua",
+      "title": "海上花列传",
+      "author": "韩邦庆",
+      "alias": [],
+      "tags": [
+        "古典文学",
+        "明清小说"
+      ],
+      "chapterCount": 66,
+      "file": "data/books/haishanghua.json",
+      "desc": "用吴语写成的上海妓家实录。"
+    },
+    {
+      "id": "laocan",
+      "title": "老残游记",
+      "author": "刘鹗",
+      "alias": [],
+      "tags": [
+        "古典文学",
+        "明清小说"
+      ],
+      "chapterCount": 21,
+      "file": "data/books/laocan.json",
+      "desc": "一个走方郎中的晚清见闻。"
+    },
+    {
+      "id": "xingshiyinyuan",
+      "title": "醒世姻缘传",
+      "author": "西周生",
+      "alias": [],
+      "tags": [
+        "古典文学",
+        "明清小说"
+      ],
+      "chapterCount": 101,
+      "file": "data/books/xingshiyinyuan.json",
+      "desc": "两世姻缘，一部明代家庭实录。"
+    },
+    {
+      "id": "jinguqiguan",
+      "title": "今古奇观",
+      "author": "抱瓮老人",
+      "alias": [],
+      "tags": [
+        "古典文学",
+        "话本"
+      ],
+      "chapterCount": 42,
+      "file": "data/books/jinguqiguan.json",
+      "desc": "三言二拍的精选四十卷。"
+    },
+    {
       "id": "yushimingyan",
       "title": "喻世明言",
       "author": "冯梦龙",
@@ -153,6 +391,246 @@
       "chapterCount": 42,
       "file": "data/books/erke.json",
       "desc": "四十卷续拍，奇情与公案各半。"
+    },
+    {
+      "id": "guzhangjuechen",
+      "title": "鼓掌绝尘",
+      "author": "金木散人",
+      "alias": [],
+      "tags": [
+        "古典文学",
+        "话本"
+      ],
+      "chapterCount": 41,
+      "file": "data/books/guzhangjuechen.json",
+      "desc": "风花雪月四集，明末话本。"
+    },
+    {
+      "id": "shitoudian",
+      "title": "石点头",
+      "author": "天然痴叟",
+      "alias": [],
+      "tags": [
+        "古典文学",
+        "话本"
+      ],
+      "chapterCount": 17,
+      "file": "data/books/shitoudian.json",
+      "desc": "明末拟话本十四卷。"
+    },
+    {
+      "id": "zuixingshi",
+      "title": "醉醒石",
+      "author": "东鲁古狂生",
+      "alias": [],
+      "tags": [
+        "古典文学",
+        "话本"
+      ],
+      "chapterCount": 15,
+      "file": "data/books/zuixingshi.json",
+      "desc": "明末拟话本十五回。"
+    },
+    {
+      "id": "baogongan",
+      "title": "包公案",
+      "author": "佚名",
+      "alias": [
+        "龙图公案"
+      ],
+      "tags": [
+        "古典文学",
+        "公案"
+      ],
+      "chapterCount": 100,
+      "file": "data/books/baogongan.json",
+      "desc": "包龙图断案一百则。"
+    },
+    {
+      "id": "shigongan",
+      "title": "施公案",
+      "author": "佚名",
+      "alias": [],
+      "tags": [
+        "古典文学",
+        "公案"
+      ],
+      "chapterCount": 528,
+      "file": "data/books/shigongan.json",
+      "desc": "施世纶断案，黄天霸相随。"
+    },
+    {
+      "id": "penggongan",
+      "title": "彭公案",
+      "author": "佚名",
+      "alias": [],
+      "tags": [
+        "古典文学",
+        "公案"
+      ],
+      "chapterCount": 341,
+      "file": "data/books/penggongan.json",
+      "desc": "彭朋断案，侠客相随。"
+    },
+    {
+      "id": "yuewei",
+      "title": "阅微草堂笔记",
+      "author": "纪昀",
+      "alias": [
+        "阅微"
+      ],
+      "tags": [
+        "古典文学",
+        "志怪"
+      ],
+      "chapterCount": 25,
+      "file": "data/books/yuewei.json",
+      "desc": "纪晓岚的二十四卷狐鬼笔记。"
+    },
+    {
+      "id": "ziwuyu",
+      "title": "子不语",
+      "author": "袁枚",
+      "alias": [
+        "新齐谐"
+      ],
+      "tags": [
+        "古典文学",
+        "志怪"
+      ],
+      "chapterCount": 25,
+      "file": "data/books/ziwuyu.json",
+      "desc": "袁枚的怪力乱神，与聊斋并举。"
+    },
+    {
+      "id": "yeyuqiudeng",
+      "title": "夜雨秋灯录",
+      "author": "宣鼎",
+      "alias": [],
+      "tags": [
+        "古典文学",
+        "志怪"
+      ],
+      "chapterCount": 115,
+      "file": "data/books/yeyuqiudeng.json",
+      "desc": "晚清志怪，八卷数十篇。"
+    },
+    {
+      "id": "yingchuangyicao",
+      "title": "萤窗异草",
+      "author": "长白浩歌子",
+      "alias": [],
+      "tags": [
+        "古典文学",
+        "志怪"
+      ],
+      "chapterCount": 12,
+      "file": "data/books/yingchuangyicao.json",
+      "desc": "仿聊斋而作，十二卷。"
+    },
+    {
+      "id": "xieduo",
+      "title": "谐铎",
+      "author": "沈起凤",
+      "alias": [],
+      "tags": [
+        "古典文学",
+        "志怪"
+      ],
+      "chapterCount": 12,
+      "file": "data/books/xieduo.json",
+      "desc": "十二卷寓言体志怪。"
+    },
+    {
+      "id": "jiandengxin",
+      "title": "剪灯新话",
+      "author": "瞿佑",
+      "alias": [],
+      "tags": [
+        "古典文学",
+        "志怪"
+      ],
+      "chapterCount": 15,
+      "file": "data/books/jiandengxin.json",
+      "desc": "明代传奇小说的开山之作。"
+    },
+    {
+      "id": "fushengliuji",
+      "title": "浮生六记",
+      "author": "沈复",
+      "alias": [],
+      "tags": [
+        "古典文学",
+        "明清小说"
+      ],
+      "chapterCount": 6,
+      "file": "data/books/fushengliuji.json",
+      "desc": "沈复与芸娘的六卷浮生。"
+    },
+    {
+      "id": "sansuipingyao",
+      "title": "三遂平妖传",
+      "author": "罗贯中",
+      "alias": [],
+      "tags": [
+        "古典文学",
+        "神魔"
+      ],
+      "chapterCount": 20,
+      "file": "data/books/sansuipingyao.json",
+      "desc": "罗贯中笔下的妖乱与平妖。"
+    },
+    {
+      "id": "pingshanlengyan",
+      "title": "平山冷燕",
+      "author": "佚名",
+      "alias": [],
+      "tags": [
+        "古典文学",
+        "明清小说"
+      ],
+      "chapterCount": 20,
+      "file": "data/books/pingshanlengyan.json",
+      "desc": "才子佳人的二十回。"
+    },
+    {
+      "id": "haoqiuzhuan",
+      "title": "好逑传",
+      "author": "佚名",
+      "alias": [],
+      "tags": [
+        "古典文学",
+        "明清小说"
+      ],
+      "chapterCount": 18,
+      "file": "data/books/haoqiuzhuan.json",
+      "desc": "铁中玉与水冰心的侠义姻缘。"
+    },
+    {
+      "id": "soushenji",
+      "title": "搜神记",
+      "author": "干宝",
+      "alias": [],
+      "tags": [
+        "古典文学",
+        "志怪"
+      ],
+      "chapterCount": 21,
+      "file": "data/books/soushenji.json",
+      "desc": "干宝的二十卷神怪，志怪之祖。"
+    },
+    {
+      "id": "youminglu",
+      "title": "幽明录",
+      "author": "刘义庆",
+      "alias": [],
+      "tags": [
+        "古典文学",
+        "志怪"
+      ],
+      "chapterCount": 6,
+      "file": "data/books/youminglu.json",
+      "desc": "刘义庆的幽冥见闻。"
     }
   ]
 }
