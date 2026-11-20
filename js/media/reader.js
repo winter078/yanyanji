@@ -1252,7 +1252,9 @@
 
   function htmlToParagraphs(html) {
     const div = document.createElement('div');
-    div.innerHTML = html;
+    div.innerHTML = String(html)
+      .replace(/<\?xml[^>]*\?>/gi, '')
+      .replace(/<head[\s\S]*?<\/head>/gi, '');
     div.querySelectorAll('script,style,img,svg,figure,table,footnote').forEach((e) => e.remove());
     const ps = Array.from(div.querySelectorAll('p')).map((p) => p.textContent.replace(/[\s\u3000]+/g, ' ').trim()).filter(Boolean);
     if (ps.length >= 2) return ps;
@@ -1330,6 +1332,11 @@
       const textLen = paras.reduce((s, x) => s + x.length, 0);
       if (textLen < 30) continue; // 封面、版权页这类跳过
       const title = htmlChapterTitle(html) || ('第 ' + (chapters.length + 1) + ' 章');
+      // 有些 epub 会把标题在正文里再写一遍，去掉开头重复的那一段
+      while (paras.length && paras[0].replace(/[\s\u3000]+/g, '') === title.replace(/[\s\u3000]+/g, '')) {
+        paras.shift();
+      }
+      if (!paras.length) continue;
       chapters.push({ title, paragraphs: paras });
     }
 
