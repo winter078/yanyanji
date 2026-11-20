@@ -2634,7 +2634,7 @@ body[data-theme="dark"] #page-reader .xianguo-add-btn,
   height: 100%;
   object-fit: cover;
   display: block;
-  filter: saturate(0.55) brightness(0.68);
+  filter: saturate(0.72) brightness(0.82);
 }
 
 /* 统一压暗蒙版：让所有封面退到背景里 */
@@ -2642,7 +2642,7 @@ body[data-theme="dark"] #page-reader .xianguo-add-btn,
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(28, 34, 45, 0.38) 0%, rgba(28, 34, 45, 0.6) 100%);
+  background: linear-gradient(180deg, rgba(28, 34, 45, 0.24) 0%, rgba(28, 34, 45, 0.44) 100%);
   pointer-events: none;
 }
 
@@ -3547,8 +3547,7 @@ body[data-theme="dark"] #page-reader .xianguo-add-btn,
 /* 书架滚动区留出 tab 的高度 */
 .rd-shelf-viewport { padding-bottom: 64px; }
 
-/* ---------- 发现页：把里头的粉色/亮色统一成蓝灰 ---------- */
-#page-reader .xianguo-genre-chip {
+/* ---------- 发现页：把里头的粉色/亮色统一成蓝灰 ---------- */#page-reader .xianguo-genre-chip {
   background: rgba(255, 255, 255, 0.045);
   border-color: rgba(255, 255, 255, 0.08);
   color: var(--rd-ink-2);
@@ -3678,7 +3677,7 @@ body[data-theme="dark"] #page-reader .xianguo-add-btn,
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 11px;
+  font-size: 12.5px;
   letter-spacing: 1.5px;
   color: var(--rd-ink-2);
   padding-bottom: 11px;
@@ -3724,7 +3723,7 @@ body[data-theme="dark"] #page-reader .xianguo-add-btn,
   height: 100%;
   object-fit: cover;
   display: block;
-  filter: saturate(0.55) brightness(0.68);
+  filter: saturate(0.72) brightness(0.82);
 }
 
 .rd-rail-cover::after {
@@ -3746,4 +3745,189 @@ body[data-theme="dark"] #page-reader .xianguo-add-btn,
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* ============================================================
+   v2 排版：照参考图把书架整体放大、加留白、加背景光
+   ============================================================ */
+#page-reader .rd-topbar {
+  height: 64px;
+  padding: 0 16px 0 0;
+}
+
+.rd-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.rd-back {
+  width: 26px;
+  height: 40px;
+  border: 0;
+  background: transparent;
+  color: var(--rd-ink-3);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.rd-title {
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: 2.5px;
+  color: var(--rd-ink);
+  margin: 0;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.rd-round-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--rd-ink-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin-left: 10px;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.rd-round-btn:active { background: rgba(255, 255, 255, 0.1); }
+
+/* 书架滚动区：加入柔和光，别是一块死黑 */
+#xianguo-shelf-viewport,
+#rd-mine-viewport {
+  background-image:
+    radial-gradient(115% 48% at 84% -4%, rgba(143, 168, 200, 0.13), rgba(143, 168, 200, 0) 66%),
+    radial-gradient(90% 40% at 6% 96%, rgba(143, 168, 200, 0.06), rgba(143, 168, 200, 0) 70%);
+  background-repeat: no-repeat;
+  background-attachment: local;
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+/* 分类胶囊放大 */
+.rd-cat-scroll {
+  gap: 8px;
+  padding: 4px 0 18px 0;
+}
+
+.rd-chip {
+  height: 32px;
+  padding: 0 13px;
+  border-radius: 16px;
+  font-size: 12px;
+  letter-spacing: 0.4px;
+  border-color: rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--rd-ink-2);
+}
+
+.rd-chip.active {
+  color: #EDF2F8;
+  border-color: rgba(143, 168, 200, 0.62);
+  background: rgba(143, 168, 200, 0.16);
+  box-shadow: inset 0 0 12px rgba(143, 168, 200, 0.16), 0 0 0 1px rgba(143, 168, 200, 0.08);
+}
+
+/* 分组标题：更大、加点呼吸 */
+.rd-group {
+  margin-bottom: 30px;
+}
+
+.rd-group-head {
+  padding: 0 0 11px 0;
+  margin-bottom: 17px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+}
+
+.rd-group-dot {
+  width: 4px;
+  height: 4px;
+}
+
+.rd-group-name {
+  font-size: 13px;
+  letter-spacing: 1.4px;
+  color: #C3CCD8;
+}
+
+.rd-group-count {
+  font-size: 10.5px;
+  color: var(--rd-ink-3);
+}
+
+/* 网格与卡片字号 */
+.rd-grid {
+  gap: 24px 16px;
+}
+
+.rd-book-cover {
+  border-radius: 7px;
+}
+
+.rd-book-title {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  margin-top: 11px;
+  color: #E1E7EF;
+}
+
+.rd-book-sub {
+  font-size: 11px;
+  margin-top: 5px;
+  color: var(--rd-ink-3);
+}
+
+.rd-book-sub .rd-book-more {
+  font-size: 11px;
+  color: var(--rd-ink-3);
+}
+
+/* 顶栏 ··· 菜单 */
+.rd-sheet {
+  margin: auto 14px;
+  border-radius: 16px;
+  background: #242B36;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  overflow: hidden;
+}
+
+.rd-sheet-title {
+  padding: 14px 16px 8px 16px;
+  font-size: 10.5px;
+  letter-spacing: 2px;
+  color: var(--rd-ink-3);
+  text-align: center;
+}
+
+.rd-sheet-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 15px 18px;
+  font-size: 13px;
+  color: var(--rd-ink);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+}
+
+.rd-sheet-row:active { background: rgba(255, 255, 255, 0.04); }
+
+.rd-sheet-cancel {
+  padding: 15px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--rd-ink-3);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
 }

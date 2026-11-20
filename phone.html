@@ -18,7 +18,7 @@
   <meta http-equiv="Cache-Control" content="no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <script>window.__BUILD__="20261120-2205";</script>
+  <script>window.__BUILD__="20261120-2215";</script>
   <script>
     (function () {
       var root = document.documentElement;
@@ -178,7 +178,7 @@
   <link rel="stylesheet" href="css/theater.css?v=20261120-1340" />
   <link rel="stylesheet" href="css/xhs.css?v=2026111010" />
 
-  <link rel="stylesheet" href="css/reader.css?v=20261120-2205" />
+  <link rel="stylesheet" href="css/reader.css?v=20261120-2215" />
   <link rel="stylesheet" href="css/ledger.css?v=1789998920125?v=1789998920125">
   <link rel="stylesheet" href="css/avatar-vault.css?v=2026111145">
   <link rel="stylesheet" href="css/chat-appearance.css?v=2026111308">
@@ -4209,15 +4209,33 @@
           </div>
 
           <header class="rd-topbar">
-            <button class="rd-icon-btn" onclick="openPage('page-home')" title="返回桌面">‹</button>
-            <div class="rd-topbar-title" id="rd-page-title">书架</div>
+            <div class="rd-topbar-left">
+              <button class="rd-back" onclick="openPage('page-home')" title="返回桌面">‹</button>
+              <h1 class="rd-title" id="rd-page-title">书架</h1>
+            </div>
             <div class="rd-topbar-actions" id="rd-topbar-actions">
-              <button class="rd-icon-btn" id="reader-share-btn" onclick="sendReaderCardToChar('share')" title="把这本书发给他">↗</button>
-              <button class="rd-icon-btn" id="reader-invite-btn" onclick="sendReaderCardToChar('invite')" title="邀他一起读" style="font-size:11px;">邀</button>
-              <button class="rd-icon-btn rd-avatar-btn" id="reader-companion-btn" onclick="openReaderCompanionPicker()" title="陪你读的人" style="font-size:11px;">陪</button>
-              <button class="rd-icon-btn rd-add-btn" onclick="openXianguoAddSheet()" title="添加书籍">＋</button>
+              <button class="rd-round-btn" onclick="rdSwitchReaderTab('store')" title="找书">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10.6" cy="10.6" r="6.4"/><path d="M15.4 15.4 20 20"/></svg>
+              </button>
+              <button class="rd-round-btn" onclick="openReaderShelfMore()" title="更多">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><circle cx="5.5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18.5" cy="12" r="1.5"/></svg>
+              </button>
             </div>
           </header>
+
+          <!-- 顶栏 ··· 菜单 -->
+          <div class="rd-layer" id="rd-shelf-more-layer" style="display:none;">
+            <div class="rd-sheet" onclick="event.stopPropagation()">
+              <div class="rd-sheet-title">书架</div>
+              <div class="rd-sheet-row" onclick="rdCloseShelfMore();openXianguoAddSheet()">＋　导入书籍</div>
+              <div class="rd-sheet-row" onclick="rdCloseShelfMore();sendReaderCardToChar('share')">↗　把正在读的发给他</div>
+              <div class="rd-sheet-row" onclick="rdCloseShelfMore();sendReaderCardToChar('invite')">邀　邀他一起读</div>
+              <div class="rd-sheet-row" onclick="rdCloseShelfMore();openReaderCompanionPicker()">伴　陪你读的人</div>
+              <div class="rd-sheet-row" onclick="rdCloseShelfMore();openReaderRecord()">记　阅读记录</div>
+              <div class="rd-sheet-row" onclick="rdCloseShelfMore();openReaderCatManager()">类　管理分类</div>
+              <div class="rd-sheet-cancel" onclick="rdCloseShelfMore()">取消</div>
+            </div>
+          </div>
 
           <!-- 旧版双 Tab 保留为隐藏占位，避免旧代码引用失效 -->
           <div class="rd-legacy-tabs" style="display:none;">
@@ -4229,8 +4247,8 @@
           <div class="rd-shelf-viewport" id="xianguo-shelf-viewport">
             <span id="xianguo-shelf-book-count" style="display:none;">0 本书</span>
 
-            <!-- ① 继续读 · 唯一的液体玻璃卡 -->
-            <div class="rd-now-card" id="xianguo-banner-card" onclick="resumeLastReading()">
+            <!-- ① 继续读卡（结构保留，改为隐藏；入口收进「最近在读」第一本） -->
+            <div class="rd-now-card" id="xianguo-banner-card" onclick="resumeLastReading()" style="display:none;">
               <div class="rd-now-cover-wrap" id="rd-now-cover-wrap">
                 <img class="rd-now-cover" id="xianguo-last-cover" src="" alt="封面" />
               </div>
@@ -4247,8 +4265,8 @@
               <div class="rd-now-glow"></div>
             </div>
 
-            <!-- ② 阅读记录（只记录，不打分） -->
-            <div class="rd-record-strip" onclick="openReaderRecord()">
+            <!-- ② 阅读记录（入口移到顶栏 ··· 与「我的」页） -->
+            <div class="rd-record-strip" onclick="openReaderRecord()" style="display:none;">
               <span class="rd-record-k">本周</span>
               <span class="rd-record-v" id="rd-week-text">还没有记录</span>
               <span class="rd-record-arrow">›</span>
@@ -6296,8 +6314,8 @@
 <script src="js/media/music-ui.js?v=2026111916"></script>
 <script src="js/qrcode.js?v=2026112010"></script>
 <script src="js/media/netease-login.js?v=2026112011"></script>
-  <script src="js/media/companion.js?v=20261120-2205"></script>
-  <script src="js/media/watch.js?v=20261120-2205"></script>
+  <script src="js/media/companion.js?v=20261120-2215"></script>
+  <script src="js/media/watch.js?v=20261120-2215"></script>
   <script src="js/theater/theater.js?v=20261120-1352"></script>
   <script src="js/theater/palace.js?v=2026111121"></script>
   <script src="js/theater/memory-engine.js?v=2026111122"></script>
@@ -6464,7 +6482,7 @@
     </div>
   </div>
 
-  <script src="js/media/reader.js?v=20261120-2205"></script>
+  <script src="js/media/reader.js?v=20261120-2215"></script>
 
         <!-- 记忆宫殿辅助弹窗合集 (纯正暗黑系 OLED) -->
     <!-- 1. 自定义范围总结弹窗 -->
@@ -7380,7 +7398,7 @@ html.ios .watch-header {
 }
 </style>
 
-<script src="js/version-watch.js?v=20261120-2205"></script>
+<script src="js/version-watch.js?v=20261120-2215"></script>
 </body>
 </html>
 <!-- live_preview_refresh_trigger:1790094973085 -->
