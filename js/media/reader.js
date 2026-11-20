@@ -864,57 +864,174 @@
   window.renderReaderShelf = window.renderShelfUI;
 
   // 渲染书城
-  window.renderStoreUI = function() {
-    const listEl = document.getElementById('xianguo-store-feed-list');
-    if (!listEl) return;
+  // ================= 📚 书城：在线公版书库（2026-11-20） =================
+  // 只收公版书（古典名著 / 话本 / 志怪 / 演义）。清单与正文都放在本仓库 books/ 下，
+  // 一次请求拿全书，导进 IndexedDB 之后就和本地书完全一样。
+  const ONLINE_CATALOG_PATH = 'books/index.json';
+  let onlineCatalogCache = null;
+  let onlineActiveTag = '';
 
-    listEl.innerHTML = storeFeedBooks.map(b => `
-      <div class="xianguo-feed-card" onclick="addStoreBookToShelf('${b.id}')">
-        <img class="xianguo-feed-cover" src="${b.cover}" alt="${b.title}" />
-        <div class="xianguo-feed-info">
-          <div>
-            <div class="xianguo-feed-name">${b.title}</div>
-            <div class="xianguo-feed-author-tag">${b.author} · ${b.genre}</div>
-            <div class="xianguo-feed-intro">${b.intro}</div>
-          </div>
-          <div class="xianguo-feed-update">${b.update}</div>
-        </div>
-      </div>
-    `).join('');
+  const ONLINE_TAG_MAP = {
+    all: '',
+    mod: '明清小说',
+    for: '译著',
+    det: '公案',
+    cla: '古典文学',
+    wux: '演义'
   };
 
-  window.addStoreBookToShelf = function(storeBookId) {
-    const sb = storeFeedBooks.find(b => b.id === storeBookId);
-    if (!sb) return;
+  function onlineEsc(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
 
-    if (currentBooks.some(b => b.title === sb.title)) {
-      alert('user，这本《' + sb.title + '》已经在你的书架里啦！');
+  async function loadOnlineCatalog(force) {
+    if (onlineCatalogCache && !force) return onlineCatalogCache;
+    const res = await fetch(ONLINE_CATALOG_PATH + '?v=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) throw new Error('书库清单读取失败 HTTP ' + res.status);
+    const data = await res.json();
+    onlineCatalogCache = Array.isArray(data) ? data : (data.books || []);
+    return onlineCatalogCache;
+  }
+
+  function onlineMatch(book, kw) {
+    if (!kw) return true;
+    const hay = [book.title, book.author].concat(book.alias || []).join(' ').toLowerCase();
+    return hay.indexOf(kw.toLowerCase()) >= 0;
+  }
+
+  function onlineCoverHtml(meta) {
+    const theme = getPureCoverStyle(meta.title || meta.id);
+    return '<div class="xianguo-feed-cover" style="background:' + theme.bg + ';color:' + theme.text +
+      ';display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;letter-spacing:1px;">' +
+      onlineEsc(String(meta.title || '').slice(0, 2)) + '</div>';
+  }
+
+  function paintStoreList(list, note) {
+    const box = document.getElementById('xianguo-store-feed-list');
+    if (!box) return;
+    const tagEl = document.querySelector('.xianguo-feed-tag');
+    const titleEl = document.getElementById('xianguo-feed-category-title');
+    const countEl = document.getElementById('xianguo-feed-count');
+    if (tagEl) tagEl.textContent = '在线公版书库';
+    if (titleEl) titleEl.textContent = note || '现在就能读的';
+    if (countEl) countEl.textContent = list.length + ' 本';
+    if (!list.length) {
+      box.innerHTML = '<div class="xianguo-store-empty">没找到。<br>在线库只收公版书：古典名著、话本、志怪、演义。换本书名再试。</div>';
+      return;
+    }
+    box.innerHTML = list.map(function (b) {
+      const inShelf = currentBooks.some(function (x) { return x && x.onlineId === b.id; });
+      return '<div class="xianguo-feed-card" onclick="addStoreBookToShelf(\'' + b.id + '\')">' +
+        onlineCoverHtml(b) +
+        '<div class="xianguo-feed-info">' +
+          '<div>' +
+            '<div class="xianguo-feed-name">' + onlineEsc(b.title) +
+              (inShelf ? '<span class="xianguo-feed-own">已在书架</span>' : '') + '</div>' +
+            '<div class="xianguo-feed-author-tag">' + onlineEsc(b.author || '佚名') +
+              (b.chapterCount ? ' · ' + b.chapterCount + ' 回' : '') + '</div>' +
+            '<div class="xianguo-feed-intro">' + onlineEsc(b.desc || '') + '</div>' +
+          '</div>' +
+          '<div class="xianguo-feed-update">' + (inShelf ? '点一下回到上次那一页' : '点一下搬到小手机，直接读') + '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  window.searchStoreNovels = function () {
+    const kwEl = document.getElementById('xianguo-search-kw');
+    const kw = kwEl ? kwEl.value.trim() : '';
+    loadOnlineCatalog().then(function (all) {
+      loadLocalShelf();
+      let list = all;
+      if (kw) list = list.filter(function (b) { return onlineMatch(b, kw); });
+      if (onlineActiveTag) list = list.filter(function (b) { return (b.tags || []).indexOf(onlineActiveTag) >= 0; });
+      const label = [kw ? '搜「' + kw + '」' : '', onlineActiveTag].filter(Boolean).join(' · ');
+      paintStoreList(list, label);
+    }).catch(function (e) {
+      const box = document.getElementById('xianguo-store-feed-list');
+      if (box) {
+        box.innerHTML = '<div class="xianguo-store-empty">书库没连上：' + onlineEsc(e.message) +
+          '<br>大概是网络断了，再点一次「搜索」。</div>';
+      }
+    });
+  };
+
+  window.quickSearchStore = function (kw) {
+    const el = document.getElementById('xianguo-search-kw');
+    if (el) el.value = kw;
+    window.searchStoreNovels();
+  };
+
+  window.switchGenreTag = function (el, key) {
+    document.querySelectorAll('.xianguo-genre-chip').forEach(function (c) { c.classList.remove('active'); });
+    if (el) el.classList.add('active');
+    onlineActiveTag = ONLINE_TAG_MAP[key] || '';
+    window.searchStoreNovels();
+  };
+
+  window.renderStoreUI = function () {
+    window.searchStoreNovels();
+  };
+
+  window.addStoreBookToShelf = async function (storeBookId) {
+    loadLocalShelf();
+    const existed = currentBooks.find(function (b) { return b && b.onlineId === storeBookId; });
+    if (existed) { openXianguoReading(existed.id); return; }
+
+    let meta = null;
+    try {
+      const all = await loadOnlineCatalog();
+      meta = all.find(function (b) { return b.id === storeBookId; }) || null;
+    } catch (e) {
+      alert('书库没连上：' + e.message);
+      return;
+    }
+    if (!meta) { alert('书库里没有这本。'); return; }
+
+    showXianguoToast('正在搬《' + meta.title + '》…', 8000);
+    let data = null;
+    try {
+      const res = await fetch(meta.file, { cache: 'no-store' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      data = await res.json();
+    } catch (e) {
+      alert('《' + meta.title + '》没搬成：' + e.message + '\n换个网络再点一次。');
       return;
     }
 
-    const newB = {
-      id: 'store-' + Date.now(),
-      title: sb.title,
-      author: sb.author,
-      cover: sb.cover,
-      lastReadChapTitle: '第一章 序章',
-      progress: 0,
-      lastReadTime: '刚刚添加',
-      chapters: [
-        {
-          title: '第一章 序章',
-          paragraphs: [
-            sb.intro,
-            '天光微敛，风声鹤唳。随着第一道惊雷划过天幕，整个故事徐徐铺展开来……'
-          ]
-        }
-      ]
-    };
+    const chapters = (data.chapters || [])
+      .filter(function (c) { return c && c.title && Array.isArray(c.paragraphs) && c.paragraphs.length; })
+      .map(function (c) { return { title: String(c.title), paragraphs: c.paragraphs.map(function (p) { return String(p); }) }; });
+    if (!chapters.length) { alert('这本抽不出正文，先别导。'); return; }
 
-    currentBooks.unshift(newB);
+    const bookId = 'ol-' + Date.now().toString(36) + '-' + Math.floor(Math.random() * 1000);
+    const book = {
+      id: bookId,
+      onlineId: meta.id,
+      title: meta.title,
+      author: meta.author || '佚名',
+      cover: '',
+      lastReadChapTitle: chapters[0].title,
+      lastReadTime: '刚刚搬进来',
+      progress: 0,
+      chapterCount: chapters.length,
+      hasIndexedDB: true,
+      isOriginal: false,
+      origin: 'online',
+      source: meta.source || ''
+    };
+    loadLocalShelf();
+    currentBooks.unshift(book);
     saveLocalShelf();
-    alert('已成功将《' + sb.title + '》加入书架！');
+    const ok = await saveBookChaptersToDB(bookId, chapters);
+    if (!ok) console.warn('在线书正文写 IndexedDB 失败，书单条目保留');
+    renderShelfUI();
+    showXianguoToast('📖 《' + meta.title + '》已进书架 · ' + chapters.length + ' 回', 3000);
+    if (onlineCatalogCache) paintStoreList(onlineCatalogCache, '');
     switchXianguoTab('shelf');
+    openXianguoReading(bookId);
   };
 
   window.resumeLastReading = function() {
