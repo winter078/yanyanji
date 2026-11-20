@@ -45,8 +45,11 @@
     return sec;
   }
 
-  // 这些行是歌词文件的元信息，不该出现在画面上
-  var META_RE = /^(作词|作曲|编曲|制作人|出品|监制|混音|母带|和声|录音|吉他|贝斯|鼓|弦乐|OP|SP|发行|统筹|策划|词|曲)\s*[:：]/;
+  // 这些行是歌词文件的元信息，不该出现在画面上。真实接口返回的头部是一整段制作名单：
+  // 「作词 : 周杰伦」「和声编写 : 周杰伦」「录音工程 : 杨瑞代」，所以关键词后面允许再跟几个字。
+  var META_RE = /^(作词|作曲|编曲|制作人|制作|出品|监制|混音|母带|和声|录音|吉他|贝斯|鼓|键盘|弦乐|管乐|发行|统筹|策划|设计|企划|人声|伴唱|原唱|演唱|演奏|视觉|封面|摄影|特别鸣谢|OP|SP|词|曲)[^:：]{0,8}[:：]/;
+  // 兜底：开头那段里凡是「标签 : 值」这种结构的整行，一律当制作名单（歌词正文极少这么写）
+  var META_PAIR_RE = /^[^\s:：]{1,10}\s*[:：]\s*[^:：]{1,40}$/;
 
   function parseLRC(text) {
     var out = [];
@@ -65,6 +68,7 @@
       var words = line.replace(/\[[^\]]*\]/g, '').trim();
       if (!words) continue;
       if (META_RE.test(words)) continue;
+      if (times[0] < 20 && META_PAIR_RE.test(words)) continue;
       for (var k = 0; k < times.length; k++) {
         out.push({ t: times[k], text: words });
       }
