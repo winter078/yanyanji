@@ -3727,12 +3727,22 @@ window.syncNarrationModeUI = syncNarrationModeUI;
         }
 
         if (cardData) {
+          const isMusic = cardData.kind === 'music' || cardData.kind === 'music_invite';
+          const isInvite = cardData.kind === 'music_invite';
           const shareCard = document.createElement('div');
           shareCard.className = 'msg-share-card';
-          shareCard.title = '点击在浏览器中打开链接';
+          shareCard.title = isInvite ? '点击接受，一起听这首歌' : (isMusic ? '点击播放这首歌' : '点击在浏览器中打开链接');
           shareCard.onclick = (e) => {
             if (!document.body.classList.contains('chat-multi-mode')) {
               e.stopPropagation();
+              if (isInvite) {
+                if (typeof window.acceptMusicInvite === 'function') window.acceptMusicInvite(cardData);
+                return;
+              }
+              if (isMusic) {
+                if (typeof window.playSharedSong === 'function') window.playSharedSong(cardData);
+                return;
+              }
               if (cardData.url) window.open(cardData.url, '_blank');
             }
           };
@@ -3778,6 +3788,13 @@ window.syncNarrationModeUI = syncNarrationModeUI;
           shareCard.appendChild(titleEl);
           shareCard.appendChild(midEl);
           shareCard.appendChild(brandEl);
+
+          if (isMusic) {
+            const hintEl = document.createElement('div');
+            hintEl.style.cssText = 'font-size:11px;color:#8d8177;margin-top:7px;letter-spacing:.3px;';
+            hintEl.innerText = isInvite ? '点一下卡片，戴上耳机一起听' : '点一下卡片，现在放这首歌';
+            shareCard.appendChild(hintEl);
+          }
 
           if (msgIndex !== -1) {
             bindBubbleLongPress(shareCard, msgIndex);

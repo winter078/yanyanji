@@ -1029,6 +1029,13 @@
 
     const tag = document.getElementById('music-live-tag');
     if (tag) tag.innerText = musicCompanionId() ? ('💬 ' + name + '的耳语') : '💬 角色耳语';
+
+    // 发卡按钮跟着聊天对象走（卡片出现在微信聊天里，那边是谁就发给谁）
+    const chatName = String((window.appData && window.appData.botRemark) || '周绪言').trim().split(/\s+/)[0] || '周绪言';
+    const shareBtn = document.getElementById('music-share-btn');
+    const inviteBtn = document.getElementById('music-invite-btn');
+    if (shareBtn) shareBtn.innerText = '🎵 发给' + chatName + '这首歌';
+    if (inviteBtn) inviteBtn.innerText = '🎧 邀' + chatName + '一起听';
   };
 
   window.openMusicCompanionPicker = function() {
@@ -1063,6 +1070,91 @@
   };
 
   // ================= 一起听耳边气泡对话 =================
+  // ================= 把歌发给角色（分享卡 / 一起听邀请卡） =================
+  function musicChatOwner() {
+    const hub = window.appData || {};
+    return String(hub.botRemark || '周绪言').trim().split(/\s+/)[0] || '周绪言';
+  }
+
+  function musicChatOwnerId() {
+    try { return localStorage.getItem('momo_active_char') || ''; } catch (e) { return ''; }
+  }
+
+  function musicToast(msg) {
+    let el = document.getElementById('mz-music-toast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'mz-music-toast';
+      el.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:120px;z-index:10000;'
+        + 'background:rgba(28,28,32,.92);color:#f3e6d8;font-size:13px;padding:9px 16px;border-radius:20px;'
+        + 'box-shadow:0 6px 24px rgba(0,0,0,.4);opacity:0;transition:opacity .22s;pointer-events:none;';
+      document.body.appendChild(el);
+    }
+    el.innerText = msg;
+    el.style.opacity = '1';
+    clearTimeout(el.__t);
+    el.__t = setTimeout(function () { el.style.opacity = '0'; }, 2200);
+  }
+
+  // mode: 'share' 只发音乐卡片 | 'invite' 邀请一起听
+  window.sendMusicCardToChar = function(mode) {
+    const song = (typeof currentSong !== 'undefined' && currentSong) || null;
+    if (!song) { musicToast('先放一首歌再发'); return; }
+    const hub = window.appData;
+    if (!hub) { musicToast('聊天还没准备好，稍后再试'); return; }
+    if (!Array.isArray(hub.chatHistory)) hub.chatHistory = [];
+
+    const invite = mode === 'invite';
+    const card = {
+      kind: invite ? 'music_invite' : 'music',
+      songId: song.id || '',
+      title: song.title || '这首歌',
+      artist: song.artist || '',
+      desc: (song.artist || '未署名') + (invite ? ' · 邀你一起听' : ' · 分享给你'),
+      cover: song.cover || '',
+      brand: invite ? '一起听邀请' : '音乐分享',
+      brandIcon: invite ? '🎧' : '🎵'
+    };
+    const content = (invite ? '「邀请你一起听」' : '') + '[SHARECARD:' + JSON.stringify(card) + ']';
+    const t = (typeof getNowStr === 'function') ? getNowStr() : '刚刚';
+    hub.chatHistory.push({ role: 'user', content: content, time: t });
+
+    try {
+      if (typeof window.saveChatHistoryNow === 'function') window.saveChatHistoryNow();
+      else localStorage.setItem('momo_chat_history', JSON.stringify(hub.chatHistory.slice(-50)));
+    } catch (e) {}
+
+    const owner = musicChatOwner();
+    musicToast(invite ? ('邀请已发给' + owner + '，去聊天里点卡片') : ('已发给' + owner));
+    if (typeof mzCloseMoreSheet === 'function') mzCloseMoreSheet();
+  };
+
+  // 点卡片播放：优先按 id 找，没有再按歌名
+  window.playSharedSong = function(card) {
+    if (!card) return false;
+    const list = (typeof allSongs !== 'undefined' && allSongs) || [];
+    let hit = null;
+    for (let i = 0; i < list.length; i++) {
+      const s = list[i];
+      if ((card.songId && s.id === card.songId) || (card.title && s.title === card.title)) { hit = s; break; }
+    }
+    if (!hit) { musicToast('这首歌不在这台手机的曲库里'); return false; }
+    if (typeof openPage === 'function') openPage('page-music');
+    if (typeof mzOpenPlayer === 'function') mzOpenPlayer();
+    try { playSong(hit, true); } catch (e) {}
+    return true;
+  };
+
+  // 接受邀请：一起听的人切成发卡的那个角色，然后放歌
+  window.acceptMusicInvite = function(card) {
+    if (window.switchMusicCompanion) window.switchMusicCompanion(musicChatOwnerId());
+    const played = window.playSharedSong(card);
+    const name = musicCompanionName();
+    const bubble = document.getElementById('music-live-bubble-text');
+    if (bubble) bubble.innerText = '“耳机我戴上了，开始吧。”';
+    musicToast(played ? ('已和' + name + '一起听') : (name + '答应了，但这首歌不在这台手机里'));
+  };
+
   window.openMusicWhisperInput = function() {
     const bar = document.getElementById('music-whisper-bar');
     if (bar) {
