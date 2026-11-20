@@ -3489,7 +3489,7 @@
       const bookCount = cid => currentBooks.filter(b => rdBookCat(b) === cid).length;
       catEl.innerHTML = `
         <div class="rd-chip ${rdActiveCat === 'all' ? 'active' : ''}" onclick="rdSetActiveCat('all')">全部</div>
-        ${rdCats.filter(c => bookCount(c.id) > 0).map(c => `
+        ${rdCats.map(c => `
           <div class="rd-chip ${rdActiveCat === c.id ? 'active' : ''}" onclick="rdSetActiveCat('${c.id}')">
             <span class="rd-chip-dot" style="background:${c.color};"></span>${c.name}
             <span style="opacity:.55;font-size:10px;">${bookCount(c.id)}</span>
@@ -3507,7 +3507,7 @@
     try { if (typeof refreshReaderCompanionUI === 'function') refreshReaderCompanionUI(); } catch (e) {}
 
     if (!currentBooks.length) {
-      groupsEl.innerHTML = `<div class="rd-empty">书架还空着<br>点右上角 ··· 里的「导入书籍」</div>`;
+      groupsEl.innerHTML = `<div class="rd-empty">书架是空的<br>点右上角 ＋ 导入一本 txt</div>`;
       return;
     }
 
@@ -3524,7 +3524,7 @@
           <div class="rd-book-cover ${book.cover ? '' : 'is-pure'}">${inner}</div>
           <div class="rd-book-title" title="${book.title || ''}">${book.title || '未命名'}</div>
           <div class="rd-book-sub">
-            <span class="rd-book-txt">${book.author || (book.progress ? (book.progress + '%') : '未开始')}</span>
+            <span class="rd-book-txt">${book.progress ? (book.progress + '%') : (book.lastReadChapTitle || '未开始')}</span>
             <span class="rd-book-more" onclick="rdPickBookCat(event,'${book.id}')">···</span>
           </div>
         </div>
@@ -3545,40 +3545,7 @@
       return;
     }
 
-    // 「全部」时最上面先放一组最近在读（跨分类，按上次打开时间）
-    let recentGroupHtml = '';
-    let recentIds = [];
-    if (rdActiveCat === 'all') {
-      const recent = currentBooks
-        .filter(b => b.lastReadAt || b.progress)
-        .sort((a, b) => (b.lastReadAt || 0) - (a.lastReadAt || 0))
-        .slice(0, 2);
-      recentIds = recent.map(b => b.id);
-      if (recent.length) {
-        recentGroupHtml = `
-          <div class="rd-group">
-            <div class="rd-group-head">
-              <span class="rd-group-dot" style="background:#8FA8C8;"></span>
-              <span class="rd-group-name">最近在读</span>
-              <span class="rd-group-count">${recent.length}</span>
-            </div>
-            <div class="rd-grid">${recent.map(renderBook).join('')}</div>
-          </div>
-        `;
-      }
-    }
-
-    // 最近在读已展示的书，从下面分类里剔掉，避免同一本出现两次
-    const groupsForRender = showGroups
-      .map(g => ({ cat: g.cat, books: g.books.filter(b => recentIds.indexOf(b.id) < 0) }))
-      .filter(g => g.books.length);
-
-    if (!recentGroupHtml && !groupsForRender.length) {
-      groupsEl.innerHTML = `<div class="rd-empty">这个分类还是空的<br>点封面下的 ··· 把书挪进来</div>`;
-      return;
-    }
-
-    groupsEl.innerHTML = recentGroupHtml + groupsForRender.map(g => `
+    groupsEl.innerHTML = showGroups.map(g => `
       <div class="rd-group">
         <div class="rd-group-head">
           <span class="rd-group-dot" style="background:${g.cat.color};"></span>
@@ -3896,21 +3863,6 @@
     showXianguoToast('草稿已存，回书架了', 1600);
   };
 
-  // ---------- 顶栏 ··· 菜单 ----------
-  window.openReaderShelfMore = function () {
-    const layer = document.getElementById('rd-shelf-more-layer');
-    if (!layer) return;
-    layer.style.display = 'flex';
-    layer.onclick = function (e) {
-      if (e.target === layer) rdCloseShelfMore();
-    };
-  };
-
-  window.rdCloseShelfMore = function () {
-    const layer = document.getElementById('rd-shelf-more-layer');
-    if (layer) layer.style.display = 'none';
-  };
-
   // ---------- 底部三 Tab ----------
   window.rdActiveTab = 'shelf';
 
@@ -4014,14 +3966,13 @@
   };
 
   function rdRailBookHtml(book) {
-    const theme = rdPureTheme(book.title || book.id || 'x');
     const cover = book.cover
       ? '<img src="' + book.cover + '" alt="">'
-      : '<div class="rd-pure-cover" style="background:linear-gradient(160deg,' + theme.bg2a + ' 0%,' + theme.bg2b + ' 100%);padding:8px 6px;">' +
-        '<div style="writing-mode:vertical-rl;text-orientation:upright;font-size:10.5px;letter-spacing:2px;color:' + theme.text2 + ';">' +
-        (book.title || '未命名') + '</div></div>';
+      : '';
     return '<div class="rd-rail-book" onclick="openXianguoReading(\'' + book.id + '\')">' +
-      '<div class="rd-rail-cover' + (book.cover ? '' : ' is-pure') + '">' + cover + '</div>' +
+      '<div class="rd-rail-cover' + (book.cover ? '' : ' is-pure') + '">' +
+      (cover || rdCoverInnerHtml(book)) +
+      '</div>' +
       '<div class="rd-rail-title">' + (book.title || '未命名') + '</div>' +
       '</div>';
   }
