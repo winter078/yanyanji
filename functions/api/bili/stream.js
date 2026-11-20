@@ -30,6 +30,12 @@ async function handle(context) {
     return bad(403, 'host not allowed');
   }
 
+  // B 站 PCDN 直链常见 :4483 这类非标准端口，而 Cloudflare 出站只能走标准端口。
+  // 实测把端口去掉走 443，同一个直链照样 206 返回视频，所以这里统一归一到标准端口。
+  if (target.port && target.port !== '443' && target.port !== '80') {
+    target.port = '';
+  }
+
   const headers = {
     'User-Agent': UA,
     'Referer': 'https://www.bilibili.com/',
