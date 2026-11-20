@@ -9,7 +9,8 @@
   var K = {
     posts: 'momo_forum_posts_v1',
     state: 'momo_forum_state_v1',
-    follow: 'momo_forum_follow_v1'
+    follow: 'momo_forum_follow_v1',
+    profile: 'momo_forum_profile_v1'
   };
 
   var TYPE_LABEL = { ask: '求助', qa: '问答', share: '分享' };
@@ -265,6 +266,45 @@
     return null;
   }
 
+  // ---------- 我的名片 ----------
+  var _profCache = null;
+  function loadProfile(force) {
+    if (_profCache && !force) return _profCache;
+    var p = loadJSON(K.profile, null);
+    if (!p || typeof p !== 'object') p = {};
+    var nm = String(p.name || '').trim() || meName();
+    var handle = String(p.handle || '').trim();
+    if (!handle) {
+      handle = 'me_' + Math.random().toString(36).slice(2, 6);
+      p.handle = handle;
+      saveJSON(K.profile, p);
+    }
+    _profCache = {
+      name: nm,
+      handle: handle,
+      bio: String(p.bio || ''),
+      avatar: p.avatar || meAvatar(),
+      cover: p.cover || ''
+    };
+    return _profCache;
+  }
+  function saveProfile(p) {
+    _profCache = null;
+    saveJSON(K.profile, {
+      name: String(p.name || '').slice(0, 16),
+      handle: String(p.handle || '').replace(/^@/, '').slice(0, 16),
+      bio: String(p.bio || '').slice(0, 30),
+      avatar: p.avatar || '',
+      cover: p.cover || ''
+    });
+    loadProfile(true);
+  }
+  // 帖子里显示的名字：我的一律走名片名，改名字旧帖也跟着变
+  function dispName(kind, name) {
+    if (kind === 'me') return loadProfile().name;
+    return name || '有人';
+  }
+
   // 头像：角色有图就用图，没有就首字渐变圆；NPC 一律渐变圆 + 单字
   function fmAvaHTML(kind, id, name, avatar, size) {
     var cls = 'fm-ava' + (size === 'lg' ? ' fm-ava-lg' : '');
@@ -332,7 +372,7 @@
       html += '<div class="fm-post' + (isNew ? ' is-new' : '') + '" onclick="fmOpenPost(\'' + p.id + '\')">';
       html += '<div class="fm-post-head">';
       html += fmAvaHTML(p.authorKind, p.authorId, p.authorName, p.authorAvatar);
-      html += '<div class="fm-post-who"><div class="fm-post-name">' + esc(p.authorName) + '</div>';
+      html += '<div class="fm-post-who"><div class="fm-post-name">' + esc(dispName(p.authorKind, p.authorName)) + '</div>';
       html += '<div class="fm-post-sig">' + fmTimeAgo(p.createdAt) + '</div></div>';
       html += typeBadge(p.type);
       html += '</div>';
@@ -347,7 +387,7 @@
       if (p.type === 'ask' && p.solved) html += '<span class="fm-pill green">已解决</span>';
       html += '</div>';
       if (lastReply) {
-        html += '<div class="fm-last-reply"><b>' + esc(lastReply.authorName) + '</b>：' + esc(String(lastReply.body).slice(0, 46)) + '</div>';
+        html += '<div class="fm-last-reply"><b>' + esc(dispName(lastReply.kind, lastReply.authorName)) + '</b>：' + esc(String(lastReply.body).slice(0, 46)) + '</div>';
       }
       html += '</div>';
     });
@@ -384,6 +424,7 @@
     var st = loadState();
     var el = document.getElementById('fm-missed');
     if (!el) return;
+    if (fm.tab === 'mine') { el.style.display = 'none'; return; }
     var unseen = loadPosts().filter(function (p) { return p.createdAt > st.seenAt; }).length;
     if (unseen > 0) {
       el.style.display = 'block';
@@ -417,13 +458,165 @@
     renderList();
   }
 
+  // ---------- 我的名片（独立版式，跟广场流不一套） ----------
+  function renderMeCard() {
+    var el = document.getElementById('fm-me');
+    if (!el) return;
+    var p = loadProfile();
+    var posts = loadPosts();
+    var mine = posts.filter(function (x) { return x.authorKind === 'me'; });
+    var got = 0, myRep = 0;
+    posts.forEach(function (x) {
+      if (x.authorKind === 'me') got += (x.replies || []).length;
+      (x.replies || []).forEach(function (r) { if (r.kind === 'me') myRep++; });
+    });
+
+    var html = '<div class="fmp-card">';
+    html += '<div class="fmp-cover" style="background-image:url(&quot;' + (p.cover || 'assets/forum-cover.jpg') + '&quot;)">';
+    html += '<div class="fmp-cover-fade"></div>';
+    html += '</div>';
+    html += '<div class="fmp-ava-wrap">';
+    if (p.avatar) html += '<img class="fmp-ava" src="' + esc(p.avatar) + '" alt="" onerror="this.style.display=\'none\'">';
+    else html += '<div class="fmp-ava fmp-ava-txt">' + esc(String(p.name).slice(0, 1)) + '</div>';
+    html += '</div>';
+    html += '<div class="fmp-name">' + esc(p.name) + '</div>';
+    html += '<div class="fmp-handle">@' + esc(p.handle) + '</div>';
+    html += '<div class="fmp-bio">' + (p.bio ? '“' + esc(p.bio) + '”' : '<span class="fmp-bio-empty">还没写签名</span>') + '</div>';
+    html += '<div class="fmp-tags">';
+    html += mine.length >= 5 ? '<span class="fmp-tag-on">在这儿坐了一段时间</span>' : '<span class="fmp-tag">刚坐下</span>';
+    html += '<span class="fmp-tag">' + (loadFollow().length ? '关注了 ' + loadFollow().length + ' 个人' : '还没关注谁') + '</span>';
+    html += '</div>';
+    html += '<div class="fmp-actions">';
+    html += '<button class="fmp-edit" onclick="fmOpenProfileEdit()">✎ 修改资料</button>';
+    html += '<button class="fmp-share" onclick="fmOpenCompose(\'me\')">说一句</button>';
+    html += '</div>';
+    html += '<div class="fmp-stats">';
+    html += '<div class="fmp-stat"><b>' + mine.length + '</b><span>帖子</span></div>';
+    html += '<div class="fmp-stat"><b>' + got + '</b><span>收到的回应</span></div>';
+    html += '<div class="fmp-stat"><b>' + myRep + '</b><span>我回应过</span></div>';
+    html += '<div class="fmp-stat"><b>' + loadFollow().length + '</b><span>关注</span></div>';
+    html += '</div>';
+    html += '</div>';
+
+    html += '<div class="fmp-list-head">我说过的话</div>';
+    if (!mine.length) {
+      html += '<div class="fmp-empty">你还没在这里说过话。<br><span>点上面的「说一句」，或者去广场看看别人在聊什么。</span></div>';
+    } else {
+      mine.slice().sort(function (a, b) { return b.createdAt - a.createdAt; }).slice(0, 20).forEach(function (x) {
+        var rc = (x.replies || []).length;
+        html += '<div class="fmp-row" onclick="fmOpenPost(\'' + x.id + '\')">';
+        html += '<div class="fmp-row-body">' + esc(String(x.title || x.body).slice(0, 110)) + '</div>';
+        html += '<div class="fmp-row-foot">';
+        html += '<span class="fmp-row-type ' + x.type + '">' + TYPE_LABEL[x.type] + '</span>';
+        html += '<span>' + fmTimeAgo(x.createdAt) + '</span>';
+        html += '<span>💬 ' + rc + '</span>';
+        if (x.solved) html += '<span class="fm-pill green">已解决</span>';
+        html += '</div>';
+        html += '</div>';
+      });
+    }
+    el.innerHTML = html;
+  }
+
+  // ---------- 修改资料 ----------
+  function fmOpenProfileEdit() {
+    var p = loadProfile();
+    var s = document.getElementById('fm-sheet');
+    if (!s) return;
+    s.style.display = 'flex';
+    var head = p.avatar
+      ? '<img src="' + esc(p.avatar) + '" alt="">'
+      : '<span>' + esc(String(p.name).slice(0, 1)) + '</span>';
+    var html = '<div class="fm-sheet-title">修改资料</div>';
+    html += '<div class="fmp-edit-ava-row">';
+    html += '<div class="fmp-edit-ava" onclick="var f=document.getElementById(\'fmp-ava-file\');if(f)f.click()">' + head + '</div>';
+    html += '<div class="fmp-edit-hint">点头像换一张<br><span>存在本地，不会传出去</span></div>';
+    html += '</div>';
+    html += '<input type="file" id="fmp-ava-file" accept="image/*" style="display:none" onchange="fmPickProfileAvatar(event)">';
+    html += '<div class="fm-hint">封面</div>';
+    html += '<div class="fmp-edit-cover" style="background-image:url(&quot;' + (p.cover || 'assets/forum-cover.jpg') + '&quot;)" onclick="var f=document.getElementById(\'fmp-cover-file\');if(f)f.click()"><span>换一张封面</span></div>';
+    html += '<input type="file" id="fmp-cover-file" accept="image/*" style="display:none" onchange="fmPickProfileCover(event)">';
+    html += '<div class="fm-hint">名字</div><input class="fm-input" id="fmp-name" maxlength="16" value="' + esc(p.name) + '">';
+    html += '<div class="fm-hint">ID（挂在名字下面）</div><input class="fm-input" id="fmp-handle" maxlength="16" value="' + esc(p.handle) + '">';
+    html += '<div class="fm-hint">一句签名，最多 30 字</div><input class="fm-input" id="fmp-bio" maxlength="30" value="' + esc(p.bio) + '" placeholder="想写就写">';
+    html += '<button class="fm-main-btn" onclick="fmSaveProfile()">存下来</button>';
+    html += '<button class="fm-ghost-btn" onclick="fmCloseCompose()">算了</button>';
+    s.innerHTML = '<div class="fm-sheet-mask" onclick="if(event.target===this)fmCloseCompose()"></div><div class="fm-sheet-body">' + html + '</div>';
+  }
+
+  function fmReadEditInputs() {
+    var p = loadProfile();
+    var nm = document.getElementById('fmp-name');
+    var hd = document.getElementById('fmp-handle');
+    var bio = document.getElementById('fmp-bio');
+    if (nm && nm.value.trim()) p.name = nm.value.trim();
+    if (hd) p.handle = hd.value.trim().replace(/^@/, '') || p.handle;
+    if (bio) p.bio = bio.value.trim();
+    saveProfile(p);
+    return p;
+  }
+
+  async function fmPickProfileAvatar(e) {
+    var f = e.target.files && e.target.files[0];
+    if (!f) return;
+    fmReadEditInputs();
+    try {
+      var url = '';
+      if (typeof window.compressImageBase64 === 'function') url = await window.compressImageBase64(f, 400, 0.85);
+      if (url) {
+        var p = loadProfile();
+        p.avatar = url;
+        saveProfile(p);
+      }
+    } catch (err) {
+      console.warn('[forum] 头像处理失败', err);
+    }
+    fmOpenProfileEdit();
+  }
+
+  async function fmPickProfileCover(e) {
+    var f = e.target.files && e.target.files[0];
+    if (!f) return;
+    fmReadEditInputs();
+    try {
+      var url = '';
+      if (typeof window.compressImageBase64 === 'function') url = await window.compressImageBase64(f, 1000, 0.82);
+      if (url) {
+        var p = loadProfile();
+        p.cover = url;
+        saveProfile(p);
+      }
+    } catch (err) {
+      console.warn('[forum] 封面处理失败', err);
+    }
+    fmOpenProfileEdit();
+  }
+
+  function fmSaveProfile() {
+    fmReadEditInputs();
+    fmCloseCompose();
+    if (fm.tab === 'mine') renderMeCard();
+    else renderForumApp();
+    window.wxToast && window.wxToast('名片已更新');
+  }
+
   // ---------- 入口 ----------
   function renderForumApp() {
     fm.openId = '';
     var det = document.getElementById('fm-detail');
     if (det) { det.style.display = 'none'; }
     renderChips();
-    renderList();
+    var listEl = document.getElementById('fm-list');
+    var meEl = document.getElementById('fm-me');
+    if (fm.tab === 'mine') {
+      if (listEl) listEl.style.display = 'none';
+      if (meEl) meEl.style.display = 'block';
+      renderMeCard();
+    } else {
+      if (listEl) listEl.style.display = 'block';
+      if (meEl) meEl.style.display = 'none';
+      renderList();
+    }
     renderTabs();
     renderMissed();
     var sub = document.getElementById('fm-sub');
@@ -453,8 +646,7 @@
     fm.openId = '';
     var det = document.getElementById('fm-detail');
     if (det) det.style.display = 'none';
-    renderList();
-    renderTabs();
+    renderForumApp();
   }
 
   function fmRenderDetail() {
@@ -464,13 +656,13 @@
     if (!p) { box.innerHTML = '<div class="fm-empty">这条不见了。</div>'; return; }
 
     var head = document.getElementById('fm-det-head-title');
-    if (head) head.innerHTML = '<span class="fm-det-crumb">' + esc(p.authorName) + '</span>' + typeBadge(p.type);
+    if (head) head.innerHTML = '<span class="fm-det-crumb">' + esc(dispName(p.authorKind, p.authorName)) + '</span>' + typeBadge(p.type);
 
     var html = '';
     html += '<div class="fm-det-post">';
     html += '<div class="fm-post-head">';
     html += fmAvaHTML(p.authorKind, p.authorId, p.authorName, p.authorAvatar, 'lg');
-    html += '<div class="fm-post-who"><div class="fm-det-name">' + esc(p.authorName) + '</div>';
+    html += '<div class="fm-post-who"><div class="fm-det-name">' + esc(dispName(p.authorKind, p.authorName)) + '</div>';
     html += '<div class="fm-post-sig">' + fmTimeAgo(p.createdAt) + '</div></div>';
     if (p.authorKind === 'char') {
       var fo = isFollowed(p.authorId);
@@ -499,7 +691,7 @@
         html += '<div class="fm-reply' + (isBest ? ' best' : '') + '">';
         html += fmAvaHTML(r.kind, r.authorId, r.authorName, r.authorAvatar);
         html += '<div class="fm-reply-main">';
-        html += '<div class="fm-reply-top"><b>' + esc(r.authorName) + '</b><span class="fm-reply-time">' + fmTimeAgo(r.createdAt) + '</span></div>';
+        html += '<div class="fm-reply-top"><b>' + esc(dispName(r.kind, r.authorName)) + '</b><span class="fm-reply-time">' + fmTimeAgo(r.createdAt) + '</span></div>';
         html += '<div class="fm-reply-body">' + esc(r.body) + '</div>';
         html += '<div class="fm-reply-ops">';
         if (isBest) html += '<span class="fm-pill gold">最佳回答</span>';
@@ -910,7 +1102,7 @@
       + '【口吻参考】' + (String(char.prompt || '').slice(0, 500) || '未设置') + '\n'
       + (char.directives ? '【额外指令】' + String(char.directives).slice(0, 200) + '\n' : '')
       + '\n你在「长椅」广场刷到一个帖子：\n'
-      + '【发帖人】' + post.authorName + '\n'
+      + '【发帖人】' + dispName(post.authorKind, post.authorName) + '\n'
       + '【类型】' + (TYPE_LABEL[post.type] || '分享') + '\n'
       + (post.title ? '【标题】' + post.title + '\n' : '')
       + '【正文】' + post.body + '\n'
@@ -1173,6 +1365,10 @@
   window.fmSubmitCompose = fmSubmitCompose;
   window.fmGenCharPost = fmGenCharPost;
   window.fmOpenSettings = fmOpenSettings;
+  window.fmOpenProfileEdit = fmOpenProfileEdit;
+  window.fmPickProfileAvatar = fmPickProfileAvatar;
+  window.fmPickProfileCover = fmPickProfileCover;
+  window.fmSaveProfile = fmSaveProfile;
   window.fmSetAutoLevel = fmSetAutoLevel;
   window.fmClearAll = fmClearAll;
   window.fmMarkSeen = fmMarkSeen;

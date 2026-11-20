@@ -488,3 +488,265 @@
 .fm-level.on { border-color: rgba(232, 176, 75, .45); background: rgba(232, 176, 75, .08); }
 .fm-level b { display: block; font-size: 13.5px; color: #E6E9EF; }
 .fm-level span { display: block; font-size: 11.5px; color: #6E7888; margin-top: 3px; }
+
+/* =========================================================
+   我的名片（fmp-*） · 独立版式，不跟广场流的卡片一套
+   封面出血到屏幕两边，大头像压在封面下沿，名字居中
+   ========================================================= */
+
+.fmp-card {
+  position: relative;
+  margin: -2px -14px 0;
+  padding: 0 0 6px;
+  background: #0E1014;
+}
+
+.fmp-cover {
+  height: 176px;
+  position: relative;
+  overflow: hidden;
+  background-color: #131820;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.fmp-sky {
+  position: absolute;
+  left: 0; top: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+}
+.fmp-cover-fade {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 72px;
+  background: linear-gradient(180deg, rgba(14,16,20,0), rgba(14,16,20,.42) 46%, rgba(14,16,20,.9) 100%);
+  pointer-events: none;
+}
+
+.fmp-ava-wrap {
+  display: flex;
+  justify-content: center;
+  margin-top: -54px;
+  position: relative;
+  z-index: 3;
+}
+.fmp-ava {
+  width: 104px; height: 104px;
+  border-radius: 50%;
+  border: 2px solid #0E1014;
+  box-shadow: 0 0 0 1.5px rgba(255,255,255,.18), 0 14px 30px rgba(0,0,0,.6);
+  object-fit: cover;
+  background: #1B2230;
+  display: flex; align-items: center; justify-content: center;
+}
+.fmp-ava-txt { font-size: 34px; font-weight: 700; color: #D9E0EA; letter-spacing: 1px; }
+
+.fmp-name {
+  text-align: center;
+  font-size: 25px;
+  font-weight: 700;
+  letter-spacing: .6px;
+  margin-top: 15px;
+  color: #F0F4F9;
+  padding: 0 24px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fmp-handle {
+  text-align: center;
+  font-size: 12.5px;
+  color: #78818F;
+  margin-top: 6px;
+  letter-spacing: .4px;
+}
+.fmp-bio {
+  text-align: center;
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: #A3ADBC;
+  margin-top: 13px;
+  padding: 0 28px;
+}
+.fmp-bio-empty { color: #5C6474; }
+
+.fmp-tags {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 13px;
+  padding: 0 18px;
+}
+.fmp-tag {
+  font-size: 11px;
+  color: #78818F;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 999px;
+  padding: 4px 11px;
+}
+.fmp-tag-on {
+  font-size: 11px;
+  color: #E8B04B;
+  border: 1px solid rgba(232,176,75,.34);
+  background: rgba(232,176,75,.075);
+  border-radius: 999px;
+  padding: 4px 11px;
+}
+
+.fmp-actions {
+  display: flex;
+  justify-content: center;
+  gap: 9px;
+  margin-top: 17px;
+}
+.fmp-edit, .fmp-share {
+  padding: 9.5px 19px;
+  border-radius: 999px;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.fmp-edit {
+  border: 1px solid rgba(255,255,255,.13);
+  background: #1B212A;
+  color: #DDE3EC;
+}
+.fmp-edit:active { background: #232B35; }
+.fmp-share {
+  border: 0;
+  background: linear-gradient(135deg, #E8B04B, #C98C2E);
+  color: #14181F;
+  font-weight: 700;
+}
+
+.fmp-stats {
+  display: flex;
+  align-items: center;
+  margin: 19px 18px 0;
+  padding: 15px 0 5px;
+  border-top: 1px solid rgba(255,255,255,.055);
+}
+.fmp-stat { flex: 1; text-align: center; min-width: 0; }
+.fmp-stat b {
+  display: block;
+  font-size: 19px;
+  font-weight: 700;
+  color: #E8B04B;
+  letter-spacing: .3px;
+}
+.fmp-stat span {
+  display: block;
+  font-size: 10.5px;
+  color: #78818F;
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 我发过的帖：紧凑行，不用广场卡片 */
+.fmp-list-head {
+  font-size: 12.5px;
+  color: #78818F;
+  letter-spacing: .4px;
+  margin: 26px 2px 6px;
+}
+.fmp-row {
+  padding: 14px 2px 12px;
+  border-bottom: 1px solid rgba(255,255,255,.05);
+  cursor: pointer;
+}
+.fmp-row:active { background: rgba(255,255,255,.02); }
+.fmp-row-body {
+  font-size: 14.5px;
+  line-height: 1.62;
+  color: #D6DDE6;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.fmp-row-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 9px;
+  font-size: 11px;
+  color: #6B7585;
+}
+.fmp-row-type {
+  font-size: 10px;
+  padding: 2.5px 7px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+.fmp-row-type.ask { color: #F2A0AE; background: rgba(233,116,138,.12); }
+.fmp-row-type.qa { color: #9FC0E8; background: rgba(127,169,224,.12); }
+.fmp-row-type.share { color: #8FE0D0; background: rgba(111,211,192,.1); }
+
+.fmp-empty {
+  padding: 44px 16px 70px;
+  text-align: center;
+  font-size: 13.5px;
+  color: #7E8899;
+  line-height: 2.1;
+}
+.fmp-empty span { font-size: 12px; color: #5F6776; }
+
+/* 修改资料弹层里的头像 */
+.fmp-edit-ava-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 4px;
+}
+.fmp-edit-ava {
+  width: 78px; height: 78px;
+  border-radius: 50%;
+  background: #232A34;
+  border: 1px solid rgba(255,255,255,.1);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+  cursor: pointer;
+  flex: none;
+}
+.fmp-edit-ava:active { opacity: .8; }
+.fmp-edit-ava img { width: 100%; height: 100%; object-fit: cover; }
+.fmp-edit-ava span { font-size: 25px; font-weight: 700; color: #8C97A6; }
+.fmp-edit-hint { font-size: 12.5px; color: #97A1AF; line-height: 1.7; }
+.fmp-edit-hint span { font-size: 11px; color: #5F6776; }
+
+/* 修改资料弹层里的封面条 */
+.fmp-edit-cover {
+  height: 76px;
+  border-radius: 14px;
+  margin: 4px 0 2px;
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  border: 1px solid rgba(255,255,255,.08);
+}
+.fmp-edit-cover:active { opacity: .85; }
+.fmp-edit-cover:after {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; right: 0; bottom: 0;
+  background: rgba(8,10,14,.52);
+}
+.fmp-edit-cover span {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-size: 12.5px;
+  color: #E6E9EF;
+  letter-spacing: .4px;
+}

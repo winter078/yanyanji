@@ -19,7 +19,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <!-- 发布时务必与 js/build.js 的 __LIVE_BUILD__ 保持一致，否则 version-watch 会一直提示“新版已经好了” -->
-  <script>window.__BUILD__="20261121-0700";</script>
+  <script>window.__BUILD__="20261121-0800";</script>
   <script>
     (function () {
       var root = document.documentElement;
@@ -183,7 +183,7 @@
   <link rel="stylesheet" href="css/ledger.css?v=20261121-0400">
   <link rel="stylesheet" href="css/ledger-app.css?v=20261121-0300">
   <link rel="stylesheet" href="css/health.css?v=20261121-0500">
-<link rel="stylesheet" href="css/forum.css?v=20261121-0700">
+<link rel="stylesheet" href="css/forum.css?v=20261121-0800">
   <link rel="stylesheet" href="css/avatar-vault.css?v=2026111145">
   <link rel="stylesheet" href="css/chat-appearance.css?v=2026111308">
   <link rel="stylesheet" href="css/masks.css?v=2026111652">
@@ -4253,6 +4253,7 @@
           <div id="fm-missed"></div>
           <div class="fm-body" id="fm-body">
             <div id="fm-list"></div>
+            <div id="fm-me" style="display: none;"></div>
           </div>
           <div class="fm-tabbar">
             <div class="fm-tab on" id="fm-tab-square" onclick="fmSwitchTab('square')">广场<span id="fm-tab-dot"></span></div>
@@ -6731,7 +6732,7 @@
   <script src="js/desktop/ledger.js?v=20261121-0300"></script>
   <script src="js/desktop/ledger-app.js?v=20261121-0300"></script>
   <script src="js/desktop/health.js?v=20261121-0500"></script>
-  <script src="js/desktop/forum.js?v=20261121-0700"></script>
+  <script src="js/desktop/forum.js?v=20261121-0800"></script>
 
     <!-- 头像上传与定制抽屉 -->
     <div class="ledger-drawer-mask theme-oled" id="vault-upload-drawer" onclick="closeVaultUploadDrawer()">
