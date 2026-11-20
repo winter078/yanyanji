@@ -1,0 +1,158 @@
+{
+  "updatedAt": "2026-11-20",
+  "source": "hunterhug/china-literary + 言言机整理",
+  "books": [
+    {
+      "id": "hongloumeng",
+      "title": "红楼梦",
+      "author": "曹雪芹",
+      "alias": [
+        "石头记",
+        "红楼梦",
+        "hongloumeng"
+      ],
+      "tags": [
+        "古典文学",
+        "明清小说"
+      ],
+      "chapterCount": 120,
+      "file": "data/books/hongloumeng.json",
+      "desc": "四大家族的百年兴衰，一场眼泪写成的红楼大梦。"
+    },
+    {
+      "id": "sanguo",
+      "title": "三国演义",
+      "author": "罗贯中",
+      "alias": [
+        "三国",
+        "三国志演义"
+      ],
+      "tags": [
+        "古典文学",
+        "演义"
+      ],
+      "chapterCount": 120,
+      "file": "data/books/sanguo.json",
+      "desc": "桃园结义到三分归晋，一百二十回全本。"
+    },
+    {
+      "id": "shuihu",
+      "title": "水浒传",
+      "author": "施耐庵",
+      "alias": [
+        "水浒",
+        "忠义水浒传"
+      ],
+      "tags": [
+        "古典文学",
+        "演义"
+      ],
+      "chapterCount": 120,
+      "file": "data/books/shuihu.json",
+      "desc": "一百单八将聚义梁山，招安之后的凋零。"
+    },
+    {
+      "id": "xiyou",
+      "title": "西游记",
+      "author": "吴承恩",
+      "alias": [
+        "西游",
+        "西游释厄传"
+      ],
+      "tags": [
+        "古典文学",
+        "神魔"
+      ],
+      "chapterCount": 100,
+      "file": "data/books/xiyou.json",
+      "desc": "十万八千里取经路，九九八十一难。"
+    },
+    {
+      "id": "liaozhai",
+      "title": "聊斋志异",
+      "author": "蒲松龄",
+      "alias": [
+        "聊斋",
+        "鬼狐传"
+      ],
+      "tags": [
+        "古典文学",
+        "志怪"
+      ],
+      "chapterCount": 467,
+      "file": "data/books/liaozhai.json",
+      "desc": "四百六十余篇狐鬼花妖，短篇志怪之极。"
+    },
+    {
+      "id": "yushimingyan",
+      "title": "喻世明言",
+      "author": "冯梦龙",
+      "alias": [
+        "古今小说"
+      ],
+      "tags": [
+        "古典文学",
+        "话本"
+      ],
+      "chapterCount": 43,
+      "file": "data/books/yushimingyan.json",
+      "desc": "三言之首，宋元明话本四十卷。"
+    },
+    {
+      "id": "jingshitongyan",
+      "title": "警世通言",
+      "author": "冯梦龙",
+      "alias": [],
+      "tags": [
+        "古典文学",
+        "话本"
+      ],
+      "chapterCount": 40,
+      "file": "data/books/jingshitongyan.json",
+      "desc": "三言之一，杜十娘怒沉百宝箱在此。"
+    },
+    {
+      "id": "xingshihengyan",
+      "title": "醒世恒言",
+      "author": "冯梦龙",
+      "alias": [],
+      "tags": [
+        "古典文学",
+        "话本"
+      ],
+      "chapterCount": 40,
+      "file": "data/books/xingshihengyan.json",
+      "desc": "三言压卷，卖油郎独占花魁在此。"
+    },
+    {
+      "id": "chuke",
+      "title": "初刻拍案惊奇",
+      "author": "凌濛初",
+      "alias": [
+        "拍案惊奇"
+      ],
+      "tags": [
+        "古典文学",
+        "话本",
+        "公案"
+      ],
+      "chapterCount": 42,
+      "file": "data/books/chuke.json",
+      "desc": "四十卷明代市井奇案，二拍之前。"
+    },
+    {
+      "id": "erke",
+      "title": "二刻拍案惊奇",
+      "author": "凌濛初",
+      "alias": [],
+      "tags": [
+        "古典文学",
+        "话本",
+        "公案"
+      ],
+      "chapterCount": 42,
+      "file": "data/books/erke.json",
+      "desc": "四十卷续拍，奇情与公案各半。"
+    }
+  ]
+}
