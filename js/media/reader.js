@@ -247,14 +247,14 @@
     if (tab === 'shelf') {
       if (tabShelf) tabShelf.classList.add('active');
       if (tabStore) tabStore.classList.remove('active');
-      if (viewShelf) viewShelf.style.display = 'block';
+      if (viewShelf) viewShelf.style.display = '';
       if (viewStore) viewStore.style.display = 'none';
       renderShelfUI();
     } else {
       if (tabShelf) tabShelf.classList.remove('active');
       if (tabStore) tabStore.classList.add('active');
       if (viewShelf) viewShelf.style.display = 'none';
-      if (viewStore) viewStore.style.display = 'block';
+      if (viewStore) viewStore.style.display = '';
       renderStoreUI();
     }
   };
@@ -3167,8 +3167,651 @@
     if (displayTitle) displayTitle.innerText = newTitle;
     if (displayBody) displayBody.innerText = newBody;
 
-    window.cancelEditReaderSummary();
+  window.cancelEditReaderSummary();
+
     alert('✨ 已成功保存修改，并实时同步更新记忆宫殿！');
   };
+
+  // ============================================================
+  // 🗂 蓝灰书架 v1（2026-11-20）
+  // 自定义分类 + 阅读记录（只记录，不做目标、不做连续天数）
+  // ============================================================
+  const RD_CAT_KEY = 'momo_reader_cats_v1';
+  const RD_STAT_KEY = 'momo_reader_stats_v1';
+  const RD_FINISH_KEY = 'momo_reader_finished_v1';
+
+  const RD_DEFAULT_CATS = [
+    { id: 'c-reading', name: '在读',  color: '#8FA8C8' },
+    { id: 'c-orig',    name: '我写的', color: '#A79FC2' },
+    { id: 'c-audio',   name: '有声',  color: '#8FB6AE' },
+    { id: 'c-wait',    name: '待读',  color: '#B2A78F' }
+  ];
+
+  const RD_PALETTE = ['#8FA8C8', '#A79FC2', '#8FB6AE', '#B2A78F', '#B08F92', '#8C9DAE', '#9AA6B4', '#B9C0C9'];
+
+  let rdCats = [];
+  let rdActiveCat = 'all';
+  let rdStats = {};
+  let rdFinished = {};
+  let rdClockStart = 0;
+  let rdNewCatColor = RD_PALETTE[0];
+
+  function rdDayKey(d) {
+    const x = d || new Date();
+    const p = n => String(n).padStart(2, '0');
+    return x.getFullYear() + '-' + p(x.getMonth() + 1) + '-' + p(x.getDate());
+  }
+
+  function rdLoadCats() {
+    try {
+      const raw = localStorage.getItem(RD_CAT_KEY);
+      rdCats = raw ? JSON.parse(raw) : null;
+    } catch (e) { rdCats = null; }
+    if (!Array.isArray(rdCats) || !rdCats.length) {
+      rdCats = RD_DEFAULT_CATS.map(c => ({ ...c }));
+      rdSaveCats();
+    }
+  }
+
+  function rdSaveCats() {
+    try { localStorage.setItem(RD_CAT_KEY, JSON.stringify(rdCats)); } catch (e) {}
+  }
+
+  function rdLoadStats() {
+    try {
+      const raw = localStorage.getItem(RD_STAT_KEY);
+      rdStats = raw ? JSON.parse(raw) : {};
+    } catch (e) { rdStats = {}; }
+    if (!rdStats || typeof rdStats !== 'object') rdStats = {};
+  }
+
+  function rdSaveStats() {
+    try { localStorage.setItem(RD_STAT_KEY, JSON.stringify(rdStats)); } catch (e) {}
+  }
+
+  function rdLoadFinished() {
+    try {
+      const raw = localStorage.getItem(RD_FINISH_KEY);
+      rdFinished = raw ? JSON.parse(raw) : {};
+    } catch (e) { rdFinished = {}; }
+    if (!rdFinished || typeof rdFinished !== 'object') rdFinished = {};
+  }
+
+  function rdSaveFinished() {
+    try { localStorage.setItem(RD_FINISH_KEY, JSON.stringify(rdFinished)); } catch (e) {}
+  }
+
+  // ---------- 计时：进阅读页开始，离开时结算 ----------
+  function rdClockStartAt() {
+    rdClockStart = Date.now();
+  }
+
+  function rdClockSettle() {
+    if (!rdClockStart) return;
+    const mins = (Date.now() - rdClockStart) / 60000;
+    rdClockStart = 0;
+    if (mins < 0.2) return;
+    const k = rdDayKey();
+    rdStats[k] = Math.round(((rdStats[k] || 0) + mins) * 10) / 10;
+    rdSaveStats();
+
+    const b = currentActiveBook;
+    if (b && b.chapters && b.chapters.length) {
+      const pct = Math.round(((currentChapterIdx + 1) / b.chapters.length) * 100);
+      if (pct > (b.progress || 0)) b.progress = pct;
+      const chap = b.chapters[currentChapterIdx];
+      if (chap && chap.title) b.lastReadChapTitle = chap.title;
+      b.lastReadTime = '今天';
+      if (pct >= 100 && !rdFinished[b.id]) {
+        rdFinished[b.id] = rdDayKey();
+        rdSaveFinished();
+      }
+      saveLocalShelf();
+    }
+    rdRenderRecordStrip();
+  }
+
+  // ---------- 分类归属 ----------
+  function rdBookCat(book) {
+    if (book && book.catId && rdCats.some(c => c.id === book.catId)) return book.catId;
+    if (book && book.isOriginal) return 'c-orig';
+    if (book && book.hasAudio) return 'c-audio';
+    return 'c-reading';
+  }
+
+  function rdMigrateCats() {
+    let changed = false;
+    currentBooks.forEach(b => {
+      if (!b.catId) { b.catId = rdBookCat(b); changed = true; }
+    });
+    if (changed) saveLocalShelf();
+  }
+
+  // ---------- 封面 ----------
+  function rdCoverInnerHtml(book) {
+    if (book && book.cover) {
+      return `<img src="${book.cover}" alt="${book.title || ''}" />`;
+    }
+    const theme = rdPureTheme((book && (book.title || book.id)) || 'x');
+    return `
+      <div class="rd-pure-cover" style="background: linear-gradient(160deg, ${theme.bg2a} 0%, ${theme.bg2b} 100%);">
+        <div class="rd-pure-cover-title" style="color: ${theme.text2};">${(book && book.title) || '未命名'}</div>
+        <div class="rd-pure-cover-foot" style="color: ${theme.text2};">${(book && book.author) || '未署名'}</div>
+      </div>
+    `;
+  }
+
+  // 自造素封专用低饱和蓝灰配色（不跟旧的马卡龙色走）
+  const RD_PURE_THEMES = [
+    { bg2a: '#3A4557', bg2b: '#28313D', text2: '#C7D0DC' },
+    { bg2a: '#3D4458', bg2b: '#2A303C', text2: '#C6CBD8' },
+    { bg2a: '#37484A', bg2b: '#26332F', text2: '#C3CFCB' },
+    { bg2a: '#43424F', bg2b: '#2E2D38', text2: '#CFCBD8' },
+    { bg2a: '#45433B', bg2b: '#2F2E28', text2: '#D2CCBF' },
+    { bg2a: '#394352', bg2b: '#272F3A', text2: '#C2CBDA' }
+  ];
+
+  function rdPureTheme(seed) {
+    let h = 0;
+    const s = String(seed || 'x');
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) & 0xffffffff;
+    return RD_PURE_THEMES[Math.abs(h) % RD_PURE_THEMES.length];
+  }
+
+  // ---------- 记录文案 ----------
+  function rdFmtMinutes(m) {
+    m = Math.round(m || 0);
+    if (m < 1) return '0 分钟';
+    if (m < 60) return m + ' 分钟';
+    const h = Math.floor(m / 60);
+    const rest = m % 60;
+    return rest ? (h + ' 小时 ' + rest + ' 分') : (h + ' 小时');
+  }
+
+  function rdSumRange(fromKey, toKey) {
+    let total = 0;
+    Object.keys(rdStats).forEach(k => {
+      if (k >= fromKey && k <= toKey) total += rdStats[k] || 0;
+    });
+    return total;
+  }
+
+  function rdCountDays(fromKey, toKey) {
+    let n = 0;
+    Object.keys(rdStats).forEach(k => {
+      if (k >= fromKey && k <= toKey && (rdStats[k] || 0) >= 1) n++;
+    });
+    return n;
+  }
+
+  function rdCountFinished(fromKey, toKey) {
+    let n = 0;
+    Object.keys(rdFinished).forEach(id => {
+      const d = rdFinished[id];
+      if (d >= fromKey && d <= toKey) n++;
+    });
+    return n;
+  }
+
+  function rdWeekStart(d) {
+    const x = new Date((d || new Date()).getTime());
+    const dow = (x.getDay() + 6) % 7; // 周一=0
+    x.setDate(x.getDate() - dow);
+    x.setHours(0, 0, 0, 0);
+    return x;
+  }
+
+  function rdRenderRecordStrip() {
+    const el = document.getElementById('rd-week-text');
+    if (!el) return;
+    const ws = rdWeekStart();
+    const from = rdDayKey(ws);
+    const to = rdDayKey(new Date());
+    const mins = rdSumRange(from, to);
+    const days = rdCountDays(from, to);
+    el.innerText = mins >= 1
+      ? (rdFmtMinutes(mins) + ' · 读了 ' + days + ' 天')
+      : '还没有记录';
+  }
+
+  // ---------- 长按/更多：把书挪进某个分类 ----------
+  window.rdPickBookCat = function (ev, bookId) {
+    if (ev) ev.stopPropagation();
+    const old = document.getElementById('rd-pick-cat');
+    if (old) old.remove();
+
+    const book = currentBooks.find(b => b.id === bookId);
+    if (!book) return;
+    const cur = rdBookCat(book);
+
+    const mask = document.createElement('div');
+    mask.id = 'rd-pick-cat';
+    mask.className = 'rd-layer';
+    mask.style.background = 'rgba(12,16,22,0.62)';
+    mask.style.zIndex = 60;
+    mask.innerHTML = `
+      <div style="margin:auto 18px;border-radius:16px;background:#242B36;border:1px solid rgba(255,255,255,.1);overflow:hidden;">
+        <div style="padding:16px 16px 10px 16px;font-size:11px;letter-spacing:1.5px;color:#6E7885;">把这本书放进</div>
+        ${rdCats.map(c => `
+          <div onclick="rdSetBookCat('${bookId}','${c.id}')" style="display:flex;align-items:center;gap:10px;padding:13px 16px;border-top:1px solid rgba(255,255,255,.05);cursor:pointer;">
+            <span style="width:7px;height:7px;border-radius:50%;background:${c.color};"></span>
+            <span style="flex:1;font-size:13px;color:#DCE3EC;">${c.name}</span>
+            <span style="font-size:12px;color:${cur === c.id ? '#8FA8C8' : 'transparent'};">✓</span>
+          </div>
+        `).join('')}
+        <div onclick="rdClosePickBookCat()" style="padding:14px 16px;border-top:1px solid rgba(255,255,255,.06);text-align:center;font-size:12px;color:#97A1AF;cursor:pointer;">取消</div>
+      </div>
+    `;
+    mask.onclick = e => { if (e.target === mask) rdClosePickBookCat(); };
+    document.getElementById('page-reader').appendChild(mask);
+  };
+
+  window.rdClosePickBookCat = function () {
+    const el = document.getElementById('rd-pick-cat');
+    if (el) el.remove();
+  };
+
+  window.rdSetBookCat = function (bookId, catId) {
+    const book = currentBooks.find(b => b.id === bookId);
+    if (book) {
+      book.catId = catId;
+      saveLocalShelf();
+    }
+    rdClosePickBookCat();
+    window.renderShelfUI();
+    showXianguoToast('已归入新分类', 1600);
+  };
+
+  // ---------- 书架主视图 ----------
+  function rdRenderShelf() {
+    loadLocalShelf();
+    rdLoadCats();
+    rdLoadStats();
+    rdLoadFinished();
+    rdMigrateCats();
+
+    const countEl = document.getElementById('xianguo-shelf-book-count');
+    if (countEl) countEl.innerText = currentBooks.length + ' 本书';
+
+    // ① 继续读
+    const topBook = currentBooks[0];
+    if (topBook) {
+      const wrapEl = document.getElementById('rd-now-cover-wrap');
+      const authorEl = document.getElementById('xianguo-last-author');
+      const titleEl = document.getElementById('xianguo-last-title');
+      const chapEl = document.getElementById('xianguo-last-chap');
+      const fillEl = document.getElementById('xianguo-last-fill');
+      const pctEl = document.getElementById('xianguo-last-percent');
+      const timeEl = document.getElementById('xianguo-last-time');
+
+      if (wrapEl) {
+        wrapEl.innerHTML = rdCoverInnerHtml(topBook);
+        wrapEl.classList.toggle('has-photo', !!topBook.cover);
+      }
+      if (authorEl) authorEl.innerText = topBook.author || '佚名';
+      if (titleEl) titleEl.innerText = topBook.title || '未命名';
+      if (chapEl) chapEl.innerText = topBook.lastReadChapTitle
+        || (topBook.chapters && topBook.chapters[0] && topBook.chapters[0].title)
+        || '还没开始';
+      const pct = topBook.progress || 0;
+      if (fillEl) fillEl.style.width = pct + '%';
+      if (pctEl) pctEl.innerText = pct ? (pct + '%') : '未开始';
+      if (timeEl) timeEl.innerText = topBook.lastReadTime ? ('上次 · ' + topBook.lastReadTime) : '还没翻开过';
+    }
+
+    // ② 记录条
+    rdRenderRecordStrip();
+
+    // ③ 分类胶囊
+    const catEl = document.getElementById('rd-cat-scroll');
+    if (catEl) {
+      const bookCount = cid => currentBooks.filter(b => rdBookCat(b) === cid).length;
+      catEl.innerHTML = `
+        <div class="rd-chip ${rdActiveCat === 'all' ? 'active' : ''}" onclick="rdSetActiveCat('all')">全部</div>
+        ${rdCats.map(c => `
+          <div class="rd-chip ${rdActiveCat === c.id ? 'active' : ''}" onclick="rdSetActiveCat('${c.id}')">
+            <span class="rd-chip-dot" style="background:${c.color};"></span>${c.name}
+            <span style="opacity:.55;font-size:10px;">${bookCount(c.id)}</span>
+          </div>
+        `).join('')}
+        <div class="rd-chip rd-chip-add" onclick="openReaderCatManager()">＋</div>
+      `;
+    }
+
+    // ④ 分组网格
+    const groupsEl = document.getElementById('rd-shelf-groups');
+    if (!groupsEl) return;
+
+    // 顶栏同伴头像跟着当前角色走
+    try { if (typeof refreshReaderCompanionUI === 'function') refreshReaderCompanionUI(); } catch (e) {}
+
+    if (!currentBooks.length) {
+      groupsEl.innerHTML = `<div class="rd-empty">书架是空的<br>点右上角 ＋ 导入一本 txt</div>`;
+      return;
+    }
+
+    const renderBook = book => {
+      const theme = rdPureTheme(book.title || book.id);
+      const inner = book.cover
+        ? `<img src="${book.cover}" alt="${book.title || ''}" />`
+        : `<div class="rd-pure-cover">
+             <div class="rd-pure-cover-title" style="color:${theme.text2};">${book.title || '未命名'}</div>
+             <div class="rd-pure-cover-foot" style="color:${theme.text2};">${book.author || '未署名'}</div>
+           </div>`;
+      return `
+        <div class="rd-book" onclick="openXianguoReading('${book.id}')">
+          <div class="rd-book-cover ${book.cover ? '' : 'is-pure'}">${inner}</div>
+          <div class="rd-book-title" title="${book.title || ''}">${book.title || '未命名'}</div>
+          <div class="rd-book-sub">
+            <span class="rd-book-txt">${book.progress ? (book.progress + '%') : (book.lastReadChapTitle || '未开始')}</span>
+            <span class="rd-book-more" onclick="rdPickBookCat(event,'${book.id}')">···</span>
+          </div>
+        </div>
+      `;
+    };
+
+    const allGroups = rdCats.map(c => ({
+      cat: c,
+      books: currentBooks.filter(b => rdBookCat(b) === c.id)
+    })).filter(g => g.books.length);
+
+    const showGroups = rdActiveCat === 'all'
+      ? allGroups
+      : allGroups.filter(g => g.cat.id === rdActiveCat);
+
+    if (!showGroups.length) {
+      groupsEl.innerHTML = `<div class="rd-empty">这个分类还是空的<br>点封面下的 ··· 把书挪进来</div>`;
+      return;
+    }
+
+    groupsEl.innerHTML = showGroups.map(g => `
+      <div class="rd-group">
+        <div class="rd-group-head">
+          <span class="rd-group-dot" style="background:${g.cat.color};"></span>
+          <span class="rd-group-name">${g.cat.name}</span>
+          <span class="rd-group-count">${g.books.length}</span>
+        </div>
+        <div class="rd-grid">${g.books.map(renderBook).join('')}</div>
+      </div>
+    `).join('');
+  }
+
+  window.renderShelfUI = rdRenderShelf;
+  window.renderReaderShelf = rdRenderShelf;
+
+  window.rdSetActiveCat = function (catId) {
+    rdActiveCat = catId;
+    rdRenderShelf();
+  };
+
+  // ---------- 阅读记录页 ----------
+  let rdRecordMode = 'week';
+
+  window.openReaderRecord = function () {
+    rdLoadStats();
+    rdLoadFinished();
+    rdRecordMode = 'week';
+    rdRenderRecordBody();
+    const layer = document.getElementById('rd-record-layer');
+    if (layer) layer.style.display = 'flex';
+  };
+
+  window.closeReaderRecord = function () {
+    const layer = document.getElementById('rd-record-layer');
+    if (layer) layer.style.display = 'none';
+  };
+
+  window.rdSwitchRecordMode = function (mode) {
+    rdRecordMode = mode;
+    rdRenderRecordBody();
+  };
+
+  window.rdRenderRecordBody = function () {
+    const body = document.getElementById('rd-record-body');
+    if (!body) return;
+
+    const now = new Date();
+    const weekStart = rdWeekStart(now);
+    const weekFrom = rdDayKey(weekStart);
+    const todayKey = rdDayKey(now);
+
+    let fromKey, toKey, titleUnit = '';
+    if (rdRecordMode === 'week') {
+      fromKey = weekFrom;
+      toKey = todayKey;
+      titleUnit = '本周';
+    } else if (rdRecordMode === 'month') {
+      fromKey = rdDayKey(new Date(now.getFullYear(), now.getMonth(), 1));
+      toKey = todayKey;
+      titleUnit = '本月';
+    } else {
+      fromKey = rdDayKey(new Date(now.getFullYear(), 0, 1));
+      toKey = todayKey;
+      titleUnit = '今年';
+    }
+
+    const mins = rdSumRange(fromKey, toKey);
+    const days = rdCountDays(fromKey, toKey);
+    const finished = rdCountFinished(fromKey, toKey);
+
+    // 图表
+    let chartHtml = '';
+    if (rdRecordMode === 'week') {
+      const maxM = Math.max.apply(null, [1].concat(
+        Array.from({ length: 7 }).map((_, i) => {
+          const d = new Date(weekStart.getTime());
+          d.setDate(weekStart.getDate() + i);
+          return rdStats[rdDayKey(d)] || 0;
+        })
+      ));
+      const labels = ['一', '二', '三', '四', '五', '六', '日'];
+      const todayIdx = (now.getDay() + 6) % 7;
+      chartHtml = `<div class="rd-week-chart">` + Array.from({ length: 7 }).map((_, i) => {
+        const d = new Date(weekStart.getTime());
+        d.setDate(weekStart.getDate() + i);
+        const m = rdStats[rdDayKey(d)] || 0;
+        const h = m ? Math.max(8, Math.round((m / maxM) * 92)) : 9;
+        return `
+          <div class="rd-week-col">
+            <div class="rd-week-bar ${m ? '' : 'is-zero'} ${i === todayIdx ? 'is-today' : ''}" style="height:${h}px;"></div>
+            <span class="rd-week-label ${i === todayIdx ? 'is-today' : ''}">${labels[i]}</span>
+          </div>
+        `;
+      }).join('') + `</div>`;
+    } else if (rdRecordMode === 'month') {
+      const year = now.getFullYear(), month = now.getMonth();
+      const totalDays = new Date(year, month + 1, 0).getDate();
+      const firstDow = (new Date(year, month, 1).getDay() + 6) % 7;
+      const cells = [];
+      for (let i = 0; i < firstDow; i++) cells.push(`<div class="rd-heat-cell" style="opacity:0;background:transparent;"></div>`);
+      for (let d = 1; d <= totalDays; d++) {
+        const k = rdDayKey(new Date(year, month, d));
+        const m = rdStats[k] || 0;
+        let bg = 'rgba(255,255,255,0.05)';
+        if (m >= 1 && m < 15) bg = 'rgba(143,168,200,0.18)';
+        else if (m >= 15 && m < 45) bg = 'rgba(143,168,200,0.34)';
+        else if (m >= 45 && m < 90) bg = 'rgba(143,168,200,0.52)';
+        else if (m >= 90) bg = 'rgba(143,168,200,0.72)';
+        cells.push(`<div class="rd-heat-cell" style="background:${bg};"></div>`);
+      }
+      chartHtml = `<div class="rd-heat-grid">${cells.join('')}</div>
+        <div class="rd-heat-legend"><span>少</span>
+          <i style="background:rgba(255,255,255,0.05)"></i>
+          <i style="background:rgba(143,168,200,0.18)"></i>
+          <i style="background:rgba(143,168,200,0.34)"></i>
+          <i style="background:rgba(143,168,200,0.52)"></i>
+          <i style="background:rgba(143,168,200,0.72)"></i>
+          <span>多</span>
+        </div>`;
+    } else {
+      const monthMins = Array.from({ length: 12 }).map((_, mi) =>
+        rdSumRange(rdDayKey(new Date(now.getFullYear(), mi, 1)), rdDayKey(new Date(now.getFullYear(), mi + 1, 0))));
+      const maxM = Math.max.apply(null, [1].concat(monthMins));
+      chartHtml = `<div class="rd-year-chart">` + monthMins.map(m => `
+        <div class="rd-year-col">
+          <div class="rd-year-bar ${m ? '' : 'is-zero'}" style="height:${m ? Math.max(5, Math.round((m / maxM) * 96)) : 2}px;"></div>
+        </div>
+      `).join('') + `</div>
+      <div class="rd-year-labels">` + Array.from({ length: 12 }).map((_, i) =>
+        `<span class="rd-year-month">${i + 1}</span>`).join('') + `</div>`;
+    }
+
+    const recent = currentBooks.slice(0, 6).map(b => `
+      <div class="rd-recent-row">
+        <span class="rd-recent-date">${b.progress ? b.progress + '%' : '—'}</span>
+        <span class="rd-recent-title">${b.title || '未命名'}</span>
+        <span style="color:#6E7885;font-size:10px;">${b.lastReadChapTitle || ''}</span>
+      </div>
+    `).join('');
+
+    body.innerHTML = `
+      <div class="rd-rec-tabs">
+        <div class="rd-rec-tab ${rdRecordMode === 'week' ? 'active' : ''}" onclick="rdSwitchRecordMode('week')">本周</div>
+        <div class="rd-rec-tab ${rdRecordMode === 'month' ? 'active' : ''}" onclick="rdSwitchRecordMode('month')">本月</div>
+        <div class="rd-rec-tab ${rdRecordMode === 'year' ? 'active' : ''}" onclick="rdSwitchRecordMode('year')">今年</div>
+      </div>
+
+      <div class="rd-rec-hero">
+        <span class="rd-rec-hero-num">${mins >= 60 ? (Math.floor(mins / 60)) : Math.round(mins)}</span>
+        <span class="rd-rec-hero-unit">${mins >= 60 ? '小时' : '分钟'}${mins >= 60 && Math.round(mins % 60) ? (' ' + Math.round(mins % 60) + ' 分') : ''}</span>
+      </div>
+      <div class="rd-rec-note">${mins >= 1 ? (titleUnit + '你读了 ' + days + ' 天') : (titleUnit + '还没有记录')}</div>
+
+      ${chartHtml}
+
+      <div class="rd-rec-stats">
+        <div class="rd-rec-stat">
+          <div class="rd-rec-stat-num">${rdFmtMinutes(mins)}</div>
+          <div class="rd-rec-stat-label">累计时长</div>
+        </div>
+        <div class="rd-rec-stat">
+          <div class="rd-rec-stat-num">${days}</div>
+          <div class="rd-rec-stat-label">读过几天</div>
+        </div>
+        <div class="rd-rec-stat">
+          <div class="rd-rec-stat-num">${finished}</div>
+          <div class="rd-rec-stat-label">读完的书</div>
+        </div>
+      </div>
+
+      <div class="rd-recent-head">书架上的书</div>
+      ${recent || '<div class="rd-empty">还没有书</div>'}
+    `;
+  };
+
+  // ---------- 分类管理页 ----------
+  window.openReaderCatManager = function () {
+    rdLoadCats();
+    rdRenderCatBody();
+    const layer = document.getElementById('rd-cat-layer');
+    if (layer) layer.style.display = 'flex';
+  };
+
+  window.closeReaderCatManager = function () {
+    const layer = document.getElementById('rd-cat-layer');
+    if (layer) layer.style.display = 'none';
+  };
+
+  window.rdRenderCatBody = function () {
+    const body = document.getElementById('rd-cat-body');
+    if (!body) return;
+    const numOf = cid => currentBooks.filter(b => rdBookCat(b) === cid).length;
+
+    body.innerHTML = `
+      ${rdCats.map(c => `
+        <div class="rd-cat-row">
+          <span class="rd-cat-dot" style="background:${c.color};"></span>
+          <span class="rd-cat-name">${c.name}</span>
+          <span class="rd-cat-num">${numOf(c.id)}</span>
+          <span class="rd-cat-act" onclick="rdRenameCat('${c.id}')">✎</span>
+          <span class="rd-cat-act" onclick="rdDeleteCat('${c.id}')">✕</span>
+        </div>
+      `).join('')}
+
+      <div class="rd-cat-input-row">
+        <input class="rd-input" id="rd-new-cat-name" maxlength="8" placeholder="新分类名称" />
+        <button class="rd-btn" onclick="rdAddCat()">添加</button>
+      </div>
+      <div style="font-size:10px;color:#6E7885;padding:2px 2px 4px 2px;line-height:1.8;">
+        删除分类后，里面的书会回到第一个分类。
+      </div>
+
+      <div class="rd-color-head">分类颜色</div>
+      <div class="rd-color-row">
+        ${RD_PALETTE.map(col => `
+          <span class="rd-color-dot ${rdNewCatColor === col ? 'active' : ''}" style="background:${col};" onclick="rdPickCatColor('${col}')"></span>
+        `).join('')}
+      </div>
+    `;
+  };
+
+  window.rdPickCatColor = function (col) {
+    rdNewCatColor = col;
+    rdRenderCatBody();
+  };
+
+  window.rdAddCat = function () {
+    const input = document.getElementById('rd-new-cat-name');
+    const name = input ? input.value.trim() : '';
+    if (!name) { showXianguoToast('先起个名字', 1600); return; }
+    if (rdCats.some(c => c.name === name)) { showXianguoToast('这个分类已经有了', 1600); return; }
+    rdCats.push({ id: 'cat-' + Date.now(), name: name, color: rdNewCatColor });
+    rdSaveCats();
+    rdRenderCatBody();
+    rdRenderShelf();
+    showXianguoToast('分类已添加', 1600);
+  };
+
+  window.rdRenameCat = function (catId) {
+    const c = rdCats.find(x => x.id === catId);
+    if (!c) return;
+    const v = window.prompt('分类名称', c.name);
+    if (v === null) return;
+    const name = v.trim();
+    if (!name) return;
+    c.name = name;
+    rdSaveCats();
+    rdRenderCatBody();
+    rdRenderShelf();
+  };
+
+  window.rdDeleteCat = function (catId) {
+    if (rdCats.length <= 1) { showXianguoToast('至少留一个分类', 1600); return; }
+    const c = rdCats.find(x => x.id === catId);
+    if (!c) return;
+    const moving = currentBooks.filter(b => rdBookCat(b) === catId);
+    if (!window.confirm('删除「' + c.name + '」？' + (moving.length ? ('里面 ' + moving.length + ' 本书会回到第一个分类。') : ''))) return;
+
+    const fallback = rdCats.find(x => x.id !== catId);
+    const fallbackId = fallback ? fallback.id : '';
+    currentBooks.forEach(b => {
+      if (rdBookCat(b) === catId && fallbackId) b.catId = fallbackId;
+    });
+    saveLocalShelf();
+    rdCats = rdCats.filter(x => x.id !== catId);
+    if (rdActiveCat === catId) rdActiveCat = 'all';
+    rdSaveCats();
+    rdRenderCatBody();
+    rdRenderShelf();
+  };
+
+  // ---------- 计时挂钩：进出阅读页 ----------
+  (function hookReadingClock() {
+    const origOpen = window.openXianguoReading;
+    if (typeof origOpen === 'function') {
+      window.openXianguoReading = async function (bookId) {
+        await origOpen(bookId);
+        rdClockStartAt();
+      };
+    }
+    const origExit = window.exitXianguoReading;
+    if (typeof origExit === 'function') {
+      window.exitXianguoReading = function () {
+        rdClockSettle();
+        origExit();
+      };
+    }
+  })();
+
 
 })();
