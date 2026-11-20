@@ -276,7 +276,13 @@
     const n = limit || 5;
     const parts = [];
     const cur = watchState.currentVideo;
-    if (cur && cur.title) parts.push(cur.title + '（正在看）');
+    if (cur && cur.title) {
+      const sec = Math.floor(Number(cur.currentTimestamp || 0));
+      const at = sec > 30
+        ? ('正在看，已看到' + Math.floor(sec / 60) + '分' + String(sec % 60).padStart(2, '0') + '秒')
+        : '正在看';
+      parts.push(cur.title + '（' + at + '）');
+    }
     DEFAULT_RECOMMENDATIONS.forEach(function(r) {
       if (cur && r.title === cur.title) return;
       if (parts.length >= n) return;

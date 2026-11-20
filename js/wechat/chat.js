@@ -4869,7 +4869,7 @@ ${(() => {
         if (readerCatalog) {
           cardLines.push('· 共读｜邀对方一起读 → [READ_INVITE:书名]；只想分享一本书 → [READ_SHARE:书名]。书架：' + readerCatalog + '。');
         }
-        cardLines.push('清单里标了（正在看）（正在读）（正在听）的，就是对方此刻正在做的事，优先用这一项来邀。');
+        cardLines.push('清单里标了（正在看）（正在读）（正在听）的，就是对方此刻正在做的事，优先用这一项来邀；括号里的章节、进度、看到第几分钟也可以拿来用，比如“接着上次那段往下看”。');
         cardLines.push('什么时候发：对方说想听歌/想看电影/想看书、想被陪，或你主动想陪对方的时候。日常闲聊不要发卡。');
         promptText += cardLines.join('\n');
       }

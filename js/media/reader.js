@@ -1831,7 +1831,10 @@
     const cur = (typeof currentActiveBook !== 'undefined' && currentActiveBook) || null;
     if (cur && cur.title) {
       const chap = (cur.chapters && cur.chapters[currentChapterIdx] && cur.chapters[currentChapterIdx].title) || '';
-      parts.push(cur.title + '（正在读' + (chap ? ('：' + chap) : '') + '）');
+      const pct = Number(cur.progress);
+      const tail = (chap ? ('正在读：' + chap) : '正在读')
+        + (pct > 0 ? ('，进度 ' + pct + '%') : '');
+      parts.push(cur.title + '（' + tail + '）');
     }
     list.forEach(function(b) {
       if (cur && b.id === cur.id) return;
