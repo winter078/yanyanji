@@ -18,7 +18,7 @@
   <meta http-equiv="Cache-Control" content="no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <script>window.__BUILD__="20261120-1218";</script>
+  <script>window.__BUILD__="20261120-1229";</script>
   <script>
     (function () {
       var root = document.documentElement;
@@ -175,7 +175,7 @@
   <link rel="stylesheet" href="css/music.css?v=1789840833455" />
 <link rel="stylesheet" href="css/music-app.css?v=2026112010" />
   <link rel="stylesheet" href="css/watch.css?v=1789854172623" />
-  <link rel="stylesheet" href="css/theater.css?v=2026111421" />
+  <link rel="stylesheet" href="css/theater.css?v=20261120-1229" />
   <link rel="stylesheet" href="css/xhs.css?v=2026111010" />
 
   <link rel="stylesheet" href="css/reader.css?v=1789850936013" />
@@ -1996,6 +1996,9 @@
             </label>
             <button class="rp-top-setting-btn" onclick="openPage('page-story-setting')" title="故事设定">设定</button>
           </header>
+
+          <!-- 图书联动：正在演绎的书（只有从阅读器点「用这本书开剧场」时才显示） -->
+          <div class="rp-book-stage-bar" id="rp-book-stage-bar" style="display: none;"></div>
 
           <div class="rp-theater-screen">
             <!-- 剧场叙事对话流 -->
@@ -4588,10 +4591,12 @@
               <div class="reader-catalog-scroll-list" id="reader-catalog-scroll-list">
                 <!-- 动态章节列表 -->
               </div>
-              <div class="reader-catalog-footer" style="padding: 10px 14px; border-top: 1px solid #f0e6e8;  display: flex; justify-content: space-between; align-items: center;">
-                <div style="font-size: 11px; color: var(--text-secondary);">支持随时增补新章与番外</div>
-                <button class="xianguo-writer-save-btn" style="padding: 4px 10px; font-size: 11px;" onclick="openWriterFromCurrentBook()">
-                  <span>✍️ 更新 / 章节管理</span>
+              <div class="reader-catalog-footer" style="padding: 10px 14px; border-top: 1px solid #f0e6e8; display: flex; gap: 8px; align-items: center;">
+                <button class="xianguo-writer-save-btn" style="flex: 1; padding: 6px 8px; font-size: 11px;" onclick="startTheaterWithBook()">
+                  <span>🎭 用这本书开剧场</span>
+                </button>
+                <button class="xianguo-writer-save-btn" style="flex: 1; padding: 6px 8px; font-size: 11px;" onclick="openWriterFromCurrentBook()">
+                  <span>✍️ 章节管理</span>
                 </button>
               </div>
             </div>
@@ -6196,7 +6201,7 @@
 <script src="js/qrcode.js?v=2026112010"></script>
 <script src="js/media/netease-login.js?v=2026112011"></script>
   <script src="js/media/watch.js?v=1789856078493"></script>
-  <script src="js/theater/theater.js?v=2026111421"></script>
+  <script src="js/theater/theater.js?v=20261120-1229"></script>
   <script src="js/theater/palace.js?v=2026111121"></script>
   <script src="js/theater/memory-engine.js?v=2026111122"></script>
   <script src="js/theater/worldbooks.js?v=2026111571"></script>
@@ -6362,7 +6367,7 @@
     </div>
   </div>
 
-  <script src="js/media/reader.js?v=2026111341"></script>
+  <script src="js/media/reader.js?v=20261120-1229"></script>
 
         <!-- 记忆宫殿辅助弹窗合集 (纯正暗黑系 OLED) -->
     <!-- 1. 自定义范围总结弹窗 -->
@@ -7278,7 +7283,7 @@ html.ios .watch-header {
 }
 </style>
 
-<script src="js/version-watch.js?v=20261120-1218"></script>
+<script src="js/version-watch.js?v=20261120-1229"></script>
 </body>
 </html>
 <!-- live_preview_refresh_trigger:1790094973085 -->
