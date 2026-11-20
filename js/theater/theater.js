@@ -1293,9 +1293,27 @@ ${worldBookPrompt}
       return full;
     }
 
+    // 2026-11-20 剧场取 API 配置统一走「当前预设」，并且全部 trim：
+    // 以前直接读 appData.apiKey，Key 尾部带上换行/空格时，网关会当成无效凭证（报"当前无可用凭证"）。
+    function theaterApiConfig() {
+      let cfg = null;
+      if (window.ApiPresets && typeof window.ApiPresets.resolve === 'function') {
+        try { cfg = window.ApiPresets.resolve('theater'); } catch (e) { cfg = null; }
+      }
+      if (!cfg || !cfg.baseUrl || !cfg.apiKey) {
+        cfg = { baseUrl: appData.apiBase, apiKey: appData.apiKey, model: appData.model };
+      }
+      const baseUrl = String(cfg.baseUrl || '').trim();
+      const apiKey = String(cfg.apiKey || '').trim();
+      let model = String(cfg.model || appData.model || '').trim();
+      if (!model) model = 'deepseek-chat';
+      return { baseUrl: baseUrl, apiKey: apiKey, model: model };
+    }
+
     async function requestRpReply(body, onDelta, useStream) {
       const notify = typeof onDelta === 'function' ? onDelta : function() {};
-      let cleanBase = String(appData.apiBase || '').replace(/\/+$/, '');
+      const apiCfg = theaterApiConfig();
+      let cleanBase = String(apiCfg.baseUrl || '').replace(/\/+$/, '');
       if (!cleanBase.endsWith('/chat/completions')) cleanBase += '/chat/completions';
       const payload = Object.assign({}, body);
       if (useStream) payload.stream = true;
@@ -1303,14 +1321,14 @@ ${worldBookPrompt}
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + appData.apiKey
+          'Authorization': 'Bearer ' + apiCfg.apiKey
         },
         body: JSON.stringify(payload)
       });
       if (!response.ok) {
         let detail = '';
         try { detail = (await response.text()).slice(0, 240); } catch (e) { detail = ''; }
-        throw new Error('请求失败 ' + response.status + (detail ? '：' + detail : ''));
+        throw new Error('请求失败 ' + response.status + '（模型 ' + (payload.model || '空') + '）' + (detail ? '：' + detail : ''));
       }
       const contentType = String(response.headers.get('content-type') || '').toLowerCase();
       if (!useStream || contentType.indexOf('application/json') >= 0) {
@@ -1332,7 +1350,8 @@ ${worldBookPrompt}
     }
 
     async function triggerRpAiTurn(extraInstruction = '') {
-      if (!appData.apiKey) {
+      const apiCfg = theaterApiConfig();
+      if (!apiCfg.apiKey) {
         alert('请先去设置页面填入 API Key 唤醒大脑。');
         openPage('page-api');
         return;
@@ -1374,7 +1393,7 @@ ${worldBookPrompt}
       };
       try {
         const requestBody = {
-          model: appData.model || 'deepseek-chat',
+          model: apiCfg.model,
           messages: [{ role: 'system', content: rpSystemPrompt }, ...injectedTurns],
           temperature: 0.88
         };
