@@ -1155,6 +1155,50 @@
     musicToast(played ? ('已和' + name + '一起听') : (name + '答应了，但这首歌不在这台手机里'));
   };
 
+  // 给 AI 看的曲库摘要（只给歌名+歌手，让它照抄，别自己编）
+  window.musicCatalogForAi = function(limit) {
+    const list = (typeof allSongs !== 'undefined' && allSongs) || [];
+    const n = limit || 8;
+    return list.slice(0, n).map(function(s) {
+      const artist = String(s.artist || '').split('·')[0].trim();
+      return (s.title || '') + (artist ? (' - ' + artist) : '');
+    }).join('；');
+  };
+
+  // 角色在聊天里输出的轻标记 [MUSIC_INVITE:歌名] / [MUSIC_SHARE:歌名]
+  // 换成通用分享卡标记，渲染层不用再写一套
+  window.musicCardMarkerToShareCard = function(text) {
+    if (!text || text.indexOf('[MUSIC_') < 0) return text;
+    const list = (typeof allSongs !== 'undefined' && allSongs) || [];
+    function build(titleRaw, invite) {
+      const want = String(titleRaw || '').trim().replace(/^["“”']|["“”']$/g, '');
+      let hit = null;
+      for (let i = 0; i < list.length; i++) {
+        if (list[i].title === want) { hit = list[i]; break; }
+      }
+      if (!hit) {
+        for (let i = 0; i < list.length; i++) {
+          if (list[i].title && want && list[i].title.indexOf(want) >= 0) { hit = list[i]; break; }
+        }
+      }
+      const song = hit || { title: want, artist: '' };
+      const card = {
+        kind: invite ? 'music_invite' : 'music',
+        songId: song.id || '',
+        title: song.title || want || '这首歌',
+        artist: song.artist || '',
+        desc: (String(song.artist || '').split('·')[0].trim() || '未署名') + (invite ? ' · 邀你一起听' : ' · 分享给你'),
+        cover: song.cover || '',
+        brand: invite ? '一起听邀请' : '音乐分享',
+        brandIcon: invite ? '🎧' : '🎵'
+      };
+      return '[SHARECARD:' + JSON.stringify(card) + ']';
+    }
+    return String(text)
+      .replace(/\[MUSIC_INVITE\s*[:：]\s*([^\]\n]+)\]/g, function(m, t) { return build(t, true); })
+      .replace(/\[MUSIC_SHARE\s*[:：]\s*([^\]\n]+)\]/g, function(m, t) { return build(t, false); });
+  };
+
   window.openMusicWhisperInput = function() {
     const bar = document.getElementById('music-whisper-bar');
     if (bar) {

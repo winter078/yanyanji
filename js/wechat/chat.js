@@ -3417,6 +3417,11 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       let parsedQuote = null;
       let cleanText = (typeof text === 'string') ? text : '';
 
+      // 角色主动甩音乐卡：把 [MUSIC_INVITE:歌名] / [MUSIC_SHARE:歌名] 换成通用分享卡标记
+      if (cleanText && cleanText.indexOf('[MUSIC_') >= 0 && typeof window.musicCardMarkerToShareCard === 'function') {
+        cleanText = window.musicCardMarkerToShareCard(cleanText);
+      }
+
       if (cleanText && !narrationMeta) {
         // 1. 匹配「回复 xxx：[IMAGE:...]」
         const imgQuoteMatch = cleanText.match(/^「回复\s*([^：:]+)[：:]\[IMAGE:([^\]]+)\]」\s*\n?([\s\S]*)$/);
@@ -4813,6 +4818,16 @@ ${(() => {
       const stickerSummary = (typeof window.getStickerSummaryForAi === 'function') ? window.getStickerSummaryForAi() : '';
       if (!stickerSummary || /暂未|暂无/.test(stickerSummary)) {
         promptText += '\n\n【系统强制约束 · 表情包】当前用户没有保存任何自定义表情包。严禁输出 [表情包: ...] 或 [STICKER: ...]；只能正常说话或使用 [语音: ...]。';
+      }
+      const musicCatalog = (typeof window.musicCatalogForAi === 'function') ? window.musicCatalogForAi(8) : '';
+      const inVoiceCall = !!(window.__voiceCallMode && !window.__voiceCallMinimized);
+      if (musicCatalog && !inVoiceCall) {
+        promptText += '\n\n【音乐卡片能力（有就用，别滥用）】\n'
+          + '你手机里的曲库现在有：' + musicCatalog + '。\n'
+          + '只在两种情况下发卡，且每轮最多一张：\n'
+          + '1) 想邀' + userRemark + '一起听 —— 单独一行输出： [MUSIC_INVITE:歌名]\n'
+          + '2) 只把一首歌分享给' + userRemark + ' —— 单独一行输出： [MUSIC_SHARE:歌名]\n'
+          + '规则：歌名必须从上面曲库里照抄；方括号、英文标签、英文冒号都要原样；标记单独成行，前后照常说话。不要解释这个标记，不要写“发送卡片”之类的话，不要每句话都发。';
       }
       if (window.__voiceCallMode && !window.__voiceCallMinimized) {
         promptText += '\n\n【语音通话模式（本轮最高优先级）】现在你们正在通电话。只写电话里真正说出口的台词：不要【心声】、不要 ---、不要动作/旁白/镜头/括号描写，不要表情包、图片、引用格式或微信排版。像真人接电话一样自然、口语、短，通常 1 到 4 句；可以停顿、反问、没听清让对方再说一遍。不要复述用户刚说的话，也不要解释自己是 AI。';
