@@ -1,0 +1,848 @@
+/* =========================================================
+   记账 App v4 · iCost 形态（账本 / 资产 / 统计 / 工资）
+   前缀 la-*，与旧 lg-* 不冲突
+   ========================================================= */
+
+#page-ledger.active {
+  background: #0E1014;
+  color: #E9ECF1;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  overflow: hidden;
+}
+
+#page-ledger .la-app {
+  position: absolute;
+  inset: 0;
+}
+
+#page-ledger .la-panel {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  min-height: 0;
+}
+
+#page-ledger .la-panel.active {
+  display: flex;
+}
+
+/* ---------- 顶栏 ---------- */
+#page-ledger .la-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 20px 4px 20px;
+}
+
+#page-ledger .la-head-left { display: flex; align-items: center; }
+
+#page-ledger .la-round.la-back { margin: 0 10px 0 0; font-size: 15px; }
+
+#page-ledger .la-head-title {
+  font-size: 23px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  color: #F2F4F8;
+  line-height: 1.2;
+}
+
+#page-ledger .la-head-actions {
+  display: flex;
+  align-items: center;
+}
+
+#page-ledger .la-round {
+  width: 34px;
+  height: 34px;
+  margin-left: 8px;
+  border: 0;
+  border-radius: 50%;
+  background: #1D2026;
+  color: #A6AEBB;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+#page-ledger .la-round:active { background: #262A32; }
+
+#page-ledger .la-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px 16px calc(128px + env(safe-area-inset-bottom, 0px)) 16px;
+  scrollbar-width: none;
+}
+
+#page-ledger .la-body::-webkit-scrollbar { width: 0; }
+
+#page-ledger #la-panel-assets .la-body,
+#page-ledger #la-panel-wage .la-body,
+#page-ledger #la-panel-stats .la-body {
+  padding-bottom: 108px;
+}
+
+/* ---------- 搜索 ---------- */
+#page-ledger .la-search {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 20px;
+  background: #191C22;
+  color: #6E7885;
+  margin-top: 4px;
+}
+
+#page-ledger .la-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #E9ECF1;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+#page-ledger .la-search input::placeholder { color: #5D6572; }
+
+/* ---------- 月份行 ---------- */
+#page-ledger .la-month-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 2px 10px 2px;
+}
+
+#page-ledger .la-month-label {
+  font-size: 16px;
+  font-weight: 600;
+  color: #EDEFF4;
+  letter-spacing: 0.2px;
+}
+
+#page-ledger .la-month-nav { display: flex; gap: 6px; }
+
+#page-ledger .la-month-nav button {
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  border: 0;
+  background: #1D2026;
+  color: #949DAA;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+#page-ledger .la-month-nav button:active { background: #262A32; }
+
+#page-ledger .la-cal-btn {
+  margin-left: auto;
+  height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 14px;
+  background: #1D2026;
+  color: #A6AEBB;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+/* ---------- 总支出卡 ---------- */
+#page-ledger .la-total-card {
+  background: #171A20;
+  border-radius: 18px;
+  padding: 16px 18px 14px 18px;
+  margin-top: 2px;
+}
+
+#page-ledger .la-total-label {
+  font-size: 11.5px;
+  color: #8A93A0;
+  letter-spacing: 0.4px;
+}
+
+#page-ledger .la-total-num {
+  font-size: 33px;
+  font-weight: 600;
+  color: #F4F6FA;
+  letter-spacing: -0.4px;
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+#page-ledger .la-total-sub {
+  display: flex;
+  gap: 20px;
+  margin-top: 12px;
+  font-size: 11.5px;
+  color: #7F8895;
+}
+
+#page-ledger .la-total-sub b {
+  color: #C9D0DA;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  margin-left: 3px;
+}
+
+/* ---------- 预算 ---------- */
+#page-ledger .la-budget {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 12px 2px 2px 2px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #15181D;
+  cursor: pointer;
+}
+
+#page-ledger .la-budget-label { font-size: 11px; color: #7F8895; }
+
+#page-ledger .la-budget-text {
+  margin-left: auto;
+  font-size: 11px;
+  color: #A6AEBB;
+  font-variant-numeric: tabular-nums;
+}
+
+#page-ledger .la-budget-bar {
+  flex: 0 0 100%;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+#page-ledger .la-budget-bar i {
+  display: block;
+  height: 100%;
+  background: rgba(143, 168, 200, 0.6);
+  border-radius: 2px;
+}
+
+/* ---------- 流水 ---------- */
+#page-ledger .la-feed { margin-top: 6px; }
+
+#page-ledger .la-day { margin-top: 14px; }
+
+#page-ledger .la-day-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 0 4px 8px 4px;
+  font-size: 11.5px;
+  color: #7F8895;
+}
+
+#page-ledger .la-day-date { color: #9DA6B3; font-weight: 500; }
+
+#page-ledger .la-day-card {
+  background: #171A20;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+#page-ledger .la-row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 14px;
+  cursor: pointer;
+}
+
+#page-ledger .la-row + .la-row { border-top: 1px solid rgba(255, 255, 255, 0.045); }
+
+#page-ledger .la-row:active { background: rgba(255, 255, 255, 0.03); }
+
+#page-ledger .la-row-ico {
+  width: 31px;
+  height: 31px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex: 0 0 auto;
+  background: rgba(240, 110, 102, 0.14);
+}
+
+#page-ledger .la-row-ico.income { background: rgba(76, 190, 127, 0.14); }
+
+#page-ledger .la-row-mid { flex: 1 1 auto; min-width: 0; }
+
+#page-ledger .la-row-cat {
+  font-size: 12.5px;
+  color: #E6EAF0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#page-ledger .la-row-sub {
+  font-size: 10px;
+  color: #78818D;
+  margin-top: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#page-ledger .la-row-right {
+  flex: 0 0 auto;
+  text-align: right;
+}
+
+#page-ledger .la-row-amt {
+  font-size: 13.5px;
+  color: #F0736B;
+  font-variant-numeric: tabular-nums;
+}
+
+#page-ledger .la-row-amt.income { color: #55C888; }
+
+#page-ledger .la-row-acc {
+  font-size: 9.5px;
+  color: #6C7582;
+  margin-top: 3px;
+}
+
+#page-ledger .la-empty {
+  padding: 54px 0 30px 0;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.9;
+  color: #6C7582;
+}
+
+/* ---------- 悬浮 ＋ ---------- */
+#page-ledger .la-fab {
+  position: absolute;
+  right: 20px;
+  bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  width: 54px;
+  height: 54px;
+  border: 0;
+  border-radius: 50%;
+  background: #FFC53D;
+  color: #12140F;
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(255, 197, 61, 0.22);
+  z-index: 20;
+}
+
+#page-ledger .la-fab:active { transform: scale(0.96); }
+
+/* ---------- 底部胶囊 tab ---------- */
+#page-ledger .la-tabbar {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+  width: 306px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 8px;
+  border-radius: 28px;
+  background: rgba(28, 31, 38, 0.94);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(14px);
+  z-index: 30;
+}
+
+#page-ledger .la-tab {
+  flex: 1;
+  height: 44px;
+  border: 0;
+  background: transparent;
+  color: #7A828F;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  cursor: pointer;
+  padding: 0;
+  border-radius: 22px;
+}
+
+#page-ledger .la-tab span { font-size: 10.5px; letter-spacing: 0.4px; }
+
+#page-ledger .la-tab.active { color: #FFC53D; }
+
+#page-ledger .la-tab.active span { color: #F0D79E; }
+
+/* ---------- 资产页 ---------- */
+#page-ledger .la-net-card {
+  background: #171A20;
+  border-radius: 18px;
+  padding: 16px 18px 15px 18px;
+  margin-top: 4px;
+}
+
+#page-ledger .la-net-label {
+  font-size: 11.5px;
+  color: #8A93A0;
+  letter-spacing: 0.4px;
+}
+
+#page-ledger .la-net-num {
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+  color: #F4F6FA;
+  margin-top: 5px;
+  font-variant-numeric: tabular-nums;
+}
+
+#page-ledger .la-net-num.neg { color: #F0736B; }
+
+#page-ledger .la-net-sub {
+  display: flex;
+  gap: 20px;
+  margin-top: 11px;
+  font-size: 11.5px;
+  color: #7F8895;
+}
+
+#page-ledger .la-net-sub b {
+  color: #C9D0DA;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  margin-left: 3px;
+}
+
+#page-ledger .la-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+#page-ledger .la-pair-card {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: #171A20;
+  border-radius: 14px;
+  padding: 11px 12px;
+}
+
+#page-ledger .la-pair-ico {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  flex: 0 0 auto;
+}
+
+#page-ledger .la-pair-ico.in { background: #262A32; color: #A9B2BF; }
+
+#page-ledger .la-pair-ico.out { background: rgba(76, 190, 127, 0.16); color: #55C888; }
+
+#page-ledger .la-pair-body { min-width: 0; }
+
+#page-ledger .la-pair-label { font-size: 10px; color: #7F8895; }
+
+#page-ledger .la-pair-num {
+  font-size: 14px;
+  color: #E6EAF0;
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+#page-ledger .la-sec-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 18px 4px 8px 4px;
+  font-size: 11.5px;
+  color: #9DA6B3;
+}
+
+#page-ledger .la-sec-head i { font-style: normal; color: #6C7582; }
+
+#page-ledger .la-sec-sum { font-size: 10.5px; color: #75808C; }
+
+#page-ledger .la-list {
+  background: #171A20;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+#page-ledger .la-acc {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px 14px;
+  cursor: pointer;
+}
+
+#page-ledger .la-acc + .la-acc { border-top: 1px solid rgba(255, 255, 255, 0.045); }
+
+#page-ledger .la-acc:active { background: rgba(255, 255, 255, 0.03); }
+
+#page-ledger .la-acc-ico {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #22252C;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex: 0 0 auto;
+}
+
+#page-ledger .la-acc-mid { flex: 1 1 auto; min-width: 0; }
+
+#page-ledger .la-acc-name { font-size: 12.5px; color: #E6EAF0; }
+
+#page-ledger .la-acc-sub {
+  font-size: 10px;
+  color: #78818D;
+  margin-top: 3px;
+}
+
+#page-ledger .la-acc-amt {
+  font-size: 13.5px;
+  color: #E6EAF0;
+  font-variant-numeric: tabular-nums;
+}
+
+#page-ledger .la-acc-amt.neg { color: #F0736B; }
+
+#page-ledger .la-list-empty {
+  padding: 16px 14px;
+  font-size: 11px;
+  color: #6C7582;
+  text-align: center;
+}
+
+/* ---------- 统计页 ---------- */
+#page-ledger .la-seg {
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 20px;
+  background: #191C22;
+  margin-top: 4px;
+}
+
+#page-ledger .la-seg span {
+  flex: 1;
+  text-align: center;
+  height: 30px;
+  line-height: 30px;
+  font-size: 12px;
+  color: #838C99;
+  border-radius: 16px;
+  cursor: pointer;
+}
+
+#page-ledger .la-seg span.active {
+  background: #2A2E37;
+  color: #F2F4F8;
+}
+
+#page-ledger .la-period-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 14px 4px 12px 4px;
+}
+
+#page-ledger .la-period-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 0;
+  background: #1D2026;
+  color: #A6AEBB;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+#page-ledger .la-period-label {
+  font-size: 12px;
+  color: #9DA6B3;
+  font-variant-numeric: tabular-nums;
+}
+
+#page-ledger .la-stat-card {
+  background: #171A20;
+  border-radius: 16px;
+  padding: 13px 14px 14px 14px;
+  margin-top: 10px;
+}
+
+#page-ledger .la-stat-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+#page-ledger .la-stat-badge {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #2A2E37;
+  color: #C8D2E0;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#page-ledger .la-stat-title { font-size: 12px; color: #CAD2DC; font-weight: 500; }
+
+#page-ledger .la-stat-avg {
+  margin-left: auto;
+  font-size: 10px;
+  color: #6C7582;
+}
+
+#page-ledger .la-stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+#page-ledger .la-stat-cell {
+  background: #1D2128;
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+#page-ledger .la-stat-k { font-size: 10.5px; color: #78818D; }
+
+#page-ledger .la-stat-v {
+  font-size: 18px;
+  font-weight: 500;
+  color: #E9ECF1;
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+#page-ledger .la-stat-v.neg { color: #F0736B; }
+
+#page-ledger .la-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 118px;
+  padding-top: 12px;
+}
+
+#page-ledger .la-chart-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  gap: 4px;
+}
+
+#page-ledger .la-chart-bar {
+  width: 100%;
+  max-width: 14px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.16);
+  min-height: 5px;
+}
+
+#page-ledger .la-chart-bar.max { background: #F0736B; }
+
+#page-ledger .la-chart-x {
+  font-size: 8px;
+  color: #67707C;
+  height: 10px;
+  line-height: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+#page-ledger .la-donut-wrap {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  margin: 8px auto 4px auto;
+}
+
+#page-ledger .la-donut-wrap canvas { width: 150px; height: 150px; display: block; }
+
+#page-ledger .la-donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+#page-ledger .la-donut-label { font-size: 9px; letter-spacing: 2px; color: #6E7885; }
+
+#page-ledger .la-donut-sum {
+  font-size: 17px;
+  font-weight: 300;
+  color: #DCE3EC;
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+#page-ledger .la-rank { margin-top: 6px; }
+
+#page-ledger .la-rank-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+}
+
+#page-ledger .la-rank-ico { font-size: 13px; width: 17px; text-align: center; }
+
+#page-ledger .la-rank-mid { flex: 1; min-width: 0; }
+
+#page-ledger .la-rank-top {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #C3CCD8;
+  margin-bottom: 4px;
+}
+
+#page-ledger .la-rank-bar {
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+#page-ledger .la-rank-bar i { display: block; height: 100%; border-radius: 2px; }
+
+#page-ledger .la-rank-pct { font-size: 10px; color: #6C7582; width: 28px; text-align: right; }
+
+/* ---------- 工资库 ---------- */
+#page-ledger .la-wage-card {
+  background: linear-gradient(160deg, #1D2129 0%, #171A20 70%);
+  border: 1px solid rgba(255, 197, 61, 0.1);
+}
+
+#page-ledger .la-wage-card .la-net-num { color: #FFD467; }
+
+#page-ledger .la-punch-btn {
+  width: 100%;
+  height: 50px;
+  margin-top: 12px;
+  border: 0;
+  border-radius: 15px;
+  background: #FFC53D;
+  color: #14150F;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+#page-ledger .la-punch-btn.done {
+  background: #1D2026;
+  color: #8B94A1;
+  font-weight: 500;
+}
+
+#page-ledger .la-punch-btn:active { transform: scale(0.99); }
+
+#page-ledger .la-punch-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  background: #171A20;
+  border-radius: 16px;
+  padding: 12px 12px 14px 12px;
+}
+
+#page-ledger .la-punch-cell {
+  aspect-ratio: 1 / 1;
+  border-radius: 8px;
+  background: #1E2229;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  cursor: pointer;
+}
+
+#page-ledger .la-punch-cell.empty { background: transparent; cursor: default; }
+
+#page-ledger .la-punch-cell .d { font-size: 9.5px; color: #6C7582; }
+
+#page-ledger .la-punch-cell.on {
+  background: rgba(255, 197, 61, 0.16);
+}
+
+#page-ledger .la-punch-cell.on .d { color: #FFD467; }
+
+#page-ledger .la-punch-cell.today { box-shadow: inset 0 0 0 1px rgba(255, 197, 61, 0.5); }
+
+#page-ledger .la-wage-actions { margin-top: 14px; }
+
+#page-ledger .la-btn-primary {
+  width: 100%;
+  height: 46px;
+  border: 0;
+  border-radius: 14px;
+  background: #232830;
+  color: #E9ECF1;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+#page-ledger .la-btn-primary:active { background: #2B313B; }
+
+#page-ledger .la-btn-primary[disabled] { color: #5E6874; background: #1A1D23; cursor: default; }
+
+#page-ledger .la-wage-log-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+}
+
+#page-ledger .la-wage-log-row + .la-wage-log-row { border-top: 1px solid rgba(255, 255, 255, 0.045); }
+
+#page-ledger .la-wage-log-main { font-size: 12px; color: #E6EAF0; }
+
+#page-ledger .la-wage-log-sub { font-size: 10px; color: #78818D; margin-top: 3px; }
+
+#page-ledger .la-wage-log-amt { font-size: 13px; color: #55C888; font-variant-numeric: tabular-nums; }
+
+/* 键盘层在 v4 里仍贴底 */
+#page-ledger .lg-sheet-mask { z-index: 60; }

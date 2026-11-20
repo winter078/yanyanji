@@ -179,7 +179,8 @@
   <link rel="stylesheet" href="css/xhs.css?v=2026111010" />
 
   <link rel="stylesheet" href="css/reader.css?v=20261120-2235" />
-  <link rel="stylesheet" href="css/ledger.css?v=1789998920125?v=1789998920125">
+  <link rel="stylesheet" href="css/ledger.css?v=20261121-0010">
+  <link rel="stylesheet" href="css/ledger-app.css?v=20261121-0140">
   <link rel="stylesheet" href="css/avatar-vault.css?v=2026111145">
   <link rel="stylesheet" href="css/chat-appearance.css?v=2026111308">
   <link rel="stylesheet" href="css/masks.css?v=2026111652">
@@ -3221,297 +3222,321 @@
 
         <!-- ================= user的生活手账 (Momo Ledger) ================= -->
         <section class="view-page theme-paper" id="page-ledger">
-          <header class="ledger-header">
-            <button class="ledger-header-btn" onclick="openPage('page-home')">‹ 桌面</button>
-            <div class="ledger-header-title">
-              <span>📒</span>
-              <span>生活手帖</span>
-            </div>
-            <div class="ledger-header-actions">
-              <div class="ledger-theme-toggle" onclick="toggleLedgerTheme()" title="切换日间纸感 / 夜间微光">
-                <span>🌓</span>
-              </div>
-            </div>
-          </header>
+          <div class="la-app">
 
-          <div class="ledger-scroll-body">
-            <!-- 1. Hero 概览与管账人批注卡片 (图四红框：增加扇形分布图按钮) -->
-            <div class="ledger-hero-banner">
-              <div class="ledger-hero-meta">
-                <div class="ledger-month-badge">
-                  <span>🗓</span>
-                  <span id="ledger-current-month-label">2026年9月账本</span>
+            <!-- ============ 账本 ============ -->
+            <div class="la-panel active" id="la-panel-book">
+              <header class="la-head">
+                <div class="la-head-left">
+                  <button class="la-round la-back" onclick="openPage('page-home')" title="返回桌面">‹</button>
+                  <div class="la-head-title">账本</div>
                 </div>
-                <!-- 图四红框位置：扇形分布图入口 -->
-                <button type="button" class="ledger-chart-btn" onclick="openLedgerChartModal()" title="查看花销扇形分布图">
-                  <span>📊</span>
-                  <span>支出分布图</span>
-                </button>
-              </div>
-
-              <div class="ledger-overview-row">
-                <div>
-                  <div style="font-size: 12px; color: var(--ledger-text-sub); margin-bottom: 2px;">本月总支出</div>
-                  <div class="ledger-expense-total">
-                    <small>¥</small><span id="ledger-total-expense-val">0.00</span>
-                  </div>
-                </div>
-                <div class="ledger-sub-stats">
-                  <div>进账: <strong id="ledger-sub-income-val">¥0.00</strong></div>
-                  <div>结余: <strong id="ledger-sub-balance-val">¥0.00</strong></div>
-                </div>
-              </div>
-
-              <!-- 角色管账人寄语与印章 -->
-              <div class="ledger-xuyan-quote">
-                <div class="ledger-xuyan-avatar">言</div>
-                <div>
-                  <div style="font-size: 11px; font-weight: 700; color: var(--ledger-accent); margin-bottom: 2px;">管账人 · 角色：</div>
-                  <div>“user，想买什么就放心买。每一笔生活细节，我都替你记好了。”</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- 2. 分类筛选胶囊条 (图二横向滚动 + 最右侧加号) -->
-            <div class="ledger-capsule-wrapper">
-              <div class="ledger-capsule-bar" id="ledger-capsule-container">
-                <!-- 动态注入横向滚动分类胶囊 -->
-              </div>
-              <div class="ledger-capsule-add" onclick="openAddCategoryModal()" title="新增自定义分类">
-                <span>➕</span>
-                <span>新增</span>
-              </div>
-            </div>
-
-            <!-- 3. 账单明细列表 -->
-            <div>
-              <div class="ledger-group-title">
-                <span>流水明细 (点击卡片查看与编辑)</span>
-                <span>角色批注 &amp; 印章</span>
-              </div>
-              <div id="ledger-entries-list">
-                <!-- 动态注入流水卡片 -->
-              </div>
-            </div>
-          </div>
-
-          <!-- 底部悬浮记账胶囊按钮 (常驻前置) -->
-          <div class="ledger-float-action" onclick="openLedgerDrawer()">
-            <span>✏️</span>
-            <span>记一笔生活</span>
-          </div>
-
-          <!-- 底部悬浮记账胶囊按钮 -->
-          <!-- ================= ③ 记一笔抽屉 (防截断、内部纵向滚动) ================= -->
-          <div class="ledger-drawer-mask" id="ledger-create-drawer" onclick="closeLedgerDrawer()">
-            <div class="ledger-drawer-card" onclick="event.stopPropagation()">
-              <div class="ledger-drawer-handle"></div>
-              
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div style="font-size: 16px; font-weight: 700; color: var(--ledger-text);">记一笔账单</div>
-                <button type="button" onclick="closeLedgerDrawer()" style="background: none; border: none; font-size: 18px; color: var(--ledger-text-muted); cursor: pointer;">✕</button>
-              </div>
-
-              <!-- 支出 / 收入切换 -->
-              <div class="ledger-type-switcher">
-                <button type="button" class="ledger-type-btn active" id="ledger-type-btn-expense" onclick="setLedgerType('expense')">支出</button>
-                <button type="button" class="ledger-type-btn" id="ledger-type-btn-income" onclick="setLedgerType('income')">收入</button>
-              </div>
-
-              <!-- 金额快速输入框 -->
-              <div class="ledger-amount-input-box">
-                <span>¥</span>
-                <input type="number" id="ledger-input-amount" placeholder="0.00" step="0.01" />
-              </div>
-
-              <!-- 备注文案 -->
-              <div>
-                <input type="text" id="ledger-input-title" placeholder="备注（如：新出的水彩颜料、多肉葡萄）" style="width: 100%; padding: 10px 12px; background: var(--ledger-card-bg); border: 1px solid var(--ledger-card-border); border-radius: 12px; color: var(--ledger-text); font-size: 13.5px; box-sizing: border-box;" />
-              </div>
-
-              <!-- 分类选择器 -->
-              <div>
-                <div style="font-size: 12px; font-weight: 600; color: var(--ledger-text-sub); margin-bottom: 6px;">选择分类</div>
-                <div class="ledger-category-picker-wrapper">
-                  <div class="ledger-category-picker" id="ledger-cat-picker-grid"></div>
-                </div>
-              </div>
-
-              <!-- 猫咪心情挂件 -->
-              <div>
-                <div style="font-size: 12px; font-weight: 600; color: var(--ledger-text-sub); margin-bottom: 6px;">随账挂一只猫咪心情</div>
-                <div class="ledger-cat-sticker-select" id="ledger-sticker-picker-row"></div>
-              </div>
-
-              <button type="button" onclick="submitNewLedgerRecord()" style="width: 100%; padding: 12px; background: var(--ledger-text); color: var(--ledger-bg); border: none; border-radius: 14px; font-size: 14.5px; font-weight: 700; cursor: pointer; margin-top: 4px;">确认记下 · 交给角色管账</button>
-            </div>
-          </div>
-
-          <!-- ================= ① 图一：账单详情、AI批注生成、编辑、删除弹窗 ================= -->
-          <div class="ledger-drawer-mask" id="ledger-detail-modal" onclick="closeLedgerDetailModal()">
-            <div class="ledger-drawer-card" onclick="event.stopPropagation()">
-              <div class="ledger-drawer-handle"></div>
-
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div style="font-size: 16px; font-weight: 700; color: var(--ledger-text);">账单详情与批注</div>
-                <button type="button" onclick="closeLedgerDetailModal()" style="background: none; border: none; font-size: 18px; color: var(--ledger-text-muted); cursor: pointer;">✕</button>
-              </div>
-
-              <!-- 核心账目卡片 -->
-              <div class="ledger-detail-card">
-                <div class="ledger-detail-head">
-                  <div class="ledger-sticker-icon" style="width: 48px; height: 48px;">
-                    <img id="ledger-detail-sticker-img" src="assets/stickers/cat_tietie.png" alt="cat" style="width: 42px; height: 42px;" />
-                  </div>
-                  <div>
-                    <div id="ledger-detail-title" style="font-size: 16px; font-weight: 800; color: var(--ledger-text);">账目名称</div>
-                    <div id="ledger-detail-amount" style="font-size: 22px; font-weight: 800; margin-top: 2px;">¥0.00</div>
-                  </div>
-                </div>
-
-                <div class="ledger-detail-body-row">
-                  <span>记录时间</span>
-                  <strong id="ledger-detail-date">2026-09-20 14:30</strong>
-                </div>
-                <div class="ledger-detail-body-row">
-                  <span>消费分类</span>
-                  <strong id="ledger-detail-category">🎨 画材/板绘</strong>
-                </div>
-              </div>
-
-              <!-- 角色管账人批注泡泡与印章 -->
-              <div class="ledger-detail-ai-quote-box">
-                <div class="ledger-detail-ai-header">
-                  <span>管账人 · 角色手札：</span>
-                  <div id="ledger-detail-stamp" class="ledger-stamp green">角色批准</div>
-                </div>
-                <div class="ledger-detail-ai-text" id="ledger-detail-ai-text">
-                  “好用的画具才能陪我们江工画出神仙作。”
-                </div>
-              </div>
-
-              <!-- 操作按钮矩阵 -->
-              <div class="ledger-detail-actions-grid">
-                <!-- 真机连通 API 生成 / 重新生成角色回复 -->
-                <button type="button" class="ledger-btn-ai-regen" id="ledger-btn-regen-ai" onclick="triggerAiLedgerReply(true)">
-                  <span>✨</span>
-                  <span>重新生成角色批注</span>
-                </button>
-
-                <div class="ledger-detail-btn-row">
-                  <button type="button" class="ledger-btn-secondary" onclick="openEditRecordDrawer()">
-                    <span>✏️ 编辑账目</span>
+                <div class="la-head-actions">
+                  <button class="la-round" onclick="lgOpenCalendar()" title="收支日历">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3.6" y="5" width="16.8" height="15" rx="2.4"/><path d="M3.6 9.4h16.8"/><path d="M8 3.4v3.2M16 3.4v3.2"/></svg>
                   </button>
-                  <button type="button" class="ledger-btn-danger" onclick="deleteCurrentLedgerRecord()">
-                    <span>🗑️ 删除账单</span>
+                  <button class="la-round" onclick="lgOpenSettings()" title="更多">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="5.5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18.5" cy="12" r="1.5"/></svg>
                   </button>
                 </div>
+              </header>
+              <div class="la-body" id="la-book-scroll">
+                <div class="la-search">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.4"/><path d="M16 16l4.4 4.4"/></svg>
+                  <input id="la-search-input" placeholder="搜索备注、分类" oninput="laSearch(this.value)" />
+                </div>
+
+                <div class="la-month-row">
+                  <div class="la-month-label" id="la-month-label">本月</div>
+                  <div class="la-month-nav">
+                    <button onclick="laShiftMonth(-1)">‹</button>
+                    <button onclick="laShiftMonth(1)">›</button>
+                  </div>
+                  <button class="la-cal-btn" onclick="lgOpenCalendar()">收支日历</button>
+                </div>
+
+                <div class="la-total-card">
+                  <div class="la-total-label">总支出</div>
+                  <div class="la-total-num" id="la-total-expense">¥0.00</div>
+                  <div class="la-total-sub">
+                    <span>总收入 <b id="la-total-income">¥0.00</b></span>
+                    <span>月结余 <b id="la-total-balance">¥0.00</b></span>
+                  </div>
+                </div>
+
+                <div class="la-budget" onclick="lgOpenSettings()">
+                  <span class="la-budget-label">本月预算</span>
+                  <span class="la-budget-text" id="la-budget-text">未设置</span>
+                  <div class="la-budget-bar"><i id="la-budget-fill" style="width:0%"></i></div>
+                </div>
+
+                <div class="la-feed" id="la-feed"></div>
+              </div>
+              <button class="la-fab" onclick="lgOpenKeypad()" title="记一笔">＋</button>
+            </div>
+
+            <!-- ============ 资产 ============ -->
+            <div class="la-panel" id="la-panel-assets">
+              <header class="la-head">
+                <div class="la-head-title">资产</div>
+                <div class="la-head-actions">
+                  <button class="la-round" onclick="laAddAccount()" title="新增账户">＋</button>
+                  <button class="la-round" onclick="lgOpenSettings()" title="更多">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="5.5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18.5" cy="12" r="1.5"/></svg>
+                  </button>
+                </div>
+              </header>
+              <div class="la-body">
+                <div class="la-net-card">
+                  <div class="la-net-label">净资产</div>
+                  <div class="la-net-num" id="la-net-assets">¥0.00</div>
+                  <div class="la-net-sub">
+                    <span>总资产 <b id="la-gross-assets">¥0.00</b></span>
+                    <span>总负债 <b id="la-gross-debt">¥0.00</b></span>
+                  </div>
+                </div>
+
+                <div class="la-pair">
+                  <div class="la-pair-card">
+                    <span class="la-pair-ico in">↓</span>
+                    <div class="la-pair-body">
+                      <div class="la-pair-label">总借入</div>
+                      <div class="la-pair-num" id="la-borrow-in">¥0.00</div>
+                    </div>
+                  </div>
+                  <div class="la-pair-card">
+                    <span class="la-pair-ico out">↑</span>
+                    <div class="la-pair-body">
+                      <div class="la-pair-label">总借出</div>
+                      <div class="la-pair-num" id="la-borrow-out">¥0.00</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="la-sec-head">
+                  <span>资金账户 <i id="la-acc-count">(5)</i></span>
+                  <span class="la-sec-sum" id="la-acc-sum">余额 ¥0.00</span>
+                </div>
+                <div class="la-list" id="la-asset-list"></div>
+
+                <div class="la-sec-head">
+                  <span>应付账户 <i id="la-debt-count">(0)</i></span>
+                  <span class="la-sec-sum" id="la-debt-sum">欠款 ¥0.00</span>
+                </div>
+                <div class="la-list" id="la-debt-list"></div>
+              </div>
+            </div>
+
+            <!-- ============ 统计 ============ -->
+            <div class="la-panel" id="la-panel-stats">
+              <header class="la-head">
+                <div class="la-head-title">统计</div>
+                <div class="la-head-actions">
+                  <button class="la-round" onclick="lgOpenCalendar()" title="收支日历">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3.6" y="5" width="16.8" height="15" rx="2.4"/><path d="M3.6 9.4h16.8"/><path d="M8 3.4v3.2M16 3.4v3.2"/></svg>
+                  </button>
+                </div>
+              </header>
+              <div class="la-body">
+                <div class="la-seg" id="la-stats-seg">
+                  <span onclick="laSetStatsRange('week')">周</span>
+                  <span class="active" onclick="laSetStatsRange('month')">月</span>
+                  <span onclick="laSetStatsRange('year')">年</span>
+                  <span onclick="laSetStatsRange('all')">全部</span>
+                </div>
+
+                <div class="la-period-row">
+                  <button class="la-period-btn" onclick="laShiftStats(-1)">‹</button>
+                  <div class="la-period-label" id="la-stats-period">本月</div>
+                  <button class="la-period-btn" onclick="laShiftStats(1)">›</button>
+                </div>
+
+                <div class="la-stat-card">
+                  <div class="la-stat-head">
+                    <span class="la-stat-badge">¥</span>
+                    <span class="la-stat-title">收支统计</span>
+                  </div>
+                  <div class="la-stat-grid">
+                    <div class="la-stat-cell">
+                      <div class="la-stat-k">支出</div>
+                      <div class="la-stat-v" id="la-stat-expense">¥0.00</div>
+                    </div>
+                    <div class="la-stat-cell">
+                      <div class="la-stat-k">收入</div>
+                      <div class="la-stat-v" id="la-stat-income">¥0.00</div>
+                    </div>
+                    <div class="la-stat-cell">
+                      <div class="la-stat-k">结余</div>
+                      <div class="la-stat-v" id="la-stat-balance">¥0.00</div>
+                    </div>
+                    <div class="la-stat-cell">
+                      <div class="la-stat-k">日均支出</div>
+                      <div class="la-stat-v" id="la-stat-avg">¥0.00</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="la-stat-card">
+                  <div class="la-stat-head">
+                    <span class="la-stat-badge">▤</span>
+                    <span class="la-stat-title">支出统计图</span>
+                    <span class="la-stat-avg" id="la-stat-chart-avg">平均值 ¥0</span>
+                  </div>
+                  <div class="la-chart" id="la-chart"></div>
+                </div>
+
+                <div class="la-stat-card">
+                  <div class="la-stat-head">
+                    <span class="la-stat-badge">◔</span>
+                    <span class="la-stat-title">分类占比</span>
+                  </div>
+                  <div class="la-donut-wrap">
+                    <canvas id="lg-donut" width="560" height="560"></canvas>
+                    <div class="la-donut-center">
+                      <div class="la-donut-label">支出</div>
+                      <div class="la-donut-sum" id="lg-donut-sum">0.00</div>
+                    </div>
+                  </div>
+                  <div class="la-rank" id="la-rank"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ============ 工资库 ============ -->
+            <div class="la-panel" id="la-panel-wage">
+              <header class="la-head">
+                <div class="la-head-title">工资库</div>
+                <div class="la-head-actions">
+                  <button class="la-round" onclick="laOpenWageSetting()" title="设置日薪">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14"/><path d="M8.4 8.4l3.6-3.4 3.6 3.4"/></svg>
+                  </button>
+                </div>
+              </header>
+              <div class="la-body">
+                <div class="la-net-card la-wage-card">
+                  <div class="la-net-label">待入账工资</div>
+                  <div class="la-net-num" id="la-wage-pending">¥0.00</div>
+                  <div class="la-net-sub">
+                    <span>已打卡 <b id="la-wage-days">0</b> 天</span>
+                    <span>日薪 <b id="la-wage-rate">¥0.00</b></span>
+                  </div>
+                </div>
+
+                <button class="la-punch-btn" id="la-punch-btn" onclick="laToggleTodayPunch()">今天上班打卡</button>
+
+                <div class="la-sec-head">
+                  <span>本月打卡 <i id="la-wage-month">(0 天)</i></span>
+                  <span class="la-sec-sum" id="la-wage-month-sum">¥0.00</span>
+                </div>
+                <div class="la-punch-grid" id="la-punch-grid"></div>
+
+                <div class="la-wage-actions">
+                  <button class="la-btn-primary" id="la-settle-btn" onclick="laSettleWage()">发工资了 · 结为进账</button>
+                </div>
+
+                <div class="la-sec-head">
+                  <span>入账记录</span>
+                </div>
+                <div class="la-list" id="la-wage-log"></div>
+              </div>
+            </div>
+
+            <!-- ============ 底部胶囊 tab ============ -->
+            <nav class="la-tabbar">
+              <button class="la-tab active" id="la-tab-book" onclick="laSwitchTab('book')">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M5.6 3.8h9.2a2.4 2.4 0 0 1 2.4 2.4v13.6a1.6 1.6 0 0 0 1.6 1.6H7.2a1.6 1.6 0 0 1-1.6-1.6V3.8z"/><path d="M8.2 8.4h6M8.2 12h6"/></svg>
+                <span>账本</span>
+              </button>
+              <button class="la-tab" id="la-tab-assets" onclick="laSwitchTab('assets')">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 3.8l8 4.2-8 4.2-8-4.2z"/><path d="M4 12.2l8 4.2 8-4.2"/><path d="M4 16.4l8 4.2 8-4.2"/></svg>
+                <span>资产</span>
+              </button>
+              <button class="la-tab" id="la-tab-stats" onclick="laSwitchTab('stats')">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M5 19.6V11"/><path d="M12 19.6V4.4"/><path d="M19 19.6v-5.6"/></svg>
+                <span>统计</span>
+              </button>
+              <button class="la-tab" id="la-tab-wage" onclick="laSwitchTab('wage')">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="8.2"/><path d="M12 8.2v7.6"/><path d="M9.4 10h4a1.7 1.7 0 0 1 0 3.4H9.4"/></svg>
+                <span>工资</span>
+              </button>
+            </nav>
+          </div>
+
+          <!-- ============ 弹层区 ============ -->
+          <div class="lg-mask lg-sheet-mask" id="lg-keypad-layer" onclick="lgCloseKeypad()">
+            <div class="lg-keypad" onclick="event.stopPropagation()">
+              <div class="lg-kp-grab"></div>
+              <div class="lg-kp-head">
+                <div class="lg-type-switch">
+                  <span class="active" id="lg-type-exp" onclick="lgSetType('expense')">支出</span>
+                  <span id="lg-type-inc" onclick="lgSetType('income')">收入</span>
+                </div>
+                <button class="lg-kp-close" onclick="lgCloseKeypad()">✕</button>
+              </div>
+              <div class="lg-kp-amount"><em>¥</em><span id="lg-kp-amount">0</span></div>
+              <div class="lg-kp-cats" id="lg-kp-cats"></div>
+              <div class="lg-kp-meta">
+                <input type="text" id="lg-kp-note" class="lg-kp-note" placeholder="备注（可选）" maxlength="30" />
+                <div class="lg-kp-rows">
+                  <span class="lg-kp-chip" id="lg-kp-account" onclick="lgOpenAccountPicker()">现金</span>
+                  <span class="lg-kp-chip" id="lg-kp-date" onclick="lgOpenDatePicker()">今天</span>
+                </div>
+                <input type="date" id="lg-kp-date-input" class="lg-hidden-date" />
+              </div>
+              <div class="lg-keyboard" id="lg-keyboard">
+                <button class="lg-key" onclick="lgKey('7')">7</button>
+                <button class="lg-key" onclick="lgKey('8')">8</button>
+                <button class="lg-key" onclick="lgKey('9')">9</button>
+                <button class="lg-key lg-key-fn" onclick="lgKey('del')">⌫</button>
+                <button class="lg-key" onclick="lgKey('4')">4</button>
+                <button class="lg-key" onclick="lgKey('5')">5</button>
+                <button class="lg-key" onclick="lgKey('6')">6</button>
+                <button class="lg-key lg-key-fn" onclick="lgKey('clear')">C</button>
+                <button class="lg-key" onclick="lgKey('1')">1</button>
+                <button class="lg-key" onclick="lgKey('2')">2</button>
+                <button class="lg-key" onclick="lgKey('3')">3</button>
+                <button class="lg-key lg-key-save" onclick="lgSubmitRecord()" id="lg-key-save">保存</button>
+                <button class="lg-key lg-key-zero" onclick="lgKey('0')">0</button>
+                <button class="lg-key" onclick="lgKey('.')">.</button>
               </div>
             </div>
           </div>
 
-          <!-- ================= ① 账目编辑抽屉 ================= -->
-          <div class="ledger-drawer-mask" id="ledger-edit-drawer" onclick="closeEditRecordDrawer()">
-            <div class="ledger-drawer-card" onclick="event.stopPropagation()">
-              <div class="ledger-drawer-handle"></div>
-
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div style="font-size: 16px; font-weight: 700; color: var(--ledger-text);">修改账目信息</div>
-                <button type="button" onclick="closeEditRecordDrawer()" style="background: none; border: none; font-size: 18px; color: var(--ledger-text-muted); cursor: pointer;">✕</button>
+          <div class="lg-mask" id="lg-calendar-layer" onclick="lgCloseCalendar()">
+            <div class="lg-page" onclick="event.stopPropagation()">
+              <header class="lg-page-head">
+                <div class="lg-page-title" id="lg-cal-title">日历</div>
+                <div class="lg-cal-nav">
+                  <button class="lg-icon-btn" onclick="lgCalShift(-1)">‹</button>
+                  <button class="lg-icon-btn" onclick="lgCalShift(1)">›</button>
+                </div>
+                <button class="lg-close" onclick="lgCloseCalendar()">✕</button>
+              </header>
+              <div class="lg-cal-scroll">
+                <div class="lg-cal-week">
+                  <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+                </div>
+                <div class="lg-cal-grid" id="lg-cal-grid"></div>
+                <div class="lg-cal-day" id="lg-cal-day"></div>
               </div>
-
-              <div>
-                <label style="font-size: 12px; font-weight: 600; color: var(--ledger-text-sub); display: block; margin-bottom: 4px;">账目名称</label>
-                <input type="text" id="ledger-edit-title-input" style="width: 100%; padding: 10px 12px; background: var(--ledger-card-bg); border: 1px solid var(--ledger-card-border); border-radius: 12px; color: var(--ledger-text); font-size: 14px; box-sizing: border-box;" />
-              </div>
-
-              <div>
-                <label style="font-size: 12px; font-weight: 600; color: var(--ledger-text-sub); display: block; margin-bottom: 4px;">金额 (元)</label>
-                <input type="number" id="ledger-edit-amount-input" step="0.01" style="width: 100%; padding: 10px 12px; background: var(--ledger-card-bg); border: 1px solid var(--ledger-card-border); border-radius: 12px; color: var(--ledger-text); font-size: 16px; font-weight: 700; box-sizing: border-box;" />
-              </div>
-
-              <div>
-                <label style="font-size: 12px; font-weight: 600; color: var(--ledger-text-sub); display: block; margin-bottom: 4px;">消费分类</label>
-                <select id="ledger-edit-cat-select" style="width: 100%; padding: 10px 12px; background: var(--ledger-card-bg); border: 1px solid var(--ledger-card-border); border-radius: 12px; color: var(--ledger-text); font-size: 14px; box-sizing: border-box;"></select>
-              </div>
-
-              <div>
-                <label style="font-size: 12px; font-weight: 600; color: var(--ledger-text-sub); display: block; margin-bottom: 4px;">记录时间</label>
-                <input type="text" id="ledger-edit-date-input" placeholder="YYYY-MM-DD HH:MM" style="width: 100%; padding: 10px 12px; background: var(--ledger-card-bg); border: 1px solid var(--ledger-card-border); border-radius: 12px; color: var(--ledger-text); font-size: 13.5px; box-sizing: border-box;" />
-              </div>
-
-              <button type="button" onclick="submitEditRecordChanges()" style="width: 100%; padding: 12px; background: var(--ledger-text); color: var(--ledger-bg); border: none; border-radius: 14px; font-size: 14.5px; font-weight: 700; cursor: pointer; margin-top: 6px;">保存修改</button>
             </div>
           </div>
 
-          <!-- ================= ② 新增自定义分类弹窗 ================= -->
-          <div class="ledger-drawer-mask" id="ledger-add-category-modal" onclick="closeAddCategoryModal()">
-            <div class="ledger-drawer-card" onclick="event.stopPropagation()">
-              <div class="ledger-drawer-handle"></div>
-
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div style="font-size: 16px; font-weight: 700; color: var(--ledger-text);">新增自定义分类</div>
-                <button type="button" onclick="closeAddCategoryModal()" style="background: none; border: none; font-size: 18px; color: var(--ledger-text-muted); cursor: pointer;">✕</button>
-              </div>
-
-              <div>
-                <label style="font-size: 12px; font-weight: 600; color: var(--ledger-text-sub); display: block; margin-bottom: 4px;">分类名称</label>
-                <input type="text" id="ledger-cat-input-name" placeholder="如：水彩颜料、追星周边、盲盒" style="width: 100%; padding: 10px 12px; background: var(--ledger-card-bg); border: 1px solid var(--ledger-card-border); border-radius: 12px; color: var(--ledger-text); font-size: 14px; box-sizing: border-box;" />
-              </div>
-
-              <div style="display: flex; gap: 10px;">
-                <div style="flex: 1;">
-                  <label style="font-size: 12px; font-weight: 600; color: var(--ledger-text-sub); display: block; margin-bottom: 4px;">图标 Emoji</label>
-                  <input type="text" id="ledger-cat-input-icon" value="🏷️" style="width: 100%; padding: 10px 12px; background: var(--ledger-card-bg); border: 1px solid var(--ledger-card-border); border-radius: 12px; color: var(--ledger-text); font-size: 15px; text-align: center; box-sizing: border-box;" />
-                </div>
-                <div style="flex: 2;">
-                  <label style="font-size: 12px; font-weight: 600; color: var(--ledger-text-sub); display: block; margin-bottom: 4px;">默认印章文案</label>
-                  <input type="text" id="ledger-cat-input-stamp" value="user专享" style="width: 100%; padding: 10px 12px; background: var(--ledger-card-bg); border: 1px solid var(--ledger-card-border); border-radius: 12px; color: var(--ledger-text); font-size: 14px; box-sizing: border-box;" />
-                </div>
-              </div>
-
-              <div>
-                <label style="font-size: 12px; font-weight: 600; color: var(--ledger-text-sub); display: block; margin-bottom: 4px;">角色预设批语</label>
-                <input type="text" id="ledger-cat-input-quote" value="只要user喜欢，就值得。" style="width: 100%; padding: 10px 12px; background: var(--ledger-card-bg); border: 1px solid var(--ledger-card-border); border-radius: 12px; color: var(--ledger-text); font-size: 13.5px; box-sizing: border-box;" />
-              </div>
-
-              <button type="button" onclick="submitNewCategory()" style="width: 100%; padding: 12px; background: var(--ledger-text); color: var(--ledger-bg); border: none; border-radius: 14px; font-size: 14.5px; font-weight: 700; cursor: pointer; margin-top: 6px;">创建并保存分类</button>
+          <div class="lg-mask" id="lg-settings-layer" onclick="lgCloseSettings()">
+            <div class="lg-page" onclick="event.stopPropagation()">
+              <header class="lg-page-head">
+                <div class="lg-page-title">设置</div>
+                <button class="lg-close" onclick="lgCloseSettings()">✕</button>
+              </header>
+              <div class="lg-settings-scroll" id="lg-settings-body"></div>
             </div>
           </div>
 
-          <!-- ================= ④ 图四：扇形花销分布图弹窗 ================= -->
-          <div class="ledger-drawer-mask" id="ledger-chart-modal" onclick="closeLedgerChartModal()">
-            <div class="ledger-chart-modal-card" onclick="event.stopPropagation()">
-              <div class="ledger-drawer-handle"></div>
-
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div style="font-size: 16px; font-weight: 700; color: var(--ledger-text);">📊 本月花销扇形分布</div>
-                <button type="button" onclick="closeLedgerChartModal()" style="background: none; border: none; font-size: 18px; color: var(--ledger-text-muted); cursor: pointer;">✕</button>
-              </div>
-
-              <!-- 扇形 Canvas 区域 -->
-              <div class="ledger-canvas-box">
-                <canvas id="ledger-pie-canvas" width="220" height="220"></canvas>
-                <div class="ledger-canvas-center-text">
-                  <div class="ledger-canvas-center-label">总支出</div>
-                  <div class="ledger-canvas-center-val" id="ledger-chart-center-val">¥0</div>
-                </div>
-              </div>
-
-              <!-- 角色管账人花销分析 -->
-              <div class="ledger-xuyan-quote" style="margin-top: 4px;">
-                <div class="ledger-xuyan-avatar">言</div>
-                <div>
-                  <div style="font-size: 11px; font-weight: 700; color: var(--ledger-accent); margin-bottom: 2px;">管账人月度花销点评：</div>
-                  <div id="ledger-chart-xuyan-analysis">“正在分析user的开支分布...”</div>
-                </div>
-              </div>
-
-              <!-- 分类花销排行明细 -->
-              <div>
-                <div style="font-size: 12.5px; font-weight: 700; color: var(--ledger-text-sub); margin-bottom: 8px;">各类别支出与占比排行</div>
-                <div class="ledger-breakdown-list" id="ledger-chart-breakdown-list"></div>
-              </div>
+          <div class="lg-mask" id="lg-account-layer" onclick="lgCloseAccountPicker()">
+            <div class="lg-sheet" onclick="event.stopPropagation()">
+              <div class="lg-sheet-title">记到哪个账户</div>
+              <div id="lg-account-list"></div>
+              <div class="lg-sheet-cancel" onclick="lgCloseAccountPicker()">取消</div>
             </div>
           </div>
         </section>
@@ -6638,7 +6663,8 @@
         </div>
       </div>
     </div>
-  <script src="js/desktop/ledger.js?v=1789915352248"></script>
+  <script src="js/desktop/ledger.js?v=20261121-0140"></script>
+  <script src="js/desktop/ledger-app.js?v=20261121-0140"></script>
 
     <!-- 头像上传与定制抽屉 -->
     <div class="ledger-drawer-mask theme-oled" id="vault-upload-drawer" onclick="closeVaultUploadDrawer()">
