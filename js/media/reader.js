@@ -865,9 +865,9 @@
 
   // 渲染书城
   // ================= 📚 书城：在线公版书库（2026-11-20） =================
-  // 只收公版书（古典名著 / 话本 / 志怪 / 演义）。清单与正文都放在本仓库 books/ 下，
+  // 只收公版书（古典名著 / 话本 / 志怪 / 演义）。清单与正文都放在本仓库 data/books/ 下，
   // 一次请求拿全书，导进 IndexedDB 之后就和本地书完全一样。
-  const ONLINE_CATALOG_PATH = 'books/index.json';
+  const ONLINE_CATALOG_PATH = 'data/books/index.json';
   let onlineCatalogCache = null;
   let onlineActiveTag = '';
 
