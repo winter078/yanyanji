@@ -1413,6 +1413,34 @@
   };
 
   // ================= 正文沉浸阅读器 =================
+  // 2026-11-20 图书联动第一步：把当前在读的这一章交给「此时此刻」剧场开演
+  window.startTheaterWithBook = function () {
+    if (!currentActiveBook) { alert('先打开一本书，再点开演。'); return; }
+    const chapters = currentActiveBook.chapters || [];
+    const idx = Math.min(Math.max(currentChapterIdx || 0, 0), Math.max(chapters.length - 1, 0));
+    const chap = chapters[idx] || { title: '第1章', paragraphs: [] };
+    const bodyText = (chap.paragraphs || []).join('\n');
+    const excerpt = bodyText.length > 1200 ? bodyText.slice(0, 1200) + '……' : bodyText;
+    if (typeof window.setTheaterBookStage !== 'function') {
+      alert('剧场还没准备好，等一下再试。');
+      return;
+    }
+    window.setTheaterBookStage({
+      bookId: currentActiveBook.id,
+      title: currentActiveBook.title || '',
+      author: currentActiveBook.author || '',
+      chapterIndex: idx,
+      chapterTitle: chap.title || ('第' + (idx + 1) + '章'),
+      chapterCount: chapters.length,
+      excerpt: excerpt,
+      updatedAt: Date.now()
+    });
+    try {
+      if (typeof window.closeReaderModal === 'function') window.closeReaderModal('reader-catalog-drawer-modal');
+    } catch (e) {}
+    if (typeof window.openPage === 'function') window.openPage('page-rp');
+  };
+
   window.openXianguoReading = async function(bookId) {
     const book = currentBooks.find(b => b.id === bookId) || defaultBooks[0];
     currentActiveBook = book;
