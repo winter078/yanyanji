@@ -237,24 +237,22 @@
     } catch(e) {}
   }
 
-  // 选项卡切换 (我的书架 vs 书城)
+  // 选项卡切换（旧调用统一转发到新的底部三 Tab）
   window.switchXianguoTab = function(tab) {
-    const tabShelf = document.getElementById('tab-xianguo-shelf');
-    const tabStore = document.getElementById('tab-xianguo-store');
+    const t = tab === 'store' ? 'store' : (tab === 'mine' ? 'mine' : 'shelf');
+    if (typeof window.rdSwitchReaderTab === 'function') {
+      window.rdSwitchReaderTab(t);
+      return;
+    }
     const viewShelf = document.getElementById('xianguo-shelf-viewport');
     const viewStore = document.getElementById('xianguo-store-viewport');
-
-    if (tab === 'shelf') {
-      if (tabShelf) tabShelf.classList.add('active');
-      if (tabStore) tabStore.classList.remove('active');
-      if (viewShelf) viewShelf.style.display = '';
+    if (t === 'shelf') {
+      if (viewShelf) viewShelf.style.display = 'block';
       if (viewStore) viewStore.style.display = 'none';
       renderShelfUI();
     } else {
-      if (tabShelf) tabShelf.classList.remove('active');
-      if (tabStore) tabStore.classList.add('active');
       if (viewShelf) viewShelf.style.display = 'none';
-      if (viewStore) viewStore.style.display = '';
+      if (viewStore) viewStore.style.display = 'block';
       renderStoreUI();
     }
   };
@@ -938,9 +936,10 @@
   }
 
   function onlineCoverHtml(meta) {
-    const theme = getPureCoverStyle(meta.title || meta.id);
-    return '<div class="xianguo-feed-cover" style="background:' + theme.bg + ';color:' + theme.text +
-      ';display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;letter-spacing:1px;">' +
+    const theme = rdPureTheme(meta.title || meta.id || 'x');
+    return '<div class="xianguo-feed-cover" style="background:linear-gradient(160deg,' + theme.bg2a + ' 0%,' + theme.bg2b +
+      ' 100%);color:' + theme.text2 + ';width:66px;height:90px;flex:0 0 66px;border-radius:4px;' +
+      ';display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:500;letter-spacing:2px;writing-mode:horizontal-tb;">' +
       onlineEsc(String(meta.title || '').slice(0, 2)) + '</div>';
   }
 
@@ -2802,7 +2801,7 @@
     btn.title = '陪你读的人：' + name;
     btn.innerHTML = av
       ? '<img src="' + av + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">'
-      : (name.charAt(0) || '伴');
+      : '伴';
   }
 
   window.openReaderCompanionPicker = function() {
@@ -3341,6 +3340,8 @@
   }
 
   function rdSumRange(fromKey, toKey) {
+    if (fromKey == null) fromKey = '0000-00-00';
+    if (toKey == null) toKey = '9999-99-99';
     let total = 0;
     Object.keys(rdStats).forEach(k => {
       if (k >= fromKey && k <= toKey) total += rdStats[k] || 0;
@@ -3349,6 +3350,8 @@
   }
 
   function rdCountDays(fromKey, toKey) {
+    if (fromKey == null) fromKey = '0000-00-00';
+    if (toKey == null) toKey = '9999-99-99';
     let n = 0;
     Object.keys(rdStats).forEach(k => {
       if (k >= fromKey && k <= toKey && (rdStats[k] || 0) >= 1) n++;
@@ -3357,6 +3360,8 @@
   }
 
   function rdCountFinished(fromKey, toKey) {
+    if (fromKey == null) fromKey = '0000-00-00';
+    if (toKey == null) toKey = '9999-99-99';
     let n = 0;
     Object.keys(rdFinished).forEach(id => {
       const d = rdFinished[id];
@@ -3411,6 +3416,10 @@
             <span style="font-size:12px;color:${cur === c.id ? '#8FA8C8' : 'transparent'};">✓</span>
           </div>
         `).join('')}
+        <div onclick="rdToggleLike('${bookId}')" style="display:flex;align-items:center;gap:10px;padding:13px 16px;border-top:1px solid rgba(255,255,255,.06);cursor:pointer;">
+          <span style="width:7px;height:7px;border-radius:50%;background:${book.liked ? '#B08F92' : 'transparent'};border:1px solid ${book.liked ? '#B08F92' : '#4A5462'};"></span>
+          <span style="flex:1;font-size:13px;color:${book.liked ? '#DCE3EC' : '#97A1AF'};">${book.liked ? '已放进「我喜欢」' : '放进「我喜欢」'}</span>
+        </div>
         <div onclick="rdClosePickBookCat()" style="padding:14px 16px;border-top:1px solid rgba(255,255,255,.06);text-align:center;font-size:12px;color:#97A1AF;cursor:pointer;">取消</div>
       </div>
     `;
@@ -3852,6 +3861,132 @@
     window.closeXianguoWriterModal();
     window.renderShelfUI();
     showXianguoToast('草稿已存，回书架了', 1600);
+  };
+
+  // ---------- 底部三 Tab ----------
+  window.rdActiveTab = 'shelf';
+
+  window.rdSwitchReaderTab = function (tab) {
+    window.rdActiveTab = tab;
+
+    // 二级页开着就先关掉
+    try { window.closeReaderRecord(); } catch (e) {}
+    try { window.closeReaderCatManager(); } catch (e) {}
+    try { window.rdClosePickBookCat(); } catch (e) {}
+
+    const shelf = document.getElementById('xianguo-shelf-viewport');
+    const store = document.getElementById('xianguo-store-viewport');
+    const mine = document.getElementById('rd-mine-viewport');
+    const title = document.getElementById('rd-page-title');
+    const actions = document.getElementById('rd-topbar-actions');
+
+    if (shelf) shelf.style.display = tab === 'shelf' ? 'block' : 'none';
+    if (store) store.style.display = tab === 'store' ? 'block' : 'none';
+    if (mine) mine.style.display = tab === 'mine' ? 'block' : 'none';
+    if (title) title.innerText = tab === 'store' ? '发现' : (tab === 'mine' ? '我的' : '书架');
+    if (actions) actions.style.display = tab === 'shelf' ? 'flex' : 'none';
+
+    ['shelf', 'store', 'mine'].forEach(k => {
+      const el = document.getElementById('rd-tab-' + k);
+      if (el) el.classList.toggle('active', k === tab);
+    });
+
+    const view = tab === 'shelf' ? shelf : (tab === 'store' ? store : mine);
+    if (view) view.scrollTop = 0;
+
+    if (tab === 'shelf') {
+      try { window.renderShelfUI(); } catch (e) {}
+    } else if (tab === 'store') {
+      try { if (typeof renderStoreUI === 'function') renderStoreUI(); } catch (e) {}
+    } else {
+      rdRenderMine();
+    }
+  };
+
+  // ---------- 我的：名片 + 最近在读 + 我喜欢 ----------
+  function rdMeAvatarHtml() {
+    const a = window.appData || {};
+    const av = (typeof localStorage !== 'undefined' && localStorage.getItem('momo_user_avatar')) ||
+      a.heroAvatar || a.userAvatar || (a.hero && a.hero.userAvatar) || '';
+    if (av) return '<img src="' + av + '" alt="">';
+    return '你';
+  }
+
+  function rdMeName() {
+    const a = window.appData || {};
+    return a.userNickname || (a.hero && a.hero.userName) ||
+      (typeof localStorage !== 'undefined' && (localStorage.getItem('momo_user_nick') || localStorage.getItem('momo_user_nickname'))) || 'user';
+  }
+
+  window.rdRenderMine = function () {
+    loadLocalShelf();
+    rdLoadStats();
+    rdLoadFinished();
+
+    // 名片
+    const avEl = document.getElementById('rd-me-avatar');
+    if (avEl) avEl.innerHTML = rdMeAvatarHtml();
+
+    const nameEl = document.getElementById('rd-me-name');
+    if (nameEl) nameEl.innerText = rdMeName();
+
+    const lineEl = document.getElementById('rd-me-line');
+    if (lineEl) {
+      const ln = (typeof localStorage !== 'undefined' && localStorage.getItem('momo_user_bio')) || '';
+      lineEl.innerText = ln || '生活在真实世界中';
+    }
+
+    // 三个数字：累计时长 / 读过几天 / 读完的书
+    const statEl = document.getElementById('rd-me-stats');
+    if (statEl) {
+      const total = rdSumRange(null, null);
+      const days = rdCountDays(null, null);
+      const done = rdCountFinished();
+      statEl.innerHTML =
+        '<div class="rd-me-stat"><div class="rd-me-stat-num">' + (total >= 60 ? Math.round(total / 60) + 'h' : total + 'm') + '</div><div class="rd-me-stat-label">累计时长</div></div>' +
+        '<div class="rd-me-stat"><div class="rd-me-stat-num">' + days + '</div><div class="rd-me-stat-label">读过几天</div></div>' +
+        '<div class="rd-me-stat"><div class="rd-me-stat-num">' + done + '</div><div class="rd-me-stat-label">读完的书</div></div>';
+    }
+
+    // 最近在读：按 lastReadAt 倒序取 6 本
+    const recentEl = document.getElementById('rd-me-recent');
+    if (recentEl) {
+      const list = currentBooks.slice().sort((a, b) => (b.lastReadAt || 0) - (a.lastReadAt || 0)).slice(0, 8);
+      recentEl.innerHTML = list.length ? list.map(rdRailBookHtml).join('')
+        : '<div style="font-size:11px;color:#6E7885;padding:4px 0;">还没有读过的书</div>';
+    }
+
+    // 我喜欢
+    const likedEl = document.getElementById('rd-me-liked');
+    if (likedEl) {
+      const list = currentBooks.filter(b => b.liked);
+      likedEl.innerHTML = list.length ? list.map(rdRailBookHtml).join('')
+        : '<div style="font-size:11px;color:#6E7885;padding:4px 0;">长按封面，可以放进这里</div>';
+    }
+  };
+
+  function rdRailBookHtml(book) {
+    const cover = book.cover
+      ? '<img src="' + book.cover + '" alt="">'
+      : '';
+    return '<div class="rd-rail-book" onclick="openXianguoReading(\'' + book.id + '\')">' +
+      '<div class="rd-rail-cover' + (book.cover ? '' : ' is-pure') + '">' +
+      (cover || rdCoverInnerHtml(book)) +
+      '</div>' +
+      '<div class="rd-rail-title">' + (book.title || '未命名') + '</div>' +
+      '</div>';
+  }
+
+  window.rdToggleLike = function (bookId) {
+    const book = currentBooks.find(b => b.id === bookId);
+    if (book) {
+      book.liked = !book.liked;
+      saveLocalShelf();
+    }
+    rdClosePickBookCat();
+    window.renderShelfUI();
+    if (window.rdActiveTab === 'mine') rdRenderMine();
+    showXianguoToast(book && book.liked ? '放进「我喜欢」了' : '已移出「我喜欢」', 1600);
   };
 
   // ---------- 计时挂钩：进出阅读页 ----------
