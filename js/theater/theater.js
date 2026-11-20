@@ -618,6 +618,7 @@ ${worldBookPrompt}
     }
 
     function renderRpStream() {
+      renderRpBookStageBar();
       const stream = document.getElementById('rp-stream-container');
       if (!stream) return;
       stream.innerHTML = '';
@@ -990,6 +991,73 @@ ${worldBookPrompt}
       return true;
     }
 
+    // ===== 2026-11-20 图书联动：当前正在演绎的书 =====
+    // 由阅读器目录抽屉的「🎭 用这本书开剧场」写入 momo_rp_book_stage，
+    // 剧场 prompt 会把它当成"这一章已经发生过的前情"，从断点接着演。
+    const RP_BOOK_STAGE_KEY = 'momo_rp_book_stage';
+
+    function readRpBookStage() {
+      try {
+        const raw = localStorage.getItem(RP_BOOK_STAGE_KEY);
+        if (!raw) return null;
+        const v = JSON.parse(raw);
+        return (v && v.title) ? v : null;
+      } catch (e) { return null; }
+    }
+
+    function rpBookStagePrompt() {
+      const b = readRpBookStage();
+      if (!b) return '';
+      const idx = Number(b.chapterIndex || 0) + 1;
+      return '### 正在演绎的小说：\n' +
+        '书名：《' + (b.title || '') + '》' + (b.author ? '（' + b.author + '）' : '') + '\n' +
+        '当前章节：' + (b.chapterTitle || '') + '（第 ' + idx + ' / ' + (b.chapterCount || 1) + ' 章）\n' +
+        '这一章已经写出来的正文（当作刚刚发生过的事，从这里接着演）：\n"""\n' + (b.excerpt || '') + '\n"""\n' +
+        '要求：延续这段正文里已经建立的人物关系、场景细节和说话习惯，从中断处往下写；不要复述、总结、点评这段文字，也不要宣布"接下来我们演绎"，直接从动作或台词开始。';
+    }
+
+    function renderRpBookStageBar() {
+      const bar = document.getElementById('rp-book-stage-bar');
+      if (!bar) return;
+      const b = readRpBookStage();
+      if (!b) {
+        bar.style.display = 'none';
+        bar.innerHTML = '';
+        return;
+      }
+      bar.style.display = 'flex';
+      bar.innerHTML =
+        '<span class="rp-book-stage-tag">📖 正在演</span>' +
+        '<span class="rp-book-stage-title">《' + rpEscapeHtml(b.title) + '》· ' + rpEscapeHtml(b.chapterTitle || '') + '</span>' +
+        '<button class="rp-book-stage-close" type="button" onclick="clearTheaterBookStage()" title="结束演绎，回到自由剧场">✕</button>';
+    }
+
+    window.setTheaterBookStage = function (payload) {
+      try { localStorage.setItem(RP_BOOK_STAGE_KEY, JSON.stringify(payload || {})); } catch (e) {}
+      renderRpBookStageBar();
+    };
+    window.clearTheaterBookStage = function () {
+      try { localStorage.removeItem(RP_BOOK_STAGE_KEY); } catch (e) {}
+      renderRpBookStageBar();
+    };
+    window.getTheaterBookStage = readRpBookStage;
+
+    function bootRpBookStageBar() {
+      renderRpBookStageBar();
+      if (typeof window.openPage === 'function' && !window.openPage.__rpBookStageWrapped) {
+        const orig = window.openPage;
+        const wrapped = function (id) {
+          const r = orig.apply(this, arguments);
+          if (id === 'page-rp') setTimeout(renderRpBookStageBar, 0);
+          return r;
+        };
+        wrapped.__rpBookStageWrapped = true;
+        window.openPage = wrapped;
+      }
+    }
+    setTimeout(bootRpBookStageBar, 0);
+    document.addEventListener('DOMContentLoaded', bootRpBookStageBar);
+
     function buildTheaterPrompt(extraInstruction = '') {
       const s = appData.storySettings || {};
       const c = appData.rpConfig || {};
@@ -998,6 +1066,8 @@ ${worldBookPrompt}
       if (theaterBuiltinEnabled('theater_stage')) {
         parts.push('### 舞台情境：\n' + (s.scenario || c.scenario || ''));
       }
+      const bookStagePrompt = rpBookStagePrompt();
+      if (bookStagePrompt) parts.push(bookStagePrompt);
       if (theaterBuiltinEnabled('theater_role')) {
         parts.push('### 扮演角色（' + charName + '）：\n' + theaterCharacterPersona());
       }
