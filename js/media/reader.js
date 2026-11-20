@@ -1441,6 +1441,46 @@
     if (typeof window.openPage === 'function') window.openPage('page-rp');
   };
 
+  // 2026-11-20 图书联动：把「此时此刻」演过的剧情导入成书架里的一本书
+  // 这类书带 origin:'rp' 标记 —— 只有它们才显示「🎭 用这本书开剧场」。
+  window.importRpStoryAsBook = function (payload) {
+    const data = payload || {};
+    const chapters = (Array.isArray(data.chapters) ? data.chapters : [])
+      .filter(c => c && c.title && Array.isArray(c.paragraphs) && c.paragraphs.length)
+      .map(c => ({ title: String(c.title), paragraphs: c.paragraphs.map(p => String(p)) }));
+    if (!chapters.length) return { ok: false, error: '没有可导入的正文' };
+
+    loadLocalShelf();
+    const id = 'rp-' + Date.now().toString(36) + '-' + Math.floor(Math.random() * 1000);
+    const book = {
+      id: id,
+      title: data.title || '剧场',
+      author: data.author || '言言机 · 此时此刻',
+      cover: '',
+      lastReadChapTitle: chapters[0].title,
+      lastReadTime: '刚刚',
+      progress: 0,
+      chapterCount: chapters.length,
+      hasIndexedDB: true,
+      isOriginal: true,
+      origin: 'rp',
+      rpMeta: {
+        charName: data.charName || '',
+        savedAt: data.savedAt || Date.now(),
+        preamble: data.preamble || ''
+      }
+    };
+    currentBooks.unshift(book);
+    saveLocalShelf();
+    saveBookChaptersToDB(id, chapters).then(function (ok) {
+      if (!ok) console.warn('剧场剧情写入 IndexedDB 失败，书单条目仍然保留');
+      renderShelfUI();
+    });
+    renderShelfUI();
+    try { showXianguoToast('📖 《' + book.title + '》已放进书架', 3000); } catch (e) {}
+    return { ok: true, bookId: id, chapters: chapters.length };
+  };
+
   window.openXianguoReading = async function(bookId) {
     const book = currentBooks.find(b => b.id === bookId) || defaultBooks[0];
     currentActiveBook = book;
@@ -2334,6 +2374,11 @@
         </div>
       `).join('');
     }
+
+    // 只有「从此时此刻导入的书」才给"开剧场"入口：外部 txt/epub 拿过去只有当前一段，
+    // 而且会串掉剧场自己的角色卡与文风预设。
+    const theaterBtn = document.getElementById('reader-catalog-theater-btn');
+    if (theaterBtn) theaterBtn.style.display = (currentActiveBook.origin === 'rp') ? 'flex' : 'none';
 
     openReaderModal('reader-catalog-drawer-modal');
   };
