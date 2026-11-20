@@ -1102,6 +1102,175 @@ ${worldBookPrompt}
       }
     };
 
+    // ===== 2026-11-20 剧场存档：存快照 / 读档 / 开分支 =====
+    const RP_SAVES_KEY = 'momo_rp_saves';
+    const RP_SAVES_LIMIT = 20;
+
+    function readRpSaves() {
+      try {
+        const list = JSON.parse(localStorage.getItem(RP_SAVES_KEY) || '[]');
+        return Array.isArray(list) ? list : [];
+      } catch (e) { return []; }
+    }
+
+    function writeRpSaves(list) {
+      try { localStorage.setItem(RP_SAVES_KEY, JSON.stringify(list)); }
+      catch (e) { alert('存档空间满了，先删掉几份旧档。'); return false; }
+      return true;
+    }
+
+    function rpSaveTimeLabel(ts) {
+      const d = new Date(ts || Date.now());
+      const pad = function (n) { return String(n).padStart(2, '0'); };
+      return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+    }
+
+    function newRpSaveId() {
+      return 'rp' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+    }
+
+    window.saveRpSnapshot = function () {
+      const history = (appData.rpHistory || []).slice();
+      if (!history.length) { alert('剧场还是空的，先演一段再存。'); return; }
+      const charName = theaterCharacterName() || '角色';
+      const list = readRpSaves();
+      const snap = {
+        id: newRpSaveId(),
+        name: charName + ' · ' + rpSaveTimeLabel(),
+        charId: String((appData.storySettings && appData.storySettings.charId) || ''),
+        charName: charName,
+        createdAt: Date.now(),
+        count: history.length,
+        history: history,
+        config: JSON.parse(JSON.stringify(appData.rpConfig || {})),
+        storySettings: JSON.parse(JSON.stringify(appData.storySettings || {})),
+        bookStage: readRpBookStage()
+      };
+      list.unshift(snap);
+      while (list.length > RP_SAVES_LIMIT) list.pop();
+      if (!writeRpSaves(list)) return;
+      renderRpArchiveList();
+      alert('已存下「' + snap.name + '」，共 ' + history.length + ' 条。');
+    };
+
+    function applyRpSnapshot(snap) {
+      appData.rpHistory = JSON.parse(JSON.stringify(snap.history || []));
+      localStorage.setItem('momo_rp_history', JSON.stringify(appData.rpHistory));
+      if (snap.config) {
+        appData.rpConfig = Object.assign({}, appData.rpConfig || {}, snap.config);
+        localStorage.setItem('momo_rp_config', JSON.stringify(appData.rpConfig));
+      }
+      if (snap.storySettings) {
+        appData.storySettings = Object.assign({}, appData.storySettings || {}, snap.storySettings);
+        localStorage.setItem('momo_story_settings', JSON.stringify(appData.storySettings));
+      }
+      if (snap.bookStage) {
+        try { localStorage.setItem(RP_BOOK_STAGE_KEY, JSON.stringify(snap.bookStage)); } catch (e) {}
+      } else {
+        try { localStorage.removeItem(RP_BOOK_STAGE_KEY); } catch (e) {}
+      }
+      renderRpStream();
+      syncRpActorUI();
+      renderRpArchiveList();
+    }
+
+    window.rpLoadSave = function (id) {
+      const snap = readRpSaves().find(function (x) { return x.id === id; });
+      if (!snap) return;
+      if (!confirm('读档会把当前没存的进度盖掉，确定回到「' + snap.name + '」？')) return;
+      applyRpSnapshot(snap);
+      alert('已回到「' + snap.name + '」。');
+    };
+
+    window.rpBranchSave = function (id) {
+      const list = readRpSaves();
+      const snap = list.find(function (x) { return x.id === id; });
+      if (!snap) return;
+      if (!confirm('从「' + snap.name + '」劈一条新分支？\n原档留着不动，当前会回到这个岔口。')) return;
+      const baseName = String(snap.name || '存档');
+      const branch = JSON.parse(JSON.stringify(snap));
+      branch.id = newRpSaveId();
+      branch.name = baseName + ' · 分支 ' + (list.filter(function (x) {
+        return String(x.name || '').indexOf(baseName + ' · 分支') === 0;
+      }).length + 1);
+      branch.createdAt = Date.now();
+      list.unshift(branch);
+      while (list.length > RP_SAVES_LIMIT) list.pop();
+      if (!writeRpSaves(list)) return;
+      applyRpSnapshot(snap);
+      alert('分支已建好：' + branch.name + '\n从这里往下演，随时再存就是新的走向。');
+    };
+
+    window.rpDeleteSave = function (id) {
+      const list = readRpSaves();
+      const snap = list.find(function (x) { return x.id === id; });
+      if (!snap) return;
+      if (!confirm('删掉「' + snap.name + '」？删了就找不回来。')) return;
+      const rest = list.filter(function (x) { return x.id !== id; });
+      if (!writeRpSaves(rest)) return;
+      renderRpArchiveList();
+    };
+
+    function ensureRpArchivePanel() {
+      let panel = document.getElementById('rp-archive-modal');
+      if (panel) return panel;
+      panel = document.createElement('div');
+      panel.id = 'rp-archive-modal';
+      panel.className = 'rp-archive-modal';
+      panel.innerHTML =
+        '<div class="rp-archive-card">' +
+          '<div class="rp-archive-head">' +
+            '<span class="rp-archive-title">剧场存档</span>' +
+            '<button class="rp-archive-close" type="button" onclick="closeRpArchivePanel()">✕</button>' +
+          '</div>' +
+          '<div class="rp-archive-tip">读档＝回到那一刻；分支＝在那个岔口另开一条线，原档不被动。</div>' +
+          '<div class="rp-archive-list" id="rp-archive-list"></div>' +
+          '<div class="rp-archive-foot">' +
+            '<button class="rp-archive-save-btn" type="button" onclick="saveRpSnapshot()">存一份当前进度</button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(panel);
+      panel.addEventListener('click', function (e) {
+        if (e.target === panel) closeRpArchivePanel();
+      });
+      return panel;
+    }
+
+    window.openRpArchivePanel = function () {
+      const panel = ensureRpArchivePanel();
+      renderRpArchiveList();
+      panel.classList.add('open');
+    };
+
+    window.closeRpArchivePanel = function () {
+      const panel = document.getElementById('rp-archive-modal');
+      if (panel) panel.classList.remove('open');
+    };
+
+    window.renderRpArchiveList = function () {
+      const box = document.getElementById('rp-archive-list');
+      if (!box) return;
+      const list = readRpSaves();
+      if (!list.length) {
+        box.innerHTML = '<div class="rp-archive-empty">还没有存档。<br>演到想留住的地方，就点下面「存一份当前进度」。</div>';
+        return;
+      }
+      box.innerHTML = list.map(function (s) {
+        return '<div class="rp-archive-row">' +
+          '<div class="rp-archive-row-main">' +
+            '<div class="rp-archive-row-name">' + rpEscapeHtml(s.name || '存档') + '</div>' +
+            '<div class="rp-archive-row-meta">' + rpEscapeHtml(s.charName || '角色') + ' · ' +
+              (s.count || 0) + ' 条 · ' + rpSaveTimeLabel(s.createdAt) + '</div>' +
+          '</div>' +
+          '<div class="rp-archive-row-actions">' +
+            '<button class="rp-archive-act" type="button" onclick="rpLoadSave(\'' + s.id + '\')">读档</button>' +
+            '<button class="rp-archive-act" type="button" onclick="rpBranchSave(\'' + s.id + '\')">分支</button>' +
+            '<button class="rp-archive-act rp-archive-act-danger" type="button" onclick="rpDeleteSave(\'' + s.id + '\')">删</button>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    };
+
     function bootRpBookStageBar() {
       renderRpBookStageBar();
       if (typeof window.openPage === 'function' && !window.openPage.__rpBookStageWrapped) {
