@@ -42,6 +42,16 @@
     if (document.body) document.body.appendChild(makeBox());
   }
 
+  var TOAST_KEY = 'mz_version_toast_v1';
+
+  function seenLive() {
+    try { return localStorage.getItem(TOAST_KEY) || ''; } catch (e) { return ''; }
+  }
+
+  function rememberLive(v) {
+    try { localStorage.setItem(TOAST_KEY, v); } catch (e) {}
+  }
+
   function check() {
     if (document.hidden) return;
     if (!mine) return;
@@ -51,7 +61,11 @@
         if (!txt) return;
         var m = /__LIVE_BUILD__\s*=\s*"([^"]+)"/.exec(txt);
         var live = m ? m[1] : null;
-        if (live && live !== mine) show();
+        if (!live || live === mine) return;
+        // 同一个线上版本只提示一次：用户刷新后仍弹，多半是页面版本号没同步，别再骚扰
+        if (seenLive() === live) return;
+        rememberLive(live);
+        show();
       })
       .catch(function () {});
   }
