@@ -1,6 +1,11 @@
 (function () {
   // 后台连线：循环播放一段静音 WAV，让 iOS 认为小手机还在活动，
-  // 控制中心会显示「言言机 · 后台连线中」，页面也不会那么快被冻结。
+  // 控制中心会显示「言言机 · 后台连线中」，页面也不那么快被冻结。
+  //
+  // 代价（重要）：iOS 网页播放音频时走的是 playback 音频会话，网页端改不了这个类别。
+  // 只要在播——哪怕这段 WAV 完全没声音——系统就认定「小手机正在出声」，
+  // 你切去看抖音/小红书的视频，会因为音频被打断而自动暂停。
+  // 所以这里默认关闭，只在需要挂机等角色说话时手动打开。
   var KEY = 'momo_bg_link';
   var audioEl = null;
   var objectUrl = null;
@@ -51,10 +56,19 @@
     try {
       navigator.mediaSession.setActionHandler('pause', function () {
         if (audioEl) audioEl.pause();
-        navigator.mediaSession.playbackState = 'paused';
+        wanted = false;
+        try { localStorage.setItem(KEY, '0'); } catch (e) {}
+        clearSession();
+        updateUi();
       });
       navigator.mediaSession.setActionHandler('play', function () { start(); });
     } catch (e) {}
+  }
+
+  function clearSession() {
+    if (!('mediaSession' in navigator)) return;
+    try { navigator.mediaSession.metadata = null; } catch (e) {}
+    try { navigator.mediaSession.playbackState = 'none'; } catch (e) {}
   }
 
   function start() {
@@ -73,55 +87,45 @@
     if (audioEl) {
       try { audioEl.pause(); } catch (e) {}
     }
-    if ('mediaSession' in navigator) {
-      try { navigator.mediaSession.playbackState = 'none'; } catch (e) {}
-    }
+    clearSession();
     updateUi();
   }
 
   function updateUi() {
     var el = document.getElementById('bg-link-status');
-    if (!el) return;
-    el.innerHTML = wanted
-      ? '<span style="color:#3ddc84;">连线中</span>'
-      : '<span style="color:var(--color-text-secondary);">已关闭</span>';
+    if (el) {
+      el.innerHTML = wanted
+        ? '<span style="color:#3ddc84;">连线中</span>'
+        : '<span style="color:var(--color-text-secondary);">已关闭</span>';
+    }
+    var t = document.getElementById('bg-link-toggle');
+    if (t) t.checked = wanted;
   }
 
+  // 默认关闭：localStorage 里没有值就当没开。
+  // 以前是无值当开启，等于每次打开小手机都占着音频通道。
   function enabled() {
     var v = null;
     try { v = localStorage.getItem(KEY); } catch (e) {}
-    if (v === null) return true;
-    return v !== '0';
+    return v === '1';
   }
 
   function armOnFirstGesture() {
-    if (wanted) return;
     var kick = function () {
       document.removeEventListener('touchend', kick, true);
       document.removeEventListener('click', kick, true);
-      if (enabled()) start();
+      if (wanted) start();
     };
     document.addEventListener('touchend', kick, true);
     document.addEventListener('click', kick, true);
   }
 
   function init() {
-    if (!enabled()) { updateUi(); return; }
-    var a = ensureAudio();
-    a.play().then(function () {
-      wanted = true; setSession(); updateUi();
-    }).catch(function () {
-      // 没用户手势时会被拦，等第一次点击再起
-      armOnFirstGesture();
-      updateUi();
-    });
-
-    document.addEventListener('visibilitychange', function () {
-      if (document.visibilityState === 'visible' && wanted && audioEl && audioEl.paused) {
-        audioEl.play().catch(function () {});
-        setSession();
-      }
-    });
+    wanted = enabled();
+    updateUi();
+    if (!wanted) return;
+    // 曾经开着的人：不在这里静默起播，等一次真实点击再续上（iOS 要求手势）。
+    armOnFirstGesture();
   }
 
   window.startBackgroundLink = start;
@@ -130,8 +134,8 @@
   window.isBackgroundLinkOn = function () { return wanted; };
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function () { init(); updateUi(); });
+    document.addEventListener('DOMContentLoaded', init);
   } else {
-    init(); updateUi();
+    init();
   }
 })();
