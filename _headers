@@ -13,6 +13,9 @@
 /js/version-watch.js
   Cache-Control: no-store, must-revalidate
 
+/js/build.js
+  Cache-Control: no-store, must-revalidate
+
 /js/build.txt
   Cache-Control: no-store, must-revalidate
 
