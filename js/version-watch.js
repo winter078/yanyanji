@@ -45,11 +45,12 @@
   function check() {
     if (document.hidden) return;
     if (!mine) return;
-    fetch('/js/build.txt?t=' + Date.now(), { cache: 'no-store' })
+    fetch('/js/build.js?t=' + Date.now(), { cache: 'no-store' })
       .then(function (r) { return r.ok ? r.text() : null; })
       .then(function (txt) {
         if (!txt) return;
-        var live = String(txt).trim();
+        var m = /__LIVE_BUILD__\s*=\s*"([^"]+)"/.exec(txt);
+        var live = m ? m[1] : null;
         if (live && live !== mine) show();
       })
       .catch(function () {});
