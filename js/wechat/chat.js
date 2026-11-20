@@ -3417,9 +3417,17 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       let parsedQuote = null;
       let cleanText = (typeof text === 'string') ? text : '';
 
-      // 角色主动甩音乐卡：把 [MUSIC_INVITE:歌名] / [MUSIC_SHARE:歌名] 换成通用分享卡标记
-      if (cleanText && cleanText.indexOf('[MUSIC_') >= 0 && typeof window.musicCardMarkerToShareCard === 'function') {
-        cleanText = window.musicCardMarkerToShareCard(cleanText);
+      // 角色主动甩卡片：音乐 / 观影 / 共读的轻标记统一换成通用分享卡标记
+      if (cleanText && cleanText.indexOf('[') >= 0) {
+        if (cleanText.indexOf('[MUSIC_') >= 0 && typeof window.musicCardMarkerToShareCard === 'function') {
+          cleanText = window.musicCardMarkerToShareCard(cleanText);
+        }
+        if (cleanText.indexOf('[WATCH_') >= 0 && typeof window.watchCardMarkerToShareCard === 'function') {
+          cleanText = window.watchCardMarkerToShareCard(cleanText);
+        }
+        if (cleanText.indexOf('[READ_') >= 0 && typeof window.readerCardMarkerToShareCard === 'function') {
+          cleanText = window.readerCardMarkerToShareCard(cleanText);
+        }
       }
 
       if (cleanText && !narrationMeta) {
@@ -3732,22 +3740,23 @@ window.syncNarrationModeUI = syncNarrationModeUI;
         }
 
         if (cardData) {
-          const isMusic = cardData.kind === 'music' || cardData.kind === 'music_invite';
-          const isInvite = cardData.kind === 'music_invite';
+          const kind = String(cardData.kind || '');
+          const isMusic = kind === 'music' || kind === 'music_invite';
+          const isWatch = kind === 'watch' || kind === 'watch_invite';
+          const isRead = kind === 'read' || kind === 'read_invite';
+          const isInvite = kind.indexOf('_invite') > -1;
           const shareCard = document.createElement('div');
           shareCard.className = 'msg-share-card';
-          shareCard.title = isInvite ? '点击接受，一起听这首歌' : (isMusic ? '点击播放这首歌' : '点击在浏览器中打开链接');
+          shareCard.title = isInvite ? '点击接受这份邀请' : (isMusic || isWatch || isRead ? '点击现在打开' : '点击在浏览器中打开链接');
           shareCard.onclick = (e) => {
             if (!document.body.classList.contains('chat-multi-mode')) {
               e.stopPropagation();
-              if (isInvite) {
-                if (typeof window.acceptMusicInvite === 'function') window.acceptMusicInvite(cardData);
-                return;
-              }
-              if (isMusic) {
-                if (typeof window.playSharedSong === 'function') window.playSharedSong(cardData);
-                return;
-              }
+              if (isInvite && isMusic) { if (typeof window.acceptMusicInvite === 'function') window.acceptMusicInvite(cardData); return; }
+              if (isInvite && isWatch) { if (typeof window.acceptWatchInvite === 'function') window.acceptWatchInvite(cardData); return; }
+              if (isInvite && isRead) { if (typeof window.acceptReadInvite === 'function') window.acceptReadInvite(cardData); return; }
+              if (kind === 'music') { if (typeof window.playSharedSong === 'function') window.playSharedSong(cardData); return; }
+              if (kind === 'watch') { if (typeof window.playSharedVideo === 'function') window.playSharedVideo(cardData); return; }
+              if (kind === 'read') { if (typeof window.playSharedBook === 'function') window.playSharedBook(cardData); return; }
               if (cardData.url) window.open(cardData.url, '_blank');
             }
           };
@@ -3794,10 +3803,12 @@ window.syncNarrationModeUI = syncNarrationModeUI;
           shareCard.appendChild(midEl);
           shareCard.appendChild(brandEl);
 
-          if (isMusic) {
+          if (isMusic || isWatch || isRead) {
             const hintEl = document.createElement('div');
             hintEl.style.cssText = 'font-size:11px;color:#8d8177;margin-top:7px;letter-spacing:.3px;';
-            hintEl.innerText = isInvite ? '点一下卡片，戴上耳机一起听' : '点一下卡片，现在放这首歌';
+            if (isWatch) hintEl.innerText = isInvite ? '点一下卡片，一起看这片' : '点一下卡片，现在就看';
+            else if (isRead) hintEl.innerText = isInvite ? '点一下卡片，一起读这本' : '点一下卡片，翻开这本';
+            else hintEl.innerText = isInvite ? '点一下卡片，戴上耳机一起听' : '点一下卡片，现在放这首歌';
             shareCard.appendChild(hintEl);
           }
 
@@ -4820,14 +4831,23 @@ ${(() => {
         promptText += '\n\n【系统强制约束 · 表情包】当前用户没有保存任何自定义表情包。严禁输出 [表情包: ...] 或 [STICKER: ...]；只能正常说话或使用 [语音: ...]。';
       }
       const musicCatalog = (typeof window.musicCatalogForAi === 'function') ? window.musicCatalogForAi(8) : '';
+      const watchCatalog = (typeof window.watchCatalogForAi === 'function') ? window.watchCatalogForAi(5) : '';
+      const readerCatalog = (typeof window.readerCatalogForAi === 'function') ? window.readerCatalogForAi(6) : '';
       const inVoiceCall = !!(window.__voiceCallMode && !window.__voiceCallMinimized);
-      if (musicCatalog && !inVoiceCall) {
-        promptText += '\n\n【音乐卡片能力（有就用，别滥用）】\n'
-          + '你手机里的曲库现在有：' + musicCatalog + '。\n'
-          + '只在两种情况下发卡，且每轮最多一张：\n'
-          + '1) 想邀' + userRemark + '一起听 —— 单独一行输出： [MUSIC_INVITE:歌名]\n'
-          + '2) 只把一首歌分享给' + userRemark + ' —— 单独一行输出： [MUSIC_SHARE:歌名]\n'
-          + '规则：歌名必须从上面曲库里照抄；方括号、英文标签、英文冒号都要原样；标记单独成行，前后照常说话。不要解释这个标记，不要写“发送卡片”之类的话，不要每句话都发。';
+      if ((musicCatalog || watchCatalog || readerCatalog) && !inVoiceCall) {
+        const cardLines = ['\n\n【卡片能力（能发卡就用，别滥用；每轮最多一张）】'];
+        cardLines.push('用法：单独一行输出一个轻标记，界面会自动把它渲染成一张卡片。标记前后可以照常说话，但不要解释这个标记，也不要写“（发送卡片）”之类的话；名字必须从下面清单里原文照抄，不准自己编。');
+        if (musicCatalog) {
+          cardLines.push('· 音乐｜邀对方戴上耳机一起听 → [MUSIC_INVITE:歌名]；只想把歌分享给对方 → [MUSIC_SHARE:歌名]。可用曲库：' + musicCatalog + '。');
+        }
+        if (watchCatalog) {
+          cardLines.push('· 观影｜邀对方同看一部 → [WATCH_INVITE:片名]；只想分享片单 → [WATCH_SHARE:片名]。可用片单：' + watchCatalog + '。');
+        }
+        if (readerCatalog) {
+          cardLines.push('· 共读｜邀对方一起读 → [READ_INVITE:书名]；只想分享一本书 → [READ_SHARE:书名]。书架：' + readerCatalog + '。');
+        }
+        cardLines.push('什么时候发：对方说想听歌/想看电影/想看书、想被陪，或你主动想陪对方的时候。日常闲聊不要发卡。');
+        promptText += cardLines.join('\n');
       }
       if (window.__voiceCallMode && !window.__voiceCallMinimized) {
         promptText += '\n\n【语音通话模式（本轮最高优先级）】现在你们正在通电话。只写电话里真正说出口的台词：不要【心声】、不要 ---、不要动作/旁白/镜头/括号描写，不要表情包、图片、引用格式或微信排版。像真人接电话一样自然、口语、短，通常 1 到 4 句；可以停顿、反问、没听清让对方再说一遍。不要复述用户刚说的话，也不要解释自己是 AI。';

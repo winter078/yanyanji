@@ -1823,6 +1823,99 @@
     return { ok: true, bookId: id, chapters: chapters.length };
   };
 
+  // ====== 聊天里的共读卡片（用户发 / 角色发共用） ======
+  window.readerCatalogForAi = function(limit) {
+    const list = (typeof currentBooks !== 'undefined' && currentBooks) || [];
+    return list.slice(0, limit || 6).map(function(b) {
+      return b.title + (b.author ? (' - ' + b.author) : '');
+    }).join('；');
+  };
+
+  function findBookByTitle(want) {
+    if (!want) return null;
+    const w = String(want).replace(/[《》"“”']/g, '').trim();
+    if (!w) return null;
+    const list = (typeof currentBooks !== 'undefined' && currentBooks) || [];
+    for (let i = 0; i < list.length; i++) {
+      const t = String(list[i].title || '').replace(/[《》"“”']/g, '');
+      if (t === w || t.indexOf(w) >= 0 || w.indexOf(t) >= 0) return list[i];
+    }
+    return null;
+  }
+
+  window.readerCardMarkerToShareCard = function(text) {
+    if (!text || text.indexOf('[READ_') < 0) return text;
+    function build(titleRaw, invite) {
+      const book = findBookByTitle(titleRaw);
+      const card = {
+        kind: invite ? 'read_invite' : 'read',
+        bookId: book ? book.id : '',
+        title: book ? book.title : String(titleRaw || '').trim(),
+        desc: (book && book.author ? book.author : '书架上的一本') + (invite ? ' · 邀你一起读' : ' · 分享给你'),
+        cover: (book && book.cover) || '',
+        brand: invite ? '一起读邀请' : '共读分享',
+        brandIcon: '📖'
+      };
+      return '[SHARECARD:' + JSON.stringify(card) + ']';
+    }
+    return String(text)
+      .replace(/\[READ_INVITE\s*[:：]\s*([^\]\n]+)\]/g, function(m, t) { return build(t, true); })
+      .replace(/\[READ_SHARE\s*[:：]\s*([^\]\n]+)\]/g, function(m, t) { return build(t, false); });
+  };
+
+  window.playSharedBook = function(card) {
+    const book = card ? (findBookByTitle(card.title) || (card.bookId ? (currentBooks || []).filter(function(b) { return b.id === card.bookId; })[0] : null)) : null;
+    if (!book) {
+      if (typeof showToast === 'function') showToast('这本书不在书架上');
+      return false;
+    }
+    if (typeof openPage === 'function') openPage('page-reader');
+    try { window.openXianguoReading(book.id); } catch (e) {}
+    return true;
+  };
+
+  window.acceptReadInvite = function(card) {
+    let ownerId = '';
+    try { ownerId = localStorage.getItem('momo_active_char') || ''; } catch (e) {}
+    if (window.switchReaderCompanion) window.switchReaderCompanion(ownerId);
+    return window.playSharedBook(card);
+  };
+
+  function readerChatOwnerName() {
+    return String((window.appData && window.appData.botRemark) || '周绪言').trim().split(/\s+/)[0] || '周绪言';
+  }
+
+  // 用户把正在读的这本发给角色：mode 'share' 只分享 / 'invite' 邀一起读
+  window.sendReaderCardToChar = function(mode) {
+    const book = (typeof currentActiveBook !== 'undefined' && currentActiveBook) || null;
+    if (!book) {
+      if (typeof showToast === 'function') showToast('先打开一本书再发');
+      return;
+    }
+    const hub = window.appData;
+    if (!hub) return;
+    if (!Array.isArray(hub.chatHistory)) hub.chatHistory = [];
+    const invite = mode === 'invite';
+    const card = {
+      kind: invite ? 'read_invite' : 'read',
+      bookId: book.id || '',
+      title: book.title || '这本书',
+      desc: (book.author || '书架上的一本') + (invite ? ' · 邀你一起读' : ' · 分享给你'),
+      cover: book.cover || '',
+      brand: invite ? '一起读邀请' : '共读分享',
+      brandIcon: '📖'
+    };
+    const content = (invite ? '「邀你一起读」' : '') + '[SHARECARD:' + JSON.stringify(card) + ']';
+    const t = (typeof getNowStr === 'function') ? getNowStr() : '刚刚';
+    hub.chatHistory.push({ role: 'user', content: content, time: t });
+    try {
+      if (typeof window.saveChatHistoryNow === 'function') window.saveChatHistoryNow();
+    } catch (e) {}
+    if (typeof showToast === 'function') {
+      showToast(invite ? ('已邀' + readerChatOwnerName() + '一起读') : ('已把这本书发给' + readerChatOwnerName()));
+    }
+  };
+
   window.openXianguoReading = async function(bookId) {
     const book = currentBooks.find(b => b.id === bookId) || defaultBooks[0];
     currentActiveBook = book;

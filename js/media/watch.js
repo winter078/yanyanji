@@ -271,6 +271,103 @@
     `).join('');
   }
 
+  // ====== 聊天里的观影卡片（用户发 / 角色发共用） ======
+  window.watchCatalogForAi = function(limit) {
+    return DEFAULT_RECOMMENDATIONS.slice(0, limit || 5).map(function(r) { return r.title; }).join('；');
+  };
+
+  function findRecByTitle(want) {
+    if (!want) return null;
+    const w = String(want).replace(/[《》"“”']/g, '').trim();
+    if (!w) return null;
+    for (let i = 0; i < DEFAULT_RECOMMENDATIONS.length; i++) {
+      const r = DEFAULT_RECOMMENDATIONS[i];
+      const t = String(r.title).replace(/[《》"“”']/g, '');
+      if (t === w || t.indexOf(w) >= 0 || w.indexOf(t.slice(0, 6)) >= 0) return r;
+    }
+    return null;
+  }
+
+  window.watchCardMarkerToShareCard = function(text) {
+    if (!text || text.indexOf('[WATCH_') < 0) return text;
+    function build(titleRaw, invite) {
+      const rec = findRecByTitle(titleRaw);
+      const card = {
+        kind: invite ? 'watch_invite' : 'watch',
+        recId: rec ? rec.id : '',
+        title: rec ? rec.title : String(titleRaw || '').trim(),
+        desc: invite ? '邀你一起看这片' : '分享给你，一起看',
+        coverLetter: rec ? rec.cover : '🎬',
+        coverColor: rec ? rec.color : 'linear-gradient(135deg,#5a4a42,#2c2320)',
+        brand: invite ? '一起看邀请' : '片单分享',
+        brandIcon: '🎬'
+      };
+      return '[SHARECARD:' + JSON.stringify(card) + ']';
+    }
+    return String(text)
+      .replace(/\[WATCH_INVITE\s*[:：]\s*([^\]\n]+)\]/g, function(m, t) { return build(t, true); })
+      .replace(/\[WATCH_SHARE\s*[:：]\s*([^\]\n]+)\]/g, function(m, t) { return build(t, false); });
+  };
+
+  window.playSharedVideo = function(card) {
+    let rec = card ? findRecByTitle(card.title) : null;
+    if (!rec && card && card.recId) {
+      rec = DEFAULT_RECOMMENDATIONS.filter(function(r) { return r.id === card.recId; })[0] || null;
+    }
+    if (!rec) {
+      if (typeof showToast === 'function') showToast('这片子不在预设片单里');
+      return false;
+    }
+    if (typeof openPage === 'function') openPage('page-watch');
+    window.playPresetVideo(rec.id);
+    return true;
+  };
+
+  window.acceptWatchInvite = function(card) {
+    let ownerId = '';
+    try { ownerId = localStorage.getItem('momo_active_char') || ''; } catch (e) {}
+    if (window.switchWatchCompanion) window.switchWatchCompanion(ownerId);
+    return window.playSharedVideo(card);
+  };
+
+  function watchChatOwnerName() {
+    return String((window.appData && window.appData.botRemark) || '周绪言').trim().split(/\s+/)[0] || '周绪言';
+  }
+
+  // 用户把当前这部发给角色：mode 'share' 只分享 / 'invite' 邀一起看
+  window.sendWatchCardToChar = function(mode) {
+    const v = watchState.currentVideo;
+    if (!v) {
+      if (typeof showToast === 'function') showToast('先选一部片子再发');
+      return;
+    }
+    const hub = window.appData;
+    if (!hub) return;
+    if (!Array.isArray(hub.chatHistory)) hub.chatHistory = [];
+    const invite = mode === 'invite';
+    const rec = findRecByTitle(v.title);
+    const card = {
+      kind: invite ? 'watch_invite' : 'watch',
+      recId: rec ? rec.id : '',
+      title: v.title || '这部片子',
+      desc: invite ? '邀你一起看这片' : '分享给你，一起看',
+      coverLetter: rec ? rec.cover : '🎬',
+      coverColor: rec ? rec.color : 'linear-gradient(135deg,#5a4a42,#2c2320)',
+      brand: invite ? '一起看邀请' : '片单分享',
+      brandIcon: '🎬',
+      bvid: v.bvid || ''
+    };
+    const content = (invite ? '「邀你一起看」' : '') + '[SHARECARD:' + JSON.stringify(card) + ']';
+    const t = (typeof getNowStr === 'function') ? getNowStr() : '刚刚';
+    hub.chatHistory.push({ role: 'user', content: content, time: t });
+    try {
+      if (typeof window.saveChatHistoryNow === 'function') window.saveChatHistoryNow();
+    } catch (e) {}
+    if (typeof showToast === 'function') {
+      showToast(invite ? ('已邀' + watchChatOwnerName() + '一起看') : ('已把这片发给' + watchChatOwnerName()));
+    }
+  };
+
   // 播放预设片单
   window.playPresetVideo = function(recId) {
     const rec = DEFAULT_RECOMMENDATIONS.find(r => r.id === recId);

@@ -18,7 +18,7 @@
   <meta http-equiv="Cache-Control" content="no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <script>window.__BUILD__="20261120-2105";</script>
+  <script>window.__BUILD__="20261120-2115";</script>
   <script>
     (function () {
       var root = document.documentElement;
@@ -178,7 +178,7 @@
   <link rel="stylesheet" href="css/theater.css?v=20261120-1340" />
   <link rel="stylesheet" href="css/xhs.css?v=2026111010" />
 
-  <link rel="stylesheet" href="css/reader.css?v=20261120-2105" />
+  <link rel="stylesheet" href="css/reader.css?v=20261120-2115" />
   <link rel="stylesheet" href="css/ledger.css?v=1789998920125?v=1789998920125">
   <link rel="stylesheet" href="css/avatar-vault.css?v=2026111145">
   <link rel="stylesheet" href="css/chat-appearance.css?v=2026111308">
@@ -4212,6 +4212,8 @@
             <button class="xianguo-back-btn" onclick="openPage('page-home')" title="返回桌面">‹</button>
             <div class="xianguo-title">阅读</div>
             <button class="xianguo-add-btn" id="reader-companion-btn" onclick="openReaderCompanionPicker()" title="陪你读的人" style="overflow:hidden;padding:0;margin-right:8px;">🤍</button>
+            <button class="xianguo-add-btn" id="reader-share-btn" onclick="sendReaderCardToChar('share')" title="把这本书发给他" style="margin-right:8px;">📤</button>
+            <button class="xianguo-add-btn" id="reader-invite-btn" onclick="sendReaderCardToChar('invite')" title="邀他一起读" style="margin-right:8px;">📖</button>
             <button class="xianguo-add-btn" onclick="openXianguoAddSheet()" title="添加书籍">＋</button>
           </header>
 
@@ -4905,6 +4907,8 @@
             </div>
             <div class="watch-header-actions">
               <button class="watch-header-circle-btn" id="watch-companion-btn" onclick="openWatchCompanionModal()" title="换一起看的人" style="overflow:hidden;padding:0;">🤍</button>
+              <button class="watch-header-circle-btn" id="watch-share-btn" onclick="sendWatchCardToChar('share')" title="把这片发给他">📤</button>
+              <button class="watch-header-circle-btn" id="watch-invite-btn" onclick="sendWatchCardToChar('invite')" title="邀他一起看">🎬</button>
               <button class="watch-header-circle-btn" onclick="openWatchJournalModal()" title="观影手账">✎</button>
               <button class="watch-header-circle-btn accent" onclick="openWatchImportModal()" title="导入视频">+</button>
             </div>
@@ -6218,8 +6222,8 @@
 <script src="js/media/music-ui.js?v=2026111916"></script>
 <script src="js/qrcode.js?v=2026112010"></script>
 <script src="js/media/netease-login.js?v=2026112011"></script>
-  <script src="js/media/companion.js?v=20261120-2105"></script>
-  <script src="js/media/watch.js?v=20261120-2105"></script>
+  <script src="js/media/companion.js?v=20261120-2115"></script>
+  <script src="js/media/watch.js?v=20261120-2115"></script>
   <script src="js/theater/theater.js?v=20261120-1352"></script>
   <script src="js/theater/palace.js?v=2026111121"></script>
   <script src="js/theater/memory-engine.js?v=2026111122"></script>
@@ -6386,7 +6390,7 @@
     </div>
   </div>
 
-  <script src="js/media/reader.js?v=20261120-2105"></script>
+  <script src="js/media/reader.js?v=20261120-2115"></script>
 
         <!-- 记忆宫殿辅助弹窗合集 (纯正暗黑系 OLED) -->
     <!-- 1. 自定义范围总结弹窗 -->
@@ -7302,7 +7306,7 @@ html.ios .watch-header {
 }
 </style>
 
-<script src="js/version-watch.js?v=20261120-2105"></script>
+<script src="js/version-watch.js?v=20261120-2115"></script>
 </body>
 </html>
 <!-- live_preview_refresh_trigger:1790094973085 -->
