@@ -18,7 +18,7 @@
   <meta http-equiv="Cache-Control" content="no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <script>window.__BUILD__="20261120-1100";</script>
+  <script>window.__BUILD__="20261120-1205";</script>
   <script>
     (function () {
       var root = document.documentElement;
@@ -4130,10 +4130,10 @@
                 <span style="font-size: 11.5px; color: var(--color-text-secondary);">后台连线</span>
                 <span id="bg-link-status" style="font-size: 11px; color: var(--color-text-secondary);">检查中…</span>
                 <label class="ios-switch" style="margin-left: auto;">
-                  <input type="checkbox" id="bg-link-toggle" checked onchange="toggleBackgroundLink(this.checked)" />
+                  <input type="checkbox" id="bg-link-toggle" onchange="toggleBackgroundLink(this.checked)" />
                 </label>
               </div>
-              <div style="font-size: 10px; color: var(--color-text-secondary); line-height: 1.45; margin-top: 5px;">开着的时候控制中心会显示「言言机 · 后台连线中」，系统也不容易把小手机冻住。</div>
+              <div style="font-size: 10px; color: var(--color-text-secondary); line-height: 1.45; margin-top: 5px;">默认关闭。开着的时候控制中心会显示「言言机 · 后台连线中」，系统不容易把小手机冻住；代价是这段静音也在占音频通道，你切去看抖音/小红书的视频会被系统暂停。要挂机等角色说话再打开。</div>
               <div style="display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap;">
                 <button type="button" onclick="tryLocalNotification()" style="padding: 6px 10px; border-radius: 9px; border: 1px solid var(--color-border); background: var(--bg-elevated); color: var(--color-text-secondary); font-size: 11px; cursor: pointer;">本地弹一条试试</button>
                 <span style="font-size: 10px; color: var(--color-text-muted); font-family: ui-monospace, Consolas, monospace;">构建 v2026111720</span>
@@ -4143,8 +4143,8 @@
                   var t = document.getElementById('bg-link-toggle');
                   if (!t) return;
                   try {
-                    t.checked = localStorage.getItem('momo_bg_link') !== '0';
-                  } catch (e) { t.checked = true; }
+                    t.checked = localStorage.getItem('momo_bg_link') === '1';
+                  } catch (e) { t.checked = false; }
                 })();
               </script>
               <div style="font-size: 10px; color: var(--color-text-secondary); line-height: 1.45; margin-top: 8px;">iOS 上只在「主屏幕图标」里打开时才收得到；在 Safari 标签页里浏览时不会弹。每天提醒是服务端按点发的，手机不用开着。</div>
@@ -6175,7 +6175,7 @@
 <script src="js/wechat/image-presets.js?v=2026111649"></script>
  <script src="js/prompt-presets.js?v=2026111409"></script>
   <script src="js/notify.js?v=2026111688"></script>
-  <script src="js/keepalive.js?v=2026111688"></script>
+  <script src="js/keepalive.js?v=20261120-1205"></script>
   <script src="js/desktop/desktop.js?v=2026111343"></script>
   <script src="js/desktop/days.js?v=1789904839051"></script>
 <script src="js/desktop/yanyan-cat.js?v=1789925866085"></script>
@@ -7278,7 +7278,7 @@ html.ios .watch-header {
 }
 </style>
 
-<script src="js/version-watch.js?v=20261120-1100"></script>
+<script src="js/version-watch.js?v=20261120-1205"></script>
 </body>
 </html>
 <!-- live_preview_refresh_trigger:1790094973085 -->
