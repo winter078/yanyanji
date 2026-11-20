@@ -1540,3 +1540,307 @@ body[data-theme="dark"] .xhs-profile-cover-edit {
   .xhs-card { margin-bottom: 10px; }
   .xhs-card-title { font-size: 12px; }
 }
+
+/* ================= 小紫书 · 配乐与分类（20261121-0900） ================= */
+
+/* ---- 首页分类药丸条 ---- */
+.xhs-cats {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 2px 14px 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+.xhs-cats::-webkit-scrollbar { display: none; }
+
+.xhs-chip {
+  flex: 0 0 auto;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: 0.2px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: transparent;
+  color: var(--xhs-sub);
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+}
+.xhs-chip.on {
+  background: var(--xhs-accent-soft);
+  border-color: rgba(196, 199, 232, 0.34);
+  color: var(--xhs-accent);
+  font-weight: 600;
+}
+.xhs-chip.xhs-chip-add {
+  border-style: dashed;
+  border-color: rgba(255, 255, 255, 0.22);
+  color: var(--xhs-muted);
+  padding: 7px 11px;
+  font-size: 12.5px;
+}
+.xhs-chip.xhs-chip-song { padding: 7px 13px; }
+.xhs-chip.xhs-chip-song b { font-weight: 500; margin-right: 5px; font-size: 12.5px; }
+.xhs-chip.xhs-chip-mini { padding: 5px 9px; font-size: 11px; }
+
+/* ---- 卡片右下角的音符角标（只有带配乐的笔记才有） ---- */
+.xhs-bgm-tag {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  z-index: 2;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.46);
+  border: 0.5px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+  font-size: 10.5px;
+  line-height: 1;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+}
+
+/* ---- 歌曲小封面（三个地方共用：详情播放条 / 选歌列表 / 发布草稿） ---- */
+.xhs-bgm-cover,
+.xhs-song-cov,
+.xhs-draft-songcov {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: linear-gradient(135deg, #d6d8f2, #9a9ec9);
+}
+.xhs-bgm-cover b,
+.xhs-song-cov b,
+.xhs-draft-songcov b {
+  position: relative;
+  z-index: 0;
+  color: #43416a;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
+}
+.xhs-bgm-cover img,
+.xhs-song-cov img,
+.xhs-draft-songcov img {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.xhs-bgm-cover { width: 38px; height: 38px; border-radius: 10px; }
+.xhs-song-cov { width: 34px; height: 34px; border-radius: 9px; background: linear-gradient(135deg, #cfe3d4, #8fb59a); }
+.xhs-song-cov b { color: #2f4038; }
+.xhs-draft-songcov { width: 34px; height: 34px; border-radius: 9px; }
+
+/* ---- 详情页：图片下方的配乐条 ---- */
+.xhs-bgm {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 11px 16px 0;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: var(--xhs-fill);
+}
+.xhs-bgm-meta { flex: 1; min-width: 0; }
+.xhs-bgm-meta i {
+  display: block;
+  font-style: normal;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.xhs-bgm-meta s {
+  display: block;
+  text-decoration: none;
+  font-size: 10.5px;
+  color: var(--xhs-muted);
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.xhs-bgm-play {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(196, 199, 232, 0.5);
+  background: rgba(196, 199, 232, 0.14);
+  color: var(--xhs-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.xhs-bgm-play svg { width: 13px; height: 13px; }
+.xhs-bgm-play .tri { fill: currentColor; stroke: none; }
+.xhs-bgm-play .bar { display: none; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
+.xhs-bgm-play.playing .tri { display: none; }
+.xhs-bgm-play.playing .bar { display: block; }
+
+/* ---- 详情页右上角的 ⋯ ---- */
+.xhs-dots-btn {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  margin-left: auto;
+  margin-right: -3px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--xhs-fill);
+  color: var(--xhs-sub);
+  font-size: 15px;
+  line-height: 1;
+  letter-spacing: 1.5px;
+  padding-bottom: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+/* ---- 笔记抽屉：归分类 + 删除 ---- */
+.xhs-drawer-label { padding: 6px 10px 8px; font-size: 11px; color: var(--xhs-muted); letter-spacing: 0.4px; }
+.xhs-drawer-chips { display: flex; flex-wrap: wrap; gap: 7px; padding: 0 10px; }
+.xhs-drawer-hint { padding: 9px 10px 0; font-size: 10.5px; line-height: 1.5; color: var(--xhs-muted); }
+.xhs-drawer-danger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 12px 2px 8px;
+  padding: 13px 10px 1px;
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
+  cursor: pointer;
+}
+.xhs-drawer-danger span { font-size: 13.5px; color: #ff6b7f; }
+.xhs-drawer-danger em { font-style: normal; font-size: 11px; color: var(--xhs-muted); }
+
+/* ---- 选中歌曲后的草稿条 ---- */
+.xhs-draft-bgm { display: flex; }
+.xhs-draft-song {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 10px 6px 6px;
+  border-radius: 12px;
+  background: var(--xhs-fill);
+  max-width: 100%;
+}
+.xhs-draft-songmeta { min-width: 0; max-width: 148px; }
+.xhs-draft-songmeta i {
+  display: block;
+  font-style: normal;
+  font-size: 12.5px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.xhs-draft-songmeta s {
+  display: block;
+  text-decoration: none;
+  font-size: 10px;
+  color: var(--xhs-muted);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---- 发布弹层的两行 ---- */
+.xhs-composer-field { margin-top: 13px; }
+.xhs-composer-label { font-size: 11px; color: var(--xhs-muted); margin-bottom: 8px; letter-spacing: 0.3px; }
+.xhs-meta-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+
+/* ---- 选歌面板 ---- */
+.xhs-song-search { display: flex; gap: 8px; padding: 6px 10px 0; }
+.xhs-song-search input {
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--xhs-fill);
+  color: var(--xhs-text);
+  font: inherit;
+  font-size: 13px;
+  padding: 0 12px;
+  outline: none;
+}
+.xhs-song-search button {
+  flex: 0 0 auto;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 11px;
+  border: 0;
+  background: var(--xhs-accent-soft);
+  color: var(--xhs-accent);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.xhs-song-list { max-height: 38vh; overflow-y: auto; padding: 6px 10px 0; }
+.xhs-song-list::-webkit-scrollbar { width: 0; }
+.xhs-song-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; cursor: pointer; }
+.xhs-song-info { flex: 1; min-width: 0; }
+.xhs-song-info i {
+  display: block;
+  font-style: normal;
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.xhs-song-info s {
+  display: block;
+  text-decoration: none;
+  font-size: 10.5px;
+  color: var(--xhs-muted);
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.xhs-song-tip { padding: 16px 0; font-size: 11.5px; color: var(--xhs-muted); text-align: center; }
+
+/* ---- 新建分类 ---- */
+.xhs-cat-input {
+  display: block;
+  width: calc(100% - 20px);
+  height: 40px;
+  margin: 4px 10px 0;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--xhs-fill);
+  color: var(--xhs-text);
+  font: inherit;
+  font-size: 13.5px;
+  padding: 0 12px;
+  outline: none;
+}
+.xhs-cat-actions { display: flex; gap: 8px; padding: 10px 10px 2px; }
+.xhs-cat-actions .xhs-sheet-btn { margin-top: 0; }
+.xhs-sheet-btn.primary { background: var(--xhs-accent); color: #232136; }

@@ -7,11 +7,19 @@
   'use strict';
 
   var XHS_KEY = 'momo_xhs_v1';
+  var CAT_KEY = 'momo_xhs_cats_v1';
   var MAX_IMAGES = 4;
   var activeTab = 'discover';
   var profileTab = 'notes';
   var currentNoteId = null;
-  var draft = { images: [], title: '', content: '', tags: '' };
+  var draft = { images: [], title: '', content: '', tags: '', bgm: null, category: '' };
+  var xhsCats = [];
+  var xhsActiveCat = '';
+  var xhsSongPick = null;
+  var xhsSongResults = [];
+  var xhsSongKw = '';
+  var xhsAudio = null;
+  var xhsAudioNoteId = '';
   var toastTimer = null;
   var state = null;
   var xhsRoleOpen = false;
@@ -242,6 +250,8 @@
       if (typeof n.collects !== 'number') n.collects = 0;
       if (typeof n.ratio !== 'number' || !n.ratio) n.ratio = 0.75;
       if (typeof n.imageRatio !== 'number' || !n.imageRatio) n.imageRatio = SEED_IMAGE_RATIOS[n.id] || n.ratio;
+      if (typeof n.category !== 'string') n.category = '';
+      if (!n.bgm || typeof n.bgm !== 'object' || !n.bgm.title) n.bgm = null;
       if (!n.createdAt) n.createdAt = Date.now();
       return n;
     });
@@ -261,6 +271,220 @@
     var ok = saveStateObject(state);
     if (!ok) showXhsToast('本地存储空间不够了，换一张小一点的图再试');
     return ok;
+  }
+
+  // ================= 分类（只属于这台手机，别人看不到） =================
+  function loadCats() {
+    try {
+      var raw = localStorage.getItem(CAT_KEY);
+      var arr = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(arr)) return [];
+      return arr.filter(function (c) {
+        return c && typeof c.id === 'string' && typeof c.name === 'string' && c.name;
+      });
+    } catch (e) { return []; }
+  }
+
+  function saveCats() {
+    try {
+      localStorage.setItem(CAT_KEY, JSON.stringify(xhsCats));
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function catById(id) {
+    for (var i = 0; i < xhsCats.length; i++) {
+      if (xhsCats[i].id === id) return xhsCats[i];
+    }
+    return null;
+  }
+
+  function catName(id) {
+    var c = catById(id);
+    return c ? c.name : '';
+  }
+
+  // ================= 配乐：封面三级回退 =================
+  // 1 用户自己给这首歌传过的封面（音乐 App 里换的那张，存在 mz_cover_<songId>）
+  // 2 歌曲自带的专辑封面
+  // 3 都没有 → 返回空，调用处画一个音符块兜底
+  function xhsSongCover(bgm) {
+    if (!bgm) return '';
+    try {
+      if (typeof window.mzSongCover === 'function') {
+        var c = window.mzSongCover(bgm);
+        if (c) return c;
+      }
+    } catch (e) {}
+    return bgm.cover ? String(bgm.cover).replace(/^http:/, 'https:') : '';
+  }
+
+  function xhsCoverHtml(bgm, cls) {
+    var cov = xhsSongCover(bgm);
+    return '<div class="' + (cls || 'xhs-song-cov') + '">' +
+      (cov ? '<img src="' + esc(cov) + '" alt="" loading="lazy" onerror="this.remove()">' : '') +
+      '<b>♪</b>' +
+    '</div>';
+  }
+
+  // ================= 配乐：播放（自己的 audio，谁最后点谁响） =================
+  function xhsAudioEl() {
+    if (!xhsAudio) {
+      xhsAudio = new Audio();
+      xhsAudio.preload = 'none';
+      xhsAudio.addEventListener('playing', function () {
+        var btn = $('xhs-bgm-play');
+        if (btn) btn.classList.add('playing');
+      });
+      xhsAudio.addEventListener('pause', function () {
+        var btn = $('xhs-bgm-play');
+        if (btn) btn.classList.remove('playing');
+      });
+      xhsAudio.addEventListener('ended', function () {
+        var btn = $('xhs-bgm-play');
+        if (btn) btn.classList.remove('playing');
+      });
+    }
+    return xhsAudio;
+  }
+
+  function stopXhsAudio() {
+    if (xhsAudio && !xhsAudio.paused) xhsAudio.pause();
+  }
+
+  // 网易云直链会过期：只存歌的元信息，每次播之前现取
+  function resolveXhsBgmUrl(bgm) {
+    return new Promise(function (resolve) {
+      if (!bgm) { resolve(''); return; }
+      if (bgm.url && /^https?:/i.test(bgm.url)) { resolve(bgm.url); return; }
+      if (!bgm.neId) { resolve(''); return; }
+      var nc = (typeof window.__mzNeteaseCookie === 'function' && window.__mzNeteaseCookie()) || '';
+      fetch('/api/music/url?id=' + encodeURIComponent(bgm.neId), {
+        cache: 'no-store',
+        headers: nc ? { 'x-netease-cookie': nc } : {}
+      }).then(function (resp) {
+        return resp.json().catch(function () { return {}; });
+      }).then(function (data) {
+        if (data && data.url) {
+          bgm.url = data.url;
+          resolve(data.url);
+        } else {
+          resolve('');
+        }
+      }).catch(function () { resolve(''); });
+    });
+  }
+
+  function toggleXhsBgm() {
+    var note = getNote(currentNoteId);
+    if (!note || !note.bgm) return;
+    var el = xhsAudioEl();
+    if (xhsAudioNoteId === note.id && !el.paused) {
+      el.pause();
+      return;
+    }
+    // 抢播放权：音乐 App 在放就先把它停住
+    if (window._momoAudio && !window._momoAudio.paused) {
+      try { window._momoAudio.pause(); } catch (e) {}
+    }
+    if (xhsAudioNoteId === note.id && el.src) {
+      el.play().catch(function () {});
+      return;
+    }
+    resolveXhsBgmUrl(note.bgm).then(function (url) {
+      if (!url) {
+        showXhsToast('这首歌现在取不到音频，可能是版权或需要登录网易云');
+        return;
+      }
+      xhsAudio.src = url;
+      xhsAudioNoteId = note.id;
+      xhsAudio.play().catch(function () {
+        showXhsToast('这台手机不让自动播放，点一下播放键再试');
+      });
+    });
+  }
+
+  // ================= 配乐：选歌 =================
+  function openXhsSongPicker() {
+    openXhsSheet(
+      '<div class="xhs-sheet xhs-song-sheet">' +
+        '<div class="xhs-drawer-label">配一首歌</div>' +
+        '<div class="xhs-song-search">' +
+          '<input id="xhs-song-kw" placeholder="搜歌名或歌手，比如 晴天" value="' + esc(xhsSongKw) + '" onkeydown="if(event.key===\'Enter\'){searchXhsSongs(this.value)}">' +
+          '<button onclick="searchXhsSongs(document.getElementById(\'xhs-song-kw\').value)">找</button>' +
+        '</div>' +
+        '<div class="xhs-song-list" id="xhs-song-list"></div>' +
+        (draft.bgm ? '<button class="xhs-sheet-btn plain" onclick="clearXhsDraftBgm()">不要这首歌</button>' : '') +
+        '<button class="xhs-sheet-btn plain" onclick="closeXhsNoteMenu()">收起</button>' +
+      '</div>'
+    );
+    xhsSongResults = [];
+    renderXhsSongList();
+    var inp = $('xhs-song-kw');
+    if (inp) setTimeout(function () { try { inp.focus(); } catch (e) {} }, 150);
+  }
+
+  function searchXhsSongs(kw) {
+    kw = String(kw || '').trim();
+    if (!kw) { showXhsToast('输入歌名或歌手'); return; }
+    xhsSongKw = kw;
+    var box = $('xhs-song-list');
+    if (box) box.innerHTML = '<div class="xhs-song-tip">正在网易云里找《' + esc(kw) + '》…</div>';
+    fetch('/api/music/search?kw=' + encodeURIComponent(kw), { cache: 'no-store' })
+      .then(function (r) { return r.json().catch(function () { return {}; }); })
+      .then(function (data) {
+        var list = (data && data.songs) || [];
+        xhsSongResults = list.map(function (it) {
+          return {
+            id: 'ne-' + it.id,
+            neId: String(it.id),
+            source: 'netease',
+            title: it.name || '未命名',
+            artist: it.artist || '网易云音乐',
+            cover: it.cover || '',
+            url: ''
+          };
+        });
+        renderXhsSongList();
+      })
+      .catch(function () {
+        var b = $('xhs-song-list');
+        if (b) b.innerHTML = '<div class="xhs-song-tip">没连上，稍后再试</div>';
+      });
+  }
+
+  function renderXhsSongList() {
+    var box = $('xhs-song-list');
+    if (!box) return;
+    if (!xhsSongResults.length) {
+      box.innerHTML = '<div class="xhs-song-tip">' + (xhsSongKw ? '没搜到，换个关键词试试' : '搜一首，选中就配到这篇笔记上') + '</div>';
+      return;
+    }
+    box.innerHTML = xhsSongResults.map(function (s, i) {
+      return '<div class="xhs-song-row" onclick="pickXhsSong(' + i + ')">' +
+        xhsCoverHtml(s) +
+        '<div class="xhs-song-info"><i>' + esc(s.title) + '</i><s>' + esc(s.artist) + '</s></div>' +
+      '</div>';
+    }).join('');
+  }
+
+  function pickXhsSong(index) {
+    var s = xhsSongResults[index];
+    if (!s) return;
+    draft.bgm = { id: s.id, neId: s.neId, source: s.source, title: s.title, artist: s.artist, cover: s.cover, url: '' };
+    closeXhsNoteMenu();
+    var box = $('xhs-draft-bgm');
+    if (box) box.innerHTML = draftBgmHtml();
+    else renderComposer();
+    showXhsToast('配好了，发布后点音符就能听');
+  }
+
+  function clearXhsDraftBgm() {
+    draft.bgm = null;
+    closeXhsNoteMenu();
+    var box = $('xhs-draft-bgm');
+    if (box) box.innerHTML = draftBgmHtml();
+    else renderComposer();
   }
 
   function $(id) { return document.getElementById(id); }
@@ -318,13 +542,18 @@
   }
 
   function visibleNotes() {
+    var list;
     if (activeTab === 'follow') {
-      return state.notes.filter(function (n) { return n.author && n.author.isMe ? true : isFollowed(n.author ? n.author.name : ''); });
+      list = state.notes.filter(function (n) { return n.author && n.author.isMe ? true : isFollowed(n.author ? n.author.name : ''); });
+    } else if (activeTab === 'nearby') {
+      list = state.notes.filter(function (n) { return !!n.nearby; });
+    } else {
+      list = state.notes;
     }
-    if (activeTab === 'nearby') {
-      return state.notes.filter(function (n) { return !!n.nearby; });
+    if (xhsActiveCat) {
+      list = list.filter(function (n) { return n.category === xhsActiveCat; });
     }
-    return state.notes;
+    return list;
   }
 
   function coverHtml(note, extraClass) {
@@ -332,7 +561,78 @@
     var ratio = Number(note.ratio) || 0.75;
     return '<div class="xhs-cover ' + (extraClass || '') + '" style="aspect-ratio:' + ratio + '">' +
       (src ? '<img src="' + esc(src) + '" alt="" loading="lazy" onerror="this.style.opacity=0">' : '') +
+      (note.bgm ? '<span class="xhs-bgm-tag">♪</span>' : '') +
       '</div>';
+  }
+
+  // ================= 首页分类条 =================
+  function renderCats() {
+    var bar = $('xhs-cats');
+    if (!bar) return;
+    if (!xhsCats.length) {
+      bar.innerHTML = '<button class="xhs-chip on" onclick="setXhsCat(\'\')">全部</button>' +
+        '<button class="xhs-chip xhs-chip-add" onclick="openXhsNewCat()">+</button>';
+      return;
+    }
+    bar.innerHTML = '<button class="xhs-chip' + (xhsActiveCat ? '' : ' on') + '" onclick="setXhsCat(\'\')">全部</button>' +
+      xhsCats.map(function (c) {
+        return '<button class="xhs-chip' + (xhsActiveCat === c.id ? ' on' : '') + '" onclick="setXhsCat(\'' + esc(c.id) + '\')">' + esc(c.name) + '</button>';
+      }).join('') +
+      '<button class="xhs-chip xhs-chip-add" onclick="openXhsNewCat()">+</button>';
+  }
+
+  function setXhsCat(id) {
+    xhsActiveCat = (id && id === xhsActiveCat) ? '' : (id || '');
+    renderCats();
+    renderFeed();
+    var feed = $('xhs-feed');
+    if (feed) feed.scrollTop = 0;
+  }
+
+  // 新建分类：mode 0 = 首页分类条，1 = 笔记抽屉，2 = 发布弹层
+  function openXhsNewCat(mode) {
+    mode = mode || 0;
+    openXhsSheet(
+      '<div class="xhs-sheet xhs-cat-sheet">' +
+        '<div class="xhs-sheet-title">新建一个分类</div>' +
+        '<div class="xhs-drawer-hint">短一点更好看，两到四个字。分类只有你自己看得到。</div>' +
+        '<input class="xhs-cat-input" id="xhs-cat-input" maxlength="12" placeholder="比如：咖啡、读书、散步" onkeydown="if(event.key===\'Enter\'){createXhsCat(' + mode + ')}">' +
+        '<div class="xhs-cat-actions">' +
+          '<button class="xhs-sheet-btn plain" onclick="' + (mode === 1 ? 'openXhsNoteMenu()' : 'closeXhsNoteMenu()') + '">算了</button>' +
+          '<button class="xhs-sheet-btn primary" onclick="createXhsCat(' + mode + ')">建好</button>' +
+        '</div>' +
+      '</div>'
+    );
+    var inp = $('xhs-cat-input');
+    if (inp) setTimeout(function () { try { inp.focus(); } catch (e) {} }, 150);
+  }
+
+  function createXhsCat(mode) {
+    mode = mode || 0;
+    var inp = $('xhs-cat-input');
+    var name = inp ? String(inp.value || '').trim() : '';
+    if (!name) { showXhsToast('给它起个名字'); return; }
+    for (var i = 0; i < xhsCats.length; i++) {
+      if (xhsCats[i].name === name) {
+        showXhsToast('已经有一个叫「' + name + '」的分类了');
+        return;
+      }
+    }
+    var cat = { id: 'cat-' + Date.now() + '-' + Math.floor(Math.random() * 100), name: name, createdAt: Date.now() };
+    xhsCats.push(cat);
+    saveCats();
+    closeXhsNoteMenu();
+    if (mode === 1) {
+      setXhsNoteCategory(cat.id);
+    } else if (mode === 2) {
+      setXhsDraftCat(cat.id);
+      showXhsToast('分类「' + name + '」建好了');
+    } else {
+      xhsActiveCat = cat.id;
+      renderCats();
+      renderFeed();
+      showXhsToast('分类「' + name + '」建好了');
+    }
   }
 
   function noteCardHtml(note) {
@@ -350,9 +650,15 @@
   function renderFeed() {
     var feed = $('xhs-feed');
     if (!feed) return;
+    renderCats();
     var list = visibleNotes();
     if (!list.length) {
-      feed.innerHTML = '<div class="xhs-empty">' + (activeTab === 'follow' ? '关注的人还没有发笔记。' : '这一带暂时没有新笔记。') + '</div>';
+      var emptyMsg;
+      if (xhsActiveCat) emptyMsg = '「' + esc(catName(xhsActiveCat) || '这个分类') + '」里还没有笔记。';
+      else if (activeTab === 'follow') emptyMsg = '关注的人还没有发笔记。';
+      else if (activeTab === 'nearby') emptyMsg = '这一带暂时没有新笔记。';
+      else emptyMsg = '这一带暂时没有新笔记。';
+      feed.innerHTML = '<div class="xhs-empty">' + emptyMsg + '</div>';
       return;
     }
     feed.innerHTML = list.map(noteCardHtml).join('');
@@ -628,6 +934,7 @@
   function closeXhsNote() {
     closeXhsCommentDrawer();
     closeXhsNoteMenu();
+    stopXhsAudio();
     currentNoteId = null;
     var view = $('xhs-note-view');
     if (view) view.style.display = 'none';
@@ -652,6 +959,22 @@
           return '<span class="xhs-dot ' + (i === 0 ? 'active' : '') + '" data-index="' + i + '" onclick="scrollXhsGallery(' + i + ')"></span>';
         }).join('') + '</div>'
       : '');
+  }
+
+  // 详情页的配乐条：只在详情里出现，默认静音，点一下才响
+  function bgmHtml(note) {
+    if (!note.bgm) return '';
+    var playing = (xhsAudioNoteId === note.id && xhsAudio && !xhsAudio.paused);
+    return '<div class="xhs-bgm">' +
+      xhsCoverHtml(note.bgm, 'xhs-bgm-cover') +
+      '<div class="xhs-bgm-meta">' +
+        '<i>' + esc(note.bgm.title) + '</i>' +
+        '<s>' + esc(note.bgm.artist || '网易云音乐') + '</s>' +
+      '</div>' +
+      '<button class="xhs-bgm-play' + (playing ? ' playing' : '') + '" id="xhs-bgm-play" onclick="toggleXhsBgm()" aria-label="播放配乐">' +
+        '<svg viewBox="0 0 24 24"><path class="tri" d="M8.6 5.4l9.4 6.6-9.4 6.6z"/><path class="bar" d="M9.4 6.6v10.8M14.6 6.6v10.8"/></svg>' +
+      '</button>' +
+    '</div>';
   }
 
   function commentsHtml(note) {
@@ -696,10 +1019,13 @@
           '<div><div class="xhs-detail-author-name">' + esc(note.author.name) + '</div>' +
           '<div class="xhs-profile-handle" style="margin-top:1px;font-size:9.5px;">' + esc(note.author.handle || '') + '</div></div>' +
         '</div>' +
-        (note.author.isMe ? '' : '<button class="xhs-follow-btn ' + (followed ? 'following' : '') + '" id="xhs-follow-btn" onclick="toggleXhsFollow(\'' + esc(note.author.name) + '\')">' + (followed ? '已关注' : '关注') + '</button>') +
+        (note.author.isMe
+          ? '<button class="xhs-dots-btn" onclick="openXhsNoteMenu()" aria-label="笔记设置">⋯</button>'
+          : '<button class="xhs-follow-btn ' + (followed ? 'following' : '') + '" id="xhs-follow-btn" onclick="toggleXhsFollow(\'' + esc(note.author.name) + '\')">' + (followed ? '已关注' : '关注') + '</button>') +
       '</div>' +
       '<div class="xhs-detail-scroll" id="xhs-detail-scroll">' +
         galleryHtml(note) +
+        bgmHtml(note) +
         '<div class="xhs-detail-body">' +
           '<div class="xhs-detail-title">' + esc(note.title) + '</div>' +
           '<div class="xhs-detail-text">' + esc(note.content) + '</div>' +
@@ -728,8 +1054,6 @@
           '<span id="xhs-comment-count">' + (note.comments || []).length + '</span>' +
         '</button>' +
         '<div class="xhs-action-spacer"></div>' +
-        (note.author.isMe ? '<button class="xhs-action-btn xhs-delete-link" onclick="openXhsNoteMenu()">删除</button>' : '') +
-        '<button class="xhs-action-btn" onclick="closeXhsNote()">收起</button>' +
       '</div>';
   }
 
@@ -893,7 +1217,7 @@
   }
 
   function openXhsComposer() {
-    draft = { images: [], title: '', content: '', tags: '' };
+    draft = { images: [], title: '', content: '', tags: '', bgm: null, category: '' };
     var panel = $('xhs-composer');
     if (panel) panel.style.display = 'flex';
     renderComposer();
@@ -902,7 +1226,7 @@
   function closeXhsComposer() {
     var panel = $('xhs-composer');
     if (panel) panel.style.display = 'none';
-    draft = { images: [], title: '', content: '', tags: '' };
+    draft = { images: [], title: '', content: '', tags: '', bgm: null, category: '' };
   }
 
   function renderComposer() {
@@ -922,6 +1246,14 @@
           '<textarea class="xhs-content-input" id="xhs-content-input" maxlength="1000" placeholder="分享这一刻的想法..." oninput="updateXhsDraft(\'content\', this.value)">' + esc(draft.content) + '</textarea>' +
         '</div>' +
         '<input class="xhs-tags-input" id="xhs-tags-input" maxlength="80" placeholder="#话题 #日常（可留空）" value="' + esc(draft.tags) + '" oninput="updateXhsDraft(\'tags\', this.value)">' +
+        '<div class="xhs-composer-field">' +
+          '<div class="xhs-composer-label">配乐</div>' +
+          '<div class="xhs-draft-bgm" id="xhs-draft-bgm">' + draftBgmHtml() + '</div>' +
+        '</div>' +
+        '<div class="xhs-composer-field">' +
+          '<div class="xhs-composer-label">分类</div>' +
+          '<div class="xhs-meta-chips" id="xhs-draft-cat">' + draftCatChips() + '</div>' +
+        '</div>' +
       '</div>';
     renderDraftImages();
   }
@@ -941,6 +1273,34 @@
 
   function updateXhsDraft(field, value) {
     draft[field] = value;
+  }
+
+  // 发布弹层里的「配乐」行
+  function draftBgmHtml() {
+    if (!draft.bgm) {
+      return '<button class="xhs-chip xhs-chip-song" onclick="openXhsSongPicker()"><b>♪</b>配一首歌</button>';
+    }
+    return '<div class="xhs-draft-song">' + xhsCoverHtml(draft.bgm, 'xhs-draft-songcov') +
+      '<div class="xhs-draft-songmeta"><i>' + esc(draft.bgm.title) + '</i><s>' + esc(draft.bgm.artist || '网易云音乐') + '</s></div>' +
+      '<button class="xhs-chip xhs-chip-mini" onclick="openXhsSongPicker()">换一首</button>' +
+      '<button class="xhs-chip xhs-chip-mini" onclick="clearXhsDraftBgm()">不要</button>' +
+    '</div>';
+  }
+
+  // 发布弹层里的「分类」行
+  function draftCatChips() {
+    var chips = '<button class="xhs-chip' + (draft.category ? '' : ' on') + '" onclick="setXhsDraftCat(\'\')">不分类</button>';
+    chips += xhsCats.map(function (c) {
+      return '<button class="xhs-chip' + (draft.category === c.id ? ' on' : '') + '" onclick="setXhsDraftCat(\'' + esc(c.id) + '\')">' + esc(c.name) + '</button>';
+    }).join('');
+    chips += '<button class="xhs-chip xhs-chip-add" onclick="openXhsNewCat(2)">+</button>';
+    return chips;
+  }
+
+  function setXhsDraftCat(id) {
+    draft.category = id || '';
+    var box = $('xhs-draft-cat');
+    if (box) box.innerHTML = draftCatChips();
   }
 
   function removeXhsDraftImage(index) {
@@ -1031,6 +1391,16 @@
       collects: 0,
       createdAt: Date.now(),
       nearby: false,
+      // 配乐只存元信息，直链会过期，播的时候现取
+      bgm: draft.bgm ? {
+        id: draft.bgm.id,
+        neId: draft.bgm.neId,
+        source: draft.bgm.source,
+        title: draft.bgm.title,
+        artist: draft.bgm.artist,
+        cover: draft.bgm.cover
+      } : null,
+      category: draft.category || '',
       comments: []
     };
     state.notes.unshift(note);
@@ -1302,7 +1672,7 @@
     showXhsToast('网友点赞和评论已生成');
   }
 
-  function ensureXhsNoteMenu() {
+  function ensureXhsSheet() {
     var page = $('page-xhs');
     if (!page) return null;
     var mask = $('xhs-note-menu');
@@ -1318,18 +1688,51 @@
     return mask;
   }
 
+  function openXhsSheet(contentHtml) {
+    var mask = ensureXhsSheet();
+    if (!mask) return;
+    mask.innerHTML = contentHtml;
+    mask.style.display = 'flex';
+  }
+
+  // 笔记右上角 ⋯ 打开的抽屉：归分类 + 删除
   function openXhsNoteMenu() {
     var note = getNote(currentNoteId);
     if (!note || !note.author || !note.author.isMe) return;
-    var mask = ensureXhsNoteMenu();
-    if (!mask) return;
-    mask.innerHTML =
-      '<div class="xhs-sheet">' +
-        '<div class="xhs-sheet-title">删除后，这条笔记和它下面的评论会从这台手机上消失，不能恢复。</div>' +
-        '<button class="xhs-sheet-btn danger" onclick="deleteXhsNote()">删除笔记</button>' +
+    var chips = '<button class="xhs-chip' + (note.category ? '' : ' on') + '" onclick="setXhsNoteCategory(\'\')">不分类</button>';
+    chips += xhsCats.map(function (c) {
+      return '<button class="xhs-chip' + (note.category === c.id ? ' on' : '') + '" onclick="setXhsNoteCategory(\'' + esc(c.id) + '\')">' + esc(c.name) + '</button>';
+    }).join('');
+    chips += '<button class="xhs-chip xhs-chip-add" onclick="openXhsNewCat(1)">+</button>';
+    openXhsSheet(
+      '<div class="xhs-sheet xhs-note-drawer">' +
+        '<div class="xhs-drawer-label">归到分类</div>' +
+        '<div class="xhs-drawer-chips">' + chips + '</div>' +
+        '<div class="xhs-drawer-hint">点一下就挪过去，分类只有你自己看得到。</div>' +
+        '<div class="xhs-drawer-danger" onclick="openXhsDeleteConfirm()"><span>删除这篇笔记</span><em>删了就找不回来</em></div>' +
         '<button class="xhs-sheet-btn plain" onclick="closeXhsNoteMenu()">取消</button>' +
-      '</div>';
-    mask.style.display = 'flex';
+      '</div>'
+    );
+  }
+
+  function setXhsNoteCategory(id) {
+    var note = getNote(currentNoteId);
+    if (!note) return;
+    note.category = id || '';
+    saveState();
+    renderFeed();
+    openXhsNoteMenu();
+    showXhsToast(id ? '已经归到「' + catName(id) + '」' : '从分类里拿出来了');
+  }
+
+  function openXhsDeleteConfirm() {
+    openXhsSheet(
+      '<div class="xhs-sheet">' +
+        '<div class="xhs-sheet-title">这条笔记和它下面的评论会一起消失，找不回来。</div>' +
+        '<button class="xhs-sheet-btn danger" onclick="deleteXhsNote()">删掉它</button>' +
+        '<button class="xhs-sheet-btn plain" onclick="openXhsNoteMenu()">再想想</button>' +
+      '</div>'
+    );
   }
 
   function closeXhsNoteMenu() {
@@ -1371,6 +1774,9 @@
 
   function renderXhsApp() {
     state = loadState();
+    xhsCats = loadCats();
+    xhsActiveCat = '';
+    stopXhsAudio();
     activeTab = 'discover';
     profileTab = 'notes';
     currentNoteId = null;
@@ -1424,6 +1830,17 @@
   window.openXhsNoteMenu = openXhsNoteMenu;
   window.closeXhsNoteMenu = closeXhsNoteMenu;
   window.deleteXhsNote = deleteXhsNote;
+  window.openXhsDeleteConfirm = openXhsDeleteConfirm;
+  window.setXhsNoteCategory = setXhsNoteCategory;
+  window.setXhsCat = setXhsCat;
+  window.openXhsNewCat = openXhsNewCat;
+  window.createXhsCat = createXhsCat;
+  window.setXhsDraftCat = setXhsDraftCat;
+  window.openXhsSongPicker = openXhsSongPicker;
+  window.searchXhsSongs = searchXhsSongs;
+  window.pickXhsSong = pickXhsSong;
+  window.clearXhsDraftBgm = clearXhsDraftBgm;
+  window.toggleXhsBgm = toggleXhsBgm;
   window.onXhsGalleryScroll = onXhsGalleryScroll;
   window.scrollXhsGallery = scrollXhsGallery;
   window.openXhsSearch = openXhsSearch;

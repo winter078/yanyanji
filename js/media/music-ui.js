@@ -150,6 +150,8 @@
     const custom = song ? customCover(song.id) : '';
     return custom || origCover(song);
   }
+  // 给别处（小紫书的笔记配乐）复用同一套封面优先级：用户自传 > 歌曲自带 > 空
+  window.mzSongCover = safeCover;
   function isVip(song) {
     return !!(song && song.source === 'netease' && song.fee && Number(song.fee) > 0);
   }
