@@ -157,6 +157,7 @@
     renderWatchChatFlow();
     initVolumeControlUI();
     bindWatchEvents();
+    bindLocalVideoProgress();
 
     // 检查并自动补充当前 BV 视频的真名与UP主信息
     if (watchState.currentVideo && watchState.currentVideo.type === 'bilibili' && (!watchState.currentVideo.author || watchState.currentVideo.title.startsWith('B站精选视频'))) {
@@ -343,6 +344,7 @@
           }
           const relayHintEl = document.getElementById('watch-bili-hint-text');
           if (relayHintEl) relayHintEl.innerText = '✅ 云端中转已生效 · ' + qualityLabel + ' · 音量、拖动、全屏都归小手机管';
+          startCompanionTimer();
           return;
         }
 
@@ -383,6 +385,7 @@
             // 更新辅助条状态
             const hintEl = document.getElementById('watch-bili-hint-text');
             if (hintEl) hintEl.innerText = '✅ 原生洗流已生效：音画完全同步，拖动音量条即可随心调音';
+            startCompanionTimer();
             return;
           }
         } catch(relayErr) {
@@ -415,6 +418,8 @@
         const hintEl = document.getElementById('watch-bili-hint-text');
         if (hintEl) hintEl.innerHTML = '💡 双击桌面 outputs/启动B站洗流中继服务.bat 即可一键开启原生满血放映';
       }
+      // B 站官方窗口读不到播放秒数，只能按固定间隔陪聊
+      startCompanionTimer();
     } else if (video.type === 'local' || video.type === 'online_video') {
       if (biliControlsBar) biliControlsBar.style.display = 'none';
       if (biliIframe) {
@@ -430,10 +435,13 @@
           localVideo.play().catch(err => console.log('Auto-play prevented', err));
         }
       }
+      // 自己的片子：能读到秒数，陪看能说到具体时间点
+      startCompanionTimer();
     }
   }
 
   function stopVideoPlayback() {
+    stopCompanionTimer();
     const biliIframe = document.getElementById('watch-bili-iframe');
     const localVideo = document.getElementById('watch-local-video');
     if (biliIframe) biliIframe.src = '';
@@ -869,6 +877,83 @@
     });
   }
 
+  // ================= ⏱ 一起看 · 定时陪看 & 本地播放器进度记忆 =================
+  // B 站官方窗口拿不到播放秒数，只能"隔一会儿插一句"；
+  // 自己的片子走小手机原生播放器，能读到秒数，所以能精确到时间点说话。
+  let companionTimer = null;
+  let companionBusy = false;
+
+  function formatClock(sec) {
+    sec = Math.max(0, Math.floor(Number(sec) || 0));
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  function stopCompanionTimer() {
+    if (companionTimer) {
+      clearInterval(companionTimer);
+      companionTimer = null;
+    }
+  }
+
+  function startCompanionTimer(intervalSec = 180) {
+    stopCompanionTimer();
+    if (!watchState.currentVideo) return;
+    const gap = Math.max(60, intervalSec) * 1000;
+    companionTimer = setInterval(() => {
+      if (!watchState.currentVideo) { stopCompanionTimer(); return; }
+      if (companionBusy || document.hidden) return;
+      // 没配 API 就不要反复刷兜底台词
+      if (!window.appData || !window.appData.apiKey) return;
+
+      const v = document.getElementById('watch-local-video');
+      const usingNative = v && v.style.display !== 'none' && v.src;
+      // 自己暂停了就不打扰，等她自己点继续
+      if (usingNative && v.paused) return;
+
+      const stamp = (usingNative && v.readyState >= 2) ? formatClock(v.currentTime) : '';
+      companionBusy = true;
+      Promise.resolve(triggerXuyanReaction('', stamp, true))
+        .catch(() => {})
+        .finally(() => { companionBusy = false; });
+    }, gap);
+  }
+
+  function bindLocalVideoProgress() {
+    const v = document.getElementById('watch-local-video');
+    if (!v || v.dataset.progressBound === '1') return;
+    v.dataset.progressBound = '1';
+
+    // 续看：上次看到哪，重新打开就接上
+    v.addEventListener('loadedmetadata', () => {
+      const cv = watchState.currentVideo;
+      if (!cv) return;
+      const resumeAt = Number(cv.currentTimestamp || 0);
+      if (resumeAt > 3 && v.duration && resumeAt < v.duration - 5) {
+        try { v.currentTime = resumeAt; } catch (e) {}
+      }
+    });
+
+    let lastSaveAt = 0;
+    v.addEventListener('timeupdate', () => {
+      const cv = watchState.currentVideo;
+      if (!cv || !v.duration || !isFinite(v.currentTime)) return;
+      cv.currentTimestamp = Math.floor(v.currentTime);
+      const now = Date.now();
+      if (now - lastSaveAt > 5000) {
+        lastSaveAt = now;
+        saveWatchData();
+      }
+    });
+
+    v.addEventListener('pause', () => saveWatchData());
+    v.addEventListener('ended', () => {
+      saveWatchData();
+      stopCompanionTimer();
+    });
+  }
+
   function addSystemCompanionMsg(text) {
     watchState.chatHistory.push({
       id: 'sys_' + Date.now(),
@@ -908,11 +993,12 @@
     sendWatchChatMessage();
   };
 
-  // 触发周绪言生成吐槽 / 深度同步讨论 (✦)
-  window.triggerXuyanReaction = async function(userPromptContext = '', pauseTimestamp = '') {
+  // 触发周绪言生成吐槽 / 深度同步讨论 (✦) · autoNudge=true 表示是定时自动陪看，不是用户主动暂停
+  window.triggerXuyanReaction = async function(userPromptContext = '', pauseTimestamp = '', autoNudge = false) {
     const sparkBtn = document.getElementById('watch-spark-action-btn');
 
-    if (sparkBtn) {
+    // 自动陪看不去抢用户手上的✦按钮状态
+    if (sparkBtn && !autoNudge) {
       sparkBtn.style.opacity = '0.5';
       sparkBtn.style.pointerEvents = 'none';
     }
@@ -942,7 +1028,7 @@
       if (!cfg.apiKey) {
         setTimeout(() => {
           handleOfflineXuyanResponse(tempId, userPromptContext, video);
-          if (sparkBtn) {
+          if (sparkBtn && !autoNudge) {
             sparkBtn.style.opacity = '1';
             sparkBtn.style.pointerEvents = 'auto';
           }
@@ -957,7 +1043,9 @@
 - 正在播放：《${videoTitle}》
 - UP主/作者：${upAuthor}
 ${dynamicRoast ? `- 视频核心槽点/梗概：${dynamicRoast.slice(0, 150)}` : ''}
-${pauseTimestamp ? `- user当前特别暂停在：[${pauseTimestamp}] 处想要和你深度讨论` : ''}
+${pauseTimestamp ? (autoNudge
+  ? `- user正看到 [${pauseTimestamp}] 附近（这是自动陪看，不是她主动暂停）。你主动小声说一句此刻的感受，别问她"在干嘛"，也别说"时间"两个字，就当是坐在她旁边随口一句。`
+  : `- user当前特别暂停在：[${pauseTimestamp}] 处想要和你深度讨论`) : ''}
 
 【极度重要的回复规范】：
 1. 爹系纵容、毒舌宠溺、真实恋爱反应，拒绝一切 AI 安全词（绝不说“我理解你”、“你说的对”）。
@@ -1043,10 +1131,17 @@ ${pauseTimestamp ? `- user当前特别暂停在：[${pauseTimestamp}] 处想要�
       }
 
     } catch (err) {
-      console.warn('[Watch] AI 伴看接口请求失败，回退至本地温暖交互', err);
-      handleOfflineXuyanResponse(tempId, userPromptContext, watchState.currentVideo);
+      console.warn('[Watch] AI 伴看接口请求失败', err);
+      if (autoNudge) {
+        // 自动陪看失败就安静撤掉占位，不拿兜底台词糊弄人
+        watchState.chatHistory = watchState.chatHistory.filter((m) => m.id !== tempId);
+        renderWatchChatFlow();
+        saveWatchData();
+      } else {
+        handleOfflineXuyanResponse(tempId, userPromptContext, watchState.currentVideo);
+      }
     } finally {
-      if (sparkBtn) {
+      if (sparkBtn && !autoNudge) {
         sparkBtn.style.opacity = '1';
         sparkBtn.style.pointerEvents = 'auto';
       }
