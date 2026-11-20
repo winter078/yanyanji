@@ -308,6 +308,51 @@
     if (video.type === 'bilibili') {
       if (biliControlsBar) biliControlsBar.style.display = 'flex';
 
+      // 0. 云端原生中转 (同源 Pages Functions /api/bili)：不依赖电脑，手机上直接放原生流
+      try {
+        const cidParam = video.cid ? '&cid=' + video.cid : '';
+        const relayRes = await fetch('/api/bili/play?bvid=' + encodeURIComponent(video.bvid) + cidParam);
+        const relayData = await relayRes.json();
+
+        if (relayData && relayData.url) {
+          if (biliIframe) {
+            biliIframe.src = '';
+            biliIframe.style.display = 'none';
+          }
+          if (localVideo) {
+            const sameVideo = localVideo.dataset.bvid === video.bvid &&
+              String(localVideo.src || '').indexOf('/api/bili/stream') !== -1;
+            localVideo.style.display = 'block';
+            if (forceReload || !sameVideo) {
+              localVideo.dataset.bvid = video.bvid;
+              localVideo.src = relayData.url;
+              applyVolumeToLocalVideo();
+              localVideo.play().catch(err => console.log('Auto-play blocked, wait user tap', err));
+            }
+          }
+          if (relayData.cid && !video.cid) { video.cid = relayData.cid; saveWatchData(); }
+          if (relayData.title && (!video.title || video.title.indexOf('B站精选视频') === 0)) {
+            video.title = relayData.title;
+            if (!video.author && relayData.author) video.author = relayData.author;
+            saveWatchData();
+            renderWatchMainUI();
+          }
+          const qualityLabel = { 16: '360P', 32: '480P', 64: '720P', 74: '720P60', 80: '1080P', 112: '1080P+', 116: '1080P60', 120: '4K' }[relayData.quality] || (relayData.quality ? relayData.quality + 'P' : '高清');
+          if (sourceEl) {
+            sourceEl.innerHTML = `<span style="color: #50976a; font-weight: 600;">✨ 原生中转 · 无广告 · 可调音</span>`;
+          }
+          const relayHintEl = document.getElementById('watch-bili-hint-text');
+          if (relayHintEl) relayHintEl.innerText = '✅ 云端中转已生效 · ' + qualityLabel + ' · 音量、拖动、全屏都归小手机管';
+          return;
+        }
+
+        if (relayData && relayData.unavailable) {
+          console.log('[Watch] 云端中转判定该稿不可见，回退官方播放器：', relayData.message);
+        }
+      } catch (relayErr) {
+        console.warn('[Watch] 云端中转请求失败，回退官方播放器', relayErr);
+      }
+
       // 1. 优先尝试走「B站原生流纯净洗流中继服务」 (彻底洗成原生MP4，100%有声有画、全控音量、绝不转圈)
       const isRelayOnline = await checkBiliRelayServer();
       if (isRelayOnline) {
@@ -395,6 +440,7 @@
     if (localVideo) {
       localVideo.pause();
       localVideo.removeAttribute('src');
+      delete localVideo.dataset.bvid;
       localVideo.load();
     }
   }
