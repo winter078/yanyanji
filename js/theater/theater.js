@@ -1134,6 +1134,11 @@ ${worldBookPrompt}
       if (!history.length) { alert('剧场还是空的，先演一段再存。'); return; }
       const charName = theaterCharacterName() || '角色';
       const list = readRpSaves();
+      if (list.length >= RP_SAVES_LIMIT) {
+        alert('存档已经有 ' + RP_SAVES_LIMIT + ' 份了。\n先在列表里删掉几份不想留的，再来存新的。\n（旧档一份都没动。）');
+        renderRpArchiveList();
+        return;
+      }
       const snap = {
         id: newRpSaveId(),
         name: charName + ' · ' + rpSaveTimeLabel(),
@@ -1147,7 +1152,6 @@ ${worldBookPrompt}
         bookStage: readRpBookStage()
       };
       list.unshift(snap);
-      while (list.length > RP_SAVES_LIMIT) list.pop();
       if (!writeRpSaves(list)) return;
       renderRpArchiveList();
       alert('已存下「' + snap.name + '」，共 ' + history.length + ' 条。');
@@ -1187,6 +1191,10 @@ ${worldBookPrompt}
       const snap = list.find(function (x) { return x.id === id; });
       if (!snap) return;
       if (!confirm('从「' + snap.name + '」劈一条新分支？\n原档留着不动，当前会回到这个岔口。')) return;
+      if (list.length >= RP_SAVES_LIMIT) {
+        alert('存档已经有 ' + RP_SAVES_LIMIT + ' 份了，开分支要占一格。\n先删掉几份不想留的再回来。');
+        return;
+      }
       const baseName = String(snap.name || '存档');
       const branch = JSON.parse(JSON.stringify(snap));
       branch.id = newRpSaveId();
@@ -1195,7 +1203,6 @@ ${worldBookPrompt}
       }).length + 1);
       branch.createdAt = Date.now();
       list.unshift(branch);
-      while (list.length > RP_SAVES_LIMIT) list.pop();
       if (!writeRpSaves(list)) return;
       applyRpSnapshot(snap);
       alert('分支已建好：' + branch.name + '\n从这里往下演，随时再存就是新的走向。');
