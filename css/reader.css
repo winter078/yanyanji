@@ -2204,3 +2204,23 @@ body[data-theme="dark"] #page-reader .xianguo-add-btn,
 #phone-screen-root[data-theme="dark"] #page-reader .xianguo-add-btn {
   color: #4a2c36;
 }
+
+/* ===== 2026-11-20 书城：在线公版书库 ===== */
+.xianguo-feed-own {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(234, 141, 149, 0.14);
+  color: #d9717c;
+  font-size: 9px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+.xianguo-store-empty {
+  padding: 30px 18px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.75;
+  color: var(--rd-text-mute);
+}
