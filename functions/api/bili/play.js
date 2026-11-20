@@ -25,9 +25,30 @@ function json(data, status = 200) {
   });
 }
 
-async function biliApi(url) {
+// B 站对匿名请求要做指纹校验，缺 buvid3 会被判 "request was banned"。
+// 先取一次指纹，30 分钟内复用（Worker 实例内缓存）。
+let cachedCookie = '';
+let cookieExpireAt = 0;
+
+async function ensureCookie() {
+  if (cachedCookie && Date.now() < cookieExpireAt) return cachedCookie;
   try {
-    const r = await fetch(url, { headers: BILI_HEADERS });
+    const r = await fetch('https://api.bilibili.com/x/frontend/finger/spi', { headers: BILI_HEADERS });
+    const j = await r.json();
+    if (j && j.code === 0 && j.data && j.data.b_3) {
+      cachedCookie = 'buvid3=' + j.data.b_3 + '; buvid4=' + (j.data.b_4 || '');
+      cookieExpireAt = Date.now() + 30 * 60 * 1000;
+      return cachedCookie;
+    }
+  } catch (e) {}
+  return '';
+}
+
+async function biliApi(url, cookie) {
+  const headers = Object.assign({}, BILI_HEADERS);
+  if (cookie) headers['Cookie'] = cookie;
+  try {
+    const r = await fetch(url, { headers });
     const text = await r.text();
     let data = null;
     try { data = JSON.parse(text); } catch (e) {}
@@ -46,8 +67,15 @@ export async function onRequestGet(context) {
     return json({ error: 'bad_bvid', message: 'BV 号格式不对' }, 400);
   }
 
+  // 0. 指纹（B站匿名请求的风控门槛）
+  const fp = await ensureCookie();
+  const loginCookie = ((context.env && context.env.BILI_COOKIE) || '').trim();
+  const cookie = loginCookie
+    ? (fp ? fp + '; ' + loginCookie : loginCookie)
+    : fp;
+
   // 1. 先取视频元信息（顺便补 cid、标题、UP 主）
-  const view = await biliApi('https://api.bilibili.com/x/web-interface/view?bvid=' + bvid);
+  const view = await biliApi('https://api.bilibili.com/x/web-interface/view?bvid=' + bvid, cookie);
   const meta = view.data && view.data.code === 0 ? view.data.data : null;
 
   if (!meta) {
@@ -65,15 +93,15 @@ export async function onRequestGet(context) {
   if (!cid) cid = String(meta.cid || '');
   if (!cid) return json({ error: 'no_cid', message: '这个视频拿不到 cid' });
 
-  // 2. 要播放地址。未登录最高通常 480P，登录态（环境变量 BILI_COOKIE）可以更高
-  const cookie = ((context.env && context.env.BILI_COOKIE) || '').trim();
-  const qualityOrder = cookie ? [80, 74, 64, 32, 16] : [64, 32, 16];
+  // 2. 要播放地址。匿名最高一般 720P，登录态（环境变量 BILI_COOKIE）可以更高
+  const qualityOrder = loginCookie ? [80, 74, 64, 32, 16] : [64, 32, 16];
   let picked = null;
 
   for (const qn of qualityOrder) {
     const p = await biliApi(
       'https://api.bilibili.com/x/player/playurl?bvid=' + bvid +
-      '&cid=' + cid + '&qn=' + qn + '&fnval=0&fnver=0&fourk=1'
+      '&cid=' + cid + '&qn=' + qn + '&fnval=0&fnver=0&fourk=1',
+      cookie
     );
     const d = p.data && p.data.code === 0 ? p.data.data : null;
     const durl = d && d.durl && d.durl[0];
