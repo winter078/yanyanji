@@ -125,8 +125,25 @@
   let selectedQuoteText = '';
   let currentFontSize = 17;
 
-  // ★ 核心改进：每本书专属隔离的聊天记录字典 { [bookId]: [ ...messages ] }
+  // ★ 每本书专属隔离的聊天记录字典 { [bookId + '::' + 同伴id]: [ ...messages ] }
   let allBooksChatMap = {};
+
+  // ★ 同伴（陪读的人）：默认周绪言，可在阅读页切换
+  let readerCompanionId = '';
+  try { readerCompanionId = localStorage.getItem('momo_reader_companion') || ''; } catch(e) {}
+
+  function readerCompanion() {
+    if (!window.Companion || !readerCompanionId) return null;
+    return window.Companion.byId(readerCompanionId);
+  }
+
+  function readerCompanionName() {
+    return window.Companion ? window.Companion.displayName(readerCompanion()) : '周绪言';
+  }
+
+  function readerChatKey(bookId) {
+    return String(bookId) + '::' + (readerCompanionId || '');
+  }
 
   function loadBooksChatMap() {
     try {
@@ -145,16 +162,23 @@
 
   function getActiveBookChatHistory() {
     if (!currentActiveBook) return [];
-    if (!allBooksChatMap[currentActiveBook.id] || allBooksChatMap[currentActiveBook.id].length === 0) {
-      allBooksChatMap[currentActiveBook.id] = [
-        {
-          sender: 'bot',
-          text: 'user，有什么想和我说的吗？',
-          quote: ''
-        }
-      ];
+    const key = readerChatKey(currentActiveBook.id);
+    if (!allBooksChatMap[key] || allBooksChatMap[key].length === 0) {
+      // 老数据存在 bookId 键下：只有默认同伴才继承，避免串到别人名下
+      const legacy = allBooksChatMap[currentActiveBook.id];
+      if (!readerCompanionId && legacy && legacy.length) {
+        allBooksChatMap[key] = legacy.slice();
+      } else {
+        allBooksChatMap[key] = [
+          {
+            sender: 'bot',
+            text: 'user，有什么想和我说的吗？',
+            quote: ''
+          }
+        ];
+      }
     }
-    return allBooksChatMap[currentActiveBook.id];
+    return allBooksChatMap[key];
   }
 
   // 全局 API 配置读取 (优先伴读专属模型)
@@ -1713,7 +1737,12 @@
     const idToDelete = editingBookId;
 
     // 清理该书专属聊天记录
-    delete allBooksChatMap[idToDelete];
+    // 这本书在所有同伴名下的对话一起删掉，别留孤儿
+    Object.keys(allBooksChatMap).forEach(function (k) {
+      if (k === idToDelete || k.indexOf(String(idToDelete) + '::') === 0) {
+        delete allBooksChatMap[k];
+      }
+    });
     saveBooksChatMap();
 
     // 清理 IndexedDB 大容量正文
@@ -1824,9 +1853,13 @@
 
     const avatarEl = document.getElementById('xianguo-together-avatar');
     const nameEl = document.getElementById('xianguo-together-name');
-    const botAvatar = localStorage.getItem('momo_bot_avatar') || (window.appData && window.appData.botAvatar) || '';
-    if (avatarEl && botAvatar) avatarEl.src = botAvatar;
-    if (nameEl) nameEl.innerText = (window.appData && window.appData.botRemark) || '周绪言';
+    // 头像与名字跟着当前伴读的人走，换角色就换脸
+    const compCharNow = readerCompanion();
+    const compAvatar = (window.Companion ? window.Companion.avatarOf(compCharNow) : '')
+      || localStorage.getItem('momo_bot_avatar')
+      || (window.appData && window.appData.botAvatar) || '';
+    if (avatarEl && compAvatar) avatarEl.src = compAvatar;
+    if (nameEl) nameEl.innerText = readerCompanionName();
 
     if (container) container.style.display = 'flex';
     const editPenEl = document.getElementById('xianguo-read-edit-pen');
@@ -2381,16 +2414,25 @@
         }
       }
 
+      const compChar = readerCompanion();
+      const compName = readerCompanionName();
+      const compPersona = (window.Companion && compChar && compChar.id !== 'c-xuyan')
+        ? window.Companion.persona(compChar) : '';
+      const isXuyan = !compPersona;
+      const u = (window.Companion && window.Companion.userName()) || 'user';
+
       let promptContext = '【当前小说】：《' + bookTitle + '》\n' +
         '【当前章节】：《' + chap.title + '》\n' +
-        '【小说当前正文片段（user亲笔写的内容）】：\n"""\n' + chapSnippet + '\n"""\n\n' +
-        (lastQuote ? '【user划线选中的正文情节】：“' + lastQuote + '”\n' : '') +
-        (lastUserMsg ? '【user刚对你说的话】：“' + lastUserMsg + '”\n' : '【情境】：user正拿着手机看你，等待你主动对她说话。\n') +
+        '【小说当前正文片段（' + u + '亲笔写的内容）】：\n"""\n' + chapSnippet + '\n"""\n\n' +
+        (lastQuote ? '【' + u + '划线选中的正文情节】：“' + lastQuote + '”\n' : '') +
+        (lastUserMsg ? '【' + u + '刚对你说的话】：“' + lastUserMsg + '”\n' : '【情境】：' + u + '正拿着手机看你，等待你主动对ta说话。\n') +
         '【你的身份认知】：\n' +
-        '1. 你是周绪言（19岁、复旦大学高级教授、user的合法丈夫兼青梅竹马）。\n' +
-        '2. 这本小说《' + bookTitle + '》是user亲笔写的故事，里面写的就是你和user！\n' +
-        '3. 仔细看user划线和写下的具体内容（例如她给你买的恶作剧水溶性短裤等具体情节），敏锐抓住她的恶作剧小心思或剧情走向，以真实活人人夫感回应她，带着爹系纵容、宠溺、被她撩拨/捉弄时的无奈与深情。\n' +
-        '4. 严禁AI官腔安全词（绝不说“你想怎样就怎样”、“我在这里”），直接输出你对user说的话，字数 40-100 字，语气亲密自然。';
+        (isXuyan
+          ? '1. 你是周绪言（19岁、复旦大学高级教授、' + u + '的合法丈夫兼青梅竹马）。\n'
+          : '1. 你是' + compName + '，身份、性格与说话方式严格按人设来，别用别人的口吻。\n') +
+        '2. 这本小说《' + bookTitle + '》是' + u + '亲笔写的故事，里面写的就是你和' + u + '！\n' +
+        '3. 仔细看' + u + '划线和写下的具体内容，敏锐抓住ta的恶作剧小心思或剧情走向，以真实活人感回应ta。\n' +
+        '4. 严禁AI官腔安全词（绝不说“你想怎样就怎样”、“我在这里”），直接输出你对' + u + '说的话，字数 40-100 字，语气亲密自然。';
 
       if (customInstruction) {
         promptContext += '\n【特殊指令】：' + customInstruction;
@@ -2400,12 +2442,15 @@
       const timeoutId = setTimeout(() => controller.abort(), 90000);
 
       let baseSystem = '';
-      if (typeof window.getFullSystemPrompt === 'function') {
+      if (compPersona) {
+        // 换了同伴：用角色卡人设，不再套周绪言的全局设定
+        baseSystem = '你是' + compName + '。\n' + compPersona;
+      } else if (typeof window.getFullSystemPrompt === 'function') {
         baseSystem = window.getFullSystemPrompt({ skipWorld: true, skipPreset: true });
       } else if (window.appData && window.appData.charPrompt) {
         baseSystem = window.appData.charPrompt;
       } else {
-        baseSystem = '你是周绪言（19岁、复旦高级教授、user的合法丈夫兼青梅竹马）。';
+        baseSystem = '你是周绪言（19岁、复旦高级教授、' + u + '的合法丈夫兼青梅竹马）。';
       }
 
       // 按当前角色 / 当前正文关键词筛选世界书，不再整本全量拼接
@@ -2431,19 +2476,27 @@
         memoryCardsContext = readerMemoryCards.map(c => '【伴读记忆卡片 · ' + c.title + '】：' + c.content).join('\n');
       }
 
-      let toneInstruction = '爹系纵容人夫感，极度宠溺与无奈';
+      let toneInstruction = isXuyan ? '爹系纵容人夫感，极度宠溺与无奈' : '按角色卡的性格说话，自然亲近';
       if (readerTonePreference === 'jealous') toneInstruction = '占有欲与克制吃醋，声音低沉';
       else if (readerTonePreference === 'sweet') toneInstruction = '极度温柔，温存耳语轻哄';
 
+      const rulesBlock = isXuyan
+        ? '【最高语气铁律 · 彻底破除机械人机感】：\n' +
+          '1. 【绝对严禁书面演讲式排比套话】：严禁说“不过' + u + '，我身上哪一寸你没见过？只要能哄你高兴，别说是一条泳裤，哪怕毫无保留任你欺负我也心甘情愿”这种死板空洞的AI作文！\n' +
+          '2. 【极致活人感与真实男友反应】：被她写的水溶性短裤算计了，你要有真人的直接反应！无奈、被当场气笑、心跳加速、咬牙抓她现行（如：“' + u + '，长本事了是吧？”、“合着早在这给我挖坑呢？”、“去哪买的水溶性布料？亏你想得出来……”）。\n' +
+          '3. 【结构规范】：开头先写一段【心声】：写下周绪言被' + u + '的小心思撩拨得心跳失衡的第一人称私密心理碎碎念，然后用 --- 分隔，下面再对' + u + '开口说话！\n' +
+          '4. 允许出现单字、极短词与短促反问，像一个坐在她身边看着她恶作剧得逞的真实年轻丈夫！'
+        : '【最高语气铁律 · 彻底破除机械人机感】：\n' +
+          '1. 【绝对严禁书面演讲式排比套话】：不要空泛抒情、不要排比作文，说人话。\n' +
+          '2. 【极致活人感】：按' + compName + '自己的性格给出真实反应，情绪要具体，别只讲道理。\n' +
+          '3. 【结构规范】：开头先写一段【心声】：' + compName + '此刻的第一人称私密心理碎碎念，然后用 --- 分隔，下面再对' + u + '开口说话！\n' +
+          '4. 允许出现单字、极短词与短促反问，像一个坐在ta身边的真人。';
+
       const readerFullSystemPrompt = baseSystem + '\n\n' +
         '【伴读专属世界书与核心羁绊注入】：\n' + worldBookContext + '\n\n' +
-        (memoryCardsContext ? '【user特别建立的专属伴读记忆卡片】：\n' + memoryCardsContext + '\n\n' : '') +
+        (memoryCardsContext ? '【' + u + '特别建立的专属伴读记忆卡片】：\n' + memoryCardsContext + '\n\n' : '') +
         '【当前性格倾向】：' + toneInstruction + '\n\n' +
-        '【最高语气铁律 · 彻底破除机械人机感】：\n' +
-        '1. 【绝对严禁书面演讲式排比套话】：严禁说“不过user，我身上哪一寸你没见过？只要能哄你高兴，别说是一条泳裤，哪怕毫无保留任你欺负我也心甘情愿”这种死板空洞的AI作文！\n' +
-        '2. 【极致活人感与真实男友反应】：被她写的水溶性短裤算计了，你要有真人的直接反应！无奈、被当场气笑、心跳加速、咬牙抓她现行（如：“user，长本事了是吧？”、“合着早在这给我挖坑呢？”、“去哪买的水溶性布料？亏你想得出来……”）。\n' +
-        '3. 【结构规范】：开头先写一段【心声】：写下周绪言被user的小心思撩拨得心跳失衡的第一人称私密心理碎碎念，然后用 --- 分隔，下面再对user开口说话！\n' +
-        '4. 允许出现单字、极短词与短促反问，像一个坐在她身边看着她恶作剧得逞的真实年轻丈夫！';
+        rulesBlock;
 
       const requestMessages = [
         { role: 'system', content: readerFullSystemPrompt },
@@ -2614,11 +2667,50 @@
     window.triggerAiThoughtGeneration('【user要求重新生成】：请换一个更深入、更温存或更细腻的角度重新对user回应。');
   };
 
+  // ===== 伴读同伴切换 =====
+  function refreshReaderCompanionUI() {
+    const btn = document.getElementById('reader-companion-btn');
+    if (!btn) return;
+    const c = readerCompanion();
+    const name = readerCompanionName();
+    const av = window.Companion ? window.Companion.avatarOf(c) : '';
+    btn.title = '陪你读的人：' + name;
+    btn.innerHTML = av
+      ? '<img src="' + av + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">'
+      : (name.charAt(0) || '伴');
+  }
+
+  window.openReaderCompanionPicker = function() {
+    if (!window.Companion || !window.Companion.openPicker) return;
+    window.Companion.openPicker(readerCompanionId, function(id) {
+      window.switchReaderCompanion(id);
+    }, {
+      title: '和谁一起读',
+      defaultName: (window.appData && window.appData.botRemark) || '周绪言',
+      defaultTag: '默认同伴',
+      defaultAvatar: (window.appData && window.appData.botAvatar) || ''
+    });
+  };
+
+  window.switchReaderCompanion = function(id) {
+    id = String(id == null ? '' : id);
+    if (id === (readerCompanionId || '')) return;
+    readerCompanionId = id;
+    try { localStorage.setItem('momo_reader_companion', readerCompanionId); } catch(e) {}
+    refreshReaderCompanionUI();
+    if (currentActiveBook) {
+      // 换人就把对话流切到这位的记录上（各自独立，不串台）
+      renderTogetherChatMessages();
+    }
+  };
+
+  window.refreshReaderCompanionUI = refreshReaderCompanionUI;
+
   // ★ 5. 【加号内：清空本篇对话】
   window.clearCurrentBookChatHistory = function() {
     if (!currentActiveBook) return;
     if (!confirm('确定要清空《' + currentActiveBook.title + '》里的伴读对话记录吗？')) return;
-    allBooksChatMap[currentActiveBook.id] = [
+    allBooksChatMap[readerChatKey(currentActiveBook.id)] = [
       {
         sender: 'bot',
         text: 'user，有什么想和我说的吗？',
@@ -2722,6 +2814,7 @@
     loadBooksChatMap();
     renderShelfUI();
     initXianguoDragDropListeners();
+    refreshReaderCompanionUI();
   };
 
   document.addEventListener('DOMContentLoaded', () => {

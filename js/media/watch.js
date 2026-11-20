@@ -1504,56 +1504,21 @@ ${rulesXuyan}`;
   }
   window.refreshWatchCompanionUI = refreshWatchCompanionUI;
 
-  function ensureCompanionModal() {
-    let m = document.getElementById('watch-companion-modal');
-    if (m) return m;
-    m = document.createElement('div');
-    m.id = 'watch-companion-modal';
-    m.style.cssText = 'position:fixed;inset:0;z-index:9999;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.55);';
-    m.innerHTML = '<div style="width:100%;max-width:460px;max-height:76vh;overflow:auto;background:#1b1b1f;border-radius:20px 20px 0 0;padding:18px 16px 22px;box-shadow:0 -8px 30px rgba(0,0,0,.5);">'
-      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">'
-      + '<div style="color:#f3e6d8;font-size:16px;font-weight:600;">今晚和谁一起看</div>'
-      + '<button onclick="closeWatchCompanionModal()" style="background:none;border:none;color:#9b8f84;font-size:20px;">×</button></div>'
-      + '<div id="watch-companion-list"></div>'
-      + '</div>';
-    m.addEventListener('click', (e) => { if (e.target === m) window.closeWatchCompanionModal(); });
-    document.body.appendChild(m);
-    return m;
-  }
-
-  function renderCompanionList() {
-    const box = document.getElementById('watch-companion-list');
-    if (!box) return;
-    const rows = [{ id: '', name: '周绪言', tag: '默认同伴', avatar: '' }];
-    (window.Companion ? window.Companion.list() : []).forEach((c) => {
-      rows.push({ id: c.id, name: c.name, tag: c.tag || '', avatar: c.avatar || '' });
-    });
-
-    box.innerHTML = rows.map((r) => {
-      const on = r.id === (watchState.companionId || '');
-      const av = r.avatar
-        ? `<img src="${r.avatar}" style="width:40px;height:40px;object-fit:cover;border-radius:50%;flex:none;">`
-        : `<div style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;color:#e7d9c9;flex:none;">${String(r.name).charAt(0) || '伴'}</div>`;
-      return `<div onclick="switchWatchCompanion('${r.id}')" style="display:flex;align-items:center;gap:12px;padding:10px 8px;border-radius:12px;cursor:pointer;background:${on ? 'rgba(214,177,140,.14)' : 'transparent'};">`
-        + av
-        + `<div style="flex:1;min-width:0;"><div style="color:#f3e6d8;font-size:14px;">${r.name}</div>`
-        + `<div style="color:#8d8177;font-size:12px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.tag || ''}</div></div>`
-        + (on ? '<div style="color:#d6b18c;font-size:13px;">当前</div>' : '')
-        + '</div>';
-    }).join('');
-  }
-
   window.openWatchCompanionModal = function() {
-    const m = ensureCompanionModal();
-    renderCompanionList();
-    m.style.display = 'flex';
+    if (!window.Companion || !window.Companion.openPicker) return;
+    window.Companion.openPicker(watchState.companionId, function(id) {
+      window.switchWatchCompanion(id);
+    }, {
+      title: '今晚和谁一起看',
+      defaultName: (window.appData && window.appData.botRemark) || '周绪言',
+      defaultTag: '默认同伴',
+      defaultAvatar: (window.appData && window.appData.botAvatar) || ''
+    });
   };
 
   window.closeWatchCompanionModal = function() {
-    const m = document.getElementById('watch-companion-modal');
-    if (m) m.style.display = 'none';
+    if (window.Companion && window.Companion.closePicker) window.Companion.closePicker();
   };
-
   window.switchWatchCompanion = function(id) {
     id = String(id == null ? '' : id);
     if (id === (watchState.companionId || '')) { window.closeWatchCompanionModal(); return; }
