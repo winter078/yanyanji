@@ -704,3 +704,37 @@
   font-weight: 600;
 }
 
+
+
+/* ===== 2026-11-20 图书联动：剧场顶部的「正在演」条 ===== */
+.rp-book-stage-bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  font-size: 11.5px;
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+.rp-book-stage-tag { flex: none; font-weight: 700; color: #ffcd6b; }
+.rp-book-stage-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.86;
+}
+.rp-book-stage-close {
+  flex: none;
+  width: 20px; height: 20px;
+  border: 0; border-radius: 7px;
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-primary);
+  font-size: 11px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+}
