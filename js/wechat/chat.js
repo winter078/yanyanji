@@ -4672,7 +4672,7 @@ ${(() => {
 【生活手账与管账人账目感知（当前角色与用户共同打理的生活开销）】：
 ${(() => {
   if (typeof window.getLedgerSummaryForAi === 'function') {
-    return window.getLedgerSummaryForAi();
+    return window.getLedgerSummaryForAi({ charId: (activeChar && activeChar.id) || '', charName: charName });
   }
   return '暂无手账账目数据。';
 })()}

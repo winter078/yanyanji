@@ -833,6 +833,11 @@ function lgRenderSettings() {
       <div class="lg-set-row lg-set-action lg-danger" onclick="lgClearAll()"><span class="lg-set-name">清空全部记录</span><span>›</span></div>
       <div class="lg-set-hint">共 ${records.length} 笔记录</div>
     </div>`;
+
+  // 谁可以看我的账（由 ledger-app.js 注入，插到最前面）
+  if (typeof window.laAppendVisPanel === 'function') {
+    try { window.laAppendVisPanel(); } catch (e) {}
+  }
 }
 
 function lgSaveBudgetInput() {
@@ -902,37 +907,117 @@ function lgClearAll() {
   showXianguoToast('已经清空', 1500);
 }
 
-// ---------- 供角色读取的账本摘要 ----------
-window.getLedgerSummaryForAi = function () {
+// ---------- 账本可见性（哪些角色能读到） ----------
+const LEDGER_VIS_KEY = 'momo_ledger_visibility_v1';
+
+function lgLoadVisibility() {
   try {
+    const raw = localStorage.getItem(LEDGER_VIS_KEY);
+    if (raw) {
+      const o = JSON.parse(raw) || {};
+      const mode = ['all', 'only', 'none'].indexOf(o.mode) >= 0 ? o.mode : 'all';
+      return {
+        mode: mode,
+        allow: Array.isArray(o.allow) ? o.allow.map(String) : [],
+        block: Array.isArray(o.block) ? o.block.map(String) : []
+      };
+    }
+  } catch (e) {}
+  return { mode: 'all', allow: [], block: [] };
+}
+
+function lgSaveVisibility(v) {
+  try {
+    localStorage.setItem(LEDGER_VIS_KEY, JSON.stringify({
+      mode: v.mode,
+      allow: (v.allow || []).map(String),
+      block: (v.block || []).map(String)
+    }));
+  } catch (e) {}
+}
+
+function lgCanSeeLedger(charId) {
+  const v = lgLoadVisibility();
+  const id = charId ? String(charId) : '';
+  if (v.mode === 'none') return false;
+  if (v.mode === 'only') {
+    if (!id) return false;
+    return v.allow.indexOf(id) >= 0;
+  }
+  // all：默认都可见，单独关掉的角色进 block
+  if (!id) return true;
+  return v.block.indexOf(id) < 0;
+}
+
+function lgIsDebtAcc(a) {
+  if (!a) return false;
+  if (a.kind === 'debt') return true;
+  if (a.kind === 'asset') return false;
+  return a.id === 'credit';
+}
+
+// ---------- 供角色读取的账本摘要 ----------
+window.getLedgerSummaryForAi = function (opts) {
+  try {
+    const o = opts || {};
+    const charId = o.charId || o.characterId || '';
+    const charName = o.charName || '这个角色';
+
+    if (!lgCanSeeLedger(charId)) {
+      return '【记账本】：user 没让「' + charName + '」看她的账本。你现在不知道她有多少钱、这个月花了多少、工资发没发。不要提到账户、余额、预算、工资这类信息，也不要猜；她要是自己提起钱，就顺着她的话聊，别报数字。';
+    }
+
     const records = loadLedgerRecords();
-    if (!records.length) return '【记账本】：还没有任何流水，账本干干净净。';
+    const accounts = lgLoadAccounts();
+    const balanceOf = function (a) { return lgAccountBalance(a.id, records); };
+    const assetAccs = accounts.filter(function (a) { return !lgIsDebtAcc(a); });
+    const debtAccs = accounts.filter(lgIsDebtAcc);
+
+    const gross = assetAccs.reduce(function (s, a) { return s + balanceOf(a); }, 0);
+    const debt = debtAccs.reduce(function (s, a) { return s + Math.abs(balanceOf(a)); }, 0);
+    const net = gross - debt;
 
     const month = lgTodayStr().slice(0, 7);
     const monthRecs = lgRecordsOfMonth(month);
+    const sortedAll = records.slice().sort(function (a, b) { return lgRecTs(b) - lgRecTs(a); });
+    const latestMonth = sortedAll.length ? String(sortedAll[0].date || '').slice(0, 7) : '';
     const expense = lgSum(monthRecs, 'expense');
     const income = lgSum(monthRecs, 'income');
-    const accounts = lgLoadAccounts();
-    const assets = lgTotalAssets(records);
     const budget = lgLoadBudget();
 
-    const accLines = accounts.map(a => {
-      const bal = lgAccountBalance(a.id, records);
-      return '  · ' + a.name + '：' + bal.toFixed(2) + ' 元';
+    const accLines = accounts.map(function (a) {
+      const bal = balanceOf(a);
+      return '  · ' + a.name + '：' + bal.toFixed(2) + ' 元' + (lgIsDebtAcc(a) ? '（应付，算负债）' : '');
     }).join('\n');
 
-    const recent = records.slice().sort((a, b) => lgRecTs(b) - lgRecTs(a)).slice(0, 6).map(r => {
+    const recent = records.slice().sort(function (a, b) { return lgRecTs(b) - lgRecTs(a); }).slice(0, 6).map(function (r) {
       const cat = lgCatById(r.catId);
-      return '  · ' + (r.date || '').slice(0, 16) + '　' + cat.name + '　' + (r.title || '') + '　' + (r.type === 'income' ? '+' : '-') + Number(r.amount).toFixed(2);
+      return '  · ' + String(r.date || '').slice(0, 16) + '　' + cat.name + '　' + (r.title || '') + '　' + (r.type === 'income' ? '+' : '-') + Number(r.amount).toFixed(2);
     }).join('\n');
 
-    return '【记账本 · 实时】\n' +
+    let wageLine = '';
+    try {
+      const w = JSON.parse(localStorage.getItem('momo_ledger_wage_v1') || '{}') || {};
+      const rate = Number(w.rate) || 0;
+      const days = Array.isArray(w.days) ? w.days : [];
+      if (rate > 0) {
+        const pending = days.length * rate;
+        wageLine = pending > 0
+          ? '- 工资库：已经上班打卡 ' + days.length + ' 天，待入账工资 ' + pending.toFixed(2) + ' 元（还没发），日薪 ' + rate.toFixed(2) + ' 元\n'
+          : '- 工资库：日薪 ' + rate.toFixed(2) + ' 元，目前没有攒着的打卡，工资应该是刚结过\n';
+      }
+    } catch (e) {}
+
+    return '【记账本 · 实时（user 允许你看）】\n' +
+      (records.length ? '' : '- 账本目前还没有流水的明细，她刚开始记\n') +
       '- 本月支出：' + expense.toFixed(2) + ' 元；本月收入：' + income.toFixed(2) + ' 元；本月结余：' + (income - expense).toFixed(2) + ' 元\n' +
-      '- 手里总共还有：' + assets.toFixed(2) + ' 元\n' +
+      (monthRecs.length === 0 && latestMonth && latestMonth !== month ? '- 注意：这个月（' + month + '）她还没记账，最近一笔是 ' + latestMonth + ' 的，别把那时的花费当成这个月的\n' : '') +
+      '- 净资产：' + net.toFixed(2) + ' 元（总资产 ' + gross.toFixed(2) + '，总负债 ' + debt.toFixed(2) + '）\n' +
       '- 各账户余额：\n' + accLines + '\n' +
-      (budget.monthly > 0 ? '- 本月预算：' + budget.monthly.toFixed(2) + ' 元，还剩 ' + (budget.monthly - expense).toFixed(2) + ' 元\n' : '') +
-      '- 最近的几笔：\n' + recent + '\n' +
-      '*铁律*：这是 user 真实的钱。她有多少、花了多少你都得清楚，不许假装账本是空的；提到钱要具体到账户和金额，但别审问她。';
+      wageLine +
+      (budget.monthly > 0 ? '- 本月预算：' + budget.monthly.toFixed(2) + ' 元，' + (budget.monthly - expense >= 0 ? '还剩 ' + (budget.monthly - expense).toFixed(2) : '已超 ' + (expense - budget.monthly).toFixed(2)) + ' 元\n' : '') +
+      (recent ? '- 最近的几笔：\n' + recent + '\n' : '') +
+      '*铁律*：这是 user 真实的钱。她有多少、花了多少你都得清楚，不许假装账本是空的；提到钱要具体到账户和金额，但别审问她钱包，也别替她做决定。';
   } catch (e) {
     console.error('账本摘要失败', e);
     return '【记账本】：读取失败。';

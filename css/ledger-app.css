@@ -846,3 +846,16 @@
 
 /* 键盘层在 v4 里仍贴底 */
 #page-ledger .lg-sheet-mask { z-index: 60; }
+
+/* ---------- 账本可见性：谁可以看我的账 ---------- */
+.la-vis-seg { display: flex; gap: 6px; margin: 10px 0 12px; background: #0E1014; border-radius: 12px; padding: 4px; }
+.la-vis-seg span { flex: 1; text-align: center; font-size: 12px; line-height: 30px; border-radius: 9px; color: #8A8F99; }
+.la-vis-seg span.on { background: #FFC53D; color: #14161A; font-weight: 600; }
+.la-vis-row { display: flex; align-items: center; gap: 10px; padding: 9px 2px; border-bottom: 1px solid rgba(255,255,255,.05); }
+.la-vis-ava { width: 30px; height: 30px; border-radius: 50%; overflow: hidden; background: #22262E; display: flex; align-items: center; justify-content: center; font-size: 15px; flex: none; }
+.la-vis-ava img { width: 100%; height: 100%; object-fit: cover; }
+.la-vis-name { flex: 1; font-size: 13px; color: #D9DEE6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.la-switch { width: 42px; height: 24px; border-radius: 12px; background: #2A2F38; position: relative; flex: none; transition: background .18s; }
+.la-switch i { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #7C828C; transition: all .18s; }
+.la-switch.on { background: #FFC53D; }
+.la-switch.on i { left: 21px; background: #14161A; }

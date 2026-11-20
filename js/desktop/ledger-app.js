@@ -650,6 +650,91 @@
     showXianguoToast('工资已入账 · +' + laMoney(amount), 1800);
   }
 
+  // ---------- 账本可见性：谁可以看我的账 ----------
+  function laVisState() {
+    return (typeof lgLoadVisibility === 'function') ? lgLoadVisibility() : { mode: 'all', allow: [], block: [] };
+  }
+
+  function laVisSave(v) {
+    if (typeof lgSaveVisibility === 'function') lgSaveVisibility(v);
+  }
+
+  function laVisChars() {
+    var list = (typeof window.getCharacters === 'function') ? (window.getCharacters() || []) : [];
+    return list.filter(function (c) { return c && c.id && !c.deleted; });
+  }
+
+  function laVisPanelHTML() {
+    var v = laVisState();
+    var rows = laVisChars().map(function (c) {
+      var visible = (v.mode === 'only')
+        ? v.allow.indexOf(String(c.id)) >= 0
+        : v.block.indexOf(String(c.id)) < 0;
+      var ava = c.avatar ? '<img src="' + c.avatar + '" alt="">' : '<span>🙂</span>';
+      return '<div class="la-vis-row" onclick="laToggleVisChar(\'' + String(c.id).replace(/\'/g, '') + '\')">' +
+        '<span class="la-vis-ava">' + ava + '</span>' +
+        '<span class="la-vis-name">' + lgEscape(c.name || '未命名') + '</span>' +
+        '<span class="la-switch' + (visible ? ' on' : '') + '"><i></i></span>' +
+        '</div>';
+    }).join('');
+
+    var hint = v.mode === 'all'
+      ? '现在所有角色都能看到你的余额、流水和待发工资。想把谁蒙在鼓里，关掉他的开关就行。'
+      : (v.mode === 'only'
+        ? '只有开着开关的角色能看到。关着的人问起钱，他什么都不知道。'
+        : '所有角色都看不到你的账，也不会主动提钱。');
+
+    return '<div class="lg-set-sec la-vis-sec">' +
+      '<div class="lg-set-title">谁可以看我的账</div>' +
+      '<div class="la-vis-seg">' +
+      '<span class="' + (v.mode === 'all' ? 'on' : '') + '" onclick="laSetVisMode(\'all\')">全部可见</span>' +
+      '<span class="' + (v.mode === 'only' ? 'on' : '') + '" onclick="laSetVisMode(\'only\')">只给选中的</span>' +
+      '<span class="' + (v.mode === 'none' ? 'on' : '') + '" onclick="laSetVisMode(\'none\')">都不给看</span>' +
+      '</div>' +
+      (v.mode === 'none' ? '' : ('<div class="la-vis-list">' + (rows || '<div class="lg-set-hint">还没有角色</div>') + '</div>')) +
+      '<div class="lg-set-hint">' + hint + '</div>' +
+      '</div>';
+  }
+
+  function laReplaceVisPanel() {
+    var body = document.getElementById('lg-settings-body');
+    if (!body) return;
+    var old = body.querySelector('.la-vis-sec');
+    var wrap = document.createElement('div');
+    wrap.innerHTML = laVisPanelHTML();
+    var sec = wrap.firstElementChild;
+    if (!sec) return;
+    if (old) body.replaceChild(sec, old);
+    else body.insertBefore(sec, body.firstChild);
+  }
+
+  function laAppendVisPanel() {
+    laReplaceVisPanel();
+  }
+
+  function laSetVisMode(mode) {
+    var v = laVisState();
+    v.mode = (['all', 'only', 'none'].indexOf(mode) >= 0) ? mode : 'all';
+    laVisSave(v);
+    laReplaceVisPanel();
+    showXianguoToast(mode === 'all' ? '所有角色都能看' : (mode === 'only' ? '只给选中的人看' : '都不给看'), 1500);
+  }
+
+  function laToggleVisChar(id) {
+    if (!id) return;
+    var v = laVisState();
+    if (v.mode === 'none') {
+      showXianguoToast('现在是「都不给看」，先换个模式', 1600);
+      return;
+    }
+    id = String(id);
+    var arr = (v.mode === 'only') ? v.allow : v.block;
+    var i = arr.indexOf(id);
+    if (i >= 0) arr.splice(i, 1); else arr.push(id);
+    laVisSave(v);
+    laReplaceVisPanel();
+  }
+
   // ---------- 导出到全局 ----------
   window.laSwitchTab = laSwitchTab;
   window.laRenderAll = laRenderAll;
@@ -667,6 +752,9 @@
   window.laSettleWage = laSettleWage;
   window.laDoSettleWage = laDoSettleWage;
   window.laOpenWageSetting = laOpenWageSetting;
+  window.laAppendVisPanel = laAppendVisPanel;
+  window.laSetVisMode = laSetVisMode;
+  window.laToggleVisChar = laToggleVisChar;
 
   // 包一层 renderLedgerApp，保证旧调用也会刷新新界面
   var origRender = window.renderLedgerApp;
