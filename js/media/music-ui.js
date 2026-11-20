@@ -176,8 +176,42 @@
   window.mzOpenPlayer = function () {
     const p = $('mz-player');
     if (p) p.classList.add('open');
+    if (window.refreshMusicUserUI) window.refreshMusicUserUI();
+    if (window.refreshMusicCompanionUI) window.refreshMusicCompanionUI();
+    bindLyric();
     syncPlayerView();
+    if (window.MzLyrics) window.MzLyrics.refresh();
   };
+  /* ---------------- 一起听：歌词两行 ---------------- */
+  let lyricBound = false;
+
+  function renderLyric(pair) {
+    const box = $('music-lyric-box');
+    const cur = $('music-lyric-cur');
+    const next = $('music-lyric-next');
+    if (!box || !cur || !next) return;
+    const a = (pair && pair[0]) || '';
+    const b = (pair && pair[1]) || '';
+    // 取不到歌词（纯音乐 / 还没返回 / 没有网易云 id）就整块淡出，不要弹"暂无歌词"去打扰
+    if (!a && !b) {
+      box.classList.remove('show');
+      if (cur.textContent) cur.textContent = '';
+      if (next.textContent) next.textContent = '';
+      return;
+    }
+    if (cur.textContent !== a) cur.textContent = a;
+    if (next.textContent !== b) next.textContent = b;
+    box.classList.add('show');
+  }
+
+  function bindLyric() {
+    if (lyricBound) return;
+    if (typeof window.MzLyrics === 'undefined') return;
+    lyricBound = true;
+    window.MzLyrics.onUpdate(function (st, pair) { renderLyric(pair); });
+    renderLyric(window.MzLyrics.pair());
+  }
+
   window.mzClosePlayer = function () {
     const p = $('mz-player');
     if (p) p.classList.remove('open');

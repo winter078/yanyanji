@@ -1554,6 +1554,12 @@ body[data-theme="dark"] .xhs-profile-cover-edit {
   overflow-y: hidden;
   scrollbar-width: none;
 }
+
+/* 分类条搬到「我」页：贴在 笔记/收藏 下面那一条空白带里 */
+.xhs-cats-me {
+  padding: 10px 14px 4px;
+  background: transparent;
+}
 .xhs-cats::-webkit-scrollbar { display: none; }
 
 .xhs-chip {

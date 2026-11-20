@@ -550,9 +550,6 @@
     } else {
       list = state.notes;
     }
-    if (xhsActiveCat) {
-      list = list.filter(function (n) { return n.category === xhsActiveCat; });
-    }
     return list;
   }
 
@@ -583,13 +580,13 @@
 
   function setXhsCat(id) {
     xhsActiveCat = (id && id === xhsActiveCat) ? '' : (id || '');
-    renderCats();
-    renderFeed();
-    var feed = $('xhs-feed');
-    if (feed) feed.scrollTop = 0;
+    renderProfile();
+    var page = $('page-xhs');
+    var sc = page ? page.querySelector('.xhs-profile-scroll, #xhs-profile') : null;
+    if (sc) sc.scrollTop = 0;
   }
 
-  // 新建分类：mode 0 = 首页分类条，1 = 笔记抽屉，2 = 发布弹层
+  // 新建分类：mode 0 = 我的页分类条，1 = 笔记抽屉，2 = 发布弹层
   function openXhsNewCat(mode) {
     mode = mode || 0;
     openXhsSheet(
@@ -629,8 +626,7 @@
       showXhsToast('分类「' + name + '」建好了');
     } else {
       xhsActiveCat = cat.id;
-      renderCats();
-      renderFeed();
+      renderProfile();
       showXhsToast('分类「' + name + '」建好了');
     }
   }
@@ -650,12 +646,10 @@
   function renderFeed() {
     var feed = $('xhs-feed');
     if (!feed) return;
-    renderCats();
     var list = visibleNotes();
     if (!list.length) {
       var emptyMsg;
-      if (xhsActiveCat) emptyMsg = '「' + esc(catName(xhsActiveCat) || '这个分类') + '」里还没有笔记。';
-      else if (activeTab === 'follow') emptyMsg = '关注的人还没有发笔记。';
+      if (activeTab === 'follow') emptyMsg = '关注的人还没有发笔记。';
       else if (activeTab === 'nearby') emptyMsg = '这一带暂时没有新笔记。';
       else emptyMsg = '这一带暂时没有新笔记。';
       feed.innerHTML = '<div class="xhs-empty">' + emptyMsg + '</div>';
@@ -725,9 +719,13 @@
     var profile = $('xhs-profile');
     if (!profile) return;
     var myNotes = state.notes.filter(function (n) { return n.author && n.author.isMe; });
+    if (xhsActiveCat) {
+      myNotes = myNotes.filter(function (n) { return n.category === xhsActiveCat; });
+    }
     var savedNotes = state.notes.filter(function (n) { return isCollected(n.id); });
     var shown = profileTab === 'saved' ? savedNotes : myNotes;
-    var totalLikes = myNotes.reduce(function (sum, n) { return sum + (Number(n.likes) || 0); }, 0);
+    var allLikes = state.notes.filter(function (n) { return n.author && n.author.isMe; }).reduce(function (sum, n) { return sum + (Number(n.likes) || 0); }, 0);
+    var noteCount = state.notes.filter(function (n) { return n.author && n.author.isMe; }).length;
 
     profile.innerHTML =
       '<div class="xhs-profile-cover' + (state.profile.cover ? ' has-cover' : '') + '"' + xhsCoverAttr(state.profile.cover) + '>' +
@@ -745,8 +743,8 @@
         '<div class="xhs-profile-handle">' + esc(state.profile.handle || '@momo') + '</div>' +
         '<div class="xhs-profile-bio">' + esc(state.profile.bio || '') + '</div>' +
         '<div class="xhs-profile-stats">' +
-          '<div class="xhs-stat"><b>' + myNotes.length + '</b>笔记</div>' +
-          '<div class="xhs-stat"><b>' + formatCount(totalLikes) + '</b>获赞</div>' +
+          '<div class="xhs-stat"><b>' + noteCount + '</b>笔记</div>' +
+          '<div class="xhs-stat"><b>' + formatCount(allLikes) + '</b>获赞</div>' +
           '<div class="xhs-stat"><b>' + savedNotes.length + '</b>收藏</div>' +
         '</div>' +
       '</div>' +
@@ -754,9 +752,15 @@
         '<button class="xhs-profile-tab ' + (profileTab === 'notes' ? 'active' : '') + '" onclick="setXhsProfileTab(\'notes\')">笔记</button>' +
         '<button class="xhs-profile-tab ' + (profileTab === 'saved' ? 'active' : '') + '" onclick="setXhsProfileTab(\'saved\')">收藏</button>' +
       '</div>' +
+      (profileTab === 'notes' ? '<div class="xhs-cats xhs-cats-me" id="xhs-cats"></div>' : '') +
       (shown.length
         ? '<div class="xhs-profile-grid">' + shown.map(noteCardHtml).join('') + '</div>'
-        : '<div class="xhs-empty">' + (profileTab === 'saved' ? '还没有收藏笔记。' : '还没有发布笔记。') + '</div>');
+        : '<div class="xhs-empty">' +
+            (profileTab === 'saved'
+              ? '还没有收藏笔记。'
+              : (xhsActiveCat ? '「' + esc(catName(xhsActiveCat) || '这个分类') + '」里还没有笔记。' : '还没有发布笔记。')) +
+          '</div>');
+    if (profileTab === 'notes') renderCats();
   }
 
   function setXhsProfileTab(tab) {

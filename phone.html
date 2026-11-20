@@ -19,7 +19,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <!-- 发布时务必与 js/build.js 的 __LIVE_BUILD__ 保持一致，否则 version-watch 会一直提示“新版已经好了” -->
-  <script>window.__BUILD__="20261121-0900";</script>
+  <script>window.__BUILD__="20261121-0415";</script>
   <script>
     (function () {
       var root = document.documentElement;
@@ -174,10 +174,10 @@
   <link rel="stylesheet" href="css/moments.css?v=2026111652" />
   <link rel="stylesheet" href="css/album.css?v=2026111432" />
   <link rel="stylesheet" href="css/music.css?v=1789840833455" />
-<link rel="stylesheet" href="css/music-app.css?v=2026112010" />
+<link rel="stylesheet" href="css/music-app.css?v=20261121-0415" />
   <link rel="stylesheet" href="css/watch.css?v=1789854172623" />
   <link rel="stylesheet" href="css/theater.css?v=20261120-1340" />
-  <link rel="stylesheet" href="css/xhs.css?v=20261121-0900" />
+  <link rel="stylesheet" href="css/xhs.css?v=20261121-0415" />
 
   <link rel="stylesheet" href="css/reader.css?v=20261120-2235" />
   <link rel="stylesheet" href="css/ledger.css?v=20261121-0400">
@@ -5459,7 +5459,7 @@
                     <button class="mz-cover-edit" id="mz-cover-edit" onclick="mzPickCover(event)" title="换封面">✎</button>
                   </div>
                   <div class="mz-cover-avatars">
-                    <div class="music-avatar-card"><img id="music-avatar-user" src="" alt="user" /><span class="music-avatar-name" id="music-name-user">user</span></div>
+                    <div class="music-avatar-card"><img id="music-avatar-user" src="" alt="" /><span class="music-avatar-name" id="music-name-user">我</span></div>
                     <div class="music-avatar-card"><img id="music-avatar-bot" src="" alt="角色" /><span class="music-avatar-name" id="music-name-bot">角色</span></div>
                   </div>
                 </div>
@@ -5474,6 +5474,11 @@
                 <div class="mz-live-bubble" id="music-live-bubble" onclick="openMusicWhisperInput()">
                   <span class="mz-live-tag" id="music-live-tag">💬 角色耳语</span>
                   <span id="music-live-bubble-text">“把音量调小一点，别震着耳朵。好听吗？”</span>
+                </div>
+
+                <div class="mz-lyric" id="music-lyric-box">
+                  <div class="mz-lyric-line cur" id="music-lyric-cur"></div>
+                  <div class="mz-lyric-line next" id="music-lyric-next"></div>
                 </div>
 
                 <div class="mz-progress">
@@ -5607,7 +5612,6 @@
                   <svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.2"/><path d="M15.4 15.4L20 20"/></svg>
                 </button>
               </header>
-              <div class="xhs-cats" id="xhs-cats"></div>
               <main class="xhs-feed" id="xhs-feed"></main>
             </div>
             <div class="xhs-profile" id="xhs-profile" style="display: none;"></div>
@@ -6372,7 +6376,7 @@
   <script src="js/desktop/desktop.js?v=2026111343"></script>
   <script src="js/desktop/days.js?v=1789904839051"></script>
 <script src="js/desktop/yanyan-cat.js?v=1789925866085"></script>
-<script src="js/desktop/drag-grid.js?v=20261121-0600"></script>
+<script src="js/desktop/drag-grid.js?v=20261121-0415"></script>
 <script src="js/desktop/app-store.js?v=2026111002"></script>
   <script src="js/wechat/stickers.js?v=2026111150"></script>
   <script src="js/wechat/search-tools.js?v=2026111316"></script>
@@ -6384,8 +6388,9 @@
   <script src="js/wechat/moments.js?v=2026111660"></script>
   <script src="js/wechat/characters.js?v=2026111655"></script>
   <script src="js/wechat/group-chat.js?v=2026111652"></script>
-  <script src="js/media/music.js?v=2026111102"></script>
-<script src="js/media/music-ui.js?v=20261121-0900"></script>
+  <script src="js/media/music.js?v=20261121-0415"></script>
+<script src="js/media/music-ui.js?v=20261121-0415"></script>
+<script src="js/media/music-lyrics.js?v=20261121-0415"></script>
 <script src="js/qrcode.js?v=2026112010"></script>
 <script src="js/media/netease-login.js?v=2026112011"></script>
   <script src="js/media/companion.js?v=20261120-2235"></script>
@@ -6394,7 +6399,7 @@
   <script src="js/theater/palace.js?v=2026111121"></script>
   <script src="js/theater/memory-engine.js?v=2026111122"></script>
   <script src="js/theater/worldbooks.js?v=2026111571"></script>
-  <script src="js/xhs/xhs.js?v=20261121-0900"></script>
+  <script src="js/xhs/xhs.js?v=20261121-0415"></script>
   <script src="js/app.js?v=2026111342"></script>
 
 

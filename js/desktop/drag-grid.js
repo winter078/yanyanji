@@ -934,6 +934,16 @@
   }
 
   // ================= 音乐 / 倒数日组件 =================
+  function musicWidgetLyrics() {
+    try {
+      if (window.MzLyrics) {
+        const p = window.MzLyrics.pair();
+        if (p && (p[0] || p[1])) return [p[0] || '', p[1] || ''];
+      }
+    } catch (e) {}
+    return null;
+  }
+
   function musicWidgetState() {
     const audio = window._momoAudio;
     const titleEl = document.getElementById('music-current-title');
@@ -943,8 +953,9 @@
     return {
       hasTrack: hasTrack,
       title: hasTrack && titleEl ? (titleEl.textContent || '').trim() : '',
-      cover: hasTrack && /^(https?:|data:|blob:)/.test(coverAttr) ? coverAttr : '',
-      playing: hasTrack && audio ? !audio.paused : false
+      cover: hasTrack && coverAttr && coverAttr !== 'undefined' ? coverAttr : '',
+      playing: hasTrack && audio ? !audio.paused : false,
+      lyrics: hasTrack ? musicWidgetLyrics() : null
     };
   }
 
@@ -981,7 +992,9 @@
     applyPhotoWidgetGridPlacement(card, item, 'single');
     const state = musicWidgetState();
     const title = item.title || state.title || '晚风轻轻吹过';
-    const lyrics = Array.isArray(item.lyrics) && item.lyrics.length === 2 ? item.lyrics : ['让晚风替我拥抱你', '在每一个安静的夜里'];
+    const fallbackLyrics = Array.isArray(item.lyrics) && item.lyrics.length === 2 ? item.lyrics : ['让晚风替我拥抱你', '在每一个安静的夜里'];
+    // 正在放歌且拿到真歌词就用真歌词；拿不到（纯音乐/没登录）保留原来的两行留白文案
+    const lyrics = state.lyrics || fallbackLyrics;
     const visualPlaying = state.hasTrack ? state.playing : true;
     const coverHtml = state.cover
       ? '<img class="mw-cover-img" src="' + photoWidgetEscape(state.cover) + '" alt="专辑封面" draggable="false" onerror="this.style.display=\'none\'" />'
@@ -1139,6 +1152,18 @@
           if (cover) cover.appendChild(img);
         }
         if (img.getAttribute('src') !== state.cover) img.src = state.cover;
+      }
+      if (state.lyrics) {
+        const lyrEl = card.querySelector('.mw-lyrics');
+        if (lyrEl) {
+          const spans = lyrEl.querySelectorAll('span');
+          if (spans.length >= 2) {
+            const a = state.lyrics[0] || '';
+            const b = state.lyrics[1] || '';
+            if (spans[0].textContent !== a) spans[0].textContent = a;
+            if (spans[1].textContent !== b) spans[1].textContent = b;
+          }
+        }
       }
     });
   }

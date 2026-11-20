@@ -302,6 +302,9 @@
       if (!ok) return false;
     }
     currentSong = song;
+    if (window.MzLyrics) {
+      try { window.MzLyrics.load(song); } catch (e) {}
+    }
     if (queueContext && Array.isArray(queueContext) && queueContext.length > 0) {
       activeQueue = queueContext;
     } else if (activeQueue.length === 0) {
@@ -968,12 +971,8 @@
       if (qEl) qEl.innerText = savedQuote;
     }
 
-    // 头像与称谓同步
-    const userAvatarEl = document.getElementById('music-avatar-user');
-    const userNameEl = document.getElementById('music-name-user');
-    const userAvatar = localStorage.getItem('momo_user_avatar') || (window.appData && window.appData.hero && window.appData.hero.userAvatar) || '';
-    if (userAvatarEl && userAvatar) userAvatarEl.src = userAvatar;
-    if (userNameEl && window.appData) userNameEl.innerText = (window.appData.hero && (window.appData.hero.userName || window.appData.hero.userHandle)) || '我';
+    // 头像与称谓同步（多源回退，避免各 App 写在不同键上）
+    refreshMusicUserUI();
 
     // 角色侧头像/名字/页头按钮跟着“一起听的人”走
     refreshMusicCompanionUI();
@@ -981,6 +980,54 @@
     if (allSongs.length > 0) {
       playSong(allSongs[0], false, allSongs);
     }
+  };
+
+  // ================= 一起听：我这一侧的头像与称谓 =================
+  // 站内头像被存在好几个键上（头像仓库写 momo_hero_avatar，别的 App 写 momo_user_avatar，
+  // appData 里还有 heroAvatar / userAvatar / hero.userAvatar 三种），这里统一回退着找。
+  function musicUserAvatar() {
+    const keys = ['momo_user_avatar', 'momo_hero_avatar'];
+    for (let i = 0; i < keys.length; i++) {
+      try {
+        const v = localStorage.getItem(keys[i]);
+        if (v && String(v).trim()) return String(v).trim();
+      } catch (e) {}
+    }
+    const a = window.appData || {};
+    return a.heroAvatar || a.userAvatar || (a.hero && a.hero.userAvatar) || '';
+  }
+
+  function musicUserName() {
+    const a = window.appData || {};
+    const n = (a.hero && (a.hero.userName || a.hero.userHandle))
+      || a.userName || a.userHandle || a.heroName || '';
+    return String(n || '').trim() || '我';
+  }
+
+  // 没有头像时给一个首字圆，别让卡片空着
+  function musicLetterAvatar(text) {
+    const raw = String(text || '我').trim() || '我';
+    const ch = raw.charAt(0).toUpperCase();
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80">'
+      + '<rect width="80" height="80" fill="#3A3A3C"/>'
+      + '<circle cx="40" cy="40" r="39" fill="none" stroke="#FFFFFF" stroke-opacity="0.16" stroke-width="2"/>'
+      + '<text x="40" y="53" font-size="34" fill="#F2F2F7" text-anchor="middle" '
+      + 'font-family="-apple-system,PingFang SC,sans-serif">' + ch + '</text></svg>';
+    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  }
+
+  window.refreshMusicUserUI = function () {
+    const name = musicUserName();
+    const av = musicUserAvatar();
+    const avEl = document.getElementById('music-avatar-user');
+    const nameEl = document.getElementById('music-name-user');
+    if (avEl) {
+      const src = av || musicLetterAvatar(name);
+      if (avEl.getAttribute('src') !== src) avEl.setAttribute('src', src);
+      avEl.setAttribute('alt', '');
+      avEl.style.display = '';
+    }
+    if (nameEl) nameEl.innerText = name;
   };
 
   // ================= 一起听：和谁一起（同伴层） =================
