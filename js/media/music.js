@@ -1147,22 +1147,37 @@
 
   // 接受邀请：一起听的人切成发卡的那个角色，然后放歌
   window.acceptMusicInvite = function(card) {
+    const already = !!(window.Companion && window.Companion.isAccepted && window.Companion.isAccepted(card));
     if (window.switchMusicCompanion) window.switchMusicCompanion(musicChatOwnerId());
     const played = window.playSharedSong(card);
+    if (window.Companion && window.Companion.markAccepted) window.Companion.markAccepted(card);
     const name = musicCompanionName();
     const bubble = document.getElementById('music-live-bubble-text');
     if (bubble) bubble.innerText = '“耳机我戴上了，开始吧。”';
     musicToast(played ? ('已和' + name + '一起听') : (name + '答应了，但这首歌不在这台手机里'));
+    if (!already && typeof window.renderSystemNotice === 'function') {
+      window.renderSystemNotice('已和' + name + '一起听《' + ((card && card.title) || '这首歌') + '》');
+    }
+    if (typeof window.refreshChatCardStates === 'function') window.refreshChatCardStates();
   };
 
   // 给 AI 看的曲库摘要（只给歌名+歌手，让它照抄，别自己编）
   window.musicCatalogForAi = function(limit) {
     const list = (typeof allSongs !== 'undefined' && allSongs) || [];
     const n = limit || 8;
-    return list.slice(0, n).map(function(s) {
+    const nowPlaying = (typeof currentSong !== 'undefined' && currentSong) || null;
+    const parts = [];
+    if (nowPlaying && nowPlaying.title) {
+      const artist = String(nowPlaying.artist || '').split('·')[0].trim();
+      parts.push((nowPlaying.title || '') + (artist ? (' - ' + artist) : '') + '（正在听）');
+    }
+    list.forEach(function(s) {
+      if (nowPlaying && s.title === nowPlaying.title) return;
+      if (parts.length >= n) return;
       const artist = String(s.artist || '').split('·')[0].trim();
-      return (s.title || '') + (artist ? (' - ' + artist) : '');
-    }).join('；');
+      parts.push((s.title || '') + (artist ? (' - ' + artist) : ''));
+    });
+    return parts.join('；');
   };
 
   // 角色在聊天里输出的轻标记 [MUSIC_INVITE:歌名] / [MUSIC_SHARE:歌名]

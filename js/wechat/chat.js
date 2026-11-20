@@ -2485,6 +2485,26 @@ window.syncNarrationModeUI = syncNarrationModeUI;
     }
     window.renderSystemNotice = renderSystemNotice;
 
+    // 卡片底部小字：邀请/分享/已接受，三种状态
+    window.chatCardHintText = function(kind, card) {
+      kind = String(kind || '');
+      const accepted = !!(window.Companion && window.Companion.isAccepted && window.Companion.isAccepted(card || { kind: kind, title: '' }));
+      const invite = kind.indexOf('_invite') > -1;
+      if (kind.indexOf('watch') === 0) return accepted ? '已一起看 · 点开继续' : (invite ? '点一下卡片，一起看这片' : '点一下卡片，现在就看');
+      if (kind.indexOf('read') === 0) return accepted ? '已一起读 · 点开继续' : (invite ? '点一下卡片，一起读这本' : '点一下卡片，翻开这本');
+      if (kind.indexOf('music') === 0) return accepted ? '已一起听 · 点开继续' : (invite ? '点一下卡片，戴上耳机一起听' : '点一下卡片，现在放这首歌');
+      return '';
+    };
+
+    // 接受邀请后只改小字，不重渲染整段聊天
+    window.refreshChatCardStates = function() {
+      const nodes = document.querySelectorAll('.card-hint');
+      Array.prototype.forEach.call(nodes, function(el) {
+        const kind = el.getAttribute('data-kind') || '';
+        el.innerText = window.chatCardHintText(kind, { kind: kind, title: el.getAttribute('data-title') || '' });
+      });
+    };
+
     // 身份切换提示上挂一个 ✕：只隐藏显示，数据仍保留（上下文按提示切分身份段要用它）。
     function attachSystemNoticeClose(el, idx) {
       const pill = el && el.querySelector ? el.querySelector('.wechat-system-pill') : null;
@@ -3805,10 +3825,13 @@ window.syncNarrationModeUI = syncNarrationModeUI;
 
           if (isMusic || isWatch || isRead) {
             const hintEl = document.createElement('div');
+            hintEl.className = 'card-hint';
+            hintEl.setAttribute('data-kind', kind);
+            hintEl.setAttribute('data-title', String(cardData.title || ''));
             hintEl.style.cssText = 'font-size:11px;color:#8d8177;margin-top:7px;letter-spacing:.3px;';
-            if (isWatch) hintEl.innerText = isInvite ? '点一下卡片，一起看这片' : '点一下卡片，现在就看';
-            else if (isRead) hintEl.innerText = isInvite ? '点一下卡片，一起读这本' : '点一下卡片，翻开这本';
-            else hintEl.innerText = isInvite ? '点一下卡片，戴上耳机一起听' : '点一下卡片，现在放这首歌';
+            hintEl.innerText = (typeof window.chatCardHintText === 'function')
+              ? window.chatCardHintText(kind, cardData)
+              : (isInvite ? '点一下，接受邀请' : '点一下打开');
             shareCard.appendChild(hintEl);
           }
 
@@ -4846,6 +4869,7 @@ ${(() => {
         if (readerCatalog) {
           cardLines.push('· 共读｜邀对方一起读 → [READ_INVITE:书名]；只想分享一本书 → [READ_SHARE:书名]。书架：' + readerCatalog + '。');
         }
+        cardLines.push('清单里标了（正在看）（正在读）（正在听）的，就是对方此刻正在做的事，优先用这一项来邀。');
         cardLines.push('什么时候发：对方说想听歌/想看电影/想看书、想被陪，或你主动想陪对方的时候。日常闲聊不要发卡。');
         promptText += cardLines.join('\n');
       }

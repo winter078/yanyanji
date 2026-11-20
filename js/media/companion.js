@@ -177,6 +177,31 @@
     pickerEl.style.display = 'flex';
   }
 
+  // ===== 卡片接受状态（谁已经答应了这张邀请）=====
+  var ACCEPT_KEY = 'momo_card_accept_v1';
+
+  function cardKey(card) {
+    if (!card) return '';
+    return String(card.kind || '') + '|' + String(card.title || '');
+  }
+
+  function readAccepted() {
+    try { return JSON.parse(localStorage.getItem(ACCEPT_KEY) || '{}'); } catch (e) { return {}; }
+  }
+
+  function markAccepted(card) {
+    var k = cardKey(card);
+    if (!k) return;
+    var map = readAccepted();
+    map[k] = Date.now();
+    try { localStorage.setItem(ACCEPT_KEY, JSON.stringify(map)); } catch (e) {}
+  }
+
+  function isAccepted(card) {
+    if (!card || String(card.kind || '').indexOf('_invite') < 0) return false;
+    return !!readAccepted()[cardKey(card)];
+  }
+
   window.Companion = {
     DEFAULT_NAME: DEFAULT_NAME,
     list: all,
@@ -189,6 +214,9 @@
     relationLine: relationLine,
     userName: userName,
     openPicker: openPicker,
-    closePicker: closePicker
+    closePicker: closePicker,
+    cardKey: cardKey,
+    markAccepted: markAccepted,
+    isAccepted: isAccepted
   };
 })(window);

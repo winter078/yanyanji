@@ -1826,9 +1826,19 @@
   // ====== 聊天里的共读卡片（用户发 / 角色发共用） ======
   window.readerCatalogForAi = function(limit) {
     const list = (typeof currentBooks !== 'undefined' && currentBooks) || [];
-    return list.slice(0, limit || 6).map(function(b) {
-      return b.title + (b.author ? (' - ' + b.author) : '');
-    }).join('；');
+    const n = limit || 6;
+    const parts = [];
+    const cur = (typeof currentActiveBook !== 'undefined' && currentActiveBook) || null;
+    if (cur && cur.title) {
+      const chap = (cur.chapters && cur.chapters[currentChapterIdx] && cur.chapters[currentChapterIdx].title) || '';
+      parts.push(cur.title + '（正在读' + (chap ? ('：' + chap) : '') + '）');
+    }
+    list.forEach(function(b) {
+      if (cur && b.id === cur.id) return;
+      if (parts.length >= n) return;
+      parts.push(b.title + (b.author ? (' - ' + b.author) : ''));
+    });
+    return parts.join('；');
   };
 
   function findBookByTitle(want) {
@@ -1875,10 +1885,17 @@
   };
 
   window.acceptReadInvite = function(card) {
+    const already = !!(window.Companion && window.Companion.isAccepted && window.Companion.isAccepted(card));
     let ownerId = '';
     try { ownerId = localStorage.getItem('momo_active_char') || ''; } catch (e) {}
     if (window.switchReaderCompanion) window.switchReaderCompanion(ownerId);
-    return window.playSharedBook(card);
+    const ok = window.playSharedBook(card);
+    if (window.Companion && window.Companion.markAccepted) window.Companion.markAccepted(card);
+    if (!already && typeof window.renderSystemNotice === 'function') {
+      window.renderSystemNotice('已和' + readerChatOwnerName() + '一起读《' + ((card && card.title) || '这本书') + '》');
+    }
+    if (typeof window.refreshChatCardStates === 'function') window.refreshChatCardStates();
+    return ok;
   };
 
   function readerChatOwnerName() {

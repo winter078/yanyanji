@@ -273,7 +273,16 @@
 
   // ====== 聊天里的观影卡片（用户发 / 角色发共用） ======
   window.watchCatalogForAi = function(limit) {
-    return DEFAULT_RECOMMENDATIONS.slice(0, limit || 5).map(function(r) { return r.title; }).join('；');
+    const n = limit || 5;
+    const parts = [];
+    const cur = watchState.currentVideo;
+    if (cur && cur.title) parts.push(cur.title + '（正在看）');
+    DEFAULT_RECOMMENDATIONS.forEach(function(r) {
+      if (cur && r.title === cur.title) return;
+      if (parts.length >= n) return;
+      parts.push(r.title);
+    });
+    return parts.join('；');
   };
 
   function findRecByTitle(want) {
@@ -324,10 +333,17 @@
   };
 
   window.acceptWatchInvite = function(card) {
+    const already = !!(window.Companion && window.Companion.isAccepted && window.Companion.isAccepted(card));
     let ownerId = '';
     try { ownerId = localStorage.getItem('momo_active_char') || ''; } catch (e) {}
     if (window.switchWatchCompanion) window.switchWatchCompanion(ownerId);
-    return window.playSharedVideo(card);
+    const ok = window.playSharedVideo(card);
+    if (window.Companion && window.Companion.markAccepted) window.Companion.markAccepted(card);
+    if (!already && typeof window.renderSystemNotice === 'function') {
+      window.renderSystemNotice('已和' + watchChatOwnerName() + '看《' + ((card && card.title) || '这片') + '》');
+    }
+    if (typeof window.refreshChatCardStates === 'function') window.refreshChatCardStates();
+    return ok;
   };
 
   function watchChatOwnerName() {
