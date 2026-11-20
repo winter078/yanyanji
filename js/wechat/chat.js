@@ -4677,6 +4677,14 @@ ${(() => {
   return '暂无手账账目数据。';
 })()}
 
+【身体健康与作息（她自己的身体记录，只在放行时才给你看）】：
+${(() => {
+  if (typeof window.getHealthSummaryForAi === 'function') {
+    return window.getHealthSummaryForAi({ charId: (activeChar && activeChar.id) || '', charName: charName });
+  }
+  return '暂无健康数据。';
+})()}
+
 【倒数日 Days Matter 与重要纪念日档案（当前角色与用户的重要日子）】：
 ${(() => {
   if (typeof window.getDaysMatterSummaryForAi === 'function') {

@@ -243,6 +243,8 @@ function renderThemePresetsUI() {
           if (typeof renderVaultView === 'function') renderVaultView();
         } else if (pageId === 'page-ledger') {
           if (typeof renderLedgerApp === 'function') renderLedgerApp();
+        } else if (pageId === 'page-health') {
+          if (typeof window.renderHealthApp === 'function') window.renderHealthApp();
         } else if (pageId === 'page-reader') {
           if (typeof renderReaderShelf === 'function') renderReaderShelf();
         } else if (pageId === 'page-watch') {

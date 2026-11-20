@@ -19,7 +19,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <!-- 发布时务必与 js/build.js 的 __LIVE_BUILD__ 保持一致，否则 version-watch 会一直提示“新版已经好了” -->
-  <script>window.__BUILD__="20261121-0400";</script>
+  <script>window.__BUILD__="20261121-0500";</script>
   <script>
     (function () {
       var root = document.documentElement;
@@ -182,6 +182,7 @@
   <link rel="stylesheet" href="css/reader.css?v=20261120-2235" />
   <link rel="stylesheet" href="css/ledger.css?v=20261121-0400">
   <link rel="stylesheet" href="css/ledger-app.css?v=20261121-0300">
+  <link rel="stylesheet" href="css/health.css?v=20261121-0500">
   <link rel="stylesheet" href="css/avatar-vault.css?v=2026111145">
   <link rel="stylesheet" href="css/chat-appearance.css?v=2026111308">
   <link rel="stylesheet" href="css/masks.css?v=2026111652">
@@ -4215,6 +4216,28 @@
           </div>
         </section>
 
+        <!-- ================= 💚 健康 App ================= -->
+        <section class="view-page" id="page-health" style="display: none;">
+          <div class="hp-head">
+            <button class="hp-back" onclick="openPage('page-home')" aria-label="返回桌面">‹</button>
+            <div class="hp-head-title" id="hp-head-title">健康</div>
+            <button class="hp-gear" onclick="hpOpenSettings()" aria-label="设置">⋯</button>
+          </div>
+          <div class="hp-body" id="hp-body">
+            <div class="hp-panel" id="hp-panel-today"><div id="hp-today"></div></div>
+            <div class="hp-panel" id="hp-panel-cycle" style="display: none;"><div id="hp-cycle"></div></div>
+            <div class="hp-panel" id="hp-panel-sleep" style="display: none;"><div id="hp-sleep"></div></div>
+            <div class="hp-panel" id="hp-panel-body" style="display: none;"><div id="hp-body-wrap"></div></div>
+          </div>
+          <div class="hp-tabbar">
+            <div class="hp-tab on" id="hp-tab-today" onclick="hpSwitchTab('today')"><i>☀️</i>今天</div>
+            <div class="hp-tab" id="hp-tab-cycle" onclick="hpSwitchTab('cycle')"><i>🌸</i>周期</div>
+            <div class="hp-tab" id="hp-tab-sleep" onclick="hpSwitchTab('sleep')"><i>🌙</i>睡眠</div>
+            <div class="hp-tab" id="hp-tab-body" onclick="hpSwitchTab('body')"><i>📏</i>身体</div>
+          </div>
+        </section>
+
+
         
         <!-- ================= 页面：🎧 一起听 · QQ音乐 (1:1 极简黑胶美学) ================= -->
         
@@ -6666,6 +6689,7 @@
     </div>
   <script src="js/desktop/ledger.js?v=20261121-0300"></script>
   <script src="js/desktop/ledger-app.js?v=20261121-0300"></script>
+  <script src="js/desktop/health.js?v=20261121-0500"></script>
 
     <!-- 头像上传与定制抽屉 -->
     <div class="ledger-drawer-mask theme-oled" id="vault-upload-drawer" onclick="closeVaultUploadDrawer()">

@@ -174,6 +174,17 @@
       categoryName: '生活手账',
       desc: '温馨的生活日常开销收支流水手账本'
     },
+    'app-health': {
+      id: 'app-health',
+      type: 'app',
+      page: 'page-health',
+      icon: '💚',
+      name: '健康',
+      bg: 'linear-gradient(135deg, #4ECDC4, #2C8F86)',
+      category: 'life',
+      categoryName: '生活手账',
+      desc: '经期预测、睡眠与梦、体重步数，一天一眼看完'
+    },
     'app-yanyan-cat': {
       id: 'app-yanyan-cat',
       type: 'app',
@@ -488,6 +499,28 @@
           saveDesktopStorage();
         }
         try { localStorage.setItem('momo_album_desktop_seeded', '1'); } catch (e) {}
+      }
+      // 健康 App 首次上线：旧桌面没有这个图标时补一个到主屏，只补一次
+      if (!localStorage.getItem('momo_health_desktop_seeded')) {
+        const hasHealth = function(slot) {
+          if (!slot) return false;
+          if (slot.type === 'folder' && Array.isArray(slot.items)) {
+            return slot.items.some(hasHealth);
+          }
+          return slot.id === 'app-health';
+        };
+        const exists = desktopData.pages.some(p => Array.isArray(p.slots) && p.slots.some(hasHealth));
+        if (!exists && desktopData.pages[0] && Array.isArray(desktopData.pages[0].slots)) {
+          const slots = desktopData.pages[0].slots;
+          const emptyIndex = slots.findIndex(function(slot) { return !slot; });
+          if (emptyIndex >= 0) {
+            slots[emptyIndex] = APP_STORE_REGISTRY['app-health'];
+          } else {
+            slots.push(APP_STORE_REGISTRY['app-health']);
+          }
+          saveDesktopStorage();
+        }
+        try { localStorage.setItem('momo_health_desktop_seeded', '1'); } catch (e) {}
       }
       // 只清理页面尾部无意义空槽，中间空位保留，用户可以把 App 单独拎出来放
       if (trimTrailingDesktopSlots()) saveDesktopStorage();
