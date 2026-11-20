@@ -18,7 +18,7 @@
   <meta http-equiv="Cache-Control" content="no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <script>window.__BUILD__="20261120-1229";</script>
+  <script>window.__BUILD__="20261120-1256";</script>
   <script>
     (function () {
       var root = document.documentElement;
@@ -2084,6 +2084,13 @@
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></svg>
                   </div>
                   <div class="plus-v3-text">角色扮演</div>
+                </div>
+
+                <div class="plus-v3-item" onclick="exportRpStoryToBook()">
+                  <div class="plus-v3-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3h11a3 3 0 0 1 3 3v15H7a3 3 0 0 0-3 3V3z"></path><path d="M4 19a3 3 0 0 1 3-3h11"></path></svg>
+                  </div>
+                  <div class="plus-v3-text">存成书，去阅读看</div>
                 </div>
 
                 <div class="plus-v3-divider"></div>
@@ -4592,7 +4599,7 @@
                 <!-- 动态章节列表 -->
               </div>
               <div class="reader-catalog-footer" style="padding: 10px 14px; border-top: 1px solid #f0e6e8; display: flex; gap: 8px; align-items: center;">
-                <button class="xianguo-writer-save-btn" style="flex: 1; padding: 6px 8px; font-size: 11px;" onclick="startTheaterWithBook()">
+                <button class="xianguo-writer-save-btn" id="reader-catalog-theater-btn" style="flex: 1; padding: 6px 8px; font-size: 11px; display: none;" onclick="startTheaterWithBook()">
                   <span>🎭 用这本书开剧场</span>
                 </button>
                 <button class="xianguo-writer-save-btn" style="flex: 1; padding: 6px 8px; font-size: 11px;" onclick="openWriterFromCurrentBook()">
@@ -6201,7 +6208,7 @@
 <script src="js/qrcode.js?v=2026112010"></script>
 <script src="js/media/netease-login.js?v=2026112011"></script>
   <script src="js/media/watch.js?v=1789856078493"></script>
-  <script src="js/theater/theater.js?v=20261120-1229"></script>
+  <script src="js/theater/theater.js?v=20261120-1256"></script>
   <script src="js/theater/palace.js?v=2026111121"></script>
   <script src="js/theater/memory-engine.js?v=2026111122"></script>
   <script src="js/theater/worldbooks.js?v=2026111571"></script>
@@ -6367,7 +6374,7 @@
     </div>
   </div>
 
-  <script src="js/media/reader.js?v=20261120-1229"></script>
+  <script src="js/media/reader.js?v=20261120-1256"></script>
 
         <!-- 记忆宫殿辅助弹窗合集 (纯正暗黑系 OLED) -->
     <!-- 1. 自定义范围总结弹窗 -->
@@ -7283,7 +7290,7 @@ html.ios .watch-header {
 }
 </style>
 
-<script src="js/version-watch.js?v=20261120-1229"></script>
+<script src="js/version-watch.js?v=20261120-1256"></script>
 </body>
 </html>
 <!-- live_preview_refresh_trigger:1790094973085 -->
