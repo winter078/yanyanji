@@ -18,7 +18,7 @@
   <meta http-equiv="Cache-Control" content="no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <script>window.__BUILD__="20261120-1045";</script>
+  <script>window.__BUILD__="20261120-1100";</script>
   <script>
     (function () {
       var root = document.documentElement;
@@ -7257,14 +7257,18 @@ html.ios .home-dock-bar {
 /* 2026-11-20 统一各页头部（第一步，只动头部）：
    真机量下来同一种头部有三种写法 —— 107(内边距47)、86(内边距24)、71/64(内边距32)，
    所以有的顶到天上、有的半空悬着。这里统一成：内边距 15 + 下 8，内容起点约 62pt，
-   正好对齐用户指定的基准「一起听」的 63pt。 */
-.wechat-header,
-.wechat-main-header,
-.moments-header,
-.glass-header,
-.ios-setting-nav,
-.ledger-header,
-.vault-header {
+   正好对齐用户指定的基准「一起听」的 63pt。
+   选择器用 html.ios 前缀，是为了压过 base.css 里 html.ios .wechat-header{padding-top:47px} 那条。 */
+html.ios .wechat-header,
+html.ios .wechat-main-header,
+html.ios .moments-header,
+html.ios .glass-header,
+html.ios .ios-setting-nav,
+html.ios .ledger-header,
+html.ios .vault-header,
+html.ios .yanyan-header-bar,
+html.ios .album-top,
+html.ios .watch-header {
   padding-top: 15px !important;
   padding-bottom: 8px !important;
   height: auto !important;
@@ -7274,7 +7278,7 @@ html.ios .home-dock-bar {
 }
 </style>
 
-<script src="js/version-watch.js?v=20261120-1045"></script>
+<script src="js/version-watch.js?v=20261120-1100"></script>
 </body>
 </html>
 <!-- live_preview_refresh_trigger:1790094973085 -->
