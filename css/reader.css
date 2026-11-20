@@ -2605,23 +2605,24 @@ body[data-theme="dark"] #page-reader .xianguo-add-btn,
 
 .rd-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 20px 16px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px 12px;
 }
 
 .rd-book {
   cursor: pointer;
+  min-width: 0;
   -webkit-tap-highlight-color: transparent;
 }
 
 .rd-book-cover {
   position: relative;
   width: 100%;
-  aspect-ratio: 3 / 4.25;
-  border-radius: 6px;
+  aspect-ratio: 3 / 4.2;
+  border-radius: 4px;
   overflow: hidden;
   background: #242B36;
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.34);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
@@ -2665,17 +2666,18 @@ body[data-theme="dark"] #page-reader .xianguo-add-btn,
 .rd-pure-cover-title {
   writing-mode: vertical-rl;
   text-orientation: upright;
-  font-size: 13px;
+  font-size: 10px;
   font-weight: 500;
-  letter-spacing: 3px;
+  letter-spacing: 2px;
   line-height: 1.35;
   max-height: 88%;
   overflow: hidden;
 }
 
 .rd-pure-cover-foot {
+  display: none;
   position: absolute;
-  bottom: 9px;
+  bottom: 6px;
   left: 0;
   right: 0;
   text-align: center;
@@ -2685,19 +2687,19 @@ body[data-theme="dark"] #page-reader .xianguo-add-btn,
 }
 
 .rd-book-title {
-  font-size: 12.5px;
+  font-size: 10.5px;
   font-weight: 500;
   color: var(--rd-ink);
-  margin-top: 9px;
+  margin-top: 7px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .rd-book-sub {
-  font-size: 10px;
+  font-size: 8.5px;
   color: var(--rd-ink-3);
-  margin-top: 4px;
+  margin-top: 2px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2711,9 +2713,21 @@ body[data-theme="dark"] #page-reader .xianguo-add-btn,
 }
 
 .rd-book-more {
-  flex-shrink: 0;
-  padding: 2px 3px;
-  color: var(--rd-ink-3);
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  z-index: 3;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8.5px;
+  line-height: 1;
+  letter-spacing: 0;
+  color: rgba(255, 255, 255, 0.5);
+  background: rgba(18, 24, 33, 0.6);
+  border-radius: 50%;
   cursor: pointer;
 }
 

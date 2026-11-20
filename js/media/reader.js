@@ -3521,11 +3521,13 @@
            </div>`;
       return `
         <div class="rd-book" onclick="openXianguoReading('${book.id}')">
-          <div class="rd-book-cover ${book.cover ? '' : 'is-pure'}">${inner}</div>
+          <div class="rd-book-cover ${book.cover ? '' : 'is-pure'}">
+            ${inner}
+            <span class="rd-book-more" onclick="rdPickBookCat(event,'${book.id}')">···</span>
+          </div>
           <div class="rd-book-title" title="${book.title || ''}">${book.title || '未命名'}</div>
           <div class="rd-book-sub">
-            <span class="rd-book-txt">${book.progress ? (book.progress + '%') : (book.lastReadChapTitle || '未开始')}</span>
-            <span class="rd-book-more" onclick="rdPickBookCat(event,'${book.id}')">···</span>
+            <span class="rd-book-txt">${book.author || (book.progress ? (book.progress + '%') : '未开始')}</span>
           </div>
         </div>
       `;
