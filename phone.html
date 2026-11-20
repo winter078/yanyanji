@@ -19,7 +19,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <!-- 发布时务必与 js/build.js 的 __LIVE_BUILD__ 保持一致，否则 version-watch 会一直提示“新版已经好了” -->
-  <script>window.__BUILD__="20261121-0600";</script>
+  <script>window.__BUILD__="20261121-0700";</script>
   <script>
     (function () {
       var root = document.documentElement;
@@ -183,6 +183,7 @@
   <link rel="stylesheet" href="css/ledger.css?v=20261121-0400">
   <link rel="stylesheet" href="css/ledger-app.css?v=20261121-0300">
   <link rel="stylesheet" href="css/health.css?v=20261121-0500">
+<link rel="stylesheet" href="css/forum.css?v=20261121-0700">
   <link rel="stylesheet" href="css/avatar-vault.css?v=2026111145">
   <link rel="stylesheet" href="css/chat-appearance.css?v=2026111308">
   <link rel="stylesheet" href="css/masks.css?v=2026111652">
@@ -4237,6 +4238,46 @@
           </div>
         </section>
 
+        <!-- ================= 🪑 长椅 App（公共广场：求助 / 问答 / 分享） ================= -->
+        <section class="view-page" id="page-forum" style="display: none;">
+          <div class="fm-head">
+            <button class="fm-back" onclick="openPage('page-home')" aria-label="返回桌面">‹</button>
+            <div class="fm-head-mid">
+              <div class="fm-head-title">长椅</div>
+              <div id="fm-sub">谁都可以坐下说两句</div>
+            </div>
+            <button class="fm-icon-btn" onclick="fmOpenCompose('me')" aria-label="发帖">✎</button>
+            <button class="fm-icon-btn" onclick="fmOpenSettings()" aria-label="设置">⋯</button>
+          </div>
+          <div id="fm-chips"></div>
+          <div id="fm-missed"></div>
+          <div class="fm-body" id="fm-body">
+            <div id="fm-list"></div>
+          </div>
+          <div class="fm-tabbar">
+            <div class="fm-tab on" id="fm-tab-square" onclick="fmSwitchTab('square')">广场<span id="fm-tab-dot"></span></div>
+            <div class="fm-tab" id="fm-tab-follow" onclick="fmSwitchTab('follow')">关注</div>
+            <div class="fm-tab" id="fm-tab-mine" onclick="fmSwitchTab('mine')">我</div>
+          </div>
+
+          <!-- 帖子详情 -->
+          <div id="fm-detail">
+            <div class="fm-det-head">
+              <button class="fm-back" onclick="fmClosePost()" aria-label="返回">‹</button>
+              <div id="fm-det-head-title"></div>
+              <div style="flex:1"></div>
+            </div>
+            <div class="fm-det-body" id="fm-det-body"></div>
+            <div class="fm-det-foot">
+              <input id="fm-reply-input" placeholder="你也说一句" onkeydown="if(event.key==='Enter')fmSendMyReply()">
+              <button class="fm-send-btn" onclick="fmSendMyReply()">发</button>
+            </div>
+          </div>
+
+          <!-- 发帖 / 设置弹层 -->
+          <div id="fm-sheet"></div>
+        </section>
+
 
         
         <!-- ================= 页面：🎧 一起听 · QQ音乐 (1:1 极简黑胶美学) ================= -->
@@ -6690,6 +6731,7 @@
   <script src="js/desktop/ledger.js?v=20261121-0300"></script>
   <script src="js/desktop/ledger-app.js?v=20261121-0300"></script>
   <script src="js/desktop/health.js?v=20261121-0500"></script>
+  <script src="js/desktop/forum.js?v=20261121-0700"></script>
 
     <!-- 头像上传与定制抽屉 -->
     <div class="ledger-drawer-mask theme-oled" id="vault-upload-drawer" onclick="closeVaultUploadDrawer()">

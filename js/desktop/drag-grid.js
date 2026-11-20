@@ -185,6 +185,17 @@
       categoryName: '生活手账',
       desc: '经期预测、睡眠与梦、体重步数，一天一眼看完'
     },
+    'app-forum': {
+      id: 'app-forum',
+      type: 'app',
+      page: 'page-forum',
+      icon: '🪑',
+      name: '长椅',
+      bg: 'linear-gradient(135deg, #E8B04B, #B9832B)',
+      category: 'social',
+      categoryName: '公共广场',
+      desc: '谁都能坐下说两句：求助、问答、分享，还有一群不认识的邻居'
+    },
     'app-yanyan-cat': {
       id: 'app-yanyan-cat',
       type: 'app',
@@ -261,6 +272,7 @@
     'app-daysmatter': '<rect x="4.2" y="5.4" width="15.6" height="14.4" rx="2.5"/><path d="M4.2 10h15.6M8.6 3.6v3.4M15.4 3.6v3.4"/><circle cx="8.6" cy="14.2" r="1.4"/>',
     'app-ledger': '<rect x="4.6" y="4" width="14.8" height="16" rx="2.6"/><path d="M8.2 8.4h7.6M8.2 12h7.6M8.2 15.6h4.8"/>',
     'app-health': '<path d="M19.2 13.6c1.4-1.4 2.6-3 2.6-5.1A5 5 0 0 0 16.8 3.5c-1.7 0-2.9.5-4.3 1.9-1.4-1.4-2.6-1.9-4.3-1.9A5 5 0 0 0 2.9 8.5c0 2.1 1.2 3.7 2.6 5.1l6.6 6.4z"/>',
+    'app-forum': '<path d="M5.2 6.4h13.6M5.2 8.8h13.6M3.8 12.6h16.4M6.4 8.8v3.8M17.6 8.8v3.8M6.4 12.6v4.6M17.6 12.6v4.6"/>',
     'app-yanyan-cat': '<circle cx="12" cy="13" r="6.2"/><path d="M6.8 9.4l-1-4.4 4.2 2.2M17.2 9.4l1-4.4-4.2 2.2"/><path d="M9.6 12.4h.01M14.4 12.4h.01M10.4 15.2c1 .9 2.2 .9 3.2 0"/>',
     'app-avatar-vault': '<circle cx="9" cy="8.6" r="3"/><path d="M3.4 19c.9-3 2.9-4.6 5.6-4.6s4.7 1.6 5.6 4.6"/><circle cx="16.6" cy="9.6" r="2.4"/><path d="M15.4 14.6c2.4 0 4.1 1.5 4.9 4"/>',
     'app-wordcards': '<rect x="4.2" y="5.2" width="7" height="13.6" rx="2"/><rect x="12.8" y="5.2" width="7" height="13.6" rx="2"/><path d="M7.7 9.2h.01M7.7 12h.01M7.7 14.8h.01M16.3 9.2h.01M16.3 12h.01M16.3 14.8h.01"/>',
@@ -522,6 +534,28 @@
           saveDesktopStorage();
         }
         try { localStorage.setItem('momo_health_desktop_seeded', '1'); } catch (e) {}
+      }
+      // 长椅 App 首次上线：旧桌面没有这个图标时补一个到主屏，只补一次
+      if (!localStorage.getItem('momo_forum_desktop_seeded')) {
+        const hasForum = function(slot) {
+          if (!slot) return false;
+          if (slot.type === 'folder' && Array.isArray(slot.items)) {
+            return slot.items.some(hasForum);
+          }
+          return slot.id === 'app-forum';
+        };
+        const existsForum = desktopData.pages.some(p => Array.isArray(p.slots) && p.slots.some(hasForum));
+        if (!existsForum && desktopData.pages[0] && Array.isArray(desktopData.pages[0].slots)) {
+          const slotsF = desktopData.pages[0].slots;
+          const emptyF = slotsF.findIndex(function(slot) { return !slot; });
+          if (emptyF >= 0) {
+            slotsF[emptyF] = APP_STORE_REGISTRY['app-forum'];
+          } else {
+            slotsF.push(APP_STORE_REGISTRY['app-forum']);
+          }
+          saveDesktopStorage();
+        }
+        try { localStorage.setItem('momo_forum_desktop_seeded', '1'); } catch (e) {}
       }
       // 只清理页面尾部无意义空槽，中间空位保留，用户可以把 App 单独拎出来放
       if (trimTrailingDesktopSlots()) saveDesktopStorage();
