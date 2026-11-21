@@ -8,6 +8,62 @@
     var CHAT_ALBUM_AUTO_APPEND_ON_MENTION = true;
     var chatImageSession = { charId: '', userCount: 0, sentCount: 0, lastSentAt: 0 };
 
+    // 点外链时先在本机里开一层"站内浏览器"：不再直接把页面交给 Safari / 外部 App，
+    // 否则 iOS 上切走再回来，当前页会被系统回收成空白
+    function escapeAttr(str) {
+      return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function openLinkViewer(url, title) {
+      if (!url) return null;
+      var host = '';
+      try { host = new URL(url).hostname.replace(/^www\./, ''); } catch (e) {}
+      var old = document.getElementById('link-viewer-layer');
+      if (old && old.parentNode) old.parentNode.removeChild(old);
+
+      var layer = document.createElement('div');
+      layer.id = 'link-viewer-layer';
+      layer.style.cssText = 'position:fixed;inset:0;z-index:99998;background:#101012;display:flex;flex-direction:column;';
+      layer.innerHTML =
+        '<div style="flex:none;display:flex;align-items:center;gap:10px;padding:10px 12px;padding-top:calc(10px + env(safe-area-inset-top));background:#1c1c1e;border-bottom:1px solid rgba(255,255,255,.08);">' +
+          '<button id="link-viewer-close" style="flex:none;width:32px;height:32px;border-radius:16px;border:0;background:rgba(255,255,255,.08);color:#e8e8ea;font-size:15px;line-height:1;cursor:pointer;">✕</button>' +
+          '<div style="flex:1 1 auto;min-width:0;">' +
+            '<div style="font-size:13px;color:#e8e8ea;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeAttr(title || url) + '</div>' +
+            '<div style="font-size:11px;color:#8e8e93;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;">' + escapeAttr(host) + '</div>' +
+          '</div>' +
+          '<button id="link-viewer-browser" style="flex:none;padding:7px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.08);color:#e8e8ea;font-size:12px;cursor:pointer;">浏览器打开</button>' +
+        '</div>' +
+        '<div style="position:relative;flex:1 1 auto;min-height:0;background:#0f0f10;">' +
+          '<iframe id="link-viewer-frame" src="' + escapeAttr(url) + '" style="width:100%;height:100%;border:0;background:#fff;"></iframe>' +
+          '<div style="position:absolute;left:14px;right:14px;bottom:calc(18px + env(safe-area-inset-bottom));padding:12px 14px;border-radius:14px;background:rgba(18,18,20,.94);border:1px solid rgba(255,255,255,.10);color:#b8b8bd;font-size:12px;line-height:1.6;">' +
+            '上面一直空白 = 这个站点不允许在手机里内嵌打开。<br>点右上「浏览器打开」，用系统浏览器看。' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(layer);
+
+      var closeBtn = layer.querySelector('#link-viewer-close');
+      if (closeBtn) closeBtn.onclick = function (e) {
+        e.stopPropagation();
+        if (layer.parentNode) layer.parentNode.removeChild(layer);
+      };
+      var browserBtn = layer.querySelector('#link-viewer-browser');
+      if (browserBtn) browserBtn.onclick = function (e) {
+        e.stopPropagation();
+        var a = document.createElement('a');
+        a.href = url;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        a.style.cssText = 'position:fixed;left:-9999px;top:-9999px;';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function () { if (a.parentNode) a.parentNode.removeChild(a); }, 400);
+      };
+      return layer;
+    }
+    window.openLinkViewer = openLinkViewer;
+
     function readChatImageStateMap() {
       try {
         var raw = localStorage.getItem(CHAT_IMAGE_STATE_KEY);
@@ -3926,7 +3982,10 @@ window.syncNarrationModeUI = syncNarrationModeUI;
               if (kind === 'music') { if (typeof window.playSharedSong === 'function') window.playSharedSong(cardData); return; }
               if (kind === 'watch') { if (typeof window.playSharedVideo === 'function') window.playSharedVideo(cardData); return; }
               if (kind === 'read') { if (typeof window.playSharedBook === 'function') window.playSharedBook(cardData); return; }
-              if (cardData.url) window.open(cardData.url, '_blank');
+              if (cardData.url) {
+                if (typeof window.openLinkViewer === 'function') window.openLinkViewer(cardData.url, cardData.title);
+                else window.location.href = cardData.url;
+              }
             }
           };
 
@@ -7624,3 +7683,29 @@ ${uNick}，水喝到了没有？
   });
 
   /* [已停用自动倒灌心跳] document.addEventListener("visibilitychange", () => {}); */
+
+  /* 从外部 App / 浏览器切回来时，iOS 可能把整个页签回收重建。
+     重建后若聊天区是空的，这里补画一次，避免停在白屏。 */
+  (function () {
+    var reviving = false;
+    function reviveChat() {
+      if (reviving) return;
+      try {
+        var box = document.getElementById('message-container');
+        if (!box || (box.children && box.children.length > 0)) return;
+        var hist = (window.appData && Array.isArray(window.appData.chatHistory)) ? window.appData.chatHistory : null;
+        if (!hist || !hist.length) return;
+        if (typeof window.loadChatHistory !== 'function') return;
+        reviving = true;
+        window.loadChatHistory();
+        setTimeout(function () { reviving = false; }, 800);
+      } catch (e) { reviving = false; }
+    }
+    window.addEventListener('pageshow', function (ev) {
+      if (ev && ev.persisted) return;
+      setTimeout(reviveChat, 150);
+    });
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) setTimeout(reviveChat, 150);
+    });
+  })();
