@@ -220,6 +220,10 @@ function renderThemePresetsUI() {
       document.querySelectorAll('.grid-drag-ghost').forEach(el => el.remove());
       // 清理任何残留在屏幕上的拖拽虚影
       document.querySelectorAll('.grid-drag-ghost').forEach(el => el.remove());
+      // 切页时把顶层弹层/抽屉收干净，避免有面板残留在桌面上
+      if (typeof window.__momCloseOverlays === 'function') {
+        try { window.__momCloseOverlays(); } catch (e) {}
+      }
 
       const allPages = document.querySelectorAll('.view-page');
       const prevActive = document.querySelector('.view-page.active');

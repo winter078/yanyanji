@@ -60,4 +60,46 @@
   }
   if (document.body) start();
   else document.addEventListener('DOMContentLoaded', start);
+
+  // 切页/回桌面时，把顶层弹层、抽屉、遮罩一并收掉，免得有东西卡在桌面上
+  var OVERLAYS = [
+    '.ledger-drawer-mask',
+    '.vault-char-drawer-mask',
+    '.ios-bottom-sheet-mask',
+    '.ios-actionsheet-mask',
+    '.wc-modal-mask',
+    '.bubble-menu-mask',
+    '.bubble-edit-modal-mask',
+    '.hero-modal-mask',
+    '.cot-modal-mask',
+    '.widget-art-modal-mask',
+    '.ios-folder-modal-mask',
+    '.photo-name-modal-mask',
+    '.moment-modal-overlay',
+    '.wechat-plus-dropdown',
+    '.plus-action-drawer-v3'
+  ].join(',');
+
+  window.__momCloseOverlays = function () {
+    var nodes;
+    try { nodes = document.querySelectorAll(OVERLAYS); } catch (e) { return; }
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      if (el.classList.contains('open')) el.classList.remove('open');
+      el.classList.remove('mom-collapse');
+      // 清掉键盘避让可能留下的内联样式（否则会只剩一个按钮露在桌面上）
+      el.style.paddingBottom = '';
+      el.style.boxSizing = '';
+      el.style.opacity = '';
+      el.style.transform = '';
+      el.style.pointerEvents = '';
+      if (el.style.display) el.style.display = '';
+      var kids = el.querySelectorAll('div, .ios-bottom-sheet-card, .ledger-drawer-card, .moment-modal-card');
+      for (var k = 0; k < kids.length; k++) {
+        var kid = kids[k];
+        if (kid.style.maxHeight === '100%') kid.style.maxHeight = '';
+        if (kid.style.minHeight === '0px') kid.style.minHeight = '';
+      }
+    }
+  };
 })();

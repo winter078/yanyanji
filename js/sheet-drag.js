@@ -14,7 +14,7 @@
   }
 
   function maskOf(panel) {
-    return panel.closest('.ios-bottom-sheet-mask, .ios-actionsheet-mask, .moment-modal-overlay');
+    return panel.closest('.ios-bottom-sheet-mask, .ios-actionsheet-mask, .moment-modal-overlay, .ledger-drawer-mask, .vault-char-drawer-mask');
   }
 
   function dismiss(panel) {
