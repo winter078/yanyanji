@@ -111,10 +111,10 @@
     setStatus('未填写天气 Key。', 'error');
   }
 
-  async function requestWeather() {
+  async function requestWeather(cityOverride) {
     var key = readKey();
     var host = readHost();
-    var city = readCity();
+    var city = String(cityOverride || '').trim() || readCity();
     if (!key || !host) throw new Error('missing_key');
     var url = API_BASE + '/api/weather?key=' + encodeURIComponent(key)
       + '&host=' + encodeURIComponent(host)
@@ -208,6 +208,28 @@
     }
   }
 
+  // 给「工具注册表」调用：可指定城市；同城 30 分钟内复用，不重复请求也不重复弹胶囊。
+  async function runWeatherRaw(city) {
+    if (!readKey() || !readHost()) return '';
+    var wantCity = String(city || '').trim() || readCity();
+    var sameCity = (wantCity === readCity());
+    if (sameCity && lastContext && (Date.now() - lastFetchAt) < TTL) return lastContext;
+    var weatherTool = (window.__momToolNotice && window.__momToolNotice.start) ? window.__momToolNotice.start('weather', '天气') : null;
+    try {
+      var data = await requestWeather(wantCity);
+      if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(weatherTool, true);
+      lastPayload = data;
+      lastFetchAt = Date.now();
+      var text = buildContext(data);
+      if (sameCity) lastContext = text;
+      return text;
+    } catch (err) {
+      if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(weatherTool, false);
+      console.warn('[Weather] 天气获取失败：', weatherErrorText(err));
+      return '';
+    }
+  }
+
   function boot() {
     syncInputs();
     var keyInput = document.getElementById('weather-key');
@@ -223,6 +245,7 @@
   window.testWeather = testWeather;
   window.refreshWeatherStatus = refreshWeatherStatus;
   window.buildWeatherContext = buildWeatherContext;
+  window.__momRunWeather = runWeatherRaw;
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', boot);

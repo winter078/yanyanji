@@ -6159,28 +6159,55 @@ ${catalog}
           recentMessages.push({ role: 'system', content: instructionPrompt });
         }
 
-        // 联网搜索是“前置工具”：先查公开网页，再把结果注入上下文。
-        // 不依赖中转站是否支持 tools/tool_calls，普通 chat/completions 也能用。
-        if (typeof window.buildWebSearchContext === 'function') {
-          try {
-            const webSearchContext = await window.buildWebSearchContext();
-            if (webSearchContext) {
-              recentMessages.push({ role: 'system', content: webSearchContext });
-            }
-          } catch (searchErr) {
-            console.warn('[WebSearch] 搜索注入失败：', searchErr && searchErr.message ? searchErr.message : searchErr);
+        // ========== 工具注册表 ==========
+        // 先让模型自己判断这轮要不要调用 搜索 / 小红书 / 天气，再真跑、把结果注入。
+        // 规划器不可用（比如中转站挂了）才退回原来的关键词前置检索，保证“帮我搜一下”还能用。
+        const lastUserForTools = (function () {
+          for (let i = recentMessages.length - 1; i >= 0; i--) {
+            const mm = recentMessages[i];
+            if (mm && mm.role === 'user' && typeof mm.content === 'string') return mm.content;
           }
-        }
-
-        // 天气与位置：本地代理转发和风天气，30 分钟缓存；没填 Key 或失败都静默跳过。
-        if (typeof window.buildWeatherContext === 'function') {
+          return '';
+        })();
+        if (window.MomTools && typeof window.MomTools.hasAnyTool === 'function' && window.MomTools.hasAnyTool()) {
+          if (typeof window.MomTools.promptBlock === 'function') {
+            const toolBlock = window.MomTools.promptBlock();
+            if (toolBlock) recentMessages.push({ role: 'system', content: toolBlock });
+          }
+          let toolOutputs = null;
           try {
-            const weatherContext = await window.buildWeatherContext();
-            if (weatherContext) {
-              recentMessages.push({ role: 'system', content: weatherContext });
+            const snippet = recentMessages
+              .filter(function (m) { return m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string'; })
+              .slice(-4)
+              .map(function (m) { return (m.role === 'user' ? 'user：' : (appData.botRemark || '角色') + '：') + String(m.content).slice(0, 120); })
+              .join('\n');
+            toolOutputs = await window.MomTools.planAndRun({ userText: lastUserForTools, contextSnippet: snippet });
+          } catch (toolErr) {
+            console.warn('[Tools] 工具编排异常：', toolErr && toolErr.message ? toolErr.message : toolErr);
+            toolOutputs = null;
+          }
+          if (Array.isArray(toolOutputs)) {
+            toolOutputs.forEach(function (text) {
+              if (text) recentMessages.push({ role: 'system', content: text });
+            });
+          } else {
+            // 规划器失败：退回旧的自动检索
+            if (typeof window.buildWebSearchContext === 'function') {
+              try {
+                const webSearchContext = await window.buildWebSearchContext();
+                if (webSearchContext) recentMessages.push({ role: 'system', content: webSearchContext });
+              } catch (searchErr) {
+                console.warn('[WebSearch] 搜索注入失败：', searchErr && searchErr.message ? searchErr.message : searchErr);
+              }
             }
-          } catch (weatherErr) {
-            console.warn('[Weather] 天气注入失败：', weatherErr && weatherErr.message ? weatherErr.message : weatherErr);
+            if (typeof window.buildWeatherContext === 'function') {
+              try {
+                const weatherContext = await window.buildWeatherContext();
+                if (weatherContext) recentMessages.push({ role: 'system', content: weatherContext });
+              } catch (weatherErr) {
+                console.warn('[Weather] 天气注入失败：', weatherErr && weatherErr.message ? weatherErr.message : weatherErr);
+              }
+            }
           }
         }
 

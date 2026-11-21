@@ -290,6 +290,54 @@
     return lines.join('\n');
   }
 
+  // ========== 给「工具注册表」调用的原子能力：带胶囊、带去重 ==========
+  async function runWebSearchRaw(query) {
+    var q = String(query || '').trim().slice(0, 200);
+    if (!q) return '';
+    if (!isEnabled() || !readApiKey()) return '';
+    var tool = (window.__momToolNotice && window.__momToolNotice.start) ? window.__momToolNotice.start('search', '搜索') : null;
+    try {
+      var data = await requestSearch(q);
+      try {
+        window.__momoLastWebSearch = { query: q, results: (data && Array.isArray(data.results)) ? data.results : [], at: Date.now() };
+      } catch (e) {}
+      if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(tool, true);
+      return buildContext(data);
+    } catch (err) {
+      if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(tool, false);
+      return ['【联网搜索不可用】', '这次搜索没有成功，原因：' + searchErrorText(err) + '。',
+        '请如实告诉user现在没法联网查资料，不要假装搜到了内容，也不要编造链接。'].join('\n');
+    }
+  }
+
+  async function runXhsRaw(url) {
+    var credit = String(url || '').trim();
+    if (!/xiaohongshu\.com|xhslink\.com/i.test(credit)) return '';
+    if (!readXhsKey()) return '';
+    if (xhsSeenList().indexOf(credit) >= 0) {
+      var cached = xhsCachedText(credit);
+      if (cached) return cached;
+      return '';
+    }
+    var tool = (window.__momToolNotice && window.__momToolNotice.start) ? window.__momToolNotice.start('xhs', '小红书') : null;
+    try {
+      var note = await requestXhs(credit);
+      if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(tool, true);
+      if (note && (note.title || note.desc || (note.imageTexts && note.imageTexts.length) || (note.comments && note.comments.length))) {
+        var text = buildXhsContext(note);
+        rememberXhsRead(credit, text);
+        return text;
+      }
+      var fallbackText = buildXhsLimitedContext(extractShareCard(credit), credit);
+      rememberXhsRead(credit, fallbackText);
+      return fallbackText;
+    } catch (err) {
+      if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(tool, false);
+      try { window.__momoXhsLastError = String(err && err.message ? err.message : err); } catch (e) {}
+      return '';
+    }
+  }
+
   async function requestStatus() {
     return await requestWithFallback(STATUS_PATH, { method: 'GET', cache: 'no-store' }, STATUS_TIMEOUT);
   }
@@ -654,6 +702,8 @@
   window.refreshXhsStatus = refreshXhsStatus;
   window.isWebSearchEnabled = isEnabled;
   window.buildWebSearchContext = buildWebSearchContext;
+  window.__momRunWebSearch = runWebSearchRaw;
+  window.__momRunXhsRead = runXhsRaw;
   window.refreshWebSearchStatus = refreshWebSearchStatus;
   window.toggleWebSearch = toggleWebSearch;
   window.testWebSearchConnection = testWebSearchConnection;
