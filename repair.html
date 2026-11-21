@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta http-equiv="Cache-Control" content="no-store, must-revalidate" />
+<title>聊天记录修复</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; background: #15171b; color: #f5f5f7; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; }
+  .page { max-width: 560px; margin: 0 auto; padding: 28px 18px 44px; }
+  h1 { font-size: 20px; margin: 0 0 6px; }
+  .sub { font-size: 12.5px; line-height: 1.7; color: #9aa0aa; margin-bottom: 18px; }
+  .card { background: #1e2026; border: 1px solid rgba(255,255,255,.08); border-radius: 16px; padding: 14px; margin-bottom: 12px; }
+  .row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 9px 2px; border-bottom: 1px solid rgba(255,255,255,.06); }
+  .row:last-child { border-bottom: 0; }
+  .name { font-size: 14.5px; font-weight: 600; }
+  .count { font-size: 12px; color: #8b93a1; white-space: nowrap; }
+  .preview { font-size: 11.5px; color: #7f8795; margin-top: 4px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .badge { display: inline-block; font-size: 10px; padding: 2px 7px; border-radius: 999px; margin-left: 6px; vertical-align: 1px; }
+  .badge.dup { background: rgba(245,158,11,.18); color: #fbbf24; border: 1px solid rgba(245,158,11,.35); }
+  .badge.empty { background: rgba(107,114,128,.16); color: #9aa0aa; border: 1px solid rgba(156,163,175,.25); }
+  .warn { background: rgba(245,158,11,.08); border: 1px solid rgba(245,158,11,.25); color: #fcd34d; font-size: 12px; line-height: 1.65; padding: 10px 12px; border-radius: 12px; margin: 10px 0; }
+  select, button { font: inherit; }
+  select { width: 100%; padding: 10px 12px; border-radius: 11px; background: #262932; color: #f5f5f7; border: 1px solid rgba(255,255,255,.12); margin: 10px 0; }
+  button.primary { width: 100%; padding: 13px; border-radius: 12px; border: 0; background: #07c160; color: #06210f; font-weight: 700; font-size: 15px; }
+  button.ghost { width: 100%; padding: 11px; border-radius: 12px; border: 1px solid rgba(255,255,255,.16); background: transparent; color: #c9ced8; font-size: 13px; margin-top: 8px; }
+  a.home { display: block; text-align: center; margin-top: 18px; color: #7fb2ff; font-size: 13.5px; text-decoration: none; }
+  .done { background: rgba(7,193,96,.1); border: 1px solid rgba(7,193,96,.3); color: #86efac; }
+  .err { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.3); color: #fca5a5; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: #8b93a1; word-break: break-all; }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>聊天记录修复</h1>
+  <div class="sub">这里只做一件事：把“两个角色账户里一模一样的那段记录”归回正确的人，另一个账户清空。修复前会自动备份，可下载。</div>
+  <div id="content"><div class="card">正在读取…</div></div>
+  <a class="home" href="/phone">← 回到小手机</a>
+</div>
+<script>
+(function () {
+  var MAP_KEY = 'momo_chat_histories';
+  var FLAG_KEY = 'momo_chat_history_scoped_v1';
+  var OWNER_KEY = 'momo_chat_history_owner';
+  var BACKUP_KEY = 'momo_chat_repair_backup_v1';
+  var content = document.getElementById('content');
+
+  function readJSON(key, fallback) {
+    try { var v = JSON.parse(localStorage.getItem(key) || 'null'); return v == null ? fallback : v; }
+    catch (e) { return fallback; }
+  }
+  function clone(v) { return JSON.parse(JSON.stringify(v || [])); }
+  function sigOf(list) {
+    return (Array.isArray(list) ? list : []).map(function (m) {
+      return String((m && m.role) || '') + '|' + String((m && m.content) || '').trim();
+    }).join('\n');
+  }
+  function previewOf(list) {
+    var arr = Array.isArray(list) ? list : [];
+    var last = arr[arr.length - 1];
+    return last ? String(last.content || '').replace(/\s+/g, ' ').slice(0, 90) : '（空）';
+  }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+    });
+  }
+
+  function snapshot() {
+    var data = {
+      at: new Date().toISOString(),
+      activeChar: localStorage.getItem('momo_active_char') || '',
+      map: readJSON(MAP_KEY, {}),
+      globalMirror: readJSON('momo_chat_history', []),
+      owner: localStorage.getItem(OWNER_KEY) || ''
+    };
+    try { localStorage.setItem(BACKUP_KEY, JSON.stringify(data)); } catch (e) {}
+    return data;
+  }
+
+  function downloadBackup(data) {
+    try {
+      var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = '聊天记录备份_' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.json';
+      document.body.appendChild(a); a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 600);
+    } catch (e) { alert('下载失败：' + e.message); }
+  }
+
+  var chars = readJSON('momo_characters', []);
+  var map = readJSON(MAP_KEY, {});
+  var active = localStorage.getItem('momo_active_char') || '';
+  if (!Array.isArray(chars)) chars = [];
+  if (!map || typeof map !== 'object' || Array.isArray(map)) map = {};
+
+  // 补上角色表里没有、但历史表里存在的孤儿 id
+  Object.keys(map).forEach(function (id) {
+    if (!chars.some(function (c) { return c && c.id === id; })) {
+      chars.push({ id: id, name: '未知角色 ' + id.slice(-4) });
+    }
+  });
+
+  var entries = chars.map(function (c) {
+    var h = Array.isArray(map[c.id]) ? map[c.id] : [];
+    return { id: c.id, name: c.name || '未命名', count: h.length, history: h, sig: h.length ? sigOf(h) : '' };
+  });
+
+  // 找内容完全相同的多角色重复组
+  var groups = [];
+  entries.forEach(function (e) {
+    if (!e.count) return;
+    var g = groups.filter(function (x) { return x.sig === e.sig; })[0];
+    if (!g) { g = { sig: e.sig, count: e.count, members: [] }; groups.push(g); }
+    g.members.push(e);
+  });
+  var dups = groups.filter(function (g) { return g.members.length >= 2 && g.count >= 3; });
+
+  var html = '';
+
+  html += '<div class="card"><div class="name" style="margin-bottom:6px;">各角色当前记录</div>';
+  entries.slice().sort(function (a, b) { return b.count - a.count; }).forEach(function (e) {
+    var isDup = dups.some(function (g) { return g.members.some(function (m) { return m.id === e.id; }); });
+    var badge = e.count === 0 ? '<span class="badge empty">空</span>' : (isDup ? '<span class="badge dup">重复</span>' : '');
+    html += '<div class="row"><div style="min-width:0;">' +
+      '<div class="name">' + esc(e.name) + badge + (e.id === active ? ' <span class="badge" style="background:rgba(59,130,246,.18);color:#93c5fd;border:1px solid rgba(59,130,246,.35);">当前</span>' : '') + '</div>' +
+      '<div class="preview">' + esc(previewOf(e.history)) + '</div>' +
+      '</div><div class="count">' + e.count + ' 条</div></div>';
+  });
+  html += '</div>';
+
+  if (dups.length) {
+    dups.forEach(function (g, gi) {
+      var prefer = g.members.filter(function (m) { return /周绪言/.test(m.name); })[0] || g.members[0];
+      html += '<div class="card">' +
+        '<div class="name">发现一段重复记录 · ' + g.count + ' 条</div>' +
+        '<div class="preview" style="margin:6px 0 2px;">' + esc(previewOf(g.members[0].history)) + '</div>' +
+        '<div class="warn">' + esc(g.members.map(function (m) { return m.name; }).join(' / ')) +
+        ' 现在各有一份完全相同的内容。选一个真正的主人，修复后只保留在它这里，其他角色这一段清空（不会动别的记录）。</div>' +
+        '<select id="owner-' + gi + '">' +
+        g.members.map(function (m) {
+          return '<option value="' + esc(m.id) + '"' + (m.id === prefer.id ? ' selected' : '') + '>' + esc(m.name) + '（' + m.count + ' 条）</option>';
+        }).join('') +
+        '</select>' +
+        '<button class="primary" data-group="' + gi + '">把这段记录还给选中的角色</button>' +
+        '</div>';
+    });
+  } else {
+    html += '<div class="card done">没有检测到两个角色内容完全相同的重复记录。如果是“某个角色记录突然变空”，先别清空任何东西，把本页截图发我。</div>';
+  }
+
+  html += '<div class="card"><button class="ghost" id="btn-download">先下载一份完整备份</button>' +
+    '<div class="mono" style="margin-top:8px;">备份只存在本机，修复前也会自动存一份。</div></div>';
+
+  content.innerHTML = html;
+
+  function repair(groupIndex, ownerId) {
+    var g = dups[groupIndex];
+    if (!g) return;
+    var chosen = g.members.filter(function (m) { return m.id === ownerId; })[0];
+    if (!chosen) return;
+    var names = g.members.map(function (m) { return m.name; }).join('、');
+    if (!confirm('把这段 ' + g.count + ' 条记录只保留在「' + chosen.name + '」，并清空其他重复角色（' + names + '）的同一段？\n\n会先自动备份。')) return;
+
+    var backup = snapshot();
+    var mapNow = readJSON(MAP_KEY, {});
+    if (!mapNow || typeof mapNow !== 'object') mapNow = {};
+    var ref = clone(g.members[0].history);
+
+    // 选中的角色拿到完整一份（保留它自己的那份，内容本来就相同）
+    mapNow[chosen.id] = clone(Array.isArray(mapNow[chosen.id]) ? mapNow[chosen.id] : ref);
+    g.members.forEach(function (m) {
+      if (m.id !== chosen.id) mapNow[m.id] = [];
+    });
+
+    try {
+      localStorage.setItem(MAP_KEY, JSON.stringify(mapNow));
+      localStorage.setItem(FLAG_KEY, '1');
+      localStorage.setItem(OWNER_KEY, chosen.id);
+      localStorage.setItem('momo_active_char', chosen.id);
+      localStorage.setItem('momo_chat_history', JSON.stringify(mapNow[chosen.id] || []));
+    } catch (e) {
+      content.innerHTML = '<div class="card err">写入失败：' + esc(e.message) + '<br>备份还在，先别清缓存，截图发我。</div>';
+      return;
+    }
+
+    content.innerHTML = '<div class="card done"><div class="name">修复完成</div>' +
+      '<div class="preview" style="margin-top:6px;">这段记录已归到「' + esc(chosen.name) + '」，其他重复角色已清空。现在打开小手机就会直接进到「' + esc(chosen.name) + '」。</div>' +
+      '<a class="home" style="margin-top:12px;" href="/phone">进入小手机 →</a></div>' +
+      '<div class="card"><button class="ghost" id="btn-download2">下载修复前的备份</button></div>';
+    var btn = document.getElementById('btn-download2');
+    if (btn) btn.onclick = function () { downloadBackup(backup); };
+  }
+
+  content.addEventListener('click', function (ev) {
+    var t = ev.target;
+    if (t && t.id === 'btn-download') { downloadBackup(snapshot()); return; }
+    if (t && t.getAttribute && t.getAttribute('data-group')) {
+      var gi = parseInt(t.getAttribute('data-group'), 10);
+      var sel = document.getElementById('owner-' + gi);
+      repair(gi, sel ? sel.value : '');
+    }
+  });
+})();
+</script>
+</body>
+</html>

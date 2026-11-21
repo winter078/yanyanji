@@ -1503,6 +1503,11 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       catch (e) { console.warn('按角色聊天记录写入失败:', e); }
     }
 
+    // 全局镜像 momo_chat_history 是谁的记录，必须留一个标记，切角色/迁移时才不会认错主人。
+    function stampMirrorOwner(charId) {
+      try { localStorage.setItem('momo_chat_history_owner', charId || ''); } catch (e) {}
+    }
+
     function activeChatCharId() {
       try {
         if (window.WB && typeof window.WB.activeCharId === 'function') {
@@ -1540,17 +1545,31 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       });
     }
 
-    // 第一次升级时，把原来的全局单聊历史归到当前角色；之后每个角色一份。
+    // 第一次升级时，把原来的全局单聊历史归档；归档对象优先用镜像记录的归属角色，
+    // 不能盲信“当前打开的角色”，否则会把上一个角色的记录整段扣到新角色头上。
     function ensureChatHistoryScoped() {
       const activeId = activeChatCharId();
       if (!activeId) return '';
       const map = readChatHistoryMap();
       const migrated = localStorage.getItem(CHAT_HISTORY_SCOPED_FLAG) === '1';
       if (!migrated) {
-        if ((!Array.isArray(map[activeId]) || map[activeId].length === 0) &&
+        let recordedOwner = '';
+        try { recordedOwner = localStorage.getItem('momo_chat_history_owner') || ''; } catch (e0) {}
+        const migrateTo = recordedOwner || activeId;
+        try {
+          localStorage.setItem('momo_chat_pre_scope_backup', JSON.stringify({
+            at: Date.now(),
+            recordedOwner: recordedOwner,
+            activeId: activeId,
+            migrateTo: migrateTo,
+            history: buildStorageHistory(appData.chatHistory || [])
+          }));
+        } catch (e1) {}
+        if ((!Array.isArray(map[migrateTo]) || map[migrateTo].length === 0) &&
             Array.isArray(appData.chatHistory) && appData.chatHistory.length) {
-          map[activeId] = cloneChatMessages(appData.chatHistory);
+          map[migrateTo] = cloneChatMessages(appData.chatHistory);
         }
+        if (!Array.isArray(map[migrateTo])) map[migrateTo] = [];
         if (!Array.isArray(map[activeId])) map[activeId] = [];
         writeChatHistoryMap(map);
         try { localStorage.setItem(CHAT_HISTORY_SCOPED_FLAG, '1'); } catch (e) {}
@@ -1581,6 +1600,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       if (chatHistoryOwnerId === charId) {
         appData.chatHistory = cloneChatMessages(list);
         try { localStorage.setItem('momo_chat_history', JSON.stringify(buildStorageHistory(appData.chatHistory))); } catch (e) {}
+        stampMirrorOwner(charId);
         if (typeof syncWechatMainPreview === 'function') syncWechatMainPreview();
       }
     };
@@ -1600,6 +1620,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
         try {
           localStorage.setItem('momo_chat_history', JSON.stringify(buildStorageHistory(appData.chatHistory)));
         } catch (e) {}
+        stampMirrorOwner(id);
       } else if (!Array.isArray(appData.chatHistory)) {
         appData.chatHistory = [];
       }
@@ -1626,6 +1647,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
           chatHistoryOwnerId = ownerId;
         }
         localStorage.setItem('momo_chat_history', JSON.stringify(cleanHistoryForStorage));
+        stampMirrorOwner(ownerId);
         if (typeof syncWechatMainPreview === 'function') {
           syncWechatMainPreview();
         }
