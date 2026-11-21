@@ -21,3 +21,6 @@
 
 /api/version
   Cache-Control: no-store, must-revalidate
+
+/
+  Cache-Control: no-store, must-revalidate
