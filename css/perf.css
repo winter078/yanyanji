@@ -1,0 +1,78 @@
+/* 性能层：iOS 上 backdrop-filter 很贵，这里把常驻、整屏、大面积的那批毛玻璃换成半透明纯色。
+   视觉几乎无差，掉帧能明显改善。按需往这里加，不用回改原来的样式文件。 */
+
+/* 1. 桌面图标：一屏 20 多个，每个都在模糊自己的背景，是最大开销 */
+.ios-app-icon,
+.dock-icon,
+#page-home .dock-icon {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* 2. 桌面 Dock 与小组件 */
+.home-dock-bar,
+#page-home .home-dock-bar {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: rgba(255, 255, 255, 0.42) !important;
+}
+.widget-card,
+#page-home .hero-profile-card,
+.hero-info-plate,
+.hero-companion-widget,
+#page-home .hero-companion-widget {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* 3. 桌面顶栏 / 编辑条 */
+.desktop-page-header-bar,
+.desktop-edit-toolbar,
+.desktop-header-action-btn {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* 4. 全屏遮罩：动画期间整屏模糊最费，改成纯半透明压暗 */
+.bubble-menu-mask,
+.bubble-edit-modal-mask,
+.hero-modal-mask,
+.cot-modal-mask,
+.widget-art-modal-mask,
+.ios-folder-modal-mask,
+.photo-name-modal-mask,
+.ios-bottom-sheet-mask,
+.ios-actionsheet-mask,
+.wc-modal-mask,
+.polaroid-edit-overlay {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* 5. 弹层/卡片底 */
+.bubble-menu-card,
+.ios-folder-preview-box,
+.ios-folder-modal-card,
+.folder-drag-ghost,
+.plus-action-drawer-v3,
+.wechat-plus-dropdown {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* 6. 常驻栏：微信顶栏、底栏、聊天输入栏、朋友圈按钮 */
+.wechat-main-header,
+.wechat-header,
+.wechat-bottom-tabbar,
+.moments-back-btn,
+.moments-action-btn,
+.theater-input-dock,
+.yanyan-header-bar,
+.yanyan-back-btn,
+.yanyan-toast-banner,
+.app-store-hero-banner,
+.app-store-category-bar,
+.app-store-cat-tab {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
