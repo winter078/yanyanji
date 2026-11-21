@@ -13,7 +13,7 @@
   var WEEK = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
   var MAX_IMAGES = 2;
 
-  var state = { mode: 'wall', bookId: '', pageIdx: 0, tab: 'shelf', cat: '' };
+  var state = { mode: 'wall', bookId: '', pageIdx: 0, tab: 'shelf', cat: '', editingId: '' };
   var pressed = { timer: null, moved: false };
   var meQuoteLast = '';
   var cardMode = '';
@@ -406,9 +406,10 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
       el.classList.remove('pulled');
       var es = entriesOfBook();
       if (!es.length) { sayNewEntry(); return; }
-      state.pageIdx = es.length - 1;
+      state.pageIdx = 0;
       show('sheet');
       renderSheet();
+      flipAt('say-flip');
     }, 300);
   };
 
@@ -798,12 +799,12 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
     if (weekEl) weekEl.textContent = weekLabel(e.date) + (e.mood ? ' · ' + e.mood : '');
     if (footEl) {
       var bookName = bookTitleOf(currentBookId());
-      footEl.innerHTML = '<button class="sh-idx-btn" onclick="sayPageIndex()">第 ' + (state.pageIdx + 1) + ' 页 / ' + es.length + ' <i>›</i></button>'
+      footEl.innerHTML = '<span class="sh-bname">' + esc(bookName) + '</span>'
+        + '<button class="sh-idx-btn" onclick="sayPageIndex()">第 ' + (state.pageIdx + 1) + ' 页 / ' + es.length + '</button>'
         + '<span class="sh-arrows">'
         + '<button onclick="sayTurnPrev()"' + (state.pageIdx <= 0 ? ' disabled' : '') + '>‹</button>'
         + '<button onclick="sayTurnNext()">›</button>'
-        + '</span>'
-        + '<span>' + esc(bookName) + '</span>';
+        + '</span>';
     }
     if (stampEl) stampEl.style.display = (e.date === todayStr()) ? 'flex' : 'none';
 
@@ -1386,6 +1387,7 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
       if (typeof d.text !== 'string') d.text = '';
     }
     data.draft = d;
+    state.editingId = '';
     saveData();
     show('write');
     renderWrite();
@@ -1396,7 +1398,9 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
   function renderWrite() {
     var d = data.draft || (data.draft = newDraft());
     var dateEl = $('say-write-date');
-    if (dateEl) dateEl.textContent = dateLabel(d.date);
+    if (dateEl) dateEl.textContent = (state.editingId ? '改 · ' : '') + dateLabel(d.date);
+    var doneEl = document.querySelector('.say-write .wr-done');
+    if (doneEl) doneEl.textContent = state.editingId ? '改好了' : '写好了';
     var area = $('say-write-area');
     if (area && area.value !== d.text) area.value = d.text || '';
     var paper = $('say-write-paper');
@@ -1426,7 +1430,7 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
       tools[3].classList.toggle('on', !!d.paper);
     }
     var pgn = $('say-write-pgn');
-    if (pgn) pgn.textContent = pad(entriesOfBook().length + 1);
+    if (pgn) pgn.textContent = pad(state.editingId ? (state.pageIdx + 1) : (entriesOfBook().length + 1));
     var bkEl = $('say-write-book');
     if (bkEl) bkEl.textContent = bookTitleOf(state.bookId || currentBookId()) || 'say';
     applySayFont();
@@ -1442,7 +1446,36 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
     }
   }
 
+  window.sayEditPage = function () {
+    var es = entriesOfBook();
+    var e = es[state.pageIdx];
+    if (!e) return;
+    state.editingId = e.id;
+    data.draft = {
+      date: e.date || todayStr(),
+      text: String(e.text || ''),
+      mood: e.mood || '',
+      paper: e.paper || '',
+      images: (Array.isArray(e.images) ? e.images : []).slice(),
+      audio: e.audio || ''
+    };
+    saveData();
+    show('write');
+    renderWrite();
+    initSayFonts();
+    flipAt('say-flip-w');
+  };
+
   window.sayBackFromWrite = function () {
+    if (state.editingId) {
+      state.editingId = '';
+      data.draft = null;
+      saveData();
+      show('sheet');
+      renderSheet();
+      flipAt('say-flip');
+      return;
+    }
     var d = data.draft;
     if (d && String(d.text || '').trim()) {
       // 还没点「写好了」就当草稿留着，下次进来还在
@@ -1460,6 +1493,44 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
       sayToast('这一页还是空的');
       return;
     }
+
+    /* 改的是已经写过的那一页 */
+    if (state.editingId) {
+      var old = data.entries.filter(function (x) { return x.id === state.editingId; })[0];
+      if (!old) {
+        state.editingId = '';
+        data.draft = null;
+        show('sheet');
+        renderSheet();
+        return;
+      }
+      var snap = { date: old.date, mood: old.mood, text: old.text, images: old.images, audio: old.audio, paper: old.paper };
+      old.date = d.date || old.date;
+      old.mood = d.mood || '';
+      old.text = text;
+      old.images = (d.images || []).slice(0, MAX_IMAGES);
+      old.audio = d.audio || '';
+      old.paper = d.paper || '';
+      state.editingId = '';
+      data.draft = null;
+      if (!saveData()) {
+        old.date = snap.date; old.mood = snap.mood; old.text = snap.text;
+        old.images = snap.images; old.audio = snap.audio; old.paper = snap.paper;
+        state.editingId = old.id;
+        sayToast('空间不够了，先把大图删掉再存');
+        return;
+      }
+      var es2 = entriesOfBook();
+      var idx = 0;
+      for (var i = 0; i < es2.length; i++) { if (es2[i].id === old.id) idx = i; }
+      state.pageIdx = idx;
+      show('sheet');
+      renderSheet();
+      flipAt('say-flip');
+      sayToast('改好了');
+      return;
+    }
+
     var bid = state.bookId || currentBookId();
     var e = {
       id: 'e-' + Date.now(),
@@ -1484,6 +1555,7 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
     state.pageIdx = entriesOfBook().length - 1;
     show('sheet');
     renderSheet();
+    flipAt('say-flip');
     sayToast('已经记下');
   };
 

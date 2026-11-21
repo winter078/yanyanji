@@ -1849,3 +1849,98 @@
   padding: 11px;
   margin-top: 2px;
 }
+/* ==========================================================================
+   六、阅读页也放进书里：封皮 / 书脊 / 页叠 / 改这页
+   ========================================================================== */
+.say-sheet {
+  background: #CBC3B0;
+  background-image:
+    radial-gradient(110% 62% at 50% 0%, rgba(255, 255, 255, .55), rgba(255, 255, 255, 0) 62%),
+    linear-gradient(180deg, #D6CEBB, #BCB29E);
+}
+.say-sheet::before {
+  content: '';
+  position: absolute;
+  left: 7px; right: 7px; top: 6px; bottom: 10px;
+  border-radius: 7px 9px 3px 3px;
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, .055) 0 1px, rgba(255, 255, 255, 0) 1px 3px),
+    linear-gradient(97deg, #C9A46D 0%, #B98F57 26%, #CFAE79 62%, #AC8450 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .45),
+    inset 0 -1px 0 rgba(90, 66, 34, .45),
+    0 26px 44px -26px rgba(48, 34, 14, .62);
+}
+.say-sheet::after {
+  content: '';
+  position: absolute;
+  left: 16px; right: 16px; bottom: 2px; height: 12px;
+  border-radius: 0 0 4px 4px;
+  background: repeating-linear-gradient(180deg, #FBF7EC 0 2px, #E4DAC2 2px 3px);
+  box-shadow: 0 8px 14px -8px rgba(48, 34, 14, .5);
+}
+.sheet-bg {
+  left: 14px; right: 14px; top: 20px; bottom: 10px;
+  z-index: 2;
+  overflow: hidden;
+  border-radius: 2px 3px 3px 2px;
+  background: linear-gradient(104deg, #FDFAF1 0%, #FBF7EC 46%, #F6F0DF 100%);
+  box-shadow:
+    inset 1px 0 0 rgba(255, 255, 255, .9),
+    inset -1px 0 0 rgba(160, 138, 100, .22),
+    inset 0 -1px 0 rgba(160, 138, 100, .18),
+    6px 3px 0 -2px #F4EEDE,
+    10px 6px 0 -4px #E5DCC3,
+    0 20px 34px -20px rgba(48, 34, 14, .55);
+}
+.sheet-bg::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0; width: 38px;
+  z-index: 3;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(94, 70, 36, .46) 0%, rgba(94, 70, 36, .19) 38%, rgba(255, 255, 255, 0) 100%);
+  border-right: 1px solid rgba(120, 96, 58, .1);
+}
+.sheet-in {
+  padding: 48px 26px 40px 44px;
+}
+.sh-head {
+  border-bottom: 1px solid rgba(150, 128, 96, .32);
+  padding-bottom: 10px;
+}
+.sh-edit {
+  flex: none;
+  margin-left: 10px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(120, 100, 70, .12);
+  color: #5A4E39;
+  font-family: var(--sy-sans);
+  font-size: 10.5px;
+  letter-spacing: 1.4px;
+  padding: 5px 11px;
+}
+.sh-edit:active { background: rgba(120, 100, 70, .24); }
+.sh-turn { right: 14px; bottom: 10px; }
+.sh-back { left: 22px; top: 28px; }
+.sh-stamp { right: 42px; top: 118px; }
+.say-flip { border-radius: 2px 3px 3px 2px; overflow: hidden; }
+/* ==========================================================================
+   七、页内按钮归位：改这页贴着「递给他」下方，页脚三段（书名 / 页码 / 箭头）
+   ========================================================================== */
+.sh-head { justify-content: flex-start; align-items: flex-end; gap: 14px; }
+.sh-edit {
+  position: absolute;
+  right: 32px; top: 52px;
+  z-index: 3;
+  margin-left: 0;
+}
+.sh-bname { letter-spacing: 1px; }
+.sh-idx-btn { letter-spacing: .5px; }.sh-page-hint {
+  left: 56px; right: 96px; bottom: 104px;
+  text-align: left;
+  z-index: 4;
+  font-size: 10px;
+  letter-spacing: 1.2px;
+}
