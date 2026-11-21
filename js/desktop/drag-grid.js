@@ -119,6 +119,17 @@
       categoryName: '社交网络',
       desc: '双列瀑布流笔记、发布与本地相册，单机也能慢慢逛'
     },
+    'app-say': {
+      id: 'app-say',
+      type: 'app',
+      page: 'page-say',
+      icon: '📖',
+      name: '我说',
+      bg: 'rgba(214,196,160,0.18)',
+      category: 'life',
+      categoryName: '记录',
+      desc: '一个月一本本子，一页一张纸；写不动的时候，可以按住说'
+    },
     'app-palace': {
       id: 'app-palace',
       type: 'app',
@@ -266,6 +277,7 @@
     'app-reader': '<path d="M12 6.6c-2.5-1.7-5.4-1.9-7.3-1v13.2c1.9-.9 4.8-.7 7.3 1 2.5-1.7 5.4-1.9 7.3-1V5.6c-1.9-.9-5.2-.7-7.3 1z"/><path d="M12 6.8v13"/>',
     'app-watch': '<rect x="3.4" y="5.2" width="17.2" height="13.6" rx="2.6"/><path d="M8 5.2v13.6M16 5.2v13.6M3.4 9.4h4.6M3.4 14.6h4.6M16 9.4h4.6M16 14.6h4.6"/>',
     'app-xhs': '<rect x="4.2" y="4.8" width="15.6" height="14.4" rx="2.5"/><path d="M7 8.2h10M7 11.6h6.5M7 15h8.5"/>',
+    'app-say': '<path d="M6.2 4.2h10.4a1.8 1.8 0 0 1 1.8 1.8v12a1.8 1.8 0 0 1-1.8 1.8H6.2z"/><path d="M6.2 4.2v15.6"/><path d="M9.4 9h6.2M9.4 12.4h6.2M9.4 15.8h3.4"/>',
     'app-palace': '<rect x="3.4" y="6" width="17.2" height="12.6" rx="2.6"/><path d="M4 7.2l8 6 8-6"/>',
     'app-rp': '<path d="M12 4l1.8 5.4L19 11l-5.2 1.6L12 18l-1.8-5.4L5 11l5.2-1.6z"/><path d="M18.4 5l.6 1.6 1.6.6-1.6.6-.6 1.6-1.6-.6z"/>',
     'app-music': '<path d="M9.2 17.4V6.6l8.8-2v10.8"/><circle cx="6.9" cy="17.4" r="2.4"/><circle cx="15.7" cy="15.4" r="2.4"/>',
@@ -306,7 +318,8 @@
         APP_STORE_REGISTRY['app-theme'],
         APP_STORE_REGISTRY['app-plugins'],
         APP_STORE_REGISTRY['app-wordcards'],
-        APP_STORE_REGISTRY['app-xhs']
+        APP_STORE_REGISTRY['app-xhs'],
+        APP_STORE_REGISTRY['app-say']
       ]
     },
     {
@@ -468,6 +481,28 @@
           saveDesktopStorage();
         }
         try { localStorage.setItem('momo_xhs_desktop_seeded', '1'); } catch (e) {}
+      }
+      // 我说（日记）首次上线：旧桌面没有这个图标时补一个到主屏，只补一次
+      if (!localStorage.getItem('momo_say_desktop_seeded')) {
+        const hasSay = function(slot) {
+          if (!slot) return false;
+          if (slot.type === 'folder' && Array.isArray(slot.items)) {
+            return slot.items.some(hasSay);
+          }
+          return slot.id === 'app-say';
+        };
+        const exists = desktopData.pages.some(p => Array.isArray(p.slots) && p.slots.some(hasSay));
+        if (!exists && desktopData.pages[0] && Array.isArray(desktopData.pages[0].slots)) {
+          const slots = desktopData.pages[0].slots;
+          const emptyIndex = slots.findIndex(function(slot) { return !slot; });
+          if (emptyIndex >= 0) {
+            slots[emptyIndex] = APP_STORE_REGISTRY['app-say'];
+          } else {
+            slots.push(APP_STORE_REGISTRY['app-say']);
+          }
+          saveDesktopStorage();
+        }
+        try { localStorage.setItem('momo_say_desktop_seeded', '1'); } catch (e) {}
       }
       // 聊天预设独立 App 首次上线：旧桌面没有这个图标时补一个到主屏，只补一次
       if (!localStorage.getItem('momo_prompt_presets_desktop_seeded')) {

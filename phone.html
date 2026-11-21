@@ -19,7 +19,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <!-- 发布时务必与 js/build.js 的 __LIVE_BUILD__ 保持一致，否则 version-watch 会一直提示“新版已经好了” -->
-  <script>window.__BUILD__="20261121-0430";</script>
+  <script>window.__BUILD__="20261121-0500";</script>
   <script>
     (function () {
       var root = document.documentElement;
@@ -178,6 +178,7 @@
   <link rel="stylesheet" href="css/watch.css?v=1789854172623" />
   <link rel="stylesheet" href="css/theater.css?v=20261120-1340" />
   <link rel="stylesheet" href="css/xhs.css?v=20261121-0415" />
+    <link rel="stylesheet" href="css/say.css?v=20261121-0500" />
 
   <link rel="stylesheet" href="css/reader.css?v=20261120-2235" />
   <link rel="stylesheet" href="css/ledger.css?v=20261121-0400">
@@ -5637,6 +5638,107 @@
           <input type="file" id="xhs-image-input" accept="image/*" multiple style="display: none;" onchange="handleXhsImageInput(event)" />
         </section>
 
+        <!-- ================= 页面：我说 · 日记 (page-say) ================= -->
+        <section class="view-page say-screen" id="page-say" style="display: none;">
+          <div class="say-stage" id="say-stage">
+
+            <!-- 1 本子墙 -->
+            <div class="say-wall" id="say-wall">
+              <div class="say-top">
+                <div class="say-top-l">
+                  <button class="say-back" onclick="sayExitApp()" aria-label="回桌面">‹</button>
+                  <div class="say-title">我说</div>
+                </div>
+                <button class="say-round" onclick="sayNewEntry()" aria-label="写一页">
+                  <svg viewBox="0 0 24 24"><path d="M4 20l4-1 10-10-3-3L5 16l-1 4z"/><path d="M14 6l3 3"/></svg>
+                </button>
+              </div>
+              <div class="say-shelf" id="say-shelf"></div>
+              <div class="say-hint" id="say-hint">左右滑动，换一本</div>
+              <div class="say-dots" id="say-dots"></div>
+            </div>
+
+            <!-- 2 一页纸 -->
+            <div class="say-sheet" id="say-sheet" style="display: none;">
+              <div class="sheet-bg">
+                <div class="say-grain"></div>
+                <div class="sheet-in">
+                  <div class="sh-head">
+                    <div class="sh-date" id="say-page-date"></div>
+                    <div class="sh-week" id="say-page-week"></div>
+                  </div>
+                  <div class="sh-body" id="say-page-body"></div>
+                  <div class="sh-foot" id="say-page-foot"></div>
+                </div>
+                <div class="sh-stamp" id="say-stamp"><span>今日<br>已记</span></div>
+              </div>
+              <button class="sh-back" onclick="sayBackToWall()" aria-label="回本子">‹</button>
+              <div class="sh-turn" onclick="sayTurnNext()"></div>
+              <div class="sh-page-hint" id="say-page-hint"></div>
+              <div class="say-flip" id="say-flip"><div class="flip-sheet"><div class="flip-grain"></div></div></div>
+            </div>
+
+            <!-- 3 书写 -->
+            <div class="say-write" id="say-write" style="display: none;">
+              <div class="wr-head">
+                <div class="say-top-l">
+                  <button class="say-back" style="background: rgba(120,100,70,.1); color:#4A3F2E;" onclick="sayBackFromWrite()" aria-label="回本子">‹</button>
+                  <div class="wr-date" id="say-write-date"></div>
+                </div>
+                <button class="wr-done" onclick="saySaveEntry()">写好了</button>
+              </div>
+              <div class="wr-paper" id="say-write-paper">
+                <textarea class="wr-area" id="say-write-area" placeholder="今天……" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
+                <div class="wr-figs" id="say-write-figs"></div>
+                <div class="wr-recbar" id="say-wr-recbar"></div>
+              </div>
+              <div class="wr-tools">
+                <div class="wr-row">
+                  <button class="wr-tool" onclick="sayOpenRecorder()">
+                    <div class="cir"><svg viewBox="0 0 24 24"><rect x="9" y="3.5" width="6" height="10" rx="3"/><path d="M6 11a6 6 0 0 0 12 0"/><path d="M12 17v3.5M8.5 20.5h7"/></svg></div>
+                    <span>说</span>
+                  </button>
+                  <button class="wr-tool" onclick="sayPickMood()">
+                    <div class="cir"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M9 14c.8-1.2 1.9-1.8 3-1.8S14.2 12.8 15 14"/><path d="M9.5 10h.01M14.5 10h.01"/></svg></div>
+                    <span>心情</span>
+                  </button>
+                  <button class="wr-tool" onclick="sayPickPhoto()">
+                    <div class="cir"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.4"/><path d="M5 17l5-4 3.5 2.6L18 11l1 1"/></svg></div>
+                    <span>图</span>
+                  </button>
+                  <button class="wr-tool" onclick="sayPickPaper()">
+                    <div class="cir"><svg viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></div>
+                    <span>纸</span>
+                  </button>
+                </div>
+                <div class="wr-bar"><i></i></div>
+              </div>
+              <div class="say-moodpick" id="say-moodpick"></div>
+              <input type="file" id="say-photo-input" accept="image/*" style="display: none;" onchange="sayHandlePhoto(event)" />
+            </div>
+
+            <!-- 4 录音 -->
+            <div class="say-rec" id="say-rec" style="display: none;">
+              <div class="rec-ghost" id="say-rec-ghost"></div>
+              <div class="rec-dim"></div>
+              <button class="rec-close" onclick="sayCloseRecorder()">收起</button>
+              <div class="rec-card">
+                <div class="rec-top"><div class="rec-t">说着，我记着</div><div class="rec-time" id="say-rec-time">00:00</div></div>
+                <div class="rec-wave" id="say-rec-wave"></div>
+                <div class="rec-tip">说完松开，声音就留在这一页了；字，你自己写。</div>
+                <div class="rec-actions" id="say-rec-actions"></div>
+              </div>
+              <button class="rec-mic" id="say-rec-mic"
+                      onpointerdown="sayRecDown(event)"
+                      onpointerup="sayRecUp()"
+                      onpointercancel="sayRecUp()">
+                <svg viewBox="0 0 24 24"><rect x="9" y="3.5" width="6" height="10" rx="3"/><path d="M6 11a6 6 0 0 0 12 0"/><path d="M12 17v3.5M8.5 20.5h7"/></svg>
+              </button>
+            </div>
+
+          </div>
+        </section>
+
 <section class="view-page" id="page-me">
           <header class="wechat-header">
             <button class="wechat-back-btn" onclick="openWechatMain('me')">‹ 我</button>
@@ -6373,10 +6475,10 @@
  <script src="js/prompt-presets.js?v=2026111409"></script>
   <script src="js/notify.js?v=2026111688"></script>
   <script src="js/keepalive.js?v=20261120-1205"></script>
-  <script src="js/desktop/desktop.js?v=2026111343"></script>
+  <script src="js/desktop/desktop.js?v=20261121-0500"></script>
   <script src="js/desktop/days.js?v=1789904839051"></script>
 <script src="js/desktop/yanyan-cat.js?v=1789925866085"></script>
-<script src="js/desktop/drag-grid.js?v=20261121-0415"></script>
+<script src="js/desktop/drag-grid.js?v=20261121-0500"></script>
 <script src="js/desktop/app-store.js?v=2026111002"></script>
   <script src="js/wechat/stickers.js?v=2026111150"></script>
   <script src="js/wechat/search-tools.js?v=2026111316"></script>
@@ -6400,6 +6502,7 @@
   <script src="js/theater/memory-engine.js?v=2026111122"></script>
   <script src="js/theater/worldbooks.js?v=2026111571"></script>
   <script src="js/xhs/xhs.js?v=20261121-0415"></script>
+    <script src="js/say/say.js?v=20261121-0500"></script>
   <script src="js/app.js?v=2026111342"></script>
 
 

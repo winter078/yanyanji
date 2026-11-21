@@ -272,6 +272,8 @@ function renderThemePresetsUI() {
           }
         } else if (pageId === 'page-xhs') {
           if (typeof window.renderXhsApp === 'function') window.renderXhsApp();
+        } else if (pageId === 'page-say') {
+          if (typeof window.renderSayApp === 'function') window.renderSayApp();
         } else if (pageId === 'page-chat-setting') {
           if (typeof renderChatSettingsUI === 'function') renderChatSettingsUI();
           if (typeof window.renderCharacterImageSettingsUI === 'function') window.renderCharacterImageSettingsUI();
