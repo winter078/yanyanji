@@ -4,3 +4,44 @@
   transition: opacity 0.24s ease !important;
   pointer-events: none !important;
 }
+
+/* ===== 按压反馈：按下有回弹，松手弹回 ===== */
+button,
+[role="button"],
+.mom-tap-hit,
+.wechat-back-btn {
+  transition: transform 0.16s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.16s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:active,
+[role="button"]:active,
+.mom-tap-hit:active,
+.wechat-back-btn:active {
+  transform: scale(0.965);
+  opacity: 0.92;
+}
+
+/* 桌面图标与 Dock 图标本来就有按下效果，补上平滑过渡，不再硬跳 */
+.ios-app-card,
+.dock-app-item {
+  transition: transform 0.16s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.16s ease;
+}
+
+/* ===== 列表进场：渲染出来的条目淡入 + 轻微上移，代替骨架屏 ===== */
+@keyframes momEnter {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+#moments-feed-container > *,
+#message-container > * {
+  animation: momEnter 0.24s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #moments-feed-container > *,
+  #message-container > * {
+    animation: none;
+  }
+}

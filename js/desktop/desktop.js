@@ -325,7 +325,11 @@ function renderThemePresetsUI() {
         } else if (pageId === 'page-wechat-main') {
           defer(function () { syncWechatMainPreview(); });
         } else if (pageId === 'page-moments') {
-          defer(function () { renderMomentsFeed(); });
+          defer(function () {
+            var feed = document.getElementById('moments-feed-container');
+            if (feed && typeof window.__momFlip === 'function') window.__momFlip(feed, renderMomentsFeed);
+            else renderMomentsFeed();
+          });
         } else if (pageId === 'page-me') {
           defer(function () { syncMeProfileUI(); });
         } else if (pageId === 'page-world') {
