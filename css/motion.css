@@ -17,7 +17,8 @@ button,
 button:active,
 [role="button"]:active,
 .mom-tap-hit:active,
-.wechat-back-btn:active {
+.wechat-back-btn:active,
+.mom-pressing {
   transform: scale(0.965);
   opacity: 0.92;
 }

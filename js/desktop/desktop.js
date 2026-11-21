@@ -246,10 +246,30 @@ function renderThemePresetsUI() {
           if (typeof p.animate === 'function') {
             try {
               p.style.zIndex = '11';
-              const out = p.animate(
-                [{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(0.94)' }],
-                { duration: 180, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' }
-              );
+              let out;
+              const backRect = window.__momOpenIconRect;
+              if (pageId === 'page-home' && backRect) {
+                // 收回被点的那个图标位置
+                const pr = p.getBoundingClientRect();
+                const pw = p.offsetWidth || pr.width || 1;
+                const scalePx = pr.width / pw || 1;
+                const cx = (backRect.left + backRect.width / 2 - pr.left) / scalePx;
+                const cy = (backRect.top + backRect.height / 2 - pr.top) / scalePx;
+                const s = Math.max(0.06, Math.min(0.6, backRect.width / (pr.width || 1)));
+                const origin = cx.toFixed(1) + 'px ' + cy.toFixed(1) + 'px';
+                out = p.animate(
+                  [
+                    { opacity: 1, transform: 'scale(1)', transformOrigin: origin },
+                    { opacity: 0, transform: 'scale(' + s + ')', transformOrigin: origin }
+                  ],
+                  { duration: 300, easing: 'cubic-bezier(.4,0,.6,1)', fill: 'forwards' }
+                );
+              } else {
+                out = p.animate(
+                  [{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(0.94)' }],
+                  { duration: 180, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' }
+                );
+              }
               let done = false;
               const hide = () => {
                 if (done) return;
@@ -288,18 +308,39 @@ function renderThemePresetsUI() {
             target.style.animation = 'none';
             void target.offsetWidth;
             const isHome = pageId === 'page-home';
+            const iconRect = window.__momLastIconRect || null;
+            window.__momOpenIconRect = iconRect;
+            window.__momLastIconRect = null;
             // 回桌面时只做淡入，不缩放：壁纸在屏幕根节点上，缩放会让壁纸跟着动
-            // 打开 App 带一点 spring 过冲（back-out 曲线），收尾会轻轻回弹一下
-            const frames = isHome
-              ? [{ opacity: 0 }, { opacity: 1 }]
-              : [
-                  { opacity: 0, transform: 'scale(0.9)' },
-                  { opacity: 1, transform: 'scale(1)' }
-                ];
-            target.animate(frames, {
-              duration: isHome ? 220 : 320,
-              easing: isHome ? 'cubic-bezier(.32,.72,0,1)' : 'cubic-bezier(.34,1.56,.64,1)'
-            });
+            // 打开 App 从被点的图标位置长出来（iOS 的 zoom 效果）；没有图标位置时退回普通 spring
+            if (!isHome && iconRect) {
+              const pr = target.getBoundingClientRect();
+              const pw = target.offsetWidth || pr.width || 1;
+              const scalePx = pr.width / pw || 1;
+              const cx = (iconRect.left + iconRect.width / 2 - pr.left) / scalePx;
+              const cy = (iconRect.top + iconRect.height / 2 - pr.top) / scalePx;
+              const s = Math.max(0.06, Math.min(0.6, iconRect.width / (pr.width || 1)));
+              const origin = cx.toFixed(1) + 'px ' + cy.toFixed(1) + 'px';
+              target.animate(
+                [
+                  { opacity: 0, transform: 'scale(' + s + ')', transformOrigin: origin },
+                  { opacity: 0.9, transform: 'scale(1.02)', transformOrigin: origin, offset: 0.72 },
+                  { opacity: 1, transform: 'scale(1)', transformOrigin: origin }
+                ],
+                { duration: 340, easing: 'cubic-bezier(.2,.72,.2,1)' }
+              );
+            } else {
+              const frames = isHome
+                ? [{ opacity: 0 }, { opacity: 1 }]
+                : [
+                    { opacity: 0, transform: 'scale(0.9)' },
+                    { opacity: 1, transform: 'scale(1)' }
+                  ];
+              target.animate(frames, {
+                duration: isHome ? 220 : 320,
+                easing: isHome ? 'cubic-bezier(.32,.72,0,1)' : 'cubic-bezier(.34,1.56,.64,1)'
+              });
+            }
           } catch (e) {}
         }
         if (pageId === 'page-app-store') {
