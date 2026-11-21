@@ -265,8 +265,8 @@ function renderThemePresetsUI() {
                   return x.toFixed(1) + 'px ' + y.toFixed(1) + 'px';
                 };
                 const diveFrames = [
-                  { transform: 'scale(1)', filter: 'blur(0px)' },
-                  { transform: 'scale(1.14)', filter: 'blur(4px)' }
+                  { transform: 'scale(1)' },
+                  { transform: 'scale(1.12)' }
                 ];
                 const diveOpts = { duration: 260, easing: 'cubic-bezier(.38,0,.6,.95)', fill: 'forwards' };
                 if (iv && typeof iv.animate === 'function') {
@@ -405,10 +405,10 @@ function renderThemePresetsUI() {
             return x.toFixed(1) + 'px ' + y.toFixed(1) + 'px';
           };
           const settle = [
-            { transform: 'scale(1.13)', filter: 'blur(4px)', offset: 0 },
-            { transform: 'scale(1.13)', filter: 'blur(4px)', offset: 0.62 },
-            { transform: 'scale(1.02)', filter: 'blur(0.6px)', offset: 0.84 },
-            { transform: 'scale(1)', filter: 'blur(0px)', offset: 1 }
+            { transform: 'scale(1.12)', offset: 0 },
+            { transform: 'scale(1.12)', offset: 0.62 },
+            { transform: 'scale(1.015)', offset: 0.86 },
+            { transform: 'scale(1)', offset: 1 }
           ];
           const opts = { duration: 380, easing: 'cubic-bezier(.25,.9,.3,1)', fill: 'forwards' };
           try {
