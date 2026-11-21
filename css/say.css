@@ -1359,3 +1359,89 @@
   z-index: 10;
   display: none;
 }
+
+/* ==========================================================================
+   递一页给他：纸条按钮 + 纸底那行小字 + 选人卡片
+   ========================================================================== */
+.sh-give {
+  position: absolute;
+  right: 32px; top: 20px;
+  z-index: 3;
+  padding: 5px 13px;
+  border: 1px solid rgba(150, 128, 96, .40);
+  border-radius: 999px;
+  background: rgba(255, 252, 244, .72);
+  font-family: var(--sy-serif);
+  font-size: 12.5px;
+  letter-spacing: 2px;
+  color: #7B6A4C;
+}
+.sh-give:active { background: rgba(150, 128, 96, .16); }
+.sh-give[disabled] { opacity: .42; }
+
+.sh-reply {
+  flex: none;
+  margin-top: 14px;
+  padding: 8px 0 0 12px;
+  border-left: 2px solid rgba(150, 128, 96, .32);
+}
+.sh-rh {
+  font-family: var(--sy-sans);
+  font-size: 9.5px;
+  letter-spacing: 1.8px;
+  color: rgba(142, 122, 92, .85);
+}
+.sh-rt {
+  margin-top: 5px;
+  font-family: var(--sy-serif);
+  font-size: 14.5px;
+  line-height: 1.72;
+  color: #5C4F39;
+  white-space: pre-wrap;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.sc-faces {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin: 16px 0 2px;
+}
+.sc-face {
+  border: 0;
+  background: none;
+  padding: 6px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+}
+.sc-face:active { opacity: .55; }
+.sc-fava {
+  width: 46px; height: 46px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: rgba(120, 100, 70, .13);
+  color: #6B5A40;
+  font-style: normal;
+  font-family: var(--sy-serif);
+  font-size: 17px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sc-fava img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.sc-face b {
+  font-family: var(--sy-sans);
+  font-size: 10.5px;
+  font-weight: 400;
+  color: #4A3F2E;
+  max-width: 66px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

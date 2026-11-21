@@ -4044,6 +4044,48 @@ window.syncNarrationModeUI = syncNarrationModeUI;
     }
 
     window.loadChatHistory = loadChatHistory;
+
+    // 「我说」递一页给角色：把纸页卡片当图片发进来，并让他回一句
+    window.sayDeliverCard = async function (opt) {
+      try {
+        const charId = opt && opt.charId;
+        const imgSrc = opt && opt.imgSrc;
+        const note = (opt && opt.note) || '我给你看一页我写的东西。';
+        if (!charId || !imgSrc) return { ok: false, error: 'missing' };
+        if (typeof window.setActiveCharacter === 'function') window.setActiveCharacter(charId);
+        if (typeof window.openSingleChat === 'function') window.openSingleChat();
+        await new Promise(function (r) { setTimeout(r, 80); });
+        try { if (typeof loadChatHistory === 'function') loadChatHistory(); } catch (eL) {}
+
+        const now = getNowStr();
+        let maskId = '';
+        try { maskId = currentMaskId(); } catch (eM) {}
+        const imgMsg = '[IMAGE:' + imgSrc + ']';
+        const i0 = appData.chatHistory.length;
+        appData.chatHistory.push({ role: 'user', content: imgMsg, time: now, maskId: maskId, sayCard: true });
+        renderMessageBubble('user', imgMsg, now, '', i0);
+        const i1 = appData.chatHistory.length;
+        appData.chatHistory.push({ role: 'user', content: note, time: now, maskId: maskId, sayCard: true });
+        renderMessageBubble('user', note, now, '', i1);
+        try { noteChatImageUserTurn(note); } catch (eN) {}
+        try { maybeInsertTimeDivider(now, Date.now()); } catch (eT) {}
+        safeSaveChatHistory();
+        scrollChatToBottom();
+
+        const hasKey = !!(appData && appData.apiKey);
+        if (!hasKey) return { ok: false, error: 'nokey' };
+
+        await triggerAiReaction();
+        let reply = '';
+        for (let i = appData.chatHistory.length - 1; i >= 0; i--) {
+          const m = appData.chatHistory[i];
+          if (m && m.role === 'assistant' && String(m.content || '').trim()) { reply = String(m.content).trim(); break; }
+        }
+        return { ok: true, reply: reply };
+      } catch (err) {
+        return { ok: false, error: (err && err.message) || 'error' };
+      }
+    };
     function loadChatHistory() {
       ensureChatHistoryScoped();
       const activeId = activeChatCharId();

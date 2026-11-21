@@ -823,10 +823,30 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
       bodyEl.scrollTop = 0;
     }
     var hint = $('say-page-hint');
+    var hasReply = !!(e.reply && e.reply.text);
     if (hint) {
+      hint.style.display = hasReply ? 'none' : '';
       hint.textContent = (state.pageIdx >= es.length - 1)
         ? '最后一页了，掀一下右下角能开新的一页'
         : '掀一下右下角，翻到下一页';
+    }
+
+    /* 纸底下那一行：他说的话 */
+    var repEl = $('say-page-reply');
+    if (repEl) {
+      if (e.reply && e.reply.text) {
+        repEl.style.display = '';
+        repEl.innerHTML = '<div class="sh-rh">' + esc(e.reply.name || '他') + ' 写在底下</div>'
+          + '<div class="sh-rt">' + esc(e.reply.text) + '</div>';
+      } else {
+        repEl.style.display = 'none';
+        repEl.innerHTML = '';
+      }
+    }
+    var giveEl = $('say-give');
+    if (giveEl) {
+      giveEl.disabled = false;
+      giveEl.textContent = (e.reply && e.reply.text) ? '再递一次' : '递给他';
     }
   }
 
@@ -862,6 +882,175 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
   window.sayTurnPrev = function () {
     if (state.pageIdx <= 0) return;
     flip(function () { state.pageIdx--; renderSheet(); });
+  };
+
+  /* ---------------- 递一页给他 ---------------- */
+  function currentEntry() {
+    var es = entriesOfBook();
+    return es[state.pageIdx] || null;
+  }
+
+  function cardTextLines(g, text, maxW, maxLines) {
+    var lines = [];
+    var paras = String(text || '').split(/\r?\n/);
+    var truncated = false;
+    for (var p = 0; p < paras.length; p++) {
+      if (lines.length >= maxLines) { truncated = true; break; }
+      var s = paras[p].replace(/[ \t]+/g, ' ').trim();
+      if (!s) {
+        if (lines.length) lines.push('');
+        continue;
+      }
+      var line = '';
+      for (var i = 0; i < s.length; i++) {
+        var ch = s.charAt(i);
+        var isTail = '，。、；：！？…）」』”'.indexOf(ch) >= 0;
+        var over = g.measureText(line + ch).width > maxW;
+        if (over && line && !isTail) {
+          lines.push(line);
+          line = ch;
+          if (lines.length >= maxLines) { truncated = i < s.length - 1; break; }
+        } else {
+          line += ch;
+        }
+      }
+      if (lines.length >= maxLines) { if (line && lines.length === maxLines) truncated = true; break; }
+      if (line) lines.push(line);
+    }
+    if (lines.length > maxLines) { lines.length = maxLines; truncated = true; }
+    if (truncated && lines.length) {
+      lines[lines.length - 1] = lines[lines.length - 1].replace(/[，。、；：,.\s]+$/, '') + '…';
+    }
+    return lines;
+  }
+
+  function pageCardImg(e) {
+    var W = 680, H = 440;
+    var c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    var g = c.getContext('2d');
+    var grd = g.createLinearGradient(30, 0, W - 30, H);
+    grd.addColorStop(0, '#FCF8EF');
+    grd.addColorStop(0.55, '#F8F1E3');
+    grd.addColorStop(1, '#EFE4D1');
+    g.fillStyle = grd;
+    g.fillRect(0, 0, W, H);
+
+    g.save();
+    g.strokeStyle = 'rgba(255,255,255,0.32)';
+    g.lineWidth = 1;
+    for (var y = 6; y < H; y += 5) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
+    g.restore();
+
+    g.strokeStyle = 'rgba(150,128,96,0.28)';
+    g.lineWidth = 1.5;
+    g.strokeRect(20, 20, W - 40, H - 40);
+
+    var kai = 'KaiTi, STKaiti, "Kaiti SC", serif';
+    var dl = dateLabel(e.date);
+    g.font = '20px ' + kai;
+    var dlW = g.measureText(dl).width;
+    g.fillStyle = 'rgba(120,105,82,0.88)';
+    g.fillText(dl, 48, 74);
+    g.font = '17px ' + kai;
+    g.fillStyle = 'rgba(140,124,98,0.82)';
+    g.fillText(weekLabel(e.date) + (e.mood ? ' · ' + e.mood : ''), 48 + dlW + 18, 73);
+
+    g.font = '27px ' + kai;
+    var lines = cardTextLines(g, e.text || '这一页只留了一张图。', W - 100, 7);
+    var lh = 40;
+    var availTop = 112, availBottom = H - 96;
+    var blockH = 0;
+    lines.forEach(function (l) { blockH += l ? lh : 14; });
+    var startY = availTop + Math.max(0, (availBottom - availTop - blockH) / 2) + 26;
+    g.fillStyle = '#4A3F2E';
+    var yCur = startY;
+    lines.forEach(function (l) {
+      if (!l) { yCur += 14; return; }
+      g.fillText(l, 48, yCur);
+      yCur += lh;
+    });
+
+    g.font = '18px ' + kai;
+    g.fillStyle = 'rgba(150,134,108,0.92)';
+    g.fillText(bookTitleOf(currentBookId()) || '我说', 48, H - 46);
+    g.textAlign = 'right';
+    g.fillStyle = 'rgba(168,152,124,0.72)';
+    g.fillText('我说 · 第 ' + (state.pageIdx + 1) + ' 页', W - 48, H - 46);
+    g.textAlign = 'left';
+
+    return c.toDataURL('image/jpeg', 0.74);
+  }
+
+  window.sayDeliverPage = function () {
+    var e = currentEntry();
+    if (!e) return;
+    if (typeof window.sayDeliverCard !== 'function') { sayToast('聊天那边还没接上'); return; }
+    var chars = (typeof window.getCharacters === 'function') ? (window.getCharacters() || []) : [];
+    if (!chars.length) { sayToast('还没有可以递给的人'); return; }
+    cardMode = 'deliver';
+    var faces = chars.map(function (c) {
+      var initial = String(c.name || '·').slice(0, 1);
+      var inner = c.avatar
+        ? '<img src="' + esc(c.avatar) + '" alt="">'
+        : esc(initial);
+      return '<button class="sc-face" data-id="' + esc(c.id) + '" data-name="' + esc(c.name || '') + '" onclick="sayDeliverTo(this)">'
+        + '<i class="sc-fava">' + inner + '</i><b>' + esc(c.name || '他') + '</b></button>';
+    }).join('');
+    cardBody('<div class="sc-t">递给谁</div>'
+      + '<div class="sc-sub">这一页会变成一张纸条，发进你和他的聊天；他回的那句话，会抄到这页纸底下。</div>'
+      + '<div class="sc-faces">' + faces + '</div>'
+      + '<div class="sc-row"><button class="sc-cancel" onclick="sayCloseCard()">算了</button></div>');
+  };
+
+  window.sayDeliverTo = function (el) {
+    if (!el) return;
+    var cid = el.getAttribute('data-id') || '';
+    var cname = el.getAttribute('data-name') || '他';
+    var e = currentEntry();
+    if (!e || !cid) return;
+    var giveEl = $('say-give');
+    if (giveEl) { giveEl.disabled = true; giveEl.textContent = '递出去了…'; }
+    sayCloseCard();
+    sayToast('递给他了，等他说一句');
+
+    var img = '';
+    try { img = pageCardImg(e); } catch (err) { img = ''; }
+    if (!img) {
+      sayToast('这张纸条没画出来');
+      if (giveEl) { giveEl.disabled = false; giveEl.textContent = '递给他'; }
+      return;
+    }
+
+    window.sayDeliverCard({ charId: cid, imgSrc: img, note: '我写了一页，给你看看。' })
+      .then(function (res) {
+        if (res && res.ok && res.reply) {
+          e.reply = { name: cname, charId: cid, text: res.reply, at: Date.now() };
+          if (!saveData()) sayToast('他说了话，但没存下');
+          renderSheet();
+          /* 他回完了，如果人还在聊天页、也没在打字，就带回这一页 */
+          var chatPage = document.getElementById('page-chat');
+          var cInput = document.getElementById('chat-input');
+          var onChat = !!(chatPage && chatPage.classList.contains('active'));
+          var typing = !!(cInput && String(cInput.value || '').trim());
+          if (onChat && !typing) {
+            if (typeof window.openPage === 'function') window.openPage('page-say');
+            show('sheet');
+            renderSheet();
+            sayToast(cname + ' 回了一句，抄在这页底下了');
+          } else {
+            sayToast(cname + ' 回了一句');
+          }
+        } else {
+          if (res && res.error === 'nokey') sayToast('他还没接上线（没填 Key）');
+          else sayToast('纸条递出去了，他这回没接话');
+          if (giveEl) { giveEl.disabled = false; giveEl.textContent = '递给他'; }
+        }
+      })
+      .catch(function () {
+        sayToast('递失败了');
+        if (giveEl) { giveEl.disabled = false; giveEl.textContent = '递给他'; }
+      });
   };
 
   /* ---------------- 书写页 ---------------- */

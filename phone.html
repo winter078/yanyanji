@@ -19,7 +19,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <!-- 发布时务必与 js/build.js 的 __LIVE_BUILD__ 保持一致，否则 version-watch 会一直提示“新版已经好了” -->
-  <script>window.__BUILD__="20261121-1900";</script>
+  <script>window.__BUILD__="20261121-1930";</script>
   <script>
     (function () {
       var root = document.documentElement;
@@ -178,7 +178,7 @@
   <link rel="stylesheet" href="css/watch.css?v=1789854172623" />
   <link rel="stylesheet" href="css/theater.css?v=20261120-1340" />
   <link rel="stylesheet" href="css/xhs.css?v=20261121-0415" />
-    <link rel="stylesheet" href="css/say.css?v=20261121-1900" />
+    <link rel="stylesheet" href="css/say.css?v=20261121-1930" />
 
   <link rel="stylesheet" href="css/reader.css?v=20261120-2235" />
   <link rel="stylesheet" href="css/ledger.css?v=20261121-0400">
@@ -5678,8 +5678,10 @@
                     <div class="sh-week" id="say-page-week"></div>
                   </div>
                   <div class="sh-body" id="say-page-body"></div>
+                  <div class="sh-reply" id="say-page-reply" style="display: none;"></div>
                   <div class="sh-foot" id="say-page-foot"></div>
                 </div>
+                <button class="sh-give" id="say-give" onclick="sayDeliverPage()">递给他</button>
                 <div class="sh-stamp" id="say-stamp"><span>今日<br>已记</span></div>
               </div>
               <button class="sh-back" onclick="sayBackToWall()" aria-label="回本子">‹</button>
@@ -6497,7 +6499,7 @@
   <script src="js/wechat/stickers.js?v=2026111150"></script>
   <script src="js/wechat/search-tools.js?v=2026111316"></script>
   <script src="js/wechat/weather-tools.js?v=2026111668"></script>
-  <script src="js/wechat/chat.js?v=2026111663"></script>
+  <script src="js/wechat/chat.js?v=20261121-1930"></script>
   <script src="js/wechat/voice-input.js?v=2026111591"></script>
   <script src="js/wechat/call.js?v=2026111649"></script>
   <script src="js/wechat/image-gen.js?v=2026111649"></script>
@@ -6516,7 +6518,7 @@
   <script src="js/theater/memory-engine.js?v=2026111122"></script>
   <script src="js/theater/worldbooks.js?v=2026111571"></script>
   <script src="js/xhs/xhs.js?v=20261121-0415"></script>
-    <script src="js/say/say.js?v=20261121-1900"></script>
+    <script src="js/say/say.js?v=20261121-1930"></script>
   <script src="js/app.js?v=2026111342"></script>
 
 
