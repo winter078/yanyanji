@@ -5778,7 +5778,7 @@ ${catalog}
         if (j && j.ok && typeof j.content === 'string' && j.content) {
           window.__momSrvTask = { taskId: taskId, charId: opt.charId || 'default' };
           window.__momSrvEndpoint = pack.endpoint;
-          setGenDiag('服务端成功 · 推送 ' + (j.push && j.push.status ? j.push.status : (j.push ? 'err' : '未发')));
+          setGenDiag('服务端成功 · 推送 ' + (j.push && j.push.status ? j.push.status : (j.push ? 'err' : '未发')) + ' · 共 ' + (j.segments || 1) + ' 条');
           return { taskId: taskId, content: j.content };
         }
         setGenDiag('服务端失败 ' + ((j && j.error) || '?') + (j && j.detail ? ' ' + String(j.detail).slice(0, 30) : ''));
