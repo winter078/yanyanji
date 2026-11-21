@@ -225,42 +225,64 @@ function renderThemePresetsUI() {
       allPages.forEach(p => {
         p.classList.remove('active');
         p.style.display = 'none'; // 强制 display: none，彻底粉碎 iOS Safari 幽灵图层缓存
+        try { p.style.animation = 'none'; } catch (e) {}
       });
+
+      // 重活往后挪：先让动画跑起来，渲染留到下一帧之后
+      const defer = (fn) => {
+        requestAnimationFrame(function () {
+          setTimeout(function () { try { fn(); } catch (e) { console.warn('[page] render failed', e); } }, 90);
+        });
+      };
 
       const target = document.getElementById(pageId);
       if (target) {
         target.style.display = 'flex';
         target.classList.add('active');
+        if (typeof target.animate === 'function') {
+          try {
+            target.style.animation = 'none';
+            void target.offsetWidth;
+            const isHome = pageId === 'page-home';
+            target.animate(
+              [
+                { opacity: 0, transform: isHome ? 'scale(1.05)' : 'scale(0.92)' },
+                { opacity: 1, transform: 'scale(1)' }
+              ],
+              { duration: isHome ? 280 : 250, easing: 'cubic-bezier(.32,.72,0,1)' }
+            );
+          } catch (e) {}
+        }
         if (pageId === 'page-app-store') {
-          if (typeof window.renderAppStore === 'function') window.renderAppStore();
+          if (typeof window.renderAppStore === 'function') defer(function () { window.renderAppStore(); });
         } else if (pageId === 'page-prompt-presets') {
           if (window.PromptPresets && typeof window.PromptPresets.renderSettings === 'function') window.PromptPresets.renderSettings();
         } else if (pageId === 'page-gallery-photos') {
-          if (typeof renderPhotos === 'function') renderPhotos();
+          if (typeof renderPhotos === 'function') defer(function () { renderPhotos(); });
         } else if (pageId === 'page-yanyan-cat') {
-          if (typeof renderYanyanCatPage === 'function') renderYanyanCatPage();
+          if (typeof renderYanyanCatPage === 'function') defer(function () { renderYanyanCatPage(); });
         } else if (pageId === 'page-avatar-vault') {
-          if (typeof renderVaultView === 'function') renderVaultView();
+          if (typeof renderVaultView === 'function') defer(function () { renderVaultView(); });
         } else if (pageId === 'page-ledger') {
-          if (typeof renderLedgerApp === 'function') renderLedgerApp();
+          if (typeof renderLedgerApp === 'function') defer(function () { renderLedgerApp(); });
         } else if (pageId === 'page-health') {
-          if (typeof window.renderHealthApp === 'function') window.renderHealthApp();
+          if (typeof window.renderHealthApp === 'function') defer(function () { window.renderHealthApp(); });
         } else if (pageId === 'page-forum') {
-          if (typeof window.renderForumApp === 'function') window.renderForumApp();
+          if (typeof window.renderForumApp === 'function') defer(function () { window.renderForumApp(); });
         } else if (pageId === 'page-reader') {
-          if (typeof renderReaderShelf === 'function') renderReaderShelf();
+          if (typeof renderReaderShelf === 'function') defer(function () { renderReaderShelf(); });
         } else if (pageId === 'page-watch') {
-          if (typeof initWatchApp === 'function') initWatchApp();
+          if (typeof initWatchApp === 'function') defer(function () { initWatchApp(); });
         } else if (pageId === 'page-wechat-main') {
-          syncWechatMainPreview();
+          defer(function () { syncWechatMainPreview(); });
         } else if (pageId === 'page-moments') {
-          renderMomentsFeed();
+          defer(function () { renderMomentsFeed(); });
         } else if (pageId === 'page-me') {
-          syncMeProfileUI();
+          defer(function () { syncMeProfileUI(); });
         } else if (pageId === 'page-world') {
-          renderWorldBookshelf();
+          defer(function () { renderWorldBookshelf(); });
         } else if (pageId === 'page-palace') {
-          renderPalaceMemories();
+          defer(function () { renderPalaceMemories(); });
         } else if (pageId === 'page-char-setting') {
           if (!window.__editingCharId) {
             if (typeof getActiveCharacter === 'function' && typeof fillCharacterEditorById === 'function') {
@@ -271,17 +293,17 @@ function renderThemePresetsUI() {
             }
           }
         } else if (pageId === 'page-xhs') {
-          if (typeof window.renderXhsApp === 'function') window.renderXhsApp();
+          if (typeof window.renderXhsApp === 'function') defer(function () { window.renderXhsApp(); });
         } else if (pageId === 'page-say') {
-          if (typeof window.renderSayApp === 'function') window.renderSayApp();
+          if (typeof window.renderSayApp === 'function') defer(function () { window.renderSayApp(); });
         } else if (pageId === 'page-chat-setting') {
           if (typeof renderChatSettingsUI === 'function') renderChatSettingsUI();
           if (typeof window.renderCharacterImageSettingsUI === 'function') window.renderCharacterImageSettingsUI();
           if (typeof window.renderChatPinUI === 'function') window.renderChatPinUI();
         } else if (pageId === 'page-theme') {
-          if (typeof renderThemePresetsUI === 'function') renderThemePresetsUI();
+          if (typeof renderThemePresetsUI === 'function') defer(function () { renderThemePresetsUI(); });
         } else if (pageId === 'page-stickers') {
-          if (typeof window.renderStickerPage === 'function') window.renderStickerPage();
+          if (typeof window.renderStickerPage === 'function') defer(function () { window.renderStickerPage(); });
         }
       }
 
@@ -298,7 +320,7 @@ function renderThemePresetsUI() {
       }
 
       if (pageId === 'page-daysmatter') {
-        if (typeof renderDaysMatter === 'function') renderDaysMatter();
+        if (typeof renderDaysMatter === 'function') defer(function () { renderDaysMatter(); });
       }
       if (pageId === 'page-chat') {
         if (typeof loadChatHistory === 'function') loadChatHistory();
@@ -306,7 +328,7 @@ function renderThemePresetsUI() {
         if (c) setTimeout(() => { c.scrollTop = c.scrollHeight; }, 30);
       }
       if (pageId === 'page-rp') {
-        renderRpStream();
+        defer(function () { renderRpStream(); });
       }
     }
 

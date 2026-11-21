@@ -387,6 +387,8 @@ input::placeholder, textarea::placeholder {
       background: var(--color-bg-page, #111116);
       color: var(--text-primary);
       z-index: 10;
+      transform-origin: 50% 50%;
+      backface-visibility: hidden;
     }
     .view-page.active {
       display: flex;
