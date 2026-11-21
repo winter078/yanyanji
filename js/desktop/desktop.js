@@ -257,12 +257,14 @@ function renderThemePresetsUI() {
                 const cy = (backRect.top + backRect.height / 2 - pr.top) / scalePx;
                 const s = Math.max(0.06, Math.min(0.6, backRect.width / (pr.width || 1)));
                 const origin = cx.toFixed(1) + 'px ' + cy.toFixed(1) + 'px';
+                const endRadius = Math.min(160, Math.round(19 / s)) + 'px';
                 out = p.animate(
                   [
-                    { opacity: 1, transform: 'scale(1)', transformOrigin: origin },
-                    { opacity: 0, transform: 'scale(' + s + ')', transformOrigin: origin }
+                    { opacity: 1, transform: 'scale(1)', transformOrigin: origin, borderRadius: '0px', offset: 0 },
+                    { opacity: 0.88, transform: 'scale(0.975)', transformOrigin: origin, borderRadius: '8px', offset: 0.3 },
+                    { opacity: 0, transform: 'scale(' + s + ')', transformOrigin: origin, borderRadius: endRadius, offset: 1 }
                   ],
-                  { duration: 300, easing: 'cubic-bezier(.4,0,.6,1)', fill: 'forwards' }
+                  { duration: 340, easing: 'cubic-bezier(.4,0,.6,1)', fill: 'forwards' }
                 );
               } else {
                 out = p.animate(
@@ -281,7 +283,7 @@ function renderThemePresetsUI() {
                 p.style.zIndex = '';
               };
               out.finished.then(hide, hide);
-              setTimeout(hide, 220);
+              setTimeout(hide, 380);
             } catch (e) { p.style.display = 'none'; }
           } else {
             p.style.display = 'none';
@@ -321,13 +323,16 @@ function renderThemePresetsUI() {
               const cy = (iconRect.top + iconRect.height / 2 - pr.top) / scalePx;
               const s = Math.max(0.06, Math.min(0.6, iconRect.width / (pr.width || 1)));
               const origin = cx.toFixed(1) + 'px ' + cy.toFixed(1) + 'px';
+              // 放大过程中保持"小圆角"观感：起点按缩放比例放大圆角，视觉半径接近图标圆角
+              const startRadius = Math.min(160, Math.round(19 / s)) + 'px';
               target.animate(
                 [
-                  { opacity: 0, transform: 'scale(' + s + ')', transformOrigin: origin },
-                  { opacity: 0.9, transform: 'scale(1.02)', transformOrigin: origin, offset: 0.72 },
-                  { opacity: 1, transform: 'scale(1)', transformOrigin: origin }
+                  { opacity: 0, transform: 'scale(' + s + ')', transformOrigin: origin, borderRadius: startRadius, offset: 0 },
+                  { opacity: 0.9, transform: 'scale(1.03)', transformOrigin: origin, borderRadius: '14px', offset: 0.52 },
+                  { opacity: 1, transform: 'scale(0.994)', transformOrigin: origin, borderRadius: '5px', offset: 0.76 },
+                  { opacity: 1, transform: 'scale(1)', transformOrigin: origin, borderRadius: '0px', offset: 1 }
                 ],
-                { duration: 340, easing: 'cubic-bezier(.2,.72,.2,1)' }
+                { duration: 400, easing: 'cubic-bezier(.2,.68,.26,1)' }
               );
             } else {
               const frames = isHome
