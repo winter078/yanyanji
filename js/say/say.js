@@ -922,6 +922,103 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
     flip(function () { state.pageIdx = i; renderSheet(); });
   };
 
+  /* ---------------- 跨本子翻旧话 ---------------- */
+  function hl(text, q) {
+    var t = String(text || '');
+    var low = t.toLowerCase(), ql = q.toLowerCase();
+    if (!ql) return esc(t);
+    var out = '', i = 0, p = low.indexOf(ql, 0);
+    while (p >= 0) {
+      out += esc(t.slice(i, p)) + '<mark>' + esc(t.slice(p, p + ql.length)) + '</mark>';
+      i = p + ql.length;
+      p = low.indexOf(ql, i);
+    }
+    out += esc(t.slice(i));
+    return out;
+  }
+
+  function snipAround(text, q, len) {
+    var t = String(text || '').replace(/\s+/g, ' ').trim();
+    if (!t) return '';
+    var i = t.toLowerCase().indexOf(q.toLowerCase());
+    if (i < 0) return t.slice(0, len) + (t.length > len ? '…' : '');
+    var start = Math.max(0, i - 7);
+    var s = t.slice(start, start + len);
+    return (start > 0 ? '…' : '') + s + (start + len < t.length ? '…' : '');
+  }
+
+  function searchEntries(q) {
+    var key = String(q || '').trim().toLowerCase();
+    if (!key) return [];
+    var bs = shelfBooks();
+    var hits = [];
+    bs.forEach(function (b) {
+      (b.entries || []).forEach(function (e, i) {
+        var dot = String(e.date || '').slice(5).replace('-', '.');
+        var hay = [e.text || '', e.mood || '', b.title || '', e.date || '', dot].join(' ').toLowerCase();
+        if (hay.indexOf(key) >= 0) hits.push({ bid: b.id, title: b.title, idx: i, e: e });
+      });
+    });
+    hits.sort(function (a, b) {
+      return String(b.e.date || '').localeCompare(String(a.e.date || ''));
+    });
+    return hits;
+  }
+
+  window.saySearchOpen = function () {
+    cardMode = 'search';
+    cardBody('<div class="sc-t">翻以前写的</div>'
+      + '<div class="sc-sub">一个字、一个词都行，跨所有本子找。</div>'
+      + '<input class="sc-input" id="say-search-input" placeholder="比如：台灯、下雨、妈妈" autocomplete="off" spellcheck="false" oninput="saySearchRun()">'
+      + '<div class="sr-list" id="say-search-res"><div class="sr-empty">打几个字，翻翻以前写过的。</div></div>'
+      + '<div class="sc-row"><button class="sc-cancel" onclick="sayCloseCard()">合上</button></div>');
+    setTimeout(function () {
+      var inp = $('say-search-input');
+      if (inp) inp.focus();
+    }, 260);
+  };
+
+  window.saySearchRun = function () {
+    var inp = $('say-search-input');
+    var box = $('say-search-res');
+    if (!box) return;
+    var q = String((inp && inp.value) || '').trim();
+    if (!q) {
+      box.innerHTML = '<div class="sr-empty">打几个字，翻翻以前写过的。</div>';
+      return;
+    }
+    var hits = searchEntries(q);
+    if (!hits.length) {
+      box.innerHTML = '<div class="sr-empty">没找到。也许那天用的是别的说法。</div>';
+      return;
+    }
+    var html = '';
+    hits.slice(0, 40).forEach(function (h) {
+      var snip = snipAround(h.e.text || '', q, 30) || (h.e.images && h.e.images.length ? '（只有一张图）' : '（这页没写字）');
+      html += '<button class="sr-item" data-bid="' + esc(h.bid) + '" data-i="' + h.idx + '" onclick="sayOpenHit(this)">'
+        + '<span class="sr-d">' + esc(String(h.e.date || '').slice(5).replace('-', '.')) + '</span>'
+        + '<span class="sr-x">' + hl(snip, q) + '</span>'
+        + '<span class="sr-b">' + esc(h.title || '') + '</span>'
+        + '</button>';
+    });
+    if (hits.length > 40) html += '<div class="sr-empty">还有 ' + (hits.length - 40) + ' 条，再写具体点。</div>';
+    box.innerHTML = html;
+  };
+
+  window.sayOpenHit = function (el) {
+    if (!el) return;
+    var bid = el.getAttribute('data-bid') || '';
+    var i = parseInt(el.getAttribute('data-i'), 10);
+    if (!bid || isNaN(i)) return;
+    sayCloseCard();
+    state.bookId = bid;
+    state.pageIdx = i;
+    state.tab = 'shelf';
+    setTab('shelf');
+    show('sheet');
+    renderSheet();
+  };
+
   /* ---------------- 递一页给他 ---------------- */
   function currentEntry() {
     var es = entriesOfBook();

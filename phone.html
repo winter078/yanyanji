@@ -19,7 +19,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <!-- 发布时务必与 js/build.js 的 __LIVE_BUILD__ 保持一致，否则 version-watch 会一直提示“新版已经好了” -->
-  <script>window.__BUILD__="20261121-2030";</script>
+  <script>window.__BUILD__="20261121-2100";</script>
   <script>
     (function () {
       var root = document.documentElement;
@@ -178,7 +178,7 @@
   <link rel="stylesheet" href="css/watch.css?v=1789854172623" />
   <link rel="stylesheet" href="css/theater.css?v=20261120-1340" />
   <link rel="stylesheet" href="css/xhs.css?v=20261121-0415" />
-    <link rel="stylesheet" href="css/say.css?v=20261121-2030" />
+    <link rel="stylesheet" href="css/say.css?v=20261121-2100" />
 
   <link rel="stylesheet" href="css/reader.css?v=20261120-2235" />
   <link rel="stylesheet" href="css/ledger.css?v=20261121-0400">
@@ -5651,9 +5651,14 @@
                   <button class="say-tab" id="say-tab-me" onclick="sayTab('me')">我</button>
                 </div>
               </div>
-              <button class="say-round" onclick="sayNewEntry()" aria-label="写一页">
-                <svg viewBox="0 0 24 24"><path d="M4 20l4-1 10-10-3-3L5 16l-1 4z"/><path d="M14 6l3 3"/></svg>
-              </button>
+              <div class="say-top-r">
+                <button class="say-round" onclick="saySearchOpen()" aria-label="翻以前写的">
+                  <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M15.6 15.6L20 20"/></svg>
+                </button>
+                <button class="say-round" onclick="sayNewEntry()" aria-label="写一页">
+                  <svg viewBox="0 0 24 24"><path d="M4 20l4-1 10-10-3-3L5 16l-1 4z"/><path d="M14 6l3 3"/></svg>
+                </button>
+              </div>
             </div>
 
             <!-- 1 书柜 -->
@@ -6518,7 +6523,7 @@
   <script src="js/theater/memory-engine.js?v=2026111122"></script>
   <script src="js/theater/worldbooks.js?v=2026111571"></script>
   <script src="js/xhs/xhs.js?v=20261121-0415"></script>
-    <script src="js/say/say.js?v=20261121-2030"></script>
+    <script src="js/say/say.js?v=20261121-2100"></script>
   <script src="js/app.js?v=2026111342"></script>
 
 
