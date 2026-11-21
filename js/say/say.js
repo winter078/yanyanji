@@ -822,8 +822,9 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
       bodyEl.innerHTML = html;
       bodyEl.scrollTop = 0;
     }
+    var reps = repliesOf(e);
     var hint = $('say-page-hint');
-    var hasReply = !!(e.reply && e.reply.text);
+    var hasReply = reps.length > 0;
     if (hint) {
       hint.style.display = hasReply ? 'none' : '';
       hint.textContent = (state.pageIdx >= es.length - 1)
@@ -831,13 +832,18 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
         : '掀一下右下角，翻到下一页';
     }
 
-    /* 纸底下那一行：他说的话 */
+    /* 纸底下那一行：他说的话（最多三行，点开看全部） */
     var repEl = $('say-page-reply');
     if (repEl) {
-      if (e.reply && e.reply.text) {
+      if (reps.length) {
+        var lastRep = reps[reps.length - 1];
+        var showMore = reps.length > 1 || String(lastRep.text || '').length > 48;
         repEl.style.display = '';
-        repEl.innerHTML = '<div class="sh-rh">' + esc(e.reply.name || '他') + ' 写在底下</div>'
-          + '<div class="sh-rt">' + esc(e.reply.text) + '</div>';
+        repEl.innerHTML = '<div class="sh-rh">' + esc(lastRep.name || '他') + ' 写在底下'
+          + (reps.length > 1 ? '<span class="sh-rc">还有 ' + (reps.length - 1) + ' 句</span>' : '')
+          + '</div>'
+          + '<div class="sh-rt">' + esc(lastRep.text) + '</div>'
+          + (showMore ? '<div class="sh-rm">点开看全文 ›</div>' : '');
       } else {
         repEl.style.display = 'none';
         repEl.innerHTML = '';
@@ -846,7 +852,7 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
     var giveEl = $('say-give');
     if (giveEl) {
       giveEl.disabled = false;
-      giveEl.textContent = (e.reply && e.reply.text) ? '再递一次' : '递给他';
+      giveEl.textContent = reps.length ? '再递一次' : '递给他';
     }
   }
 
@@ -889,6 +895,61 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
     var es = entriesOfBook();
     return es[state.pageIdx] || null;
   }
+
+  function repliesOf(e) {
+    if (!e) return [];
+    var list = Array.isArray(e.replies) ? e.replies.slice() : [];
+    if (!list.length && e.reply && e.reply.text) {
+      list = [{ name: e.reply.name, charId: e.reply.charId, text: e.reply.text, at: e.reply.at }];
+    }
+    return list.sort(function (a, b) { return (a.at || 0) - (b.at || 0); });
+  }
+
+  function pushReply(e, r) {
+    if (!e) return;
+    if (!Array.isArray(e.replies)) e.replies = [];
+    if (e.reply && e.reply.text) { e.replies.push(e.reply); e.reply = null; }
+    e.replies.push(r);
+    /* 同一个角色最多留最近三条 */
+    var mine = e.replies.filter(function (x) { return (x.charId || '') === (r.charId || ''); })
+      .slice().sort(function (a, b) { return (a.at || 0) - (b.at || 0); });
+    while (mine.length > 3) {
+      var old = mine.shift();
+      e.replies = e.replies.filter(function (x) { return x !== old; });
+    }
+    e.replies.sort(function (a, b) { return (a.at || 0) - (b.at || 0); });
+  }
+
+  function timeLabel(at) {
+    var d = at ? new Date(at) : new Date();
+    var hh = ('0' + d.getHours()).slice(-2);
+    var mm = ('0' + d.getMinutes()).slice(-2);
+    return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + hh + ':' + mm;
+  }
+
+  window.sayOpenReplies = function () {
+    var e = currentEntry();
+    var reps = repliesOf(e);
+    if (!reps.length) return;
+    cardMode = 'replies';
+    var groups = {};
+    reps.forEach(function (r) {
+      var k = r.name || '他';
+      (groups[k] = groups[k] || []).push(r);
+    });
+    var html = '<div class="sc-t">他写在这页底下的</div>'
+      + '<div class="sc-sub">每位最多留最近三条，再递一次不会盖掉旧的。</div>'
+      + '<div class="sc-reps">';
+    Object.keys(groups).forEach(function (name) {
+      html += '<div class="rp-name">' + esc(name) + '</div>';
+      groups[name].slice().reverse().forEach(function (r) {
+        html += '<div class="rp-item"><div class="rp-t">' + esc(r.text) + '</div>'
+          + '<div class="rp-a">' + esc(timeLabel(r.at)) + '</div></div>';
+      });
+    });
+    html += '</div><div class="sc-row"><button class="sc-cancel" onclick="sayCloseCard()">合上</button></div>';
+    cardBody(html);
+  };
 
   function cardTextLines(g, text, maxW, maxLines) {
     var lines = [];
@@ -1025,7 +1086,7 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
     window.sayDeliverCard({ charId: cid, imgSrc: img, note: '我写了一页，给你看看。' })
       .then(function (res) {
         if (res && res.ok && res.reply) {
-          e.reply = { name: cname, charId: cid, text: res.reply, at: Date.now() };
+          pushReply(e, { name: cname, charId: cid, text: res.reply, at: Date.now() });
           if (!saveData()) sayToast('他说了话，但没存下');
           renderSheet();
           /* 他回完了，如果人还在聊天页、也没在打字，就带回这一页 */

@@ -1445,3 +1445,55 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* 纸底回复：多句提示 / 点开看全文 / 全部回复卡片 */
+.sh-reply {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.sh-rh .sh-rc {
+  margin-left: 8px;
+  color: rgba(150, 128, 96, .9);
+  letter-spacing: 1.2px;
+}
+.sh-rm {
+  margin-top: 6px;
+  font-family: var(--sy-sans);
+  font-size: 9.5px;
+  letter-spacing: 1.6px;
+  color: rgba(150, 128, 96, .78);
+}
+.sh-rm::after { content: ''; }
+
+.sc-reps {
+  max-height: 44vh;
+  overflow-y: auto;
+  margin: 12px 0 2px;
+  -webkit-overflow-scrolling: touch;
+}
+.rp-name {
+  margin-top: 12px;
+  font-family: var(--sy-serif);
+  font-size: 12.5px;
+  letter-spacing: 1.2px;
+  color: rgba(90, 76, 55, .92);
+}
+.rp-item {
+  margin-top: 8px;
+  padding-left: 11px;
+  border-left: 2px solid rgba(150, 128, 96, .22);
+}
+.rp-t {
+  font-family: var(--sy-serif);
+  font-size: 14px;
+  line-height: 1.78;
+  color: #4A3F2E;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.rp-a {
+  margin-top: 3px;
+  font-family: var(--sy-sans);
+  font-size: 9.5px;
+  letter-spacing: 1.2px;
+  color: rgba(140, 124, 98, .8);
+}
