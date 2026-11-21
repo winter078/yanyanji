@@ -124,6 +124,7 @@
 
   /* ---------------- 书柜：月份书 + 自己开的书 ---------------- */
   var BOOK_TINTS = ['t-brick', 't-olive', 't-clay', 't-indigo', 't-moss', 't-plum'];
+var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
 
   function hashOf(s) {
     var h = 7;
@@ -195,8 +196,8 @@
     list.forEach(function (b) {
       var hh = hashOf(b.id);
       b.tint = b.tint || BOOK_TINTS[hh % BOOK_TINTS.length];
-      b.h = 596 + (hh % 9) * 8;          // 596–660，高低不齐才像真书架
-      b.w = 42 + (hh % 5) * 3;           // 42–54
+      b.h = 168 + (hh % 7) * 7;          // 168–210，一层里高低不齐才像真书架
+      b.w = 36 + (hh % 5) * 3;           // 36–48
     });
     return list;
   }
@@ -249,6 +250,23 @@
   };
 
   /* ---------------- 书柜 ---------------- */
+  var PER_DECK = 7;     // 一层最多站七本
+
+  function bookCell(b, curId) {
+    var nm = String(b.title || '');
+    var short = nm.length > 8 ? nm.slice(0, 8) + '…' : nm;
+    var count = b.entries.length;
+    var foot = count ? count + '页' : '空的';
+    return '<div class="bk ' + esc(b.tint) + (b.id === curId ? ' cur' : '') + '" data-id="' + esc(b.id) + '"'
+      + ' style="--bk-h:' + b.h + 'px;--bk-w:' + b.w + 'px;"'
+      + ' onclick="sayPickBook(this)"'
+      + ' ontouchstart="sayPressStart(this)" ontouchend="sayPressEnd()" ontouchmove="sayPressEnd()"'
+      + ' onmousedown="sayPressStart(this)" onmouseup="sayPressEnd()" onmouseleave="sayPressEnd()">'
+      + '<div class="bk-name">' + esc(short) + '</div>'
+      + '<div class="bk-foot">' + esc(foot) + '</div>'
+      + '</div>';
+  }
+
   function renderShelf() {
     var shelf = $('say-shelf');
     if (!shelf) return;
@@ -256,37 +274,23 @@
     var id = currentBookId();
     state.bookId = id;
 
-    shelf.innerHTML = bs.map(function (b) {
-      var nm = String(b.title || '');
-      var short = nm.length > 11 ? nm.slice(0, 11) + '…' : nm;
-      var count = b.entries.length;
-      var foot = count ? count + '页' : '空的';
-      return '<div class="bk ' + esc(b.tint) + (b.id === id ? ' cur' : '') + '" data-id="' + esc(b.id) + '"'
-        + ' style="--bk-h:' + b.h + 'px;--bk-w:' + b.w + 'px;"'
-        + ' onclick="sayPickBook(this)"'
-        + ' ontouchstart="sayPressStart(this)" ontouchend="sayPressEnd()" ontouchmove="sayPressEnd()"'
-        + ' onmousedown="sayPressStart(this)" onmouseup="sayPressEnd()" onmouseleave="sayPressEnd()">'
-        + '<div class="bk-name">' + esc(short) + '</div>'
-        + '<div class="bk-foot">' + esc(foot) + '</div>'
-        + '</div>';
-    }).join('')
-      + '<div class="bk add" onclick="sayShelfAdd()"><b>＋</b><span>新一本</span></div>';
+    var cells = bs.map(function (b) { return bookCell(b, id); });
+    cells.push('<div class="bk add" onclick="sayShelfAdd()"><b>＋</b><span>新一本</span></div>');
+
+    // 至少三层；书多了往下再接一层
+    var decks = Math.max(3, Math.ceil(cells.length / PER_DECK));
+    var html = '';
+    for (var r = 0; r < decks; r++) {
+      html += '<div class="deck"><div class="deck-books">'
+        + cells.slice(r * PER_DECK, r * PER_DECK + PER_DECK).join('')
+        + '</div><div class="deck-plank"></div></div>';
+    }
+    shelf.innerHTML = html;
 
     var hint = $('say-hint');
     if (hint) {
       var total = data.entries.length;
       hint.textContent = total ? ('一共 ' + total + ' 页 · 长按书脊可以改名') : '还没写下第一页';
-    }
-    var dots = $('say-dots');
-    if (dots) {
-      var active = 0;
-      for (var i = 0; i < bs.length; i++) if (bs[i].id === id) { active = i; break; }
-      var html = '';
-      for (var j = 0; j < Math.min(bs.length, 8); j++) {
-        html += '<i' + (j === active ? ' class="on"' : '') + '></i>';
-      }
-      dots.innerHTML = html;
-      dots.style.display = bs.length > 1 ? 'flex' : 'none';
     }
   }
 
@@ -492,10 +496,12 @@
       ? '<img src="' + esc(me.avatar) + '" alt="头像">'
       : '<span>' + esc(initial) + '</span>';
 
+    var bg = ME_BG[Number(me.bg) || 0] || 'paper';
+
     var html = ''
-      + '<div class="me-card">'
+      + '<div class="me-card me-bg-' + bg + '">'
       + '<button class="me-edit" onclick="sayEditMe()">改</button>'
-      + '<div class="me-ava">' + avatar + '</div>'
+      + '<div class="me-ava" onclick="sayPickAvatar()">' + avatar + '</div>'
       + '<div class="me-name">' + esc(nm) + '</div>'
       + '<div class="me-line">' + (line ? esc(line) : '<i>还没写一句关于自己的话</i>') + '</div>'
       + '</div>'
@@ -517,17 +523,82 @@
   window.sayEditMe = function () {
     cardMode = 'me';
     var me = data.me || {};
+    var bg = Number(me.bg) || 0;
+    var nm = String(me.name || '').trim();
+    var ava = me.avatar
+      ? '<img src="' + esc(me.avatar) + '" alt="">'
+      : '<span>' + esc(nm.slice(0, 1) || '我') + '</span>';
+    var swatches = ME_BG.map(function (name, i) {
+      return '<div class="sc-bg sb-' + name + (i === bg ? ' on' : '') + '" data-bg="' + i + '" onclick="sayPickBg(this)"></div>';
+    }).join('');
     cardBody(
       '<div class="sc-t">这是我</div>'
-      + '<div class="sc-sub">名字写在这里；一句话随便写，不写也行。</div>'
+      + '<div class="sc-sub">头像点一下就能换；下面五张纸，挑一张。</div>'
+      + '<div class="sc-me-top">'
+      + '<div class="sc-ava" id="say-card-ava" onclick="sayPickAvatar()">' + ava + '</div>'
+      + '<button class="sc-ava-btn" onclick="sayPickAvatar()">换头像</button>'
+      + '</div>'
       + '<input class="sc-input" id="say-card-input" maxlength="12" value="' + esc(me.name || '') + '" placeholder="名字">'
       + '<input class="sc-input" id="say-card-line" maxlength="28" value="' + esc(me.line || '') + '" placeholder="一句话，比如记性不好，只好写下来">'
+      + '<div class="sc-bgs">' + swatches + '</div>'
       + '<div class="sc-row">'
       + '<button class="sc-cancel" onclick="sayCloseCard()">算了</button>'
       + '<button class="sc-ok" onclick="saySaveCard()">好了</button>'
       + '</div>'
     );
     setTimeout(function () { var inp = $('say-card-input'); if (inp) inp.focus(); }, 260);
+  };
+
+  /* 换头像：选图 → 居中裁方 → 压成 240 存进本地 */
+  window.sayPickAvatar = function () {
+    var inp = $('say-avatar-input');
+    if (!inp) return;
+    inp.value = '';
+    inp.click();
+  };
+
+  window.sayHandleAvatar = function (ev) {
+    var f = ev && ev.target && ev.target.files && ev.target.files[0];
+    if (!f) return;
+    var fr = new FileReader();
+    fr.onload = function () {
+      var img = new Image();
+      img.onload = function () {
+        try {
+          var S = 240;
+          var cv = document.createElement('canvas');
+          cv.width = S; cv.height = S;
+          var ctx = cv.getContext('2d');
+          var side = Math.min(img.width, img.height);
+          ctx.drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, S, S);
+          data.me = data.me || {};
+          data.me.avatar = cv.toDataURL('image/jpeg', 0.82);
+          if (!saveData()) { sayToast('存不下，换张小一点的图'); return; }
+          var box = $('say-card-ava');
+          if (box) box.innerHTML = '<img src="' + esc(data.me.avatar) + '" alt="">';
+          renderMe();
+          sayToast('头像换好了');
+        } catch (err) { sayToast('这张图读不了'); }
+      };
+      img.onerror = function () { sayToast('这张图读不了'); };
+      img.src = fr.result;
+    };
+    fr.readAsDataURL(f);
+  };
+
+  /* 换名片纸 */
+  window.sayPickBg = function (el) {
+    var i = Number(el && el.getAttribute ? el.getAttribute('data-bg') : 0) || 0;
+    data.me = data.me || {};
+    data.me.bg = i;
+    saveData();
+    var row = el ? el.parentNode : null;
+    if (row) {
+      for (var k = 0; k < row.children.length; k++) {
+        row.children[k].className = 'sc-bg sb-' + ME_BG[k] + (k === i ? ' on' : '');
+      }
+    }
+    renderMe();
   };
 
   function saveMe(nameVal) {

@@ -114,44 +114,82 @@
   position: relative;
   flex: 1;
   min-height: 0;
-  padding-bottom: 16px;
+}
+/* 柜子左右两块侧板 */
+.say-shelf-wrap::before,
+.say-shelf-wrap::after {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 12px;
+  z-index: 3;
+  pointer-events: none;
+}
+.say-shelf-wrap::before {
+  left: 0;
+  background: linear-gradient(90deg, #211C15 0, rgba(33, 28, 21, .55) 60%, rgba(0, 0, 0, 0) 100%);
+  box-shadow: inset -1px 0 0 rgba(232, 214, 178, .07);
+}
+.say-shelf-wrap::after {
+  right: 0;
+  background: linear-gradient(270deg, #211C15 0, rgba(33, 28, 21, .55) 60%, rgba(0, 0, 0, 0) 100%);
+  box-shadow: inset 1px 0 0 rgba(232, 214, 178, .07);
 }
 .say-shelf {
   position: absolute;
   inset: 0;
-  display: flex;
-  align-items: flex-end;
-  gap: 4px;
-  padding: 0 26px 20px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  touch-action: pan-x;
+  padding: 40px 20px 6px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
   z-index: 1;
   box-sizing: border-box;
 }
-.say-shelf::-webkit-scrollbar { height: 0; }
-.shelf-board {
+.say-shelf::-webkit-scrollbar { width: 0; }
+
+/* 一层格子：书站在木板上，一层一层往上垒 */
+.deck {
+  position: relative;
+  height: 236px;
+}
+/* 上一层板压在头顶留下的影 */
+.deck::before {
+  content: '';
   position: absolute;
-  left: 0; right: 0; bottom: 0;
-  height: 20px;
-  background: linear-gradient(180deg, #6B5941 0, #3A3025 55%, #171310 100%);
-  border-top: 1px solid rgba(232, 214, 178, .30);
-  box-shadow: 0 16px 28px -14px rgba(0, 0, 0, .95), inset 0 2px 0 rgba(255, 255, 255, .10);
+  left: -20px; right: -20px; top: 0;
+  height: 30px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, .5) 0, rgba(0, 0, 0, .18) 45%, rgba(0, 0, 0, 0) 100%);
   pointer-events: none;
-  z-index: 0;
+}
+.deck-books {
+  position: absolute;
+  left: 0; right: 0; bottom: 14px;
+  height: calc(100% - 14px);
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+}
+.deck-plank {
+  position: absolute;
+  left: -20px; right: -20px; bottom: 0;
+  height: 14px;
+  background: linear-gradient(180deg, rgba(122, 102, 76, .6) 0, rgba(56, 46, 34, .5) 50%, rgba(16, 14, 11, .95) 100%);
+  border-top: 1px solid rgba(232, 214, 178, .12);
+  box-shadow: 0 14px 24px -12px rgba(0, 0, 0, .95);
+  pointer-events: none;
 }
 
 /* 一本竖着的书：露在外面的就是书脊 */
 .say-shelf .bk {
   position: relative;
   flex: none;
-  width: var(--bk-w, 44px);
-  height: var(--bk-h, 310px);
+  width: var(--bk-w, 40px);
+  height: var(--bk-h, 180px);
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 28px 0 16px;
+  padding: 20px 0 12px;
   border-radius: 3px 5px 5px 3px;
   background: linear-gradient(180deg, var(--bk-c1, #6D704C), var(--bk-c2, #4B4E33));
   box-shadow:
@@ -168,7 +206,7 @@
 .say-shelf .bk::before {
   content: '';
   position: absolute;
-  left: 0; right: 0; top: 10px;
+  left: 0; right: 0; top: 8px;
   height: 2px;
   background: rgba(255, 255, 255, .18);
   box-shadow: 0 3px 0 rgba(0, 0, 0, .18);
@@ -176,7 +214,7 @@
 .say-shelf .bk::after {
   content: '';
   position: absolute;
-  left: 0; right: 0; bottom: 10px;
+  left: 0; right: 0; bottom: 8px;
   height: 2px;
   background: rgba(0, 0, 0, .26);
   box-shadow: 0 -3px 0 rgba(255, 255, 255, .08);
@@ -190,7 +228,7 @@
     0 0 20px -6px rgba(201, 169, 97, .28);
 }
 .say-shelf .bk.pulled {
-  transform: translateY(-20px) scale(1.03);
+  transform: translateY(-14px) scale(1.03);
   box-shadow: 0 34px 52px -20px rgba(0, 0, 0, .98), 0 0 0 1px rgba(238, 220, 182, .45);
   z-index: 8;
 }
@@ -202,9 +240,9 @@
   writing-mode: vertical-rl;
   text-orientation: upright;
   font-family: var(--sy-serif);
-  font-size: 17px;
-  line-height: 1.5;
-  letter-spacing: 5px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  letter-spacing: 3.5px;
   color: #F3E8D3;
   text-align: center;
   text-shadow: 0 1px 0 rgba(0, 0, 0, .3);
@@ -214,7 +252,7 @@
   flex: none;
   margin-top: auto;
   font-family: var(--sy-sans);
-  font-size: 10px;
+  font-size: 9px;
   letter-spacing: .5px;
   color: rgba(243, 232, 211, .52);
   white-space: nowrap;
@@ -230,10 +268,10 @@
 
 /* 最右边那格：新一本 */
 .say-shelf .bk.add {
-  width: 54px;
-  height: 640px;
+  width: 44px;
+  height: 196px;
   justify-content: center;
-  gap: 12px;
+  gap: 9px;
   padding: 0;
   background: rgba(255, 255, 255, .035);
   border-radius: 3px 6px 6px 3px;
@@ -263,22 +301,8 @@
   font-size: 12px;
   color: rgba(237, 232, 222, .32);
   letter-spacing: 2px;
-  padding-bottom: 8px;
+  padding: 4px 0 24px;
 }
-.say-dots {
-  flex: none;
-  display: flex;
-  gap: 6px;
-  justify-content: center;
-  padding-bottom: 28px;
-}
-.say-dots i {
-  width: 5px; height: 5px;
-  border-radius: 3px;
-  background: rgba(237, 232, 222, .22);
-  transition: width .2s ease, background .2s ease;
-}
-.say-dots i.on { width: 14px; background: rgba(237, 232, 222, .68); }
 
 /* ==========================================================================
    一·B、「我」名片
@@ -298,15 +322,46 @@
   padding: 30px 24px 26px;
   border-radius: 4px;
   text-align: center;
-  background: linear-gradient(168deg, #F1E9D7 0%, #E1D5BA 100%);
-  box-shadow: 0 26px 52px -22px rgba(0, 0, 0, .85), inset 0 0 0 1px rgba(255, 255, 255, .42);
+  background: linear-gradient(168deg, var(--mc1, #F1E9D7) 0%, var(--mc2, #E1D5BA) 100%);
+  box-shadow: 0 26px 52px -22px rgba(0, 0, 0, .85), inset 0 0 0 1px var(--mcl, rgba(255, 255, 255, .42));
+}
+/* 五张名片纸 */
+.me-bg-paper {
+  --mc1: #F1E9D7; --mc2: #E1D5BA;
+  --mct: #3E3123; --mcs: rgba(62, 49, 35, .72); --mcd: rgba(62, 49, 35, .34);
+  --mcab: #2A2723; --mcaf: #EFE7D5; --mced: rgba(74, 59, 40, .55);
+  --mcgr: rgba(120, 100, 70, .028); --mcl: rgba(255, 255, 255, .42);
+}
+.me-bg-moss {
+  --mc1: #46574D; --mc2: #2B372F;
+  --mct: #EAF0E6; --mcs: rgba(234, 240, 230, .70); --mcd: rgba(234, 240, 230, .32);
+  --mcab: rgba(255, 255, 255, .16); --mcaf: #EAF0E6; --mced: rgba(234, 240, 230, .5);
+  --mcgr: rgba(255, 255, 255, .022); --mcl: rgba(255, 255, 255, .16);
+}
+.me-bg-clay {
+  --mc1: #8D5E47; --mc2: #633C2C;
+  --mct: #FCEFE3; --mcs: rgba(252, 239, 227, .70); --mcd: rgba(252, 239, 227, .32);
+  --mcab: rgba(40, 24, 16, .5); --mcaf: #FCEFE3; --mced: rgba(252, 239, 227, .5);
+  --mcgr: rgba(255, 255, 255, .022); --mcl: rgba(255, 255, 255, .18);
+}
+.me-bg-indigo {
+  --mc1: #414A5C; --mc2: #232936;
+  --mct: #E8EBF3; --mcs: rgba(232, 235, 243, .70); --mcd: rgba(232, 235, 243, .32);
+  --mcab: rgba(255, 255, 255, .16); --mcaf: #E8EBF3; --mced: rgba(232, 235, 243, .5);
+  --mcgr: rgba(255, 255, 255, .022); --mcl: rgba(255, 255, 255, .16);
+}
+.me-bg-ink {
+  --mc1: #24221D; --mc2: #141210;
+  --mct: #E8DDBF; --mcs: rgba(232, 221, 191, .62); --mcd: rgba(232, 221, 191, .28);
+  --mcab: rgba(201, 169, 97, .22); --mcaf: #E8DDBF; --mced: rgba(232, 221, 191, .45);
+  --mcgr: rgba(0, 0, 0, 0); --mcl: rgba(201, 169, 97, .38);
 }
 .me-card::after {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background-image: repeating-linear-gradient(0deg, rgba(120, 100, 70, .026) 0 1px, transparent 1px 5px);
+  background-image: repeating-linear-gradient(0deg, var(--mcgr, rgba(120, 100, 70, .026)) 0 1px, transparent 1px 5px);
   pointer-events: none;
 }
 .me-edit {
@@ -319,7 +374,7 @@
   font-family: var(--sy-sans);
   font-size: 11px;
   letter-spacing: 1px;
-  color: rgba(74, 59, 40, .55);
+  color: var(--mced, rgba(74, 59, 40, .55));
 }
 .me-ava {
   position: relative;
@@ -331,21 +386,23 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #2A2723;
-  color: #EFE7D5;
+  background: var(--mcab, #2A2723);
+  color: var(--mcaf, #EFE7D5);
   font-family: var(--sy-serif);
   font-size: 25px;
   letter-spacing: 2px;
+  cursor: pointer;
   box-shadow: 0 10px 24px -14px rgba(0, 0, 0, .75);
 }
 .me-ava img { width: 100%; height: 100%; object-fit: cover; }
+.me-ava:active { opacity: .86; }
 .me-name {
   position: relative;
   z-index: 2;
   font-family: var(--sy-serif);
   font-size: 20px;
   letter-spacing: 3px;
-  color: #3E3123;
+  color: var(--mct, #3E3123);
 }
 .me-line {
   position: relative;
@@ -355,11 +412,11 @@
   font-size: 13px;
   line-height: 1.75;
   letter-spacing: 1px;
-  color: rgba(62, 49, 35, .72);
+  color: var(--mcs, rgba(62, 49, 35, .72));
 }
 .me-line i {
   font-style: normal;
-  color: rgba(62, 49, 35, .34);
+  color: var(--mcd, rgba(62, 49, 35, .34));
 }
 .me-stats {
   flex: none;
@@ -535,6 +592,56 @@
 }
 .sc-input::placeholder { color: rgba(62, 49, 35, .3); }
 .sc-input:focus { border-color: rgba(90, 70, 45, .48); }
+/* 名片卡片：头像 + 五张纸 */
+.sc-me-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+}
+.sc-ava {
+  flex: none;
+  width: 54px; height: 54px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #2A2723;
+  color: #EFE7D5;
+  font-family: var(--sy-serif);
+  font-size: 19px;
+  cursor: pointer;
+  box-shadow: 0 6px 14px -8px rgba(0, 0, 0, .6);
+}
+.sc-ava img { width: 100%; height: 100%; object-fit: cover; }
+.sc-ava-btn {
+  border: 0;
+  padding: 9px 14px;
+  border-radius: 8px;
+  background: rgba(90, 70, 45, .10);
+  color: rgba(62, 49, 35, .7);
+  font-family: var(--sy-sans);
+  font-size: 12px;
+  letter-spacing: 1.5px;
+}
+.sc-bgs {
+  display: flex;
+  gap: 9px;
+  margin-top: 14px;
+}
+.sc-bg {
+  width: 38px; height: 26px;
+  border-radius: 4px;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12);
+}
+.sc-bg.on { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .22), 0 0 0 2px rgba(58, 49, 40, .72); }
+.sb-paper  { background: linear-gradient(168deg, #F1E9D7, #E1D5BA); }
+.sb-moss   { background: linear-gradient(168deg, #46574D, #2B372F); }
+.sb-clay   { background: linear-gradient(168deg, #8D5E47, #633C2C); }
+.sb-indigo { background: linear-gradient(168deg, #414A5C, #232936); }
+.sb-ink    { background: linear-gradient(168deg, #24221D, #141210); }
 .sc-row {
   display: flex;
   gap: 10px;
