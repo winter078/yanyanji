@@ -150,6 +150,34 @@ function subIdFor(endpoint) {
   return endpoint.replace(/[^a-zA-Z0-9]/g, '').slice(-40);
 }
 
+// 通知栏只能放一句：跳过心声、跳过思考块，取第一句真正说出口的话
+function pushPreview(text) {
+  let t = String(text || '');
+  t = t.replace(/<(?:thought|think|thinking)>[\s\S]*?<\/(?:thought|think|thinking)>/gi, '')
+       .replace(/<(?:thought|think|thinking)>[\s\S]*$/i, '');
+  if (/【(?:绪言)?心声】/.test(t)) {
+    const dm = t.match(/(?:---|\*\*\*|===)/);
+    if (dm) {
+      const at = t.indexOf(dm[0]);
+      t = t.slice(at + dm[0].length);
+    } else {
+      t = t.replace(/【(?:绪言)?心声】[：:]?/g, '');
+    }
+  }
+  const lines = t.split(/\r?\n/).map(function (s) { return s.trim(); }).filter(function (s) {
+    return s && !/^【(?:绪言)?心声】/.test(s) && !/^(?:---|\*\*\*|===)$/.test(s) && !/^[\*\-•>\s]*$/.test(s)
+      && !/^[「『]?回复\s*\S+[：:]\s*[「『]?[^\n]{0,40}[」』]?$/.test(s);
+  });
+  let first = (lines[0] || '')
+    .replace(/^[「『"“]([^」』"”]{1,60})[」』"”]$/, '$1')
+    .replace(/^[「『]/, '')
+    .replace(/[\*#>]+/g, '')
+    .replace(/^[-•]\s*/, '')
+    .trim();
+  if (!first) first = '给你发了一条消息';
+  return first.replace(/[\r\n]+/g, ' ').slice(0, 40);
+}
+
 export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
@@ -278,7 +306,7 @@ export async function onRequest(context) {
         try {
           push = await sendPush(subscription, {
             title: charName,
-            body: content.replace(/[\r\n]+/g, ' ').slice(0, 60),
+            body: pushPreview(content),
             url: '/phone.html?open=chat',
             tag: 'momo-gen-' + taskId
           }, env, 3600);
