@@ -4285,6 +4285,88 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       return userComment ? (userComment + '\n' + cardSnippet) : cardSnippet;
     }
 
+    // 用户在聊天里发图后说「这张给你当头像」：直接收进角色头像库并换上，不再多问一次
+    const AVATAR_WISH_EMOTIONS = ['委屈', '开心', '难过', '生气', '撒娇', '疲惫', '害羞', '冷淡', '困', '吃醋', '认真', '温柔', '日常', '笑', '哭'];
+
+    function avatarWishEmotion(text) {
+      const t = String(text || '');
+      for (var i = 0; i < AVATAR_WISH_EMOTIONS.length; i++) {
+        if (t.indexOf(AVATAR_WISH_EMOTIONS[i]) >= 0) return AVATAR_WISH_EMOTIONS[i];
+      }
+      return '用户给的';
+    }
+
+    function isAvatarWishText(text) {
+      const t = String(text || '').replace(/\s+/g, '');
+      if (!t || t.length > 80) return false;
+      if (!/头像/.test(t)) return false;
+      return /(当|做|换|用|存)/.test(t) && /(给你|当你|做你|是你的|换上|换成|用这|这张|这个|它)/.test(t);
+    }
+
+    function recentUserImageForAvatar() {
+      const hist = appData.chatHistory || [];
+      for (var i = hist.length - 1; i >= 0 && i >= hist.length - 4; i--) {
+        const m = hist[i];
+        if (!m || m.role !== 'user') continue;
+        // 只认「独立发出去的图」（带 media）；引用/转发里的图不算
+        if (m.media) return m.media;
+      }
+      return '';
+    }
+
+    function applyAvatarWishFromUserImage(img, text) {
+      try {
+        if (!img || window.__groupMode) return false;
+        const charId = (typeof currentRemarkCharId === 'function') ? currentRemarkCharId() : '';
+        if (!charId) return false;
+        if (typeof loadCharVaultList !== 'function' || typeof saveCharVaultList !== 'function') return false;
+        const activeChar = (typeof window.getActiveCharacter === 'function') ? window.getActiveCharacter() : null;
+        const charName = (activeChar && activeChar.name) || '角色';
+        const emo = avatarWishEmotion(text);
+
+        const list = loadCharVaultList(charId) || [];
+        const exists = list.some(function (it) { return String((it && it.url) || '') === String(img); });
+        if (!exists) {
+          const now = new Date();
+          list.push({
+            id: 'av_char_' + Date.now(),
+            name: charName + ' · ' + (now.getMonth() + 1) + '.' + now.getDate(),
+            tag: emo,
+            emotion: emo,
+            tagClass: '',
+            note: '在聊天里 user 给的，归到「' + emo + '」',
+            url: img
+          });
+          saveCharVaultList(charId, list);
+        }
+        if (typeof window.applyCharacterAvatar === 'function') window.applyCharacterAvatar(charId, img);
+        if (typeof window.renderVaultView === 'function') { try { window.renderVaultView(); } catch (e) {} }
+
+        const hint = charName + (exists
+          ? '把这头像又换上了（头像库里本来就有这张）'
+          : '把这张收进头像库，换上了（归到「' + emo + '」）');
+        appData.chatHistory.push({ role: 'system', content: '[SYSTEMHINT:' + hint + ']', time: getNowStr() });
+        renderMessageBubble('system', hint);
+        try { safeSaveChatHistory(); } catch (e) {}
+        return true;
+      } catch (e) {
+        console.warn('[avatar-wish] 收进头像库失败', e);
+        return false;
+      }
+    }
+
+    function applyAvatarWishFromChatText(text) {
+      if (!isAvatarWishText(text)) return false;
+      const img = recentUserImageForAvatar();
+      if (!img) {
+        // 话在前、图还没发：先挂个待办，发图那一刻再兑现
+        window.__avatarWishPending = { at: Date.now(), text: String(text || '') };
+        return false;
+      }
+      return applyAvatarWishFromUserImage(img, text);
+    }
+    window.applyAvatarWishFromChatText = applyAvatarWishFromChatText;
+
     function handleSendOnly() {
       try {
         if (window.__groupMode && typeof window.groupHandleSend === 'function') { window.groupHandleSend('send'); return; }
@@ -4410,6 +4492,8 @@ window.syncNarrationModeUI = syncNarrationModeUI;
           noteChatImageUserTurn(text);
           renderMessageBubble('user', text, getNowStr(), '', newIdx);
           safeSaveChatHistory();
+          // 这句话如果是在给角色指定头像（且前面刚发过图），直接收进头像库并换上
+          try { applyAvatarWishFromChatText(text); } catch (e) {}
           // 用“生成”键发消息时也要走朋友圈检查；否则自动发动态永远只在“发送”键生效。
           if (typeof checkAndTriggerMomentOnChat === 'function') checkAndTriggerMomentOnChat();
           else if (typeof checkAndTrigger30MessageMoment === 'function') checkAndTrigger30MessageMoment();
@@ -4984,6 +5068,14 @@ ${(() => {
       appData.chatHistory.push({ role: 'user', content: '[IMAGE]', time: getNowStr(), media: base64Img, maskId: currentMaskId()});
       noteChatImageUserTurn('');
       autoSaveChatImageToAlbum(base64Img, { source: 'chat-user' });
+      // 用户先说了「这张给你当头像」，图现在才到：这一张直接收进头像库并换上
+      try {
+        const wish = window.__avatarWishPending;
+        if (wish && (Date.now() - (wish.at || 0) < 120000)) {
+          window.__avatarWishPending = null;
+          applyAvatarWishFromUserImage(base64Img, wish.text || '给你当头像');
+        }
+      } catch (e) {}
       renderMessageBubble('user', msgText, getNowStr(), '', newIdx);
       try {
         safeSaveChatHistory();
