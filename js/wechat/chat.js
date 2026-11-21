@@ -4352,6 +4352,11 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       }
       scrollChatToBottom();
       scheduleChatBubbleRefit();
+      // 重画历史会把“正在输入”的三个点一起清掉（它不在聊天记录里）。生成中要补回来，
+      // 否则切走再切回来看着像断了，其实还在跑。
+      if (typeof window.__momRestoreTyping === 'function') {
+        setTimeout(function () { try { window.__momRestoreTyping(); } catch (e) {} }, 0);
+      }
     }
 
     function quickPoke() {
@@ -5637,6 +5642,15 @@ ${catalog}
     function setGeneratingState(generating) {
       isGenerating = generating;
       window.__momIsGenerating = !!generating;
+      // 生成全程挂一个看门狗：只要在聊天页却看不到“正在输入”，就补回来（切页/重画/被回收都覆盖）
+      try {
+        if (window.__momTypingGuard) { clearInterval(window.__momTypingGuard); window.__momTypingGuard = null; }
+        if (generating) {
+          window.__momTypingGuard = setInterval(function () {
+            try { window.__momRestoreTyping && window.__momRestoreTyping(); } catch (e) {}
+          }, 1200);
+        }
+      } catch (e) {}
       const genBtn = document.getElementById('gen-btn');
       const sendBtn = document.getElementById('send-btn');
       const stopBtn = document.getElementById('stop-btn');
@@ -5697,6 +5711,26 @@ ${catalog}
     }
 
     window.__momTriggerAiReaction = function () { return triggerAiReaction(); };
+
+    /* 正在生成时，聊天页里必须一直有“正在输入”的三个点；重画/切回来丢了就补上 */
+    window.__momRestoreTyping = function () {
+      const log = [];
+      try {
+        log.push('gen=' + (isGenerating ? '1' : '0'));
+        if (!isGenerating) { window.__momRestoreLog = log.concat('skip-notgen'); return; }
+        const chatPage = document.getElementById('page-chat');
+        log.push('display=' + (chatPage ? chatPage.style.display : 'nopage') + ',active=' + (chatPage ? chatPage.classList.contains('active') : '-'));
+        if (chatPage && (chatPage.style.display === 'none' || !chatPage.classList.contains('active'))) { window.__momRestoreLog = log.concat('skip-hidden'); return; }
+        const container = document.getElementById('message-container') || msgContainer;
+        log.push('box=' + (container ? 'ok' : 'none') + ',dots=' + (container ? container.querySelectorAll('.typing-indicator-box').length : '-'));
+        if (!container) { window.__momRestoreLog = log.concat('skip-nobox'); return; }
+        if (container.querySelector('.typing-indicator-box')) { window.__momRestoreLog = log.concat('skip-hasdots'); return; }
+        const made = renderMessageBubble('assistant', '__TYPING__', getNowStr(), '', -1, null, true);
+        log.push('made=' + (made ? '1' : '0') + ',dotsAfter=' + container.querySelectorAll('.typing-indicator-box').length);
+        scrollChatToBottom();
+        window.__momRestoreLog = log;
+      } catch (e) { window.__momRestoreLog = log.concat('ERR:' + (e && e.message ? e.message : e)); }
+    };
 
     async function triggerAiReactionWithMedia(base64Img) {
       return triggerAiReaction();
