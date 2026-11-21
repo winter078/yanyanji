@@ -7709,3 +7709,14 @@ ${uNick}，水喝到了没有？
       if (!document.hidden) setTimeout(reviveChat, 150);
     });
   })();
+
+  /* 键盘把输入栏抬起来以后，消息区变矮，把最新一条留在视野里 */
+  window.__momOnKbChange = function (kb) {
+    try {
+      if (!kb) return;
+      setTimeout(function () {
+        var c = document.getElementById('message-container');
+        if (c) c.scrollTop = c.scrollHeight;
+      }, 260);
+    } catch (e) {}
+  };

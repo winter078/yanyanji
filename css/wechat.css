@@ -559,6 +559,12 @@
   flex-shrink: 0;
 }
 
+/* 键盘弹起：输入栏抬到键盘上沿，消息区自动压缩，跟微信一样能看见正在打的字 */
+html.kb-open #page-chat .wechat-input-bar-v2 {
+  margin-bottom: var(--mom-kb-h, 0px);
+  padding-bottom: 10px;
+}
+
 /* 图二左侧两个圆圈按钮 */
 .chat-circle-btn {
   width: 38px;

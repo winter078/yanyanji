@@ -19,7 +19,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <!-- 发布时务必与 js/build.js 的 __LIVE_BUILD__ 保持一致，否则 version-watch 会一直提示“新版已经好了” -->
-  <script>window.__BUILD__="20261121-2550";</script>
+  <script>window.__BUILD__="20261121-2560";</script>
   <script>
     (function () {
       var root = document.documentElement;
@@ -126,6 +126,37 @@
         document.addEventListener(t, function (e) { e.preventDefault(); }, { passive: false });
       });
       document.addEventListener('dblclick', function (e) { e.preventDefault(); }, { passive: false });
+      /* 键盘：iOS 弹键盘时整块可视区被顶掉一截，页面本身不动，
+         底部的聊天输入栏就被压在键盘底下（点输入框看不见自己打什么）。
+         这里把"被顶掉的高度"算进 --mom-kb-h，聊天页的输入栏按它抬到键盘上方。 */
+      (function () {
+        var vv = window.visualViewport;
+        if (!vv) return;
+        var cur = -1;
+        function apply() {
+          try {
+            var ih = window.innerHeight || 0;
+            var overlap = ih - vv.height;
+            var kb = overlap > 120 ? Math.round(overlap) : 0;
+            if (Math.abs(kb - cur) < 2) return;
+            cur = kb;
+            var d = document.documentElement;
+            d.style.setProperty('--mom-kb-h', kb + 'px');
+            if (kb > 0) d.classList.add('kb-open');
+            else d.classList.remove('kb-open');
+            if (typeof window.__momOnKbChange === 'function') window.__momOnKbChange(kb);
+          } catch (e) {}
+        }
+        window.__momKbApply = apply;
+        vv.addEventListener('resize', apply);
+        vv.addEventListener('scroll', apply);
+        window.addEventListener('resize', apply);
+        window.addEventListener('orientationchange', function () { setTimeout(apply, 320); });
+        document.addEventListener('focusin', function () { setTimeout(apply, 280); });
+        document.addEventListener('focusout', function () { setTimeout(apply, 360); });
+        apply();
+      })();
+
       /* 键盘收起 / 缩放后视口被顶起来时，把滚动位置强制拉回 0，避免整页被"上推"露出底部黑块 */
       function lockScroll() {
         try { window.scrollTo(0, 0); document.documentElement.scrollTop = 0; document.body.scrollTop = 0; } catch (e) {}
@@ -168,7 +199,7 @@
   <link rel="stylesheet" href="css/themes.css?v=2026111001" />
   <link rel="stylesheet" href="css/desktop.css?v=2026112004" />
   <link rel="stylesheet" href="css/notify.css" />
-  <link rel="stylesheet" href="css/wechat.css?v=20261121-2550" />
+  <link rel="stylesheet" href="css/wechat.css?v=20261121-2560" />
   <link rel="stylesheet" href="css/call.css?v=2026111649" />
   <link rel="stylesheet" href="css/skin-qq.css?v=2026111022" />
   <link rel="stylesheet" href="css/moments.css?v=2026111652" />
@@ -178,7 +209,7 @@
   <link rel="stylesheet" href="css/watch.css?v=1789854172623" />
   <link rel="stylesheet" href="css/theater.css?v=20261120-1340" />
   <link rel="stylesheet" href="css/xhs.css?v=20261121-0415" />
-    <link rel="stylesheet" href="css/say.css?v=20261121-2550" />
+    <link rel="stylesheet" href="css/say.css?v=20261121-2560" />
 
   <link rel="stylesheet" href="css/reader.css?v=20261120-2235" />
   <link rel="stylesheet" href="css/ledger.css?v=20261121-0400">
@@ -6556,15 +6587,15 @@
  <script src="js/prompt-presets.js?v=20261121-2150"></script>
   <script src="js/notify.js?v=2026111688"></script>
   <script src="js/keepalive.js?v=20261120-1205"></script>
-  <script src="js/desktop/desktop.js?v=20261121-2550"></script>
+  <script src="js/desktop/desktop.js?v=20261121-2560"></script>
   <script src="js/desktop/days.js?v=1789904839051"></script>
 <script src="js/desktop/yanyan-cat.js?v=1789925866085"></script>
-<script src="js/desktop/drag-grid.js?v=20261121-2550"></script>
+<script src="js/desktop/drag-grid.js?v=20261121-2560"></script>
 <script src="js/desktop/app-store.js?v=2026111002"></script>
   <script src="js/wechat/stickers.js?v=20261121-2130"></script>
   <script src="js/wechat/search-tools.js?v=2026111316"></script>
   <script src="js/wechat/weather-tools.js?v=2026111668"></script>
-  <script src="js/wechat/chat.js?v=20261121-2550"></script>
+  <script src="js/wechat/chat.js?v=20261121-2560"></script>
   <script src="js/wechat/voice-input.js?v=2026111591"></script>
   <script src="js/wechat/call.js?v=2026111649"></script>
   <script src="js/wechat/image-gen.js?v=2026111649"></script>
@@ -6583,7 +6614,7 @@
   <script src="js/theater/memory-engine.js?v=2026111122"></script>
   <script src="js/theater/worldbooks.js?v=2026111571"></script>
   <script src="js/xhs/xhs.js?v=20261121-0415"></script>
-    <script src="js/say/say.js?v=20261121-2550"></script>
+    <script src="js/say/say.js?v=20261121-2560"></script>
   <script src="js/app.js?v=2026111342"></script>
 
 
