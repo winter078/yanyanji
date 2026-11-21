@@ -1840,3 +1840,26 @@ body[data-theme="light"] .wechat-tool-pill.sel {
 .wechat-call-pill svg { flex: 0 0 auto; opacity: .82; }
 .wechat-call-pill::after { content: ""; position: absolute; inset: -8px -4px; }
 .wechat-call-pill:active { opacity: .78; }
+
+/* ===== 聊天顶栏：头像+昵称整体绝对居中；通话入口已挪进 + 抽屉 ===== */
+#page-chat .wechat-header { position: relative; }
+#page-chat:not([data-qq-skin="1"]) .wechat-header .wechat-title-wrap {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  max-width: 62%;
+  z-index: 2;
+}
+#page-chat .wechat-header .wechat-title {
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#page-chat .wechat-header > .wechat-back-btn:first-child,
+#page-chat .wechat-header .chat-header-actions {
+  position: relative;
+  z-index: 3;
+}
+#page-chat .wechat-header .chat-header-actions { margin-left: auto; }
