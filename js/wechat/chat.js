@@ -2444,10 +2444,61 @@ window.syncNarrationModeUI = syncNarrationModeUI;
     }
 
     function recallNoticeText(m) {
-      const preview = messagePreviewForRecall(m);
-      if (m.role === 'user') return '你撤回了一条消息：' + preview;
+      if (m.role === 'user') return '你撤回了一条消息';
       const who = m.name || (window.appData && (window.appData.botRemark || window.appData.currentCharName)) || '对方';
-      return who + '撤回了一条消息：' + preview;
+      return who + '撤回了一条消息';
+    }
+
+    // 点开胶囊才显示"撤回了什么"
+    function recallRevealText(m) {
+      if (!m) return '';
+      if (m.media) return '（一张图片）';
+      let t = String(m.content || '');
+      t = t.replace(/\[IMAGE:[^\]]*\]/g, '（一张图片）')
+        .replace(/\[STICKER:[^\]]*\]/g, '（一个表情包）')
+        .replace(/\[FILECARD:[\s\S]*?\]/g, '（一个文件）')
+        .replace(/\[SHARECARD:[\s\S]*?\]/g, '（一个链接）')
+        .replace(/\[TEXTCARD:[\s\S]*?\]/g, '（一张便签）')
+        .replace(/\[REACTION:[^\]]*\]/g, '')
+        .replace(/\[RECALL\]/g, '')
+        .replace(/\[REMARK:[^\]]*\]/g, '')
+        .trim();
+      if (t.length > 400) t = t.slice(0, 400) + '…';
+      return t || '（没有文字的消息）';
+    }
+
+    function renderRecallNotice(m) {
+      const container = document.getElementById('message-container');
+      if (!container) return null;
+      const div = document.createElement('div');
+      div.className = 'wechat-time-divider wechat-system-notice wechat-recall-notice';
+      div.setAttribute('data-id', m.id || '');
+      const pill = document.createElement('span');
+      pill.className = 'wechat-time-pill wechat-system-pill wechat-recall-pill';
+      pill.setAttribute('role', 'button');
+      pill.setAttribute('tabindex', '0');
+      const label = document.createElement('span');
+      label.className = 'wechat-recall-label';
+      label.textContent = recallNoticeText(m);
+      const hint = document.createElement('span');
+      hint.className = 'wechat-recall-hint';
+      hint.textContent = '点开看';
+      pill.appendChild(label);
+      pill.appendChild(hint);
+      const panel = document.createElement('div');
+      panel.className = 'wechat-recall-reveal';
+      panel.textContent = recallRevealText(m);
+      const toggle = function (e) {
+        if (e) { e.preventDefault(); e.stopPropagation(); }
+        const open = div.classList.toggle('open');
+        hint.textContent = open ? '收起' : '点开看';
+      };
+      pill.addEventListener('click', toggle);
+      pill.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') toggle(e); });
+      div.appendChild(pill);
+      div.appendChild(panel);
+      container.appendChild(div);
+      return div;
     }
 
     // 角色主动撤回：把「上一条自己发的消息」变成灰色胶囊，而不是让用户撤回自己的消息
@@ -4482,7 +4533,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
             return;
           }
           if (m.recalled) {
-            renderSystemNotice(recallNoticeText(m));
+            renderRecallNotice(m);
             return;
           }
           const bubbleText = (m.media && m.content === '[IMAGE]') ? ('[IMAGE:' + m.media + ']') : m.content;

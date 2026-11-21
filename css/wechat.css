@@ -1377,7 +1377,61 @@ html.kb-open #page-chat .wechat-input-bar-v2 {
   box-sizing: border-box;
 }
 
-/* ===== 工具调用胶囊：正在获取 / 正在搜索 / ✓ 调用成功 ===== */
+/* ===== 撤回胶囊：默认只写"撤回了一条消息"，点开才露出内容 ===== */
+.wechat-time-divider.wechat-recall-notice {
+  flex-direction: column;
+  align-items: center;
+  margin: 10px 0 6px;
+  pointer-events: auto;
+}
+.wechat-recall-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 5px 11px;
+  font-size: 11.5px;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.16s cubic-bezier(.22,.61,.36,1);
+}
+.wechat-recall-pill:active { transform: scale(0.97); }
+.wechat-recall-pill .wechat-recall-hint {
+  font-size: 10px;
+  opacity: 0.42;
+  letter-spacing: 0.2px;
+}
+.wechat-recall-reveal {
+  display: none;
+  max-width: calc(100% - 84px);
+  margin: 6px auto 2px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.55);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+  color: #2b2b2f;
+  font-size: 12.5px;
+  line-height: 1.6;
+  text-align: left;
+  white-space: pre-wrap;
+  word-break: break-word;
+  box-sizing: border-box;
+}
+html[data-theme="dark"] .wechat-recall-reveal,
+body[data-theme="dark"] .wechat-recall-reveal {
+  background: rgba(58,58,62,0.92);
+  color: rgba(255,255,255,0.86);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+}
+.wechat-recall-notice.open .wechat-recall-reveal {
+  display: block;
+  animation: recallPanelIn 0.18s ease-out both;
+}
+@keyframes recallPanelIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .wechat-time-divider.wechat-tool-notice {
   margin: 8px 0 4px;
   pointer-events: auto;
