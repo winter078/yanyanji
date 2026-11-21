@@ -315,7 +315,10 @@
       if (isPeriodDay(c, ds)) cls += ' period';
       else if (isPredictDay(c, ds)) cls += ' predict';
       if (ds === today) cls += ' today';
-      cells.push('<div class="' + cls + '">' + d + '</div>');
+      var tappable = ds <= today;
+      cells.push('<div class="' + cls + '"' + (tappable
+        ? ' style="cursor:pointer" onclick="hpPickCycleDay(this.dataset.d)" data-d="' + ds + '"'
+        : '') + '>' + d + '</div>');
     }
 
     var avg = avgCycle(c);
@@ -345,6 +348,7 @@
     html += '<div class="hp-cal-week">' + WEEK.map(function (w) { return '<span>' + w + '</span>'; }).join('') + '</div>';
     html += '<div class="hp-cal-grid">' + cells.join('') + '</div>';
     html += '<div class="hp-legend"><span><i style="background:rgba(233,116,138,.35)"></i>记录到的经期</span><span><i style="border:1px solid #E9748A"></i>预测</span><span><i style="box-shadow:inset 0 0 0 1px #6FD3C0"></i>今天</span></div>';
+    html += '<div class="hp-hint" style="margin-top:8px">点日历上的日子，可以补记过去的经期，或改已有开始的日期。</div>';
     html += '</div>';
 
     html += '<div class="hp-cycle-sum">' +
@@ -612,6 +616,118 @@
     saveCycle(c);
     toast('记下了，' + fmtCN(t) + ' 开始');
     hpRenderAll();
+  }
+
+  // ---------- 交互：点日历某一天，补记 / 改日期 ----------
+  var cyclePickDay = '';
+
+  function hpPickCycleDay(ds) {
+    ds = String(ds || '').trim();
+    if (!ds || ds > todayStr()) return;
+    cyclePickDay = ds;
+    var c = getCycle();
+    var isStart = c.starts.indexOf(ds) >= 0;
+    var inP = isPeriodDay(c, ds);
+    var last = lastStartBefore(c, ds);
+    var status = isStart
+      ? '这天是已记录的经期开始'
+      : (inP
+        ? ('这天在最近一次经期里（' + (last || '') + ' 开始）')
+        : (last ? ('这天不在经期里，最近一次开始是 ' + last) : '这天之前还没有经期记录'));
+
+    var html = '';
+    html += '<div class="hp-field"><div class="hp-field-label">日期（可以往前选）</div>' +
+      '<input class="hp-input" id="hp-cyc-date" type="date" value="' + ds + '"></div>';
+    html += '<div class="hp-hint">' + status + '</div>';
+    html += '<button class="hp-primary pink" data-k="start" onclick="hpCycleAction(this.dataset.k)">把这天记作经期开始</button>';
+    if (last && last <= ds) {
+      html += '<button class="hp-primary ghost" data-k="end" onclick="hpCycleAction(this.dataset.k)">把这天记作经期结束</button>';
+    }
+    if (isStart) {
+      html += '<button class="hp-primary ghost" data-k="move" onclick="hpCycleAction(this.dataset.k)">按上面的日期改这个开始</button>';
+      html += '<button class="hp-primary ghost" data-k="remove" onclick="hpCycleAction(this.dataset.k)">撤销这个经期开始</button>';
+    }
+    openSheet('经期 · ' + fmtCN(ds), html);
+  }
+
+  function hpCycleDateValue() {
+    var el = document.getElementById('hp-cyc-date');
+    var ds = el && el.value ? String(el.value).trim() : '';
+    if (!ds || ds > todayStr()) return '';
+    return ds;
+  }
+
+  function hpCycleAction(kind) {
+    var c = getCycle();
+    var from = cyclePickDay;
+    var ds = hpCycleDateValue();
+    if (!ds) { toast('先选一个今天以前的日期'); return; }
+
+    if (kind === 'start') {
+      if (c.starts.indexOf(ds) >= 0) { toast('这天已经是开始了'); return; }
+      var prev = '';
+      c.starts.forEach(function (s) { if (s < ds && s > prev) prev = s; });
+      if (prev) {
+        var naturalEnd = (c.ends && c.ends[prev]) || addDays(prev, c.periodLen - 1);
+        if (naturalEnd >= ds) {
+          c.ends = c.ends || {};
+          c.ends[prev] = addDays(ds, -1);
+        }
+      }
+      c.starts.push(ds);
+      c.starts.sort();
+      var lg = c.logs[ds] || {};
+      lg.flow = lg.flow || 'normal';
+      c.logs[ds] = lg;
+      saveCycle(c);
+      closeSheet();
+      toast('记下了，' + fmtCN(ds) + ' 开始');
+      hpRenderAll();
+      return;
+    }
+
+    if (kind === 'end') {
+      var last = lastStartBefore(c, ds);
+      if (!last) { toast('这天之前还没有经期开始'); return; }
+      if (ds < last) { toast('结束日不能早于开始日'); return; }
+      c.ends = c.ends || {};
+      c.ends[last] = ds;
+      saveCycle(c);
+      closeSheet();
+      toast('记下了，这次经期到 ' + fmtCN(ds) + ' 结束');
+      hpRenderAll();
+      return;
+    }
+
+    if (kind === 'move') {
+      if (!from || c.starts.indexOf(from) < 0) { toast('这天已经不是开始了，刷新看看'); return; }
+      if (ds === from) { closeSheet(); return; }
+      c.starts = c.starts.filter(function (s) { return s !== from; });
+      c.starts.push(ds);
+      c.starts.sort();
+      if (c.ends && c.ends[from]) { c.ends[ds] = c.ends[from]; delete c.ends[from]; }
+      if (c.logs && c.logs[from]) { c.logs[ds] = c.logs[from]; delete c.logs[from]; }
+      saveCycle(c);
+      closeSheet();
+      toast('把这个开始改到了 ' + fmtCN(ds));
+      hpRenderAll();
+      return;
+    }
+
+    if (kind === 'remove') {
+      if (!from || c.starts.indexOf(from) < 0) { toast('这天不是经期开始'); return; }
+      c.starts = c.starts.filter(function (s) { return s !== from; });
+      if (c.ends && c.ends[from]) delete c.ends[from];
+      if (c.logs && c.logs[from]) {
+        delete c.logs[from].flow;
+        if (!Object.keys(c.logs[from]).length) delete c.logs[from];
+      }
+      saveCycle(c);
+      closeSheet();
+      toast('撤销了 ' + fmtCN(from) + ' 的经期开始');
+      hpRenderAll();
+      return;
+    }
   }
 
   // ---------- 交互：睡眠 / 梦 ----------
@@ -1015,6 +1131,8 @@
   window.hpShiftCycleMonth = hpShiftCycleMonth;
   window.hpToggleSymptom = hpToggleSymptom;
   window.hpTogglePeriodStart = hpTogglePeriodStart;
+  window.hpPickCycleDay = hpPickCycleDay;
+  window.hpCycleAction = hpCycleAction;
   window.hpOpenSleepSheet = hpOpenSleepSheet;
   window.hpStepTime = hpStepTime;
   window.hpSetQuality = hpSetQuality;
