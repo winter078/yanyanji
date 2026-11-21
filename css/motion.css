@@ -1,0 +1,6 @@
+/* 收起动效的辅助类，由 js/motion.js 在关闭时临时挂上 */
+.mom-collapse {
+  opacity: 0 !important;
+  transition: opacity 0.24s ease !important;
+  pointer-events: none !important;
+}

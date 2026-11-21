@@ -1,0 +1,24 @@
+/* 点击热区：把偏小的按钮的可点范围撑到 44px，不改变视觉尺寸、不影响布局 */
+
+.mom-tap-hit {
+  position: relative;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mom-tap-hit::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: var(--mom-hit-w, 100%);
+  height: var(--mom-hit-h, 100%);
+  border-radius: 14px;
+  /* 只扩大可点范围，不遮挡视觉、不参与布局 */
+  pointer-events: auto;
+}
+
+/* 横向并排的紧密按钮组，热区别往外撑太多，防止误点相邻按钮 */
+.mom-tap-hit.mom-tap-tight::after {
+  width: 100%;
+}

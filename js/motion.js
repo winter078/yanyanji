@@ -14,7 +14,8 @@
     '.cot-modal-mask',
     '.widget-art-modal-mask',
     '.ios-folder-modal-mask',
-    '.photo-name-modal-mask'
+    '.photo-name-modal-mask',
+    '.moment-modal-overlay'
   ].join(',');
 
   function collapse(el) {
@@ -27,10 +28,12 @@
     void el.offsetWidth;
     // 再正常关掉，过渡就从这个起点播出去
     el.classList.remove('open');
+    el.classList.add('mom-collapse');
     el.style.pointerEvents = 'none';
     setTimeout(function () {
       el.__momCollapsing = false;
       el.style.pointerEvents = prevPE || '';
+      el.classList.remove('mom-collapse');
       if (!el.classList.contains('open')) el.style.display = 'none';
     }, 300);
   }
