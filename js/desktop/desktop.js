@@ -280,6 +280,8 @@ function renderThemePresetsUI() {
           if (typeof window.renderChatPinUI === 'function') window.renderChatPinUI();
         } else if (pageId === 'page-theme') {
           if (typeof renderThemePresetsUI === 'function') renderThemePresetsUI();
+        } else if (pageId === 'page-stickers') {
+          if (typeof window.renderStickerPage === 'function') window.renderStickerPage();
         }
       }
 

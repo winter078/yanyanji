@@ -19,7 +19,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <!-- 发布时务必与 js/build.js 的 __LIVE_BUILD__ 保持一致，否则 version-watch 会一直提示“新版已经好了” -->
-  <script>window.__BUILD__="20261121-2100";</script>
+  <script>window.__BUILD__="20261121-2130";</script>
   <script>
     (function () {
       var root = document.documentElement;
@@ -576,6 +576,11 @@
                   <span class="me-menu-label">个人名片</span>
                   <span class="me-menu-arrow">›</span>
                 </div>
+                <div class="me-menu-item" onclick="openPage('page-stickers')">
+                  <span class="me-menu-icon">😀</span>
+                  <span class="me-menu-label">表情包库</span>
+                  <span class="me-menu-arrow">›</span>
+                </div>
                 <div class="me-menu-item" onclick="openPage('page-theme')">
                   <span class="me-menu-icon">🖼️</span>
                   <span class="me-menu-label">手机外观与背景切换</span>
@@ -888,40 +893,22 @@
             <div class="sticker-drawer" id="sticker-drawer" style="height: 480px; max-height: 85vh; background: var(--chat-drawer-bg, var(--bg-surface)); border-top: 1px solid var(--border-default); display: flex; flex-direction: column;">
               <div class="drawer-top-handle" onclick="toggleStickerDrawer()" style="cursor: pointer;"></div>
               
-              <!-- 1. 顶部搜索与双控系统 (搜寻贴图 + 导入 + 管理/完成) -->
+              <!-- 1. 顶部搜索：这里只负责挑一张发出去，增减/分类在「微信 - 我 - 表情包库」 -->
               <div style="padding: 6px 14px 8px; display: flex; gap: 10px; align-items: center;">
                 <div style="flex: 1; position: relative; display: flex; align-items: center;">
                   <span style="position: absolute; left: 10px; font-size: 13px; color: var(--color-text-secondary);">🔍</span>
                   <input type="text" id="sticker-search-input" class="form-input-box" style="width: 100%; padding: 7px 12px 7px 30px; border-radius: 18px; background: var(--glass-soft); border: 1px solid var(--color-border); color: var(--color-text-primary); font-size: 13px; box-sizing: border-box;" placeholder="搜寻贴图" oninput="handleSearchSticker(this.value)" />
                 </div>
-                <div style="display: flex; gap: 8px; align-items: center;">
-                  <button type="button" style="color: var(--info-primary); background: none; border: none; font-size: 14px; font-weight: 700; cursor: pointer; padding: 4px 6px;" onclick="openStickerImportModal()">导入</button>
-                  <button type="button" id="btn-sticker-manage" style="color: var(--text-secondary); background: none; border: none; font-size: 14px; font-weight: 700; cursor: pointer; padding: 4px 6px;" onclick="toggleStickerManageMode()">管理</button>
-                </div>
               </div>
 
               <div style="padding: 0 16px 6px; font-size: 10.5px; color: var(--text-muted); display: flex; justify-content: space-between; gap: 8px;">
-                <span>全局表情库 · 所有角色共用</span>
-                <span>角色只看名称和分类，不看图片</span>
+                <span>点一张，直接发出去</span>
+                <span>增减与分类在「我 · 表情包库」</span>
               </div>
 
-              <!-- 2. 横向分类滚动条 + 动态加组 (+) -->
+              <!-- 2. 横向分类滚动条 -->
               <div id="sticker-category-tabs-bar" style="display: flex; align-items: center; gap: 16px; padding: 4px 16px 8px; overflow-x: auto; border-bottom: 1px solid var(--color-border); scrollbar-width: none;">
                 <!-- 动态生成各标签 -->
-              </div>
-
-              <!-- 3. 管理模式工具栏 (全选 / 导出 / 移动 / 删除 / 清空) 默认隐藏 -->
-              <div id="sticker-manage-toolbar" style="display: none; padding: 8px 16px; background: var(--glass-faint); border-bottom: 1px solid var(--color-border); align-items: center; justify-content: space-between;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <button type="button" onclick="toggleSelectAllStickers()" style="background: none; border: none; color: var(--stickers-accent); font-size: 13px; font-weight: 700; cursor: pointer;">全选</button>
-                  <span id="sticker-selected-count-label" style="font-size: 12px; color: var(--color-text-secondary);">0 条</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 12px;">
-                  <button type="button" onclick="exportSelectedStickers()" style="background: none; border: none; color: var(--success-primary); font-size: 13px; font-weight: 600; cursor: pointer;">导出</button>
-                  <button type="button" onclick="openMoveStickersModal()" style="background: none; border: none; color: var(--info-primary); font-size: 13px; font-weight: 600; cursor: pointer;">移动</button>
-                  <button type="button" onclick="deleteSelectedStickers()" style="background: none; border: none; color: var(--danger-primary); font-size: 13px; font-weight: 600; cursor: pointer;">删除</button>
-                  <button type="button" onclick="clearAllCurrentCategoryStickers()" style="background: none; border: none; color: var(--danger-primary); font-size: 13px; font-weight: 700; cursor: pointer;">清空全部</button>
-                </div>
               </div>
 
               <!-- 4. 主展示区域：【贴图视图】与【颜文字视图】 -->
@@ -5760,6 +5747,47 @@
           </div>
         </section>
 
+<!-- 表情包库（微信 - 我 进入）：导入 / 新建分类 / 管理 / 编辑 / 删除，聊天抽屉只负责发 -->
+<section class="view-page" id="page-stickers">
+  <header class="wechat-header">
+    <button class="wechat-back-btn" onclick="openWechatMain('me')">‹ 我</button>
+    <div class="wechat-title">表情包库</div>
+    <button class="wechat-back-btn" style="color: var(--color-text-primary); font-size: 13px; font-weight: 700; padding: 4px 14px; border-radius: 12px;" onclick="openStickerImportModal()">导入</button>
+  </header>
+  <div class="page-generic-body" style="padding: 0; overflow-y: auto;">
+    <div style="padding: 10px 16px 2px; font-size: 10.5px; line-height: 1.7; color: var(--text-muted);">
+      全局表情库 · 所有角色共用。角色只认名字、分类和说明，不看图片本身。
+    </div>
+
+    <div style="padding: 8px 14px 6px; display: flex; gap: 10px; align-items: center;">
+      <div style="flex: 1; position: relative; display: flex; align-items: center;">
+        <span style="position: absolute; left: 10px; font-size: 13px; color: var(--color-text-secondary);">🔍</span>
+        <input type="text" id="sk-search" class="form-input-box" style="width: 100%; padding: 7px 12px 7px 30px; border-radius: 18px; background: var(--glass-soft); border: 1px solid var(--color-border); color: var(--color-text-primary); font-size: 13px; box-sizing: border-box;" placeholder="按名字找一张" oninput="handleSearchSticker(this.value)" />
+      </div>
+      <button type="button" id="sk-manage-btn" style="color: var(--text-secondary); background: none; border: none; font-size: 14px; font-weight: 700; cursor: pointer; padding: 4px 6px; white-space: nowrap;" onclick="toggleStickerManageMode()">管理</button>
+    </div>
+
+    <div id="sk-cat-tabs" style="display: flex; align-items: center; gap: 16px; padding: 4px 16px 8px; overflow-x: auto; border-bottom: 1px solid var(--color-border); scrollbar-width: none;"></div>
+
+    <div id="sk-manage-toolbar" style="display: none; padding: 8px 16px; background: var(--glass-faint); border-bottom: 1px solid var(--color-border); align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <button type="button" onclick="toggleSelectAllStickers()" style="background: none; border: none; color: var(--stickers-accent); font-size: 13px; font-weight: 700; cursor: pointer;">全选</button>
+        <span id="sk-sel-count" style="font-size: 12px; color: var(--color-text-secondary);">0 条</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <button type="button" onclick="exportSelectedStickers()" style="background: none; border: none; color: var(--success-primary); font-size: 13px; font-weight: 600; cursor: pointer;">导出</button>
+        <button type="button" onclick="openMoveStickersModal()" style="background: none; border: none; color: var(--info-primary); font-size: 13px; font-weight: 600; cursor: pointer;">移动</button>
+        <button type="button" onclick="deleteSelectedStickers()" style="background: none; border: none; color: var(--danger-primary); font-size: 13px; font-weight: 600; cursor: pointer;">删除</button>
+        <button type="button" onclick="clearAllCurrentCategoryStickers()" style="background: none; border: none; color: var(--danger-primary); font-size: 13px; font-weight: 700; cursor: pointer;">清空</button>
+      </div>
+    </div>
+
+    <div style="padding: 12px 14px 30px;">
+      <div id="sk-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;"></div>
+    </div>
+  </div>
+</section>
+
 <section class="view-page" id="page-me">
           <header class="wechat-header">
             <button class="wechat-back-btn" onclick="openWechatMain('me')">‹ 我</button>
@@ -6496,12 +6524,12 @@
  <script src="js/prompt-presets.js?v=2026111409"></script>
   <script src="js/notify.js?v=2026111688"></script>
   <script src="js/keepalive.js?v=20261120-1205"></script>
-  <script src="js/desktop/desktop.js?v=20261121-0500"></script>
+  <script src="js/desktop/desktop.js?v=20261121-2130"></script>
   <script src="js/desktop/days.js?v=1789904839051"></script>
 <script src="js/desktop/yanyan-cat.js?v=1789925866085"></script>
 <script src="js/desktop/drag-grid.js?v=20261121-0500"></script>
 <script src="js/desktop/app-store.js?v=2026111002"></script>
-  <script src="js/wechat/stickers.js?v=2026111150"></script>
+  <script src="js/wechat/stickers.js?v=20261121-2130"></script>
   <script src="js/wechat/search-tools.js?v=2026111316"></script>
   <script src="js/wechat/weather-tools.js?v=2026111668"></script>
   <script src="js/wechat/chat.js?v=20261121-1930"></script>

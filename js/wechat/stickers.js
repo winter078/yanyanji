@@ -291,14 +291,28 @@ window.toggleStickerDrawer = function() {
     const plusD = document.getElementById('plus-drawer');
     if (plusD) plusD.classList.remove('open');
 
+    // 抽屉只负责「挑一张发出去」，管理相关的入口都在「微信-我-表情包库」
+    currentStickerSearchKw = '';
+    const searchBox = document.getElementById('sticker-search-input');
+    if (searchBox) searchBox.value = '';
+
     drawer.classList.add('open');
     window.initStickerCategoryTabs();
     window.renderStickers();
   }
 };
 
-window.initStickerCategoryTabs = function() {
-  const tabsBar = document.getElementById('sticker-category-tabs-bar');
+// 「微信-我-表情包库」整页：导入 / 新建分类 / 管理 / 编辑 / 删除都在这里
+window.renderStickerPage = function() {
+  currentStickerSearchKw = '';
+  const box = document.getElementById('sk-search');
+  if (box) box.value = '';
+  window.initStickerCategoryTabs();
+  window.renderStickers();
+};
+
+function paintCatTabs(barId, allowCreate) {
+  const tabsBar = document.getElementById(barId);
   if (!tabsBar) return;
   tabsBar.innerHTML = '';
 
@@ -328,6 +342,8 @@ window.initStickerCategoryTabs = function() {
     tabsBar.appendChild(tab);
   });
 
+  if (!allowCreate) return;
+
   const addBtn = document.createElement('button');
   addBtn.type = 'button';
   addBtn.style.cssText = 'background: var(--bg-surface); border: 1px solid var(--border-default); width: 26px; height: 26px; border-radius: 8px; color: var(--stickers-accent); font-size: 16px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-left: 4px;';
@@ -335,15 +351,21 @@ window.initStickerCategoryTabs = function() {
   addBtn.title = '新建分类';
   addBtn.onclick = () => window.openStickerNewCatModal();
   tabsBar.appendChild(addBtn);
+}
+
+window.initStickerCategoryTabs = function() {
+  paintCatTabs('sticker-category-tabs-bar', false);
+  paintCatTabs('sk-cat-tabs', true);
 };
 
 // ================= 表情卡片列表 =================
 
-window.renderStickers = function() {
-  const container = document.getElementById('sticker-list-container');
+function renderGridInto(containerId, opts) {
+  const container = document.getElementById(containerId);
   if (!container) return;
   container.innerHTML = '';
 
+  const manageHere = !!(opts && opts.manage && isStickerManageMode);
   const allList = getAllStickersData();
   let filtered = allList.filter(s => s.category === currentStickerCategory);
 
@@ -352,8 +374,8 @@ window.renderStickers = function() {
     filtered = allList.filter(s => s.name.toLowerCase().includes(kw));
   }
 
-  // 首格：+ 上传 卡片
-  if (!isStickerManageMode && !currentStickerSearchKw) {
+  // 首格：+ 上传 卡片（只有「表情包库」页里出现）
+  if (opts && opts.upload && !manageHere && !currentStickerSearchKw) {
     const uploadCard = document.createElement('div');
     uploadCard.style.cssText = 'aspect-ratio: 1; background: var(--bg-surface); border: 1px dashed var(--border-default); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; transition: all 0.15s ease;';
     uploadCard.innerHTML = '<span style="font-size: 24px; color: var(--stickers-accent); font-weight: 300;">+</span><span style="font-size: 11.5px; color: var(--text-secondary); font-weight: 600;">上传</span>';
@@ -363,8 +385,10 @@ window.renderStickers = function() {
 
   if (filtered.length === 0) {
     const emptyTip = document.createElement('div');
-    emptyTip.style.cssText = 'grid-column: span 4; text-align: center; padding: 30px 10px; color: var(--text-muted); font-size: 13px;';
-    emptyTip.innerText = '这个分类下还没有表情。点「+ 上传」，给它选一张图，再写一个名字就行。';
+    emptyTip.style.cssText = 'grid-column: span 4; text-align: center; padding: 30px 10px; color: var(--text-muted); font-size: 13px; line-height: 1.7;';
+    emptyTip.innerText = (opts && opts.upload)
+      ? '这个分类下还没有表情。点「+ 上传」，给它选一张图，再写一个名字就行。'
+      : '这个分类下还没有表情。去「微信 - 我 - 表情包库」加一张。';
     container.appendChild(emptyTip);
     return;
   }
@@ -389,14 +413,14 @@ window.renderStickers = function() {
     card.appendChild(img);
 
     const badge = document.createElement('div');
-    badge.style.cssText = 'position: absolute; bottom: 4px; left: 4px; right: 4px; background: rgba(0,0,0,0.72); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); border-radius: 6px; padding: 2px 4px; font-size: 10px; color: #ffffff; /* 保留: 遮罩纯白文字 */ text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: none;';
+    badge.style.cssText = 'position: absolute; bottom: 4px; left: 4px; right: 4px; background: rgba(0,0,0,0.72); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); border-radius: 6px; padding: 2px 4px; font-size: 10px; color: #ffffff; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: none;';
     badge.innerText = s.name;
     card.appendChild(badge);
 
-    if (isStickerManageMode) {
+    if (manageHere) {
       const isSelected = selectedStickerIds.has(s.id);
       const checkCircle = document.createElement('div');
-      checkCircle.style.cssText = 'position: absolute; top: 5px; right: 5px; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid ' + (isSelected ? 'var(--stickers-accent)' : 'var(--border-default)') + '; background: ' + (isSelected ? 'var(--stickers-accent)' : 'rgba(0,0,0,0.5)') + '; color: #ffffff; /* 保留: 勾选白字 */ font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; z-index: 10;';
+      checkCircle.style.cssText = 'position: absolute; top: 5px; right: 5px; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid ' + (isSelected ? 'var(--stickers-accent)' : 'var(--border-default)') + '; background: ' + (isSelected ? 'var(--stickers-accent)' : 'rgba(0,0,0,0.5)') + '; color: #ffffff; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; z-index: 10;';
       checkCircle.innerText = isSelected ? '✓' : '';
       card.appendChild(checkCircle);
 
@@ -413,37 +437,45 @@ window.renderStickers = function() {
         window.renderStickers();
       };
     } else {
-      // 编辑入口：只改用户写的名称、分类和说明，不动图片。
-      const editBtn = document.createElement('button');
-      editBtn.type = 'button';
-      editBtn.style.cssText = 'position: absolute; top: 4px; left: 4px; width: 20px; height: 20px; border-radius: 50%; background: rgba(0,0,0,0.65); border: 1px solid var(--border-default); color: var(--stickers-accent); font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 10; opacity: 0.75;';
-      editBtn.innerText = '✎';
-      editBtn.title = '编辑名称 / 分类 / 说明';
-      editBtn.onclick = (e) => {
-        e.stopPropagation();
-        window.openStickerEditor(s.id);
-      };
-      card.appendChild(editBtn);
+      if (opts && opts.edit) {
+        // 编辑入口：只改用户写的名称、分类和说明，不动图片。
+        const editBtn = document.createElement('button');
+        editBtn.type = 'button';
+        editBtn.style.cssText = 'position: absolute; top: 4px; left: 4px; width: 20px; height: 20px; border-radius: 50%; background: rgba(0,0,0,0.65); border: 1px solid var(--border-default); color: var(--stickers-accent); font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 10; opacity: 0.75;';
+        editBtn.innerText = '✎';
+        editBtn.title = '编辑名称 / 分类 / 说明';
+        editBtn.onclick = (e) => {
+          e.stopPropagation();
+          window.openStickerEditor(s.id);
+        };
+        card.appendChild(editBtn);
 
-      // 快捷一键删除叉叉
-      const quickDelBtn = document.createElement('button');
-      quickDelBtn.type = 'button';
-      quickDelBtn.style.cssText = 'position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; border-radius: 50%; background: rgba(0,0,0,0.65); border: 1px solid var(--border-default); color: var(--danger-primary); font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 10; opacity: 0.7;';
-      quickDelBtn.innerText = '✕';
-      quickDelBtn.title = '删除此表情包';
-      quickDelBtn.onclick = (e) => {
-        e.stopPropagation();
-        window.deleteSingleSticker(s.id, s.name);
-      };
-      card.appendChild(quickDelBtn);
+        // 快捷一键删除叉叉
+        const quickDelBtn = document.createElement('button');
+        quickDelBtn.type = 'button';
+        quickDelBtn.style.cssText = 'position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; border-radius: 50%; background: rgba(0,0,0,0.65); border: 1px solid var(--border-default); color: var(--danger-primary); font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 10; opacity: 0.7;';
+        quickDelBtn.innerText = '✕';
+        quickDelBtn.title = '删除此表情包';
+        quickDelBtn.onclick = (e) => {
+          e.stopPropagation();
+          window.deleteSingleSticker(s.id, s.name);
+        };
+        card.appendChild(quickDelBtn);
+      }
 
-      card.onclick = () => {
-        window.sendStickerMessage(s);
-      };
+      if (opts && opts.send) card.onclick = () => window.sendStickerMessage(s);
+      else if (opts && opts.edit) card.onclick = () => window.openStickerEditor(s.id);
     }
 
     container.appendChild(card);
   });
+}
+
+window.renderStickers = function() {
+  // 聊天抽屉：只能挑一张发出去
+  renderGridInto('sticker-list-container', { upload: false, edit: false, send: true, manage: false });
+  // 微信-我-表情包库：上传 / 编辑 / 删除 / 多选管理
+  renderGridInto('sk-grid', { upload: true, edit: true, send: false, manage: true });
 };
 
 // 一键删除单个表情
@@ -483,8 +515,8 @@ window.toggleStickerManageMode = function() {
   isStickerManageMode = !isStickerManageMode;
   selectedStickerIds.clear();
 
-  const manageBtn = document.getElementById('btn-sticker-manage');
-  const toolbar = document.getElementById('sticker-manage-toolbar');
+  const manageBtn = document.getElementById('sk-manage-btn');
+  const toolbar = document.getElementById('sk-manage-toolbar');
 
   if (isStickerManageMode) {
     if (manageBtn) {
@@ -505,7 +537,7 @@ window.toggleStickerManageMode = function() {
 };
 
 function updateManageToolbarUI() {
-  const countLabel = document.getElementById('sticker-selected-count-label');
+  const countLabel = document.getElementById('sk-sel-count');
   if (countLabel) countLabel.innerText = selectedStickerIds.size + ' 条';
 }
 
