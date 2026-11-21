@@ -2091,3 +2091,269 @@
   width: 20px;
   background: linear-gradient(90deg, rgba(58, 42, 18, .16), rgba(58, 42, 18, .06) 55%, rgba(58, 42, 18, 0));
 }
+/* ==========================================================================
+   十、一本书的封面：从书架上抽出来，翻开才是一页纸
+   ========================================================================== */
+.say-cover {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 10px;
+  overflow: hidden;
+  background:
+    radial-gradient(118% 58% at 50% 4%, rgba(128, 108, 78, .34) 0%, rgba(22, 18, 14, 0) 64%),
+    linear-gradient(180deg, #1F1B15 0%, #16130F 48%, #0C0A08 100%);
+  color: #EFE6D2;
+}
+
+.say-cover .cv-back {
+  position: absolute;
+  left: 14px; top: 16px;
+  width: 34px; height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(240, 228, 202, .10);
+  color: #E4D9C0;
+  font-size: 17px;
+  line-height: 1;
+  z-index: 5;
+}
+
+.say-cover .cv-stage {
+  position: relative;
+  width: 236px;
+}
+
+.say-cover .cv-book {
+  position: relative;
+  width: 236px;
+  height: 330px;
+  border-radius: 3px 9px 9px 3px;
+  transform: rotate(-1.2deg);
+  transform-origin: 50% 100%;
+  transition: transform .35s cubic-bezier(.2, .85, .3, 1);
+  box-shadow:
+    0 30px 48px -20px rgba(0, 0, 0, .95),
+    0 8px 16px -8px rgba(0, 0, 0, .7);
+  cursor: pointer;
+  animation: cvIn .38s cubic-bezier(.2, .9, .3, 1) both;
+}
+@keyframes cvIn {
+  from { opacity: 0; transform: rotate(-1.2deg) translateY(16px) scale(.94); }
+  to   { opacity: 1; transform: rotate(-1.2deg) translateY(0) scale(1); }
+}
+.say-cover .cv-book:active { transform: rotate(-1.2deg) scale(.975); }
+
+/* 书脊：深色布脊 + 一排手缝线 */
+.say-cover .cv-spine {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 22px;
+  border-radius: 3px 0 0 3px;
+  background: linear-gradient(90deg,
+    var(--cv-sp, #5C3D22) 0%,
+    var(--cv-sp2, #38240F) 70%,
+    #201206 100%);
+  box-shadow:
+    inset -3px 0 7px rgba(0, 0, 0, .5),
+    inset 4px 0 0 rgba(255, 255, 255, .10);
+}
+.say-cover .cv-spine::after {
+  content: '';
+  position: absolute;
+  right: 5px; top: 12px; bottom: 12px;
+  width: 1px;
+  background: repeating-linear-gradient(180deg, rgba(238, 222, 188, .55) 0 3px, rgba(238, 222, 188, 0) 3px 7px);
+}
+
+/* 封皮：底色 + 纹理 */
+.say-cover .cv-face {
+  position: absolute;
+  left: 22px; top: 0; right: 0; bottom: 0;
+  border-radius: 2px 9px 9px 2px;
+  background-color: var(--cv-bg, #E4D2B8);
+  background-image: var(--cv-tex, none);
+  background-size: var(--cv-texsize, auto);
+  box-shadow:
+    inset 0 0 44px -14px rgba(74, 52, 22, .42),
+    inset -9px 0 16px -10px rgba(0, 0, 0, .42),
+    inset 0 0 0 1px rgba(255, 255, 255, .28);
+}
+/* 封面右下角压着的那点暗，让它看着有点厚度 */
+.say-cover .cv-face::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(120deg, rgba(255, 255, 255, .18) 0%, rgba(255, 255, 255, 0) 42%,
+    rgba(60, 42, 16, 0) 62%, rgba(60, 42, 16, .14) 100%);
+  pointer-events: none;
+}
+
+/* 底下露出来的一叠纸页 */
+.say-cover .cv-pages {
+  position: absolute;
+  left: 22px; right: 8px; bottom: -7px;
+  height: 12px;
+  border-radius: 0 0 8px 8px;
+  background: repeating-linear-gradient(180deg, #F6EFDE 0 2px, #D8CBB0 2px 3px);
+  box-shadow: 0 7px 12px -7px rgba(0, 0, 0, .8);
+}
+
+/* 封面正中那圈书名 */
+.say-cover .cv-tag {
+  position: absolute;
+  left: calc(50% + 11px);
+  top: 31%;
+  transform: translate(-50%, -50%);
+  min-width: 118px;
+  max-width: 178px;
+  padding: 15px 18px 12px;
+  border: 1.5px solid var(--cv-ink, #6A4A2C);
+  border-radius: 50% / 32%;
+  background: rgba(255, 255, 255, .12);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .30);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+.say-cover .cv-tag-b {
+  font-family: 'Songti SC', 'Noto Serif CJK SC', serif;
+  font-size: 22px;
+  letter-spacing: 3px;
+  line-height: 1.12;
+  color: var(--cv-ink, #6A4A2C);
+  text-align: center;
+}
+.say-cover .cv-tag-s {
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--cv-ink, #6A4A2C);
+  opacity: .6;
+}
+.say-cover .cv-tag-l {
+  display: block;
+  width: 58%;
+  height: 1px;
+  margin-top: 5px;
+  background: var(--cv-ink, #6A4A2C);
+  opacity: .26;
+}
+
+/* 侧边那颗小圆扣 */
+.say-cover .cv-clasp {
+  position: absolute;
+  right: 24px;
+  top: 56%;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 28%, #FFFEF9 0%, #ECE2CC 38%, #BEAD8D 72%, #8E7E62 100%);
+  box-shadow:
+    0 4px 10px rgba(38, 28, 8, .38),
+    inset 0 0 0 1px rgba(255, 255, 255, .6),
+    inset 0 -3px 7px rgba(120, 100, 60, .35);
+}
+
+/* 书右上角：换封面 */
+.say-cover .cv-edit {
+  position: absolute;
+  right: -50px;
+  top: -4px;
+  width: 38px;
+  height: 66px;
+  padding: 0;
+  border: 0;
+  border-radius: 19px;
+  background: rgba(249, 243, 230, .95);
+  color: #4A4133;
+  font-size: 10px;
+  line-height: 1.28;
+  letter-spacing: 1px;
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  box-shadow: 0 9px 20px -8px rgba(0, 0, 0, .7);
+}
+
+.say-cover .cv-title {
+  margin-top: 30px;
+  font-size: 15px;
+  letter-spacing: 3px;
+  color: #EAE0C8;
+}
+.say-cover .cv-meta {
+  margin-top: 9px;
+  font-size: 11px;
+  letter-spacing: 1.4px;
+  color: #8C8370;
+}
+.say-cover .cv-hint {
+  position: absolute;
+  left: 0; right: 0; bottom: 30px;
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 1.2px;
+  color: #79715F;
+}
+
+/* 六种布色：浅的给封皮，深的给书脊 */
+.cv-pink   { --cv-bg: #F7DCE3; --cv-line: rgba(212, 146, 168, .58); --cv-ink: #7B4757; --cv-sp: #6E3B48; --cv-sp2: #4B2430; }
+.cv-yellow { --cv-bg: #F7E4AE; --cv-line: rgba(206, 164, 74, .62); --cv-ink: #6C5320; --cv-sp: #6C5320; --cv-sp2: #46340F; }
+.cv-blue   { --cv-bg: #D9E3F2; --cv-line: rgba(116, 148, 192, .55); --cv-ink: #35506D; --cv-sp: #2F465F; --cv-sp2: #1D2C3D; }
+.cv-green  { --cv-bg: #DBE8D6; --cv-line: rgba(114, 152, 106, .55); --cv-ink: #3A5230; --cv-sp: #35472C; --cv-sp2: #202C1B; }
+.cv-brown  { --cv-bg: #E5D3B9; --cv-line: rgba(150, 112, 70, .55); --cv-ink: #67492B; --cv-sp: #5C3D22; --cv-sp2: #3A240E; }
+.cv-grey   { --cv-bg: #E3E1DA; --cv-line: rgba(136, 134, 126, .5); --cv-ink: #4B4843; --cv-sp: #403E39; --cv-sp2: #26241F; }
+
+/* 六种纹理 */
+.cv-stripe { --cv-tex: repeating-linear-gradient(90deg, var(--cv-line) 0 7px, rgba(255, 255, 255, 0) 7px 15px); }
+.cv-grid   { --cv-tex: repeating-linear-gradient(0deg, var(--cv-line) 0 1px, rgba(255, 255, 255, 0) 1px 15px),
+                                   repeating-linear-gradient(90deg, var(--cv-line) 0 1px, rgba(255, 255, 255, 0) 1px 15px); }
+.cv-dots   { --cv-tex: radial-gradient(var(--cv-line) 1.3px, rgba(255, 255, 255, 0) 1.5px); --cv-texsize: 11px 11px; }
+.cv-cloth  { --cv-tex: repeating-linear-gradient(45deg, var(--cv-line) 0 1px, rgba(255, 255, 255, 0) 1px 3px); }
+.cv-kraft  { --cv-tex: radial-gradient(rgba(255, 255, 255, .22) 1px, rgba(255, 255, 255, 0) 1.2px); --cv-texsize: 5px 5px; }
+.cv-plain  { --cv-tex: none; }
+
+/* 换封面面板 */
+.cc-sw {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 4px 2px 8px;
+  -webkit-overflow-scrolling: touch;
+}
+.say-cover-card .cc-sw::-webkit-scrollbar { display: none; }
+.cc-sw-item {
+  flex: none;
+  width: 58px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+}
+.cc-sw-face {
+  width: 44px;
+  height: 60px;
+  border-radius: 3px 7px 7px 3px;
+  background-color: var(--cv-bg);
+  background-image: var(--cv-tex, none);
+  background-size: var(--cv-texsize, auto);
+  box-shadow: inset 6px 0 0 var(--cv-sp), inset 6px 0 3px rgba(0, 0, 0, .4), 0 6px 12px -8px rgba(0, 0, 0, .7);
+}
+.cc-sw-item .cc-sw-nm { font-size: 10px; color: #6B6252; letter-spacing: 1px; }
+.cc-sw-item.on .cc-sw-face { box-shadow: inset 6px 0 0 var(--cv-sp), 0 0 0 2px #C8A96B, 0 8px 14px -8px rgba(0, 0, 0, .8); }
+.cc-sw-item.on .cc-sw-nm { color: #3E3627; }
+
+.cc-lbl { font-size: 10px; letter-spacing: 2px; color: #6B6252; margin: 2px 0 6px; }.cc-colors { display: flex; gap: 14px; justify-content: center; margin: 6px 0 14px; }
+.cc-dot {
+  width: 26px; height: 26px;
+  border: 0;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12), 0 3px 7px -3px rgba(0, 0, 0, .4);
+}
+.cc-dot.on { box-shadow: inset 0 0 0 2px #FFFDF6, 0 0 0 2px #C8A96B; }

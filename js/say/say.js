@@ -74,11 +74,13 @@
         // v3：书柜顶上的分类
         if (!Array.isArray(parsed.cats)) parsed.cats = [];
         if (!parsed.bookCats || typeof parsed.bookCats !== 'object') parsed.bookCats = {};
-        parsed.version = 3;
+        // v4：每本书自己的封面（样式 + 颜色）
+        if (!parsed.bookCovers || typeof parsed.bookCovers !== 'object') parsed.bookCovers = {};
+        parsed.version = 4;
         return parsed;
       }
     } catch (e) {}
-    return { version: 3, entries: [], draft: null, books: [], monthNames: {}, me: {}, cats: [], bookCats: {} };
+    return { version: 4, entries: [], draft: null, books: [], monthNames: {}, me: {}, cats: [], bookCats: {}, bookCovers: {} };
   }
   function saveData() {
     try {
@@ -218,7 +220,7 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
   /* ---------------- 入口 ---------------- */
   function show(mode) {
     state.mode = mode;
-    ['wall', 'me', 'sheet', 'write', 'rec'].forEach(function (m) {
+    ['wall', 'me', 'cover', 'sheet', 'write', 'rec'].forEach(function (m) {
       var el = $('say-' + m);
       if (el) el.style.display = (m === mode ? 'flex' : 'none');
     });
@@ -350,8 +352,9 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
     var short = nm.length > 8 ? nm.slice(0, 8) + '…' : nm;
     var count = b.entries.length;
     var foot = count ? count + '页' : '空的';
+    var cc = colorOf(coverOf(b.id).color);
     return '<div class="bk ' + esc(b.tint) + (b.id === curId ? ' cur' : '') + '" data-id="' + esc(b.id) + '"'
-      + ' style="--bk-h:' + b.h + 'px;--bk-w:' + b.w + 'px;"'
+      + ' style="--bk-h:' + b.h + 'px;--bk-w:' + b.w + 'px;--bk-c1:' + cc.sp + ';--bk-c2:' + cc.sp2 + ';"'
       + ' onclick="sayPickBook(this)"'
       + ' ontouchstart="sayPressStart(this)" ontouchend="sayPressEnd()" ontouchmove="sayPressEnd()"'
       + ' onmousedown="sayPressStart(this)" onmouseup="sayPressEnd()" onmouseleave="sayPressEnd()">'
@@ -394,7 +397,141 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
     }
   }
 
-  // 点一本书：先把它从架上抽出来，再摊成纸页
+  /* ---------------- 一本书的封面 ---------------- */
+  var MONS_EN = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
+    'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
+  var COVER_STYLES = [
+    { k: 'stripe', nm: '条纹' },
+    { k: 'grid', nm: '格纹' },
+    { k: 'dots', nm: '点阵' },
+    { k: 'cloth', nm: '布纹' },
+    { k: 'kraft', nm: '牛皮' },
+    { k: 'plain', nm: '素面' }
+  ];
+  var COVER_COLORS = [
+    { k: 'pink', bg: '#F7DCE3', sp: '#6E3B48', sp2: '#4B2430' },
+    { k: 'yellow', bg: '#F7E4AE', sp: '#6C5320', sp2: '#46340F' },
+    { k: 'blue', bg: '#D9E3F2', sp: '#2F465F', sp2: '#1D2C3D' },
+    { k: 'green', bg: '#DBE8D6', sp: '#35472C', sp2: '#202C1B' },
+    { k: 'brown', bg: '#E5D3B9', sp: '#5C3D22', sp2: '#3A240E' },
+    { k: 'grey', bg: '#E3E1DA', sp: '#403E39', sp2: '#26241F' }
+  ];
+  function colorOf(k) {
+    for (var i = 0; i < COVER_COLORS.length; i++) if (COVER_COLORS[i].k === k) return COVER_COLORS[i];
+    return COVER_COLORS[0];
+  }
+  // 没特意换过封面时，按书的名字定一个固定的样子，不至于每本都一样
+  function coverOf(bid) {
+    var cv = (data.bookCovers || {})[bid];
+    if (cv && cv.style && cv.color) return cv;
+    var h = 0, s = String(bid || '');
+    for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 9973;
+    return {
+      style: COVER_STYLES[h % COVER_STYLES.length].k,
+      color: COVER_COLORS[(h + 1) % COVER_COLORS.length].k
+    };
+  }
+
+  function renderCover(bid) {
+    var el = $('say-cover');
+    if (!el) return;
+    state.bookId = bid;
+    var cv = coverOf(bid);
+    el.className = 'say-cover cv-' + cv.style + ' cv-' + cv.color;
+
+    var b = shelfBooks().filter(function (x) { return x.id === bid; })[0];
+    var es = b ? b.entries : [];
+    var mon = /^m-(\d{4})-(\d{2})$/.exec(String(bid));
+    var big = '', small = '';
+    if (mon) {
+      var mi = parseInt(mon[2], 10);
+      big = MONS_EN[mi - 1] || '';
+      small = mon[1] + ' · ' + monthLabel(mi);
+    } else {
+      big = (b && b.title) ? b.title : '本子';
+      if (big.length > 6) big = big.slice(0, 6);
+      small = (b && b.year) ? b.year : '';
+    }
+    var nameEl = $('say-cv-namein'), subEl = $('say-cv-mons');
+    if (nameEl) {
+      nameEl.textContent = big;
+      var fs = big.length >= 9 ? 13 : big.length >= 7 ? 15 : big.length >= 5 ? 18 : 22;
+      nameEl.style.fontSize = fs + 'px';
+      nameEl.style.letterSpacing = (fs >= 22 ? 3 : 2) + 'px';
+    }
+    if (subEl) subEl.textContent = small;
+
+    var tEl = $('say-cv-title'), mEl = $('say-cv-meta');
+    if (tEl) tEl.textContent = (b && b.title) || '这一本';
+    if (mEl) {
+      var yy = mon ? mon[1].slice(2) : String((b && b.year) || '').slice(2);
+      var when = (yy ? yy + '年' : '') + (mon ? parseInt(mon[2], 10) + '月' : '');
+      mEl.textContent = (when ? when + ' · ' : '') + (es.length ? es.length + ' 页' : '还空着');
+    }
+  }
+
+  // 翻开这一本
+  window.sayOpenCoverBook = function () {
+    var es = entriesOfBook();
+    if (!es.length) { sayNewEntry(); return; }
+    state.pageIdx = 0;
+    show('sheet');
+    renderSheet();
+    flipAt('say-flip', null, 'back');
+  };
+
+  // 换封面
+  window.sayCoverEditor = function () {
+    var bid = state.bookId;
+    var cv = coverOf(bid);
+    cardMode = 'cover';
+    var sw = COVER_STYLES.map(function (st) {
+      return '<button class="cc-sw-item' + (st.k === cv.style ? ' on' : '') + '" data-k="' + st.k + '" onclick="sayCoverStyle(this)">'
+        + '<span class="cc-sw-face cv-' + st.k + ' cv-' + cv.color + '"></span>'
+        + '<span class="cc-sw-nm">' + st.nm + '</span></button>';
+    }).join('');
+    var dots = COVER_COLORS.map(function (c) {
+      return '<button class="cc-dot' + (c.k === cv.color ? ' on' : '') + '" data-k="' + c.k + '"'
+        + ' style="background:' + c.bg + '" onclick="sayCoverColor(this)"></button>';
+    }).join('');
+    cardBody(
+      '<div class="sc-t">这一本长什么样</div>'
+      + '<div class="sc-sub">换个皮，书脊上也会跟着变。</div>'
+      + '<div class="cc-sw">' + sw + '</div>'
+      + '<div class="cc-lbl">颜色</div>'
+      + '<div class="cc-colors">' + dots + '</div>'
+      + '<div class="sc-row">'
+      + '<button class="sc-cancel" onclick="sayCloseCard()">收起来</button>'
+      + '<button class="sc-ok" onclick="sayCoverRename()">改书名</button>'
+      + '</div>'
+    );
+  };
+  window.sayCoverRename = function () {
+    var bid = state.bookId;
+    var b = shelfBooks().filter(function (x) { return x.id === bid; })[0];
+    sayCloseCard();
+    if (b) sayShelfCard('rename', b);
+  };
+  function setCover(patch) {
+    var bid = state.bookId;
+    if (!data.bookCovers) data.bookCovers = {};
+    var cv = coverOf(bid);
+    data.bookCovers[bid] = { style: patch.style || cv.style, color: patch.color || cv.color };
+    saveData();
+    renderCover(bid);
+    renderShelf();          // 书架上的书脊跟着换
+    sayCoverEditor();       // 面板留在原地，选中状态跟着变
+  }
+  window.sayCoverStyle = function (el) {
+    if (!el) return;
+    setCover({ style: el.getAttribute('data-k') });
+  };
+  window.sayCoverColor = function (el) {
+    if (!el) return;
+    setCover({ color: el.getAttribute('data-k') });
+  };
+
+  // 点一本书：先把它从架上抽出来，看到封面
   window.sayPickBook = function (el) {
     if (!el) return;
     var bid = el.getAttribute('data-id');
@@ -404,12 +541,8 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
     el.classList.add('pulled');
     setTimeout(function () {
       el.classList.remove('pulled');
-      var es = entriesOfBook();
-      if (!es.length) { sayNewEntry(); return; }
-      state.pageIdx = 0;
-      show('sheet');
-      renderSheet();
-      flipAt('say-flip', null, 'back');
+      renderCover(bid);
+      show('cover');
     }, 300);
   };
 
