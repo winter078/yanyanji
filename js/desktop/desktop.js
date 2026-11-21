@@ -222,10 +222,29 @@ function renderThemePresetsUI() {
       document.querySelectorAll('.grid-drag-ghost').forEach(el => el.remove());
 
       const allPages = document.querySelectorAll('.view-page');
+      const prevActive = document.querySelector('.view-page.active');
       allPages.forEach(p => {
         p.classList.remove('active');
-        p.style.display = 'none'; // 强制 display: none，彻底粉碎 iOS Safari 幽灵图层缓存
         try { p.style.animation = 'none'; } catch (e) {}
+        // 要退出这一页的话先留着它，动画播完再隐藏
+        if (prevActive && p === prevActive && p.id !== pageId) {
+          if (typeof p.animate === 'function') {
+            try {
+              p.style.zIndex = '11';
+              const out = p.animate(
+                [{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(0.94)' }],
+                { duration: 180, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' }
+              );
+              const hide = () => { p.style.display = 'none'; p.style.opacity = ''; p.style.zIndex = ''; };
+              out.finished.then(hide, hide);
+              setTimeout(hide, 220);
+            } catch (e) { p.style.display = 'none'; }
+          } else {
+            p.style.display = 'none';
+          }
+          return;
+        }
+        p.style.display = 'none'; // 强制 display: none，彻底粉碎 iOS Safari 幽灵图层缓存
       });
 
       // 重活往后挪：先让动画跑起来，渲染留到下一帧之后
@@ -245,15 +264,16 @@ function renderThemePresetsUI() {
             void target.offsetWidth;
             const isHome = pageId === 'page-home';
             // 回桌面时只做淡入，不缩放：壁纸在屏幕根节点上，缩放会让壁纸跟着动
+            // 打开 App 带一点 spring 过冲（back-out 曲线），收尾会轻轻回弹一下
             const frames = isHome
               ? [{ opacity: 0 }, { opacity: 1 }]
               : [
-                  { opacity: 0, transform: 'scale(0.92)' },
+                  { opacity: 0, transform: 'scale(0.9)' },
                   { opacity: 1, transform: 'scale(1)' }
                 ];
             target.animate(frames, {
-              duration: isHome ? 220 : 250,
-              easing: 'cubic-bezier(.32,.72,0,1)'
+              duration: isHome ? 220 : 320,
+              easing: isHome ? 'cubic-bezier(.32,.72,0,1)' : 'cubic-bezier(.34,1.56,.64,1)'
             });
           } catch (e) {}
         }
