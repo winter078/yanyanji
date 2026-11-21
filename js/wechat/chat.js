@@ -5178,41 +5178,48 @@ ${(() => {
         window.groupHandleSendPicture(event);
         return;
       }
-      const file = event.target.files && event.target.files[0];
-      if (!file) return;
+      // 支持一次多选：按选择顺序一张一张发，连着发的多张在聊天里自动叠成一摞
+      const files = (event.target.files ? Array.prototype.slice.call(event.target.files) : []).filter(Boolean);
+      if (!files.length) return;
 
-      // 发送前轻度微缩至 1280px，既清晰又彻底杜绝 payload 爆仓
-      let base64Img = '';
-      if (typeof compressImageBase64 === 'function') {
-        base64Img = await compressImageBase64(file, 800, 0.78);
-      } else {
-        base64Img = await new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onload = (e) => resolve(e.target.result);
-          reader.readAsDataURL(file);
-        });
-      }
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (!file) continue;
 
-      const msgText = '[IMAGE:' + base64Img + ']';
-      const newIdx = appData.chatHistory.length;
-      
-      // 压入聊天记录
-      appData.chatHistory.push({ role: 'user', content: '[IMAGE]', time: getNowStr(), media: base64Img, maskId: currentMaskId()});
-      noteChatImageUserTurn('');
-      autoSaveChatImageToAlbum(base64Img, { source: 'chat-user' });
-      // 用户先说了「这张给你当头像」，图现在才到：这一张直接收进头像库并换上
-      try {
-        const wish = window.__avatarWishPending;
-        if (wish && (Date.now() - (wish.at || 0) < 120000)) {
-          window.__avatarWishPending = null;
-          applyAvatarWishFromUserImage(base64Img, wish.text || '给你当头像');
+        // 发送前轻度微缩至 800px，既清晰又彻底杜绝 payload 爆仓
+        let base64Img = '';
+        if (typeof compressImageBase64 === 'function') {
+          base64Img = await compressImageBase64(file, 800, 0.78);
+        } else {
+          base64Img = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.readAsDataURL(file);
+          });
         }
-      } catch (e) {}
-      renderMessageBubble('user', msgText, getNowStr(), '', newIdx);
-      try {
-        safeSaveChatHistory();
-      } catch(e){}
-      scrollChatToBottom();
+        if (!base64Img) continue;
+
+        const msgText = '[IMAGE:' + base64Img + ']';
+        const newIdx = appData.chatHistory.length;
+
+        // 压入聊天记录
+        appData.chatHistory.push({ role: 'user', content: '[IMAGE]', time: getNowStr(), media: base64Img, maskId: currentMaskId()});
+        noteChatImageUserTurn('');
+        autoSaveChatImageToAlbum(base64Img, { source: 'chat-user' });
+        // 用户先说了「这张给你当头像」，图现在才到：这一张直接收进头像库并换上
+        try {
+          const wish = window.__avatarWishPending;
+          if (wish && (Date.now() - (wish.at || 0) < 120000)) {
+            window.__avatarWishPending = null;
+            applyAvatarWishFromUserImage(base64Img, wish.text || '给你当头像');
+          }
+        } catch (e) {}
+        renderMessageBubble('user', msgText, getNowStr(), '', newIdx);
+        try {
+          safeSaveChatHistory();
+        } catch(e){}
+        scrollChatToBottom();
+      }
       document.getElementById('plus-drawer')?.classList.remove('open');
       // 绝对禁止选完图自动触发回复：图片仅作为优美气泡呈现在聊天室，只有user点击右下角【✨ 生成】时才真正响应
       event.target.value = ''; // 重置 input
