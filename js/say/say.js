@@ -803,7 +803,7 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
         + '<button class="sh-idx-btn" onclick="sayPageIndex()">第 ' + (state.pageIdx + 1) + ' 页 / ' + es.length + '</button>'
         + '<span class="sh-arrows">'
         + '<button onclick="sayTurnPrev()"' + (state.pageIdx <= 0 ? ' disabled' : '') + '>‹</button>'
-        + '<button onclick="sayTurnNext()">›</button>'
+        + '<button onclick="sayTurnNext()">' + (state.pageIdx >= es.length - 1 ? '＋' : '›') + '</button>'
         + '</span>';
     }
     if (stampEl) stampEl.style.display = (e.date === todayStr()) ? 'flex' : 'none';
@@ -830,8 +830,8 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
     if (hint) {
       hint.style.display = hasReply ? 'none' : '';
       hint.textContent = (state.pageIdx >= es.length - 1)
-        ? '最后一页了，掀一下右下角能开新的一页'
-        : '掀一下右下角，翻到下一页';
+        ? (state.pageIdx > 0 ? '最后一页 · 往右拖能翻回去' : '掀一下右下角，开新的一页')
+        : '纸往左拖翻下一页 · 往右拖翻回来' + '';
     }
 
     /* 纸底下那一行：他说的话（最多三行，点开看全部） */
@@ -1296,11 +1296,11 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
   /* ---------------- 字体：默认 / 手写 / 宋体 / 圆体 / 娃娃体 / 自己导入 ---------------- */
   var SAY_FONT_KEY = 'momo_say_fonts_v1';
   var SAY_BUILTIN_FONTS = [
-    { k: '', n: '默认', d: '现在这样', f: "'Kaiti SC', KaiTi, 'STKaiti', 'Songti SC', serif" },
-    { k: 'kai', n: '手写体', d: '一横一竖，像手写的', f: "'Kaiti SC', KaiTi, STKaiti, 'Noto Serif CJK SC', 'Songti SC', serif" },
-    { k: 'song', n: '宋体', d: '印刷书的味道', f: "'Songti SC', SimSun, 'Noto Serif CJK SC', serif" },
-    { k: 'yuan', n: '圆体', d: '圆一点，不那么硬', f: "'Yuanti SC', YouYuan, 'Hiragino Sans GB', 'PingFang SC', sans-serif" },
-    { k: 'wawa', n: '娃娃体', d: '自己会写字的那种可爱', f: "'Wawati SC', 'Wawati TC', 'Hannotate SC', 'Kaiti SC', KaiTi, cursive" }
+    { k: '', n: '默认', d: '现在这样', f: "'Kaiti SC', KaiTi, 'STKaiti', 'Noto Serif CJK SC', serif", ls: '.6px' },
+    { k: 'kai', n: '手写体', d: '像拿笔自己写的', f: "'Hannotate SC', 'HanziPen SC', 'Hannotate TC', 'Kaiti SC', STKaiti, KaiTi, 'Noto Serif CJK SC', cursive", ls: '.2px' },
+    { k: 'song', n: '宋体', d: '印刷书的味道', f: "'Songti SC', SimSun, 'Noto Serif CJK SC', 'Source Han Serif SC', 'Noto Serif SC', serif", ls: '1.2px' },
+    { k: 'yuan', n: '圆体', d: '圆一点，不那么硬', f: "'Yuanti SC', YouYuan, 'MiSans', 'HarmonyOS Sans SC', 'PingFang SC', 'Noto Sans CJK SC', sans-serif", ls: '.8px' },
+    { k: 'wawa', n: '娃娃体', d: '自己会写字的那种可爱', f: "'Wawati SC', 'Wawati TC', 'HanziPen SC', 'Hannotate SC', 'Yuanti SC', 'Noto Sans CJK SC', cursive", ls: '1.6px' }
   ];
   var sayUserFonts = [];
   var sayFontsReady = false;
@@ -1329,10 +1329,16 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
     var u = (sayUserFonts || []).filter(function (x) { return x.k === key; })[0];
     return u ? u.n : '默认';
   }
+  function fontLsOf(key) {
+    var b = SAY_BUILTIN_FONTS.filter(function (x) { return x.k === (key || ''); })[0];
+    return b && b.ls ? b.ls : '.6px';
+  }
   function applySayFont() {
     var root = document.querySelector('.say-screen');
     if (!root) return;
-    root.style.setProperty('--sy-wfont', fontStackOf((data && data.font) || ''));
+    var key = (data && data.font) || '';
+    root.style.setProperty('--sy-wfont', fontStackOf(key));
+    root.style.setProperty('--sy-wls', fontLsOf(key));
   }
   function registerUserFont(it) {
     if (!it || !it.k) return;
@@ -1942,11 +1948,18 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
     if (typeof window.openPage === 'function') window.openPage('page-home');
   };
 
-  /* ---------------- 手指翻页：贴着右半张纸往左拉，纸就跟着走 ---------------- */
+  /* ---------------- 手指翻页：纸的右半边往左拖 = 下一页，往右拖 = 上一页 ---------------- */
   (function () {
-    var drag = { on: false, x: 0, y: 0, w: 1, ang: 0, moved: false, snapped: false };
+    var drag = { on: false, x: 0, y: 0, w: 1, ang: 0, dir: '', pre: -1 };
     function layer() { return $('say-flip'); }
     function sheetEl() { return document.querySelector('#say-flip .flip-sheet'); }
+    function park(a) {
+      var L = layer(), S = sheetEl();
+      if (!L || !S) return;
+      L.classList.add('on');
+      S.style.transition = 'none';
+      S.style.transform = 'rotateY(' + a.toFixed(1) + 'deg)';
+    }
 
     function start(e) {
       if (state.mode !== 'sheet' || e.touches.length !== 1) return;
@@ -1955,46 +1968,57 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
       var bg = document.querySelector('#say-sheet .sheet-bg');
       if (!bg) return;
       var r = bg.getBoundingClientRect();
-      if (t.clientX < r.left + r.width * 0.52) return;   // 只接右半边起手，左半边留给阅读
-      drag.on = true; drag.moved = false; drag.snapped = false;
-      drag.x = t.clientX; drag.y = t.clientY; drag.w = r.width; drag.ang = 0;
+      if (t.clientX < r.left + r.width * 0.5) return;   // 左半边留给阅读
+      drag.on = true; drag.moved = false; drag.dir = ''; drag.ang = 0; drag.pre = -1;
+      drag.x = t.clientX; drag.y = t.clientY; drag.w = r.width;
     }
 
     function move(e) {
       if (!drag.on) return;
       var t = e.touches[0];
-      var dx = drag.x - t.clientX;
+      var dx = drag.x - t.clientX;          // 往左拖为正
       var dy = Math.abs(drag.y - t.clientY);
-      if (!drag.moved) {
+      if (!drag.dir) {
         if (Math.abs(dx) < 10 && dy < 10) return;
-        if (dy > Math.abs(dx) * 1.2) { drag.on = false; return; }   // 主要是上下滑 → 让给正文滚动
-        drag.moved = true;
+        if (dy > Math.abs(dx) * 1.2) { drag.on = false; return; }   // 上下滑 → 让给正文滚动
+        if (dx > 0) {
+          drag.dir = 'next';
+          saySnapPage();                   // 纸的正面就是正在离开的这一页
+        } else {
+          if (state.pageIdx <= 0) { drag.on = false; return; }
+          drag.dir = 'prev';
+          drag.pre = state.pageIdx;
+          state.pageIdx = drag.pre - 1;
+          renderSheet();
+          saySnapPage();                   // 纸的正面是翻回来的那一页
+        }
       }
-      if (!drag.snapped) { saySnapPage(); drag.snapped = true; }
-      var a = -Math.min(178, Math.max(0, (dx / (drag.w * 1.15)) * 178));
+      var k = Math.min(178, Math.max(0, (Math.abs(dx) / (drag.w * 1.15)) * 178));
+      var a = drag.dir === 'next' ? -k : (-178 + k);
       drag.ang = a;
-      var L = layer(), S = sheetEl();
-      if (!L || !S) return;
-      L.classList.add('on');
-      S.style.transition = 'none';
-      S.style.transform = 'rotateY(' + a.toFixed(1) + 'deg)';
+      park(a);
       if (e.cancelable) e.preventDefault();
     }
 
     function end() {
       if (!drag.on) return;
       drag.on = false;
-      if (!drag.moved) return;
+      if (!drag.dir) return;
       var L = layer(), S = sheetEl();
       if (!L || !S) return;
-      var done = drag.ang <= -62;
+      var done = drag.dir === 'next' ? (drag.ang <= -62) : (drag.ang >= -116);
+      var endAng = done ? (drag.dir === 'next' ? -178 : 0) : (drag.dir === 'next' ? 0 : -178);
       S.style.transition = 'transform .3s cubic-bezier(.3, .06, .24, 1)';
-      S.style.transform = 'rotateY(' + (done ? -178 : 0) + 'deg)';
+      S.style.transform = 'rotateY(' + endAng + 'deg)';
       setTimeout(function () {
+        if (drag.dir === 'prev' && !done && drag.pre >= 0) {
+          state.pageIdx = drag.pre;        // 没翻成 → 退回原来那页（纸还盖着，看不出来）
+          renderSheet();
+        }
         S.style.transition = 'none';
         S.style.transform = 'rotateY(0deg)';
         L.classList.remove('on');
-        if (!done) return;
+        if (drag.dir !== 'next' || !done) return;
         var es = entriesOfBook();
         if (state.pageIdx >= es.length - 1) sayNewEntry();
         else { state.pageIdx++; renderSheet(); }

@@ -1999,3 +1999,20 @@
 .say-flip .fs-back {
   box-shadow: -18px 0 34px -20px rgba(48, 34, 14, .5);
 }
+/* ==========================================================================
+   八、换字体时字距跟着变（手机上没装那种字体，也能看出不一样）
+   ========================================================================== */
+.sh-body { letter-spacing: var(--sy-wls, .6px); }
+.say-write .wr-area, .wr-paper .wr-area { letter-spacing: var(--sy-wls, .6px); }
+
+/* 页脚两个翻页钮做深一点：左边翻回去，最后一页右边是个 ＋ */
+.sh-arrows { gap: 6px; }
+.sh-arrows button {
+  width: 32px; height: 32px;
+  font-size: 15px;
+  color: #6B5B41;
+  background: rgba(120, 100, 70, .16);
+  box-shadow: 0 1px 2px rgba(90, 70, 40, .12);
+}
+.sh-arrows button:active { background: rgba(120, 100, 70, .3); }
+.sh-arrows button[disabled] { opacity: .32; box-shadow: none; }
