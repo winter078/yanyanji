@@ -228,6 +228,94 @@ export async function onRequest(context) {
       return json({ ok: true, count: list.keys.length }, 200, request);
     }
 
+    // ---------- 服务端兜底生成：切到后台也能把回复跑完，并推锁屏 ----------
+    if (suffix === '/gen/run' && request.method === 'POST') {
+      const body = await request.json();
+      const apiBase = String(body.apiBase || '').replace(/\/+$/, '');
+      const apiKey = String(body.apiKey || '');
+      const model = String(body.model || '');
+      const messages = body.messages;
+      const taskId = String(body.taskId || '');
+      const charId = String(body.charId || 'default');
+      const charName = String(body.charName || 'TA').slice(0, 24);
+      if (!apiBase || !apiKey || !Array.isArray(messages) || !taskId) {
+        return json({ ok: false, error: 'bad_request' }, 400, request);
+      }
+
+      let upstream;
+      try {
+        upstream = await fetch(apiBase, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+          body: JSON.stringify({ model: model, messages: messages, temperature: 0.85, max_tokens: 1500 })
+        });
+      } catch (e) {
+        return json({ ok: false, error: 'upstream_fetch_failed', detail: String((e && e.message) || e).slice(0, 160) }, 200, request);
+      }
+      const txt = await upstream.text();
+      if (!upstream.ok) {
+        return json({ ok: false, error: 'upstream_' + upstream.status, detail: txt.slice(0, 200) }, 200, request);
+      }
+      let data = null;
+      try { data = JSON.parse(txt); } catch (e) {}
+      const content = (data && data.choices && data.choices[0] && data.choices[0].message)
+        ? String(data.choices[0].message.content || '')
+        : '';
+      if (!content) return json({ ok: false, error: 'empty_reply' }, 200, request);
+
+      const endpoint = String(body.endpoint || '');
+      if (endpoint) {
+        await env.PUSH_SUBS.put(
+          'gen:' + subIdFor(endpoint) + ':' + charId,
+          JSON.stringify({ taskId: taskId, content: content, charName: charName, at: Date.now() }),
+          { expirationTtl: 7200 }
+        );
+      }
+
+      let push = null;
+      const subscription = body.subscription;
+      if (subscription && subscription.endpoint) {
+        try {
+          push = await sendPush(subscription, {
+            title: charName,
+            body: content.replace(/[\r\n]+/g, ' ').slice(0, 60),
+            url: '/phone.html?open=chat',
+            tag: 'momo-gen-' + taskId
+          }, env, 3600);
+        } catch (e) {
+          push = { error: String((e && e.message) || e) };
+        }
+      }
+      return json({ ok: true, taskId: taskId, content: content, push: push }, 200, request);
+    }
+
+    if (suffix === '/gen/pickup' && request.method === 'GET') {
+      const endpoint = url.searchParams.get('endpoint') || '';
+      const charId = url.searchParams.get('charId') || 'default';
+      if (!endpoint) return json({ ok: false, error: 'missing_endpoint' }, 400, request);
+      const key = 'gen:' + subIdFor(endpoint) + ':' + charId;
+      const raw = await env.PUSH_SUBS.get(key);
+      if (!raw) return json({ ok: true, content: '' }, 200, request);
+      await env.PUSH_SUBS.delete(key);
+      let rec = null;
+      try { rec = JSON.parse(raw); } catch (e) {}
+      return json({
+        ok: true,
+        content: (rec && rec.content) || '',
+        taskId: (rec && rec.taskId) || '',
+        charName: (rec && rec.charName) || ''
+      }, 200, request);
+    }
+
+    if (suffix === '/gen/ack' && request.method === 'POST') {
+      const body = await request.json();
+      const endpoint = String(body.endpoint || '');
+      const charId = String(body.charId || 'default');
+      if (!endpoint) return json({ ok: false, error: 'missing_endpoint' }, 400, request);
+      await env.PUSH_SUBS.delete('gen:' + subIdFor(endpoint) + ':' + charId);
+      return json({ ok: true }, 200, request);
+    }
+
     return json({ ok: false, error: 'not_found', suffix: suffix }, 404, request);
   } catch (err) {
     return json({ ok: false, error: String((err && err.message) || err) }, 500, request);

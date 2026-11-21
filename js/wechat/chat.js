@@ -5712,6 +5712,67 @@ ${catalog}
 
     window.__momTriggerAiReaction = function () { return triggerAiReaction(); };
 
+    function ackSrvTask(taskId, charId, endpoint) {
+      try {
+        if (!endpoint) return;
+        fetch('/api/push/gen/ack', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ taskId: taskId, charId: charId, endpoint: endpoint })
+        }).catch(function () {});
+      } catch (e) {}
+    }
+
+    /* 服务端兜底生成：只有开着锁屏通知、并且真的订阅成功，才把这一句交给服务器 */
+    window.__momServerGen = async function (opt) {
+      try {
+        if (typeof window.__momPushEnabled !== 'function' || !window.__momPushEnabled()) return null;
+        if (!('serviceWorker' in navigator) || !navigator.serviceWorker.getRegistration) return null;
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (!reg || !reg.pushManager) return null;
+        const sub = await reg.pushManager.getSubscription();
+        if (!sub) return null;
+        const pack = sub.toJSON ? sub.toJSON() : sub;
+        if (!pack || !pack.endpoint) return null;
+
+        const taskId = 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+        const ctrl = new AbortController();
+        const timer = setTimeout(function () { try { ctrl.abort(); } catch (e) {} }, 18000);
+        let res = null;
+        try {
+          res = await fetch('/api/push/gen/run', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal: ctrl.signal,
+            body: JSON.stringify({
+              taskId: taskId,
+              charId: opt.charId || 'default',
+              charName: opt.charName || 'TA',
+              apiBase: opt.apiBase,
+              apiKey: appData.apiKey,
+              model: opt.model,
+              messages: opt.messages,
+              subscription: pack,
+              endpoint: pack.endpoint
+            })
+          });
+        } finally {
+          clearTimeout(timer);
+        }
+        if (!res || !res.ok) {
+          ackSrvTask(taskId, opt.charId || 'default', pack.endpoint);
+          return null;
+        }
+        const j = await res.json();
+        if (j && j.ok && typeof j.content === 'string' && j.content) {
+          window.__momSrvTask = { taskId: taskId, charId: opt.charId || 'default' };
+          window.__momSrvEndpoint = pack.endpoint;
+          return { taskId: taskId, content: j.content };
+        }
+        return null;
+      } catch (e) { return null; }
+    };
+
     /* 正在生成时，聊天页里必须一直有“正在输入”的三个点；重画/切回来丢了就补上 */
     window.__momRestoreTyping = function () {
       const log = [];
@@ -5985,7 +6046,30 @@ ${catalog}
           });
         }
 
-        let resp = await doFetch(modelToUse);
+        let resp = null;
+        let data = null;
+        let srvTaskId = '';
+
+        // 开了锁屏通知的设备：这句交给服务器生成。页面被 iOS 冻住也不影响服务端跑完，
+        // 出结果后直接锁屏推送，回到小手机再取回来补进聊天。
+        if (!window.__groupMode && typeof window.__momServerGen === 'function') {
+          try {
+            const srvGen = await window.__momServerGen({
+              apiBase: cleanBase,
+              model: modelToUse,
+              messages: messagesPayload,
+              charId: activeChatCharId(),
+              charName: (appData.botRemark || 'TA')
+            });
+            if (srvGen && srvGen.content) {
+              srvTaskId = srvGen.taskId || '';
+              data = { choices: [{ message: { role: 'assistant', content: srvGen.content } }] };
+            }
+          } catch (e) { data = null; }
+        }
+
+        if (!data) {
+        resp = await doFetch(modelToUse);
 
         // 智能容错与降级：若主选模型报 503 / 500 / 404，自动尝试其他备选通道
         if (hasImage && !resp.ok && (resp.status === 503 || resp.status === 500 || resp.status === 404)) {
@@ -6019,8 +6103,10 @@ ${catalog}
           throw new Error('HTTP ' + resp.status + ' - ' + errBody.slice(0, 120));
         }
 
-        const data = await resp.json();
-        if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+        data = await resp.json();
+        }
+
+        if (!data || !data.choices || !data.choices[0] || !data.choices[0].message) {
           throw new Error('中转站未返回有效消息内容');
         }
 
@@ -6525,6 +6611,12 @@ ${catalog}
             setGeneratingState(false);
             currentSegmentTimer = null;
             clearPendingGen();
+            // 这一句是服务器生成的、已经在聊天里显示出来了：把服务端暂存的那份删掉，免得回来重复补
+            if (window.__momSrvTask) {
+              try { ackSrvTask(window.__momSrvTask.taskId, window.__momSrvTask.charId, window.__momSrvEndpoint || ''); } catch (e) {}
+              window.__momSrvTask = null;
+            }
+            try { localStorage.setItem('momo_last_local_gen', String(Date.now())); } catch (e) {}
             requestAutoMemory();
             const replyToastText = botReply
               .replace(/\[\[SEARCHCARD:\d+\]\]/g, '')
@@ -7860,7 +7952,56 @@ ${uNick}，水喝到了没有？
       } catch (e) {}
     };
 
-    function kick() { setTimeout(maybeResume, 1600); }
+    function nowStr() {
+      var d = new Date();
+      var h = d.getHours(), m = d.getMinutes();
+      return (h < 10 ? '0' + h : h) + ':' + (m < 10 ? '0' + m : m);
+    }
+
+    /* 回来时先把服务器替我们跑完的那句取回来，再决定要不要补生成 */
+    function pickupServerReply() {
+      return new Promise(function (resolve) {
+        var done = false;
+        function finish() { if (!done) { done = true; resolve(); } }
+        setTimeout(finish, 6000);
+        try {
+          if (typeof window.__momPushEnabled !== 'function' || !window.__momPushEnabled()) return finish();
+          if (typeof window.__momGetPushSub !== 'function') return finish();
+          if (!window.appData || !Array.isArray(window.appData.chatHistory)) return finish();
+          if (window.__momIsGenerating) return finish();
+          var cid = activeId() || 'default';
+          window.__momGetPushSub().then(function (pack) {
+            if (!pack || !pack.endpoint) return finish();
+            return fetch('/api/push/gen/pickup?charId=' + encodeURIComponent(cid) + '&endpoint=' + encodeURIComponent(pack.endpoint), { cache: 'no-store' })
+              .then(function (r) { return r.json(); })
+              .then(function (j) {
+                if (!j || !j.ok || !j.content) return finish();
+                var hist = window.appData.chatHistory || [];
+                if (j.taskId && hist.some(function (m) { return m && m.srvTaskId === j.taskId; })) return finish();
+                var lastLocal = 0;
+                try { lastLocal = Number(localStorage.getItem('momo_last_local_gen') || 0); } catch (e) {}
+                if (Date.now() - lastLocal < 120000) return finish();
+                hist.push({ role: 'assistant', content: j.content, time: nowStr(), srvTaskId: j.taskId || '' });
+                try { if (typeof window.saveChatHistoryNow === 'function') window.saveChatHistoryNow(); } catch (e) {}
+                try { if (typeof window.loadChatHistory === 'function') window.loadChatHistory(); } catch (e) {}
+                try {
+                  var cp = document.getElementById('page-chat');
+                  var inChat = !!(cp && cp.classList.contains('active') && cp.style.display !== 'none');
+                  if (!inChat && typeof window.showReplyArrivalToast === 'function') window.showReplyArrivalToast(j.content);
+                } catch (e) {}
+                try { localStorage.removeItem('momo_pending_gen'); } catch (e) {}
+                finish();
+              });
+          }).catch(function () { finish(); });
+        } catch (e) { finish(); }
+      });
+    }
+
+    function kick() {
+      pickupServerReply().then(function () {
+        setTimeout(maybeResume, 400);
+      });
+    }
     window.addEventListener('pageshow', function (ev) { if (ev && ev.persisted) return; kick(); });
     document.addEventListener('visibilitychange', function () { if (!document.hidden) kick(); });
     if (document.readyState === 'complete') kick();

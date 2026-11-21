@@ -323,6 +323,20 @@
   window.disablePushNotifications = disablePush;
   window.savePushReminder = saveReminder;
   window.refreshPushStatus = function () { fillControls(); statusText(); };
+  // 给聊天模块用：判断是否开了锁屏通知、拿当前订阅
+  window.__momPushEnabled = function () {
+    try {
+      if (localStorage.getItem('momo_push_enabled') !== '1') return false;
+      if (typeof Notification !== 'undefined' && Notification.permission !== 'granted') return false;
+      return supported();
+    } catch (e) { return false; }
+  };
+  window.__momGetPushSub = function () {
+    return getSubscription().then(function (sub) {
+      if (!sub) return null;
+      try { return sub.toJSON ? sub.toJSON() : sub; } catch (e) { return null; }
+    }).catch(function () { return null; });
+  };
   window.tryLocalNotification = function () {
     if (!('Notification' in window) || !navigator.serviceWorker) {
       showResult('这个环境不支持主动弹通知。', false);
