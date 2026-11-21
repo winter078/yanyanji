@@ -149,7 +149,24 @@
         '</div>';
     });
   } else {
-    html += '<div class="card done">没有检测到两个角色内容完全相同的重复记录。如果是“某个角色记录突然变空”，先别清空任何东西，把本页截图发我。</div>';
+    html += '<div class="card done">没有检测到两个角色内容完全相同的重复记录。</div>';
+    var emptyEntries = entries.filter(function (e) { return e.count === 0; });
+    var filledEntries = entries.filter(function (e) { return e.count > 0; });
+    if (emptyEntries.length && filledEntries.length) {
+      html += '<div class="card">' +
+        '<div class="name">有角色记录是空的</div>' +
+        '<div class="warn">如果这段记录本来属于空着的那个角色（比如被错误归到了测试角色），可以把另一角色的整段记录转过去；原角色会被清空，只留一份。</div>' +
+        '<div style="font-size:12px;color:#9aa0aa;margin-top:8px;">把这份记录转给：</div>' +
+        '<select id="transfer-target">' +
+        emptyEntries.map(function (e) { return '<option value="' + esc(e.id) + '">' + esc(e.name) + '（空）</option>'; }).join('') +
+        '</select>' +
+        '<div style="font-size:12px;color:#9aa0aa;">来源：</div>' +
+        '<select id="transfer-source">' +
+        filledEntries.map(function (e) { return '<option value="' + esc(e.id) + '">' + esc(e.name) + '（' + e.count + ' 条）</option>'; }).join('') +
+        '</select>' +
+        '<button class="primary" id="btn-transfer">转移整段记录</button>' +
+        '</div>';
+    }
   }
 
   html += '<div class="card"><button class="ghost" id="btn-download">先下载一份完整备份</button>' +
@@ -196,9 +213,43 @@
     if (btn) btn.onclick = function () { downloadBackup(backup); };
   }
 
+  function transfer(sourceId, targetId) {
+    var source = entries.filter(function (e) { return e.id === sourceId; })[0];
+    var target = entries.filter(function (e) { return e.id === targetId; })[0];
+    if (!source || !target || source.count === 0) return;
+    if (!confirm('把「' + source.name + '」的这 ' + source.count + ' 条记录整段转给「' + target.name + '」，并清空「' + source.name + '」？\n\n会先自动备份。')) return;
+    var backup = snapshot();
+    var mapNow = readJSON(MAP_KEY, {});
+    if (!mapNow || typeof mapNow !== 'object') mapNow = {};
+    mapNow[target.id] = clone(mapNow[source.id] || []);
+    mapNow[source.id] = [];
+    try {
+      localStorage.setItem(MAP_KEY, JSON.stringify(mapNow));
+      localStorage.setItem(FLAG_KEY, '1');
+      localStorage.setItem(OWNER_KEY, target.id);
+      localStorage.setItem('momo_active_char', target.id);
+      localStorage.setItem('momo_chat_history', JSON.stringify(mapNow[target.id] || []));
+    } catch (e) {
+      content.innerHTML = '<div class="card err">写入失败：' + esc(e.message) + '</div>';
+      return;
+    }
+    content.innerHTML = '<div class="card done"><div class="name">转移完成</div>' +
+      '<div class="preview" style="margin-top:6px;">' + source.count + ' 条记录已归到「' + esc(target.name) + '」，并已打开这个角色。</div>' +
+      '<a class="home" style="margin-top:12px;" href="/phone">进入小手机 →</a></div>' +
+      '<div class="card"><button class="ghost" id="btn-download2">下载修复前的备份</button></div>';
+    var btn = document.getElementById('btn-download2');
+    if (btn) btn.onclick = function () { downloadBackup(backup); };
+  }
+
   content.addEventListener('click', function (ev) {
     var t = ev.target;
     if (t && t.id === 'btn-download') { downloadBackup(snapshot()); return; }
+    if (t && t.id === 'btn-transfer') {
+      var s = document.getElementById('transfer-source');
+      var to = document.getElementById('transfer-target');
+      transfer(s ? s.value : '', to ? to.value : '');
+      return;
+    }
     if (t && t.getAttribute && t.getAttribute('data-group')) {
       var gi = parseInt(t.getAttribute('data-group'), 10);
       var sel = document.getElementById('owner-' + gi);
