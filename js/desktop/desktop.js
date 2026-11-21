@@ -244,13 +244,17 @@ function renderThemePresetsUI() {
             target.style.animation = 'none';
             void target.offsetWidth;
             const isHome = pageId === 'page-home';
-            target.animate(
-              [
-                { opacity: 0, transform: isHome ? 'scale(1.05)' : 'scale(0.92)' },
-                { opacity: 1, transform: 'scale(1)' }
-              ],
-              { duration: isHome ? 280 : 250, easing: 'cubic-bezier(.32,.72,0,1)' }
-            );
+            // 回桌面时只做淡入，不缩放：壁纸在屏幕根节点上，缩放会让壁纸跟着动
+            const frames = isHome
+              ? [{ opacity: 0 }, { opacity: 1 }]
+              : [
+                  { opacity: 0, transform: 'scale(0.92)' },
+                  { opacity: 1, transform: 'scale(1)' }
+                ];
+            target.animate(frames, {
+              duration: isHome ? 220 : 250,
+              easing: 'cubic-bezier(.32,.72,0,1)'
+            });
           } catch (e) {}
         }
         if (pageId === 'page-app-store') {
