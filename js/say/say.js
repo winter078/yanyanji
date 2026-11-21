@@ -13,7 +13,7 @@
   var WEEK = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
   var MAX_IMAGES = 2;
 
-  var state = { mode: 'wall', bookId: '', pageIdx: 0, tab: 'shelf' };
+  var state = { mode: 'wall', bookId: '', pageIdx: 0, tab: 'shelf', cat: '' };
   var pressed = { timer: null, moved: false };
   var meQuoteLast = '';
   var cardMode = '';
@@ -71,11 +71,14 @@
         if (!Array.isArray(parsed.books)) parsed.books = [];
         if (!parsed.monthNames || typeof parsed.monthNames !== 'object') parsed.monthNames = {};
         if (!parsed.me || typeof parsed.me !== 'object') parsed.me = {};
-        parsed.version = 2;
+        // v3：书柜顶上的分类
+        if (!Array.isArray(parsed.cats)) parsed.cats = [];
+        if (!parsed.bookCats || typeof parsed.bookCats !== 'object') parsed.bookCats = {};
+        parsed.version = 3;
         return parsed;
       }
     } catch (e) {}
-    return { version: 2, entries: [], draft: null, books: [], monthNames: {}, me: {} };
+    return { version: 3, entries: [], draft: null, books: [], monthNames: {}, me: {}, cats: [], bookCats: {} };
   }
   function saveData() {
     try {
@@ -238,7 +241,7 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
     state.bookId = currentBookId();
     setTab(state.tab);
     if (state.tab === 'me') { show('me'); renderMe(); }
-    else { show('wall'); renderShelf(); }
+    else { show('wall'); renderCats(); renderShelf(); }
   }
   window.renderSayApp = renderSayApp;
 
@@ -246,7 +249,96 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
     state.tab = t === 'me' ? 'me' : 'shelf';
     setTab(state.tab);
     if (state.tab === 'me') { show('me'); renderMe(); }
-    else { show('wall'); renderShelf(); }
+    else { show('wall'); renderCats(); renderShelf(); }
+  };
+
+  /* ---------------- 书柜顶上的分类 ---------------- */
+  function catOfBook(id) { return (data.bookCats || {})[id] || ''; }
+
+  function renderCats() {
+    var box = $('say-cats');
+    if (!box) return;
+    var cur = state.cat || '';
+    var html = '<div class="say-cat' + (cur ? '' : ' on') + '" data-id="" onclick="sayPickCat(this)">全部</div>';
+    (data.cats || []).forEach(function (c) {
+      html += '<div class="say-cat' + (cur === c.id ? ' on' : '') + '" data-id="' + esc(c.id) + '"'
+        + ' onclick="sayPickCat(this)"'
+        + ' ontouchstart="sayCatPressStart(this)" ontouchend="sayCatPressEnd()" ontouchmove="sayCatPressEnd()"'
+        + ' onmousedown="sayCatPressStart(this)" onmouseup="sayCatPressEnd()" onmouseleave="sayCatPressEnd()">'
+        + esc(c.name) + '</div>';
+    });
+    html += '<div class="say-cat add" onclick="sayCatNew()">＋ 分类</div>';
+    box.innerHTML = html;
+  }
+
+  window.sayPickCat = function (el) {
+    if (!el) return;
+    if (pressed.moved) { pressed.moved = false; return; }
+    state.cat = el.getAttribute('data-id') || '';
+    renderCats();
+    renderShelf();
+  };
+
+  window.sayCatPressStart = function (el) {
+    clearTimeout(pressed.timer);
+    pressed.moved = false;
+    var cid = el && el.getAttribute ? el.getAttribute('data-id') : '';
+    if (!cid) return;
+    pressed.timer = setTimeout(function () {
+      pressed.moved = true;
+      sayCatMenu(cid);
+    }, 620);
+  };
+  window.sayCatPressEnd = function () { clearTimeout(pressed.timer); };
+
+  function sayCatMenu(cid) {
+    var c = (data.cats || []).filter(function (x) { return x.id === cid; })[0];
+    if (!c) return;
+    state.cardCatId = cid;
+    cardMode = 'catrename';
+    cardBody(
+      '<div class="sc-t">这一类叫什么</div>'
+      + '<div class="sc-sub">名字会挂在书柜顶上。删掉这一类，里面的书会回到「全部」。</div>'
+      + '<input class="sc-input" id="say-card-input" maxlength="10" value="' + esc(c.name) + '" placeholder="比如：晚上写的">'
+      + '<div class="sc-row">'
+      + '<button class="sc-del" onclick="sayDeleteCat()">删了这一类</button>'
+      + '<button class="sc-ok" onclick="saySaveCard()">好了</button>'
+      + '</div>'
+    );
+    setTimeout(function () { var inp = $('say-card-input'); if (inp) inp.focus(); }, 260);
+  }
+
+  window.sayCatNew = function () {
+    cardMode = 'catnew';
+    cardBody(
+      '<div class="sc-t">加一类</div>'
+      + '<div class="sc-sub">分类挂在书柜顶上，点一下只看这一类。书放进哪类，长按书脊挑。</div>'
+      + '<input class="sc-input" id="say-card-input" maxlength="10" value="" placeholder="比如：晚上写的">'
+      + '<div class="sc-row">'
+      + '<button class="sc-cancel" onclick="sayCloseCard()">算了</button>'
+      + '<button class="sc-ok" onclick="saySaveCard()">加一类</button>'
+      + '</div>'
+    );
+    setTimeout(function () { var inp = $('say-card-input'); if (inp) inp.focus(); }, 260);
+  };
+
+  window.sayDeleteCat = function () {
+    var cid = state.cardCatId || '';
+    if (!cid) return;
+    var c = (data.cats || []).filter(function (x) { return x.id === cid; })[0];
+    var n = Object.keys(data.bookCats || {}).filter(function (k) { return data.bookCats[k] === cid; }).length;
+    var sure = confirm('删掉「' + (c ? c.name : '这一类') + '」？' + (n ? '里面有 ' + n + ' 本书会回到「全部」。' : ''));
+    if (!sure) return;
+    data.cats = (data.cats || []).filter(function (x) { return x.id !== cid; });
+    Object.keys(data.bookCats || {}).forEach(function (k) {
+      if (data.bookCats[k] === cid) delete data.bookCats[k];
+    });
+    if (state.cat === cid) state.cat = '';
+    saveData();
+    sayCloseCard();
+    renderCats();
+    renderShelf();
+    sayToast('删掉了');
   };
 
   /* ---------------- 书柜 ---------------- */
@@ -270,7 +362,9 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
   function renderShelf() {
     var shelf = $('say-shelf');
     if (!shelf) return;
-    var bs = shelfBooks();
+    var all = shelfBooks();
+    var cur = state.cat || '';
+    var bs = cur ? all.filter(function (b) { return catOfBook(b.id) === cur; }) : all;
     var id = currentBookId();
     state.bookId = id;
 
@@ -289,8 +383,13 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
 
     var hint = $('say-hint');
     if (hint) {
-      var total = data.entries.length;
-      hint.textContent = total ? ('一共 ' + total + ' 页 · 长按书脊可以改名') : '还没写下第一页';
+      var total = 0;
+      bs.forEach(function (b) { total += b.entries.length; });
+      if (cur && !bs.length) hint.textContent = '这一类还空着 · ＋新一本会放进这里';
+      else if (cur) hint.textContent = '这一类 ' + total + ' 页 · 长按书脊可以换类';
+      else hint.textContent = data.entries.length
+        ? ('一共 ' + data.entries.length + ' 页 · 长按书脊可以改名')
+        : '还没写下第一页';
     }
   }
 
@@ -355,13 +454,25 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
   function sayShelfCard(mode, book) {
     cardMode = mode;
     var renaming = mode === 'rename';
+    if (book) state.cardBookId = book.id;
     var val = renaming ? (book && book.title || '') : '';
+    var curCat = book ? catOfBook(book.id) : '';
+    var catRow = '';
+    if (renaming && (data.cats || []).length) {
+      catRow = '<div class="sc-cats">'
+        + '<div class="sc-catx' + (curCat ? '' : ' on') + '" data-cid="" onclick="sayBookCat(this)">不分类</div>'
+        + (data.cats || []).map(function (c) {
+            return '<div class="sc-catx' + (curCat === c.id ? ' on' : '') + '" data-cid="' + esc(c.id) + '" onclick="sayBookCat(this)">' + esc(c.name) + '</div>';
+          }).join('')
+        + '</div>';
+    }
     cardBody(
       '<div class="sc-t">' + (renaming ? '这本书叫什么' : '开一本新的') + '</div>'
       + '<div class="sc-sub">' + (renaming
         ? (book && !book.custom ? '按月自动装订的这本，改名只改书脊上的字，日记还在。' : '名字会写在书脊上，最多十来个字。')
         : '起个名字，比如「碎片」「晚上」「给妈妈的话」。') + '</div>'
       + '<input class="sc-input" id="say-card-input" maxlength="16" value="' + esc(val) + '" placeholder="' + (renaming ? '十一月' : '碎片') + '">'
+      + catRow
       + '<div class="sc-row">'
       + (renaming && book && book.custom
         ? '<button class="sc-del" onclick="sayDeleteBook(this)" data-id="' + esc(book.id) + '">删掉这本</button>'
@@ -375,10 +486,47 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
     }, 260);
   }
 
+  /* 把这本书放进某一类（卡片里那排小签） */
+  window.sayBookCat = function (el) {
+    var bid = state.cardBookId || '';
+    if (!bid || !el) return;
+    var cid = el.getAttribute('data-cid') || '';
+    data.bookCats = data.bookCats || {};
+    if (cid) data.bookCats[bid] = cid; else delete data.bookCats[bid];
+    saveData();
+    var row = el.parentNode;
+    if (row) {
+      for (var k = 0; k < row.children.length; k++) row.children[k].classList.toggle('on', row.children[k] === el);
+    }
+    renderShelf();
+  };
+
   window.saySaveCard = function () {
     var inp = $('say-card-input');
     var v = inp ? String(inp.value || '').trim() : '';
     if (cardMode === 'me') { saveMe(v); return; }
+    if (cardMode === 'catnew') {
+      var cid = 'c-' + Date.now();
+      data.cats = data.cats || [];
+      data.cats.push({ id: cid, name: v || '没名字的一类' });
+      if (!saveData()) { data.cats.pop(); sayToast('存不下，先清点空间'); return; }
+      state.cat = cid;
+      sayCloseCard();
+      renderCats();
+      renderShelf();
+      sayToast('加了一类「' + (v || '没名字的一类') + '」');
+      return;
+    }
+    if (cardMode === 'catrename') {
+      var cc = (data.cats || []).filter(function (x) { return x.id === state.cardCatId; })[0];
+      if (cc && v) cc.name = v;
+      saveData();
+      sayCloseCard();
+      renderCats();
+      renderShelf();
+      sayToast('改好了');
+      return;
+    }
     if (cardMode === 'new') {
       var id = 'b-' + Date.now();
       data.books.push({
@@ -387,10 +535,13 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
         createdAt: new Date().toISOString(),
         tint: BOOK_TINTS[hashOf(id + v) % BOOK_TINTS.length]
       });
+      // 当前开着某个分类，新书就顺手放进去
+      if (state.cat) { data.bookCats = data.bookCats || {}; data.bookCats[id] = state.cat; }
       if (!saveData()) { data.books.pop(); sayToast('存不下，先清点空间'); return; }
       state.bookId = id;
       sayCloseCard();
       show('wall');
+      renderCats();
       renderShelf();
       sayToast('开了一本「' + (v || '没名字的本子') + '」');
       return;
