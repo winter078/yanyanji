@@ -236,6 +236,7 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
   }
 
   function renderSayApp() {
+    initSayFonts();
     if (!state.draft) state.draft = null;
     if (!state.tab) state.tab = 'shelf';
     state.bookId = currentBookId();
@@ -864,8 +865,8 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
     return b ? b.title : '';
   }
 
-  function flip(cb) {
-    var m = $('say-flip');
+  function flipAt(id, cb) {
+    var m = $(id);
     if (!m) { cb && cb(); return; }
     m.classList.remove('out');
     m.classList.add('on');
@@ -875,6 +876,7 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
       setTimeout(function () { m.classList.remove('on'); m.classList.remove('out'); }, 360);
     }, 420);
   }
+  function flip(cb) { flipAt('say-flip', cb); }
 
   window.sayTurnNext = function () {
     var es = entriesOfBook();
@@ -1243,6 +1245,135 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
       });
   };
 
+  /* ---------------- 字体：默认 / 手写 / 宋体 / 圆体 / 娃娃体 / 自己导入 ---------------- */
+  var SAY_FONT_KEY = 'momo_say_fonts_v1';
+  var SAY_BUILTIN_FONTS = [
+    { k: '', n: '默认', d: '现在这样', f: "'Kaiti SC', KaiTi, 'STKaiti', 'Songti SC', serif" },
+    { k: 'kai', n: '手写体', d: '一横一竖，像手写的', f: "'Kaiti SC', KaiTi, STKaiti, 'Noto Serif CJK SC', 'Songti SC', serif" },
+    { k: 'song', n: '宋体', d: '印刷书的味道', f: "'Songti SC', SimSun, 'Noto Serif CJK SC', serif" },
+    { k: 'yuan', n: '圆体', d: '圆一点，不那么硬', f: "'Yuanti SC', YouYuan, 'Hiragino Sans GB', 'PingFang SC', sans-serif" },
+    { k: 'wawa', n: '娃娃体', d: '自己会写字的那种可爱', f: "'Wawati SC', 'Wawati TC', 'Hannotate SC', 'Kaiti SC', KaiTi, cursive" }
+  ];
+  var sayUserFonts = [];
+  var sayFontsReady = false;
+
+  function fontIndexLoad() {
+    try {
+      var v = JSON.parse(localStorage.getItem(SAY_FONT_KEY) || '[]');
+      return Array.isArray(v) ? v : [];
+    } catch (e) { return []; }
+  }
+  function fontIndexSave() {
+    try { localStorage.setItem(SAY_FONT_KEY, JSON.stringify(sayUserFonts || [])); } catch (e) { }
+  }
+  function fontStackOf(key) {
+    if (!key) return "var(--sy-serif)";
+    var b = SAY_BUILTIN_FONTS.filter(function (x) { return x.k === key; })[0];
+    if (b) return b.f;
+    var u = (sayUserFonts || []).filter(function (x) { return x.k === key; })[0];
+    if (u) return "'SayFont_" + key + "', var(--sy-serif)";
+    return "var(--sy-serif)";
+  }
+  function fontNameOf(key) {
+    if (!key) return '默认';
+    var b = SAY_BUILTIN_FONTS.filter(function (x) { return x.k === key; })[0];
+    if (b) return b.n;
+    var u = (sayUserFonts || []).filter(function (x) { return x.k === key; })[0];
+    return u ? u.n : '默认';
+  }
+  function applySayFont() {
+    var root = document.querySelector('.say-screen');
+    if (!root) return;
+    root.style.setProperty('--sy-wfont', fontStackOf((data && data.font) || ''));
+  }
+  function registerUserFont(it) {
+    if (!it || !it.k) return;
+    getAudio('sayfont:' + it.k).then(function (blob) {
+      if (!blob) return;
+      try {
+        var url = URL.createObjectURL(blob);
+        var ff = new FontFace('SayFont_' + it.k, 'url(' + url + ')');
+        document.fonts.add(ff);
+        ff.load().then(function () { applySayFont(); }).catch(function () { });
+      } catch (e) { console.warn('[say] font register failed', e); }
+    });
+  }
+  function initSayFonts() {
+    if (sayFontsReady) { applySayFont(); return; }
+    sayFontsReady = true;
+    sayUserFonts = fontIndexLoad();
+    sayUserFonts.forEach(function (it) { registerUserFont(it); });
+    applySayFont();
+  }
+
+  window.sayPickFont = function () {
+    var box = $('say-fontpick');
+    if (!box) return;
+    var cur = (data && data.font) || '';
+    var html = '<div class="fp-t">这一页的字，用哪种笔迹</div>';
+    SAY_BUILTIN_FONTS.forEach(function (f) {
+      html += '<button class="fp-item' + (cur === f.k ? ' on' : '') + '" data-k="' + f.k + '" onclick="saySetFont(this.dataset.k)">'
+        + '<span class="fp-nm" style="font-family: ' + f.f + '">' + f.n + '</span>'
+        + '<span class="fp-sm">' + f.d + '</span>'
+        + '</button>';
+    });
+    sayUserFonts.forEach(function (u) {
+      html += '<button class="fp-item' + (cur === u.k ? ' on' : '') + '" data-k="' + esc(u.k) + '" onclick="saySetFont(this.dataset.k)">'
+        + '<span class="fp-nm" style="font-family: \'SayFont_' + esc(u.k) + '\'">' + esc(u.n) + '</span>'
+        + '<span class="fp-sm">自己导的</span>'
+        + '<i class="fp-x" data-k="' + esc(u.k) + '" onclick="sayDelFont(event, this)">✕</i>'
+        + '</button>';
+    });
+    html += '<button class="fp-add" onclick="sayFontFile()">＋ 导入字体文件（ttf / otf / woff）</button>';
+    box.innerHTML = html;
+    box.classList.add('on');
+  };
+
+  window.saySetFont = function (k) {
+    if (!data) return;
+    data.font = k || '';
+    saveData();
+    applySayFont();
+    var box = $('say-fontpick');
+    if (box) box.classList.remove('on');
+    sayToast('字换成「' + fontNameOf(data.font) + '」');
+  };
+
+  window.sayFontFile = function () {
+    var inp = $('say-font-input');
+    if (inp) { inp.value = ''; inp.click(); }
+  };
+
+  window.sayImportFont = function (ev) {
+    var file = ev && ev.target && ev.target.files && ev.target.files[0];
+    if (!file) return;
+    if (!/\.(ttf|otf|woff2?)$/i.test(file.name)) { sayToast('要 .ttf / .otf / .woff 字体文件'); return; }
+    if (file.size > 24 * 1024 * 1024) { sayToast('这个字体太大了：' + Math.round(file.size / 1048576) + 'MB'); return; }
+    var nm = String(file.name).replace(/\.[^.]+$/, '').slice(0, 14) || '我的字体';
+    var k = 'u' + Date.now().toString(36).slice(-6);
+    putAudio('sayfont:' + k, file).then(function (ok) {
+      if (!ok) { sayToast('这个字体没存进去，换个小一点的试试'); return; }
+      sayUserFonts = sayUserFonts.concat([{ k: k, n: nm }]);
+      fontIndexSave();
+      registerUserFont({ k: k, n: nm });
+      if (data) { data.font = k; saveData(); }
+      applySayFont();
+      window.sayPickFont();
+      sayToast('字导好了：' + nm);
+    });
+  };
+
+  window.sayDelFont = function (ev, el) {
+    if (ev && ev.stopPropagation) ev.stopPropagation();
+    var k = el && el.getAttribute('data-k');
+    if (!k) return;
+    sayUserFonts = sayUserFonts.filter(function (x) { return x.k !== k; });
+    fontIndexSave();
+    if (data && data.font === k) { data.font = ''; saveData(); applySayFont(); }
+    window.sayPickFont();
+    sayToast('删掉了这个字体');
+  };
+
   /* ---------------- 书写页 ---------------- */
   function newDraft() {
     return { date: todayStr(), text: '', mood: '', paper: '', images: [], audio: '' };
@@ -1258,6 +1389,8 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
     saveData();
     show('write');
     renderWrite();
+    initSayFonts();
+    flipAt('say-flip-w');
   };
 
   function renderWrite() {
@@ -1292,6 +1425,11 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
     if (tools && tools.length >= 4) {
       tools[3].classList.toggle('on', !!d.paper);
     }
+    var pgn = $('say-write-pgn');
+    if (pgn) pgn.textContent = pad(entriesOfBook().length + 1);
+    var bkEl = $('say-write-book');
+    if (bkEl) bkEl.textContent = bookTitleOf(state.bookId || currentBookId()) || 'say';
+    applySayFont();
     var areaEl = $('say-write-area');
     if (areaEl && !areaEl.__sayBound) {
       areaEl.__sayBound = true;

@@ -19,7 +19,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <!-- 发布时务必与 js/build.js 的 __LIVE_BUILD__ 保持一致，否则 version-watch 会一直提示“新版已经好了” -->
-  <script>window.__BUILD__="20261121-2245";</script>
+  <script>window.__BUILD__="20261121-2320";</script>
   <script>
     (function () {
       var root = document.documentElement;
@@ -178,7 +178,7 @@
   <link rel="stylesheet" href="css/watch.css?v=1789854172623" />
   <link rel="stylesheet" href="css/theater.css?v=20261120-1340" />
   <link rel="stylesheet" href="css/xhs.css?v=20261121-0415" />
-    <link rel="stylesheet" href="css/say.css?v=20261121-2100" />
+    <link rel="stylesheet" href="css/say.css?v=20261121-2320" />
 
   <link rel="stylesheet" href="css/reader.css?v=20261120-2235" />
   <link rel="stylesheet" href="css/ledger.css?v=20261121-0400">
@@ -5684,19 +5684,21 @@
             </div>
 
             <!-- 3 书写 -->
+            <!-- 3 书写 -->
             <div class="say-write" id="say-write" style="display: none;">
-              <div class="wr-head">
-                <div class="say-top-l">
-                  <button class="say-back" style="background: rgba(120,100,70,.1); color:#4A3F2E;" onclick="sayBackFromWrite()" aria-label="回本子">‹</button>
-                  <div class="wr-date" id="say-write-date"></div>
+              <div class="wr-sheet" id="say-write-sheet">
+                <div class="wr-head">
+                  <div class="say-top-l">
+                    <button class="say-back" style="background: rgba(120,100,70,.1); color:#4A3F2E;" onclick="sayBackFromWrite()" aria-label="回本子">‹</button>
+                    <div class="wr-date" id="say-write-date"></div>
+                  </div>
+                  <button class="wr-done" onclick="saySaveEntry()">写好了</button>
                 </div>
-                <button class="wr-done" onclick="saySaveEntry()">写好了</button>
-              </div>
-              <div class="wr-paper" id="say-write-paper">
-                <textarea class="wr-area" id="say-write-area" placeholder="今天……" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
-                <div class="wr-figs" id="say-write-figs"></div>
-                <div class="wr-recbar" id="say-wr-recbar"></div>
-              </div>
+                <div class="wr-paper" id="say-write-paper">
+                  <textarea class="wr-area" id="say-write-area" placeholder="今天……" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
+                  <div class="wr-figs" id="say-write-figs"></div>
+                  <div class="wr-recbar" id="say-wr-recbar"></div>
+                </div>
               <div class="wr-tools">
                 <div class="wr-row">
                   <button class="wr-tool" onclick="sayOpenRecorder()">
@@ -5715,11 +5717,21 @@
                     <div class="cir"><svg viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></div>
                     <span>纸</span>
                   </button>
+                  <button class="wr-tool" onclick="sayPickFont()">
+                    <div class="cir"><svg viewBox="0 0 24 24"><path d="M5 19.5L10.6 5h2.8L19 19.5"/><path d="M7.3 14.6h9.4"/></svg></div>
+                    <span>字</span>
+                  </button>
                 </div>
                 <div class="wr-bar"><i></i></div>
               </div>
+                <div class="wr-foot"><span class="wr-ft-l" id="say-write-book">say</span><span class="wr-ft-r" id="say-write-pgn">01</span></div>
+                <div class="wr-turn"></div>
+                <div class="say-flip" id="say-flip-w"><div class="flip-sheet"><div class="flip-grain"></div></div></div>
+              </div>
               <div class="say-moodpick" id="say-moodpick"></div>
+              <div class="say-fontpick" id="say-fontpick"></div>
               <input type="file" id="say-photo-input" accept="image/*" style="display: none;" onchange="sayHandlePhoto(event)" />
+              <input type="file" id="say-font-input" accept=".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2" style="display: none;" onchange="sayImportFont(event)" />
             </div>
 
             <!-- 4 录音 -->
@@ -6552,7 +6564,7 @@
   <script src="js/theater/memory-engine.js?v=2026111122"></script>
   <script src="js/theater/worldbooks.js?v=2026111571"></script>
   <script src="js/xhs/xhs.js?v=20261121-0415"></script>
-    <script src="js/say/say.js?v=20261121-2100"></script>
+    <script src="js/say/say.js?v=20261121-2320"></script>
   <script src="js/app.js?v=2026111342"></script>
 
 
