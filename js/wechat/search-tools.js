@@ -48,6 +48,35 @@
     return readEnabled();
   }
 
+  var XHS_SEEN_KEY = 'momo_xhs_seen_v1';
+  var XHS_CACHE_KEY = 'momo_xhs_cache_v1';
+
+  function xhsSeenList() {
+    try {
+      var arr = JSON.parse(localStorage.getItem(XHS_SEEN_KEY) || '[]');
+      return Array.isArray(arr) ? arr : [];
+    } catch (e) { return []; }
+  }
+
+  function xhsCachedText(url) {
+    try {
+      var box = JSON.parse(localStorage.getItem(XHS_CACHE_KEY) || 'null');
+      if (!box || box.url !== url) return '';
+      if (!box.at || Date.now() - box.at > 12 * 60 * 60 * 1000) return '';
+      return String(box.text || '');
+    } catch (e) { return ''; }
+  }
+
+  function rememberXhsRead(url, text) {
+    try {
+      var list = xhsSeenList().filter(function (u) { return u !== url; });
+      list.push(url);
+      while (list.length > 40) list.shift();
+      localStorage.setItem(XHS_SEEN_KEY, JSON.stringify(list));
+      localStorage.setItem(XHS_CACHE_KEY, JSON.stringify({ url: url, text: String(text || ''), at: Date.now() }));
+    } catch (e) {}
+  }
+
   var lastSearchKey = '';
 
   function messageTextForSearch(msg) {
@@ -330,6 +359,8 @@
     var info = latestUserInfo();
     var text = info.text;
     var xhsUrl = firstXhsUrl(text);
+    // 只有这条消息里真的带了小红书链接，才在聊天里回显"调用了小红书"。
+    var xhsInCurrentMessage = !!xhsUrl;
     // 用户可能先发链接、再发一句“看到了吗”，最后一条里没有 URL。
     // 这时回看最近 12 条用户消息，找到最近一条小红书链接继续读。
     if (!xhsUrl) {
@@ -362,13 +393,20 @@
     }
     lastSearchKey = searchKey;
     if (xhsUrl) {
+      // 同一条笔记只真读一次：读过的链接不再请求，也不再弹胶囊。
+      if (xhsSeenList().indexOf(xhsUrl) >= 0) {
+        console.log('[XHS] 这条笔记已读过，直接用缓存，不再请求');
+        return xhsCachedText(xhsUrl) || null;
+      }
       console.log('[XHS] 检测到链接，开始读取');
       var xhsShareCard = (info && info.card) || extractShareCard(text);
       if (!readXhsKey()) {
         console.log('[XHS] 未填写深度解析 Key，只返回标题和作者');
-        return buildXhsLimitedContext(xhsShareCard, xhsUrl);
+        var limitedOnly = buildXhsLimitedContext(xhsShareCard, xhsUrl);
+        rememberXhsRead(xhsUrl, limitedOnly);
+        return limitedOnly;
       }
-      var xhsTool = (window.__momToolNotice && window.__momToolNotice.start) ? window.__momToolNotice.start('xhs', '小红书') : null;
+      var xhsTool = (xhsInCurrentMessage && window.__momToolNotice && window.__momToolNotice.start) ? window.__momToolNotice.start('xhs', '小红书') : null;
       try {
         var note = await requestXhs(xhsUrl);
         console.log('[XHS] 读取完成', note && note.title, note && note.imageTexts ? note.imageTexts.length : 0, note && note.comments ? note.comments.length : 0);
@@ -386,15 +424,21 @@
             };
           } catch(e){}
           if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(xhsTool, true);
-          return buildXhsContext(note);
+          var xhsCtxText = buildXhsContext(note);
+          rememberXhsRead(xhsUrl, xhsCtxText);
+          return xhsCtxText;
         }
         if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(xhsTool, true);
-        return buildXhsLimitedContext(xhsShareCard, xhsUrl);
+        var xhsFallbackText = buildXhsLimitedContext(xhsShareCard, xhsUrl);
+        rememberXhsRead(xhsUrl, xhsFallbackText);
+        return xhsFallbackText;
       } catch (xhsErr) {
         console.warn('[XHS] 笔记读取失败，回退到标题和作者：', xhsErr && xhsErr.message ? xhsErr.message : xhsErr);
         if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(xhsTool, false);
         try { window.__momoXhsLastError = String(xhsErr && xhsErr.message ? xhsErr.message : xhsErr); } catch(e){}
-        return buildXhsLimitedContext(xhsShareCard, xhsUrl);
+        var xhsErrFallback = buildXhsLimitedContext(xhsShareCard, xhsUrl);
+        rememberXhsRead(xhsUrl, xhsErrFallback);
+        return xhsErrFallback;
       }
     }
     var searchTool = (window.__momToolNotice && window.__momToolNotice.start) ? window.__momToolNotice.start('search', '搜索') : null;

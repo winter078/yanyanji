@@ -2574,6 +2574,16 @@ window.syncNarrationModeUI = syncNarrationModeUI;
         }
         break;
       }
+      // 模型有时会把 [RECALL] 写在中间、后面还接着说话，或者被拆成单独一条气泡。
+      // 这里的兜底：整段里只要出现 [RECALL]，就当撤回，并把标记从所有气泡里抹掉。
+      if (/\[RECALL\]/i.test(body)) {
+        recall = true;
+        body = body
+          .replace(/^[ \t]*\[RECALL\][ \t]*\r?\n?/gim, '')
+          .replace(/\[RECALL\]/gi, '')
+          .replace(/\n{3,}/g, '\n\n')
+          .trim();
+      }
       return { text: body, reaction: reaction, remark: remark, recall: recall, avatar: avatar, frame: frame };
     }
     window.extractChatTrailingCommands = extractChatTrailingCommands;
@@ -5287,7 +5297,7 @@ ${(() => {
 - 只能选：❤️ 😆 😨 😢 🤔 👍 🔥；不要每条都贴，只在你有真实情绪的时候用。
 
 【微信小动作能力】：
-- *撤回自己的消息*：当你想把刚才自己发的那条消息收回来时，在回复最末单独写一行 [RECALL]。系统会把你上一条消息变成灰色胶囊，并显示撤回了什么；不要滥用。
+- *撤回自己的消息*：当你想把自己刚发出去的那条消息收回来时，在整条回复的最末单独写一行 [RECALL]；写了之后不要再接任何字，也不要把它拆成单独一条气泡。系统会把那条消息变成灰色胶囊「XX撤回了一条消息」，user点开才能看到原文。没有真的要收回的话就别用，不要为了演示而用。
 - *给user改备注*：当你想给她换一个只有你叫的备注时，在回复最末单独写一行 [REMARK:新备注]。系统会把她的备注改成这个称呼，并在聊天里留下灰色胶囊；新备注 2-8 个字，不要改你自己的名字，也不要每条都改。
 - 这三个动作每轮最多用一个，写在正文之后单独一行，不要解释指令本身。
 
@@ -6667,7 +6677,8 @@ ${catalog}
             let headerPending = prefixFirst || '';
             const addSpeech = function (piece) {
               if (!piece || !piece.trim()) return;
-              let finalPiece = piece.trim();
+              let finalPiece = String(piece).replace(/\[RECALL\]/gi, '').trim();
+              if (!finalPiece) return;
               if (headerPending) {
                 finalPiece = headerPending + '\n' + finalPiece;
                 headerPending = '';
