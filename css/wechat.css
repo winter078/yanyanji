@@ -131,17 +131,46 @@
 .msg-pic-bubble img:hover {
   transform: scale(1.02);
 }
-/* 多图方阵：连着发 3 张以上拼成一张九宫格（3 张三列、4 张 2×2、5 张以上 3×3） */
+/* 多图重叠卡片：连着发 3 张以上错位叠成一沓，左侧「展开 N」，点开纵向平铺 */
 .msg-pic-bubble.pic-stack {
-  overflow: hidden;
+  overflow: visible;
   position: relative;
   background: transparent;
   box-shadow: none;
   max-height: none;
-  border-radius: 10px;
+  border-radius: 0;
 }
 .msg-pic-bubble.pic-stack img {
-  border-radius: 0;
+  border-radius: 12px;
+}
+.msg-pic-bubble.pic-stack.stacked img,
+.msg-pic-bubble.pic-stack.open img {
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.42);
+}
+.msg-group.user .msg-bubble-wrap.pic-stack-wrap,
+.msg-group.bot .msg-bubble-wrap.pic-stack-wrap {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+.pic-stack-badge {
+  flex: none;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #9aa0aa;
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.pic-stack-badge:active {
+  background: rgba(255, 255, 255, 0.17);
 }
 
 .msg-text-card {
