@@ -1757,21 +1757,55 @@
   box-shadow: -8px -8px 18px -10px rgba(70, 54, 28, .5);
 }
 
-/* 翻页：一页贴着左边的装订线翻过来 */
+/* 翻页：整页贴着左边装订线翻过去，正面是这一页、背面是纸背透字 */
+.say-flip {
+  perspective: 1500px;
+  perspective-origin: 52% 46%;
+}
 .say-flip .flip-sheet {
   transform-origin: 0% 50%;
-  transform: perspective(1600px) rotateY(-100deg);
-  transition: transform .46s cubic-bezier(.32, .72, .28, 1);
+  transform-style: preserve-3d;
+  transform: rotateY(0deg);
+  transition: none;
   clip-path: none;
-  background: linear-gradient(92deg, #E8DDC3 0%, #FBF6E7 14%, #F6EFDC 56%, #E9DCBE 100%);
-  box-shadow: 40px -10px 70px -30px rgba(52, 38, 16, .55);
+  background: none;
+  border-radius: 0;
+}
+.say-flip .fs-face {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
   border-radius: 0 2px 2px 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  background: linear-gradient(97deg, #FDFAF2 0%, #FCF8EC 46%, #F3E8D0 86%, #E6D6B2 100%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .5);
 }
-.say-flip.on .flip-sheet { transform: perspective(1600px) rotateY(0deg); }
-.say-flip.out .flip-sheet {
-  transform: perspective(1600px) rotateY(100deg);
-  transition: transform .4s cubic-bezier(.4, 0, .6, 1);
+.say-flip .fs-back {
+  transform: rotateY(180deg);
+  background: linear-gradient(85deg, #F5EEDC 0%, #FBF7EC 46%, #F6EFDE 100%);
 }
+.say-flip .fs-paper { position: absolute; inset: 0; }
+.say-flip .fs-back .fs-paper {
+  transform: scaleX(-1);
+  opacity: .14;
+  filter: blur(.6px);
+}
+.say-flip .fs-shade {
+  position: absolute;
+  inset: 0;
+  transform: translateZ(1px);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .22s ease;
+  background: linear-gradient(90deg,
+    rgba(78, 56, 26, .34) 0%,
+    rgba(78, 56, 26, .12) 15%,
+    rgba(255, 255, 255, 0) 38%,
+    rgba(255, 255, 255, .22) 94%,
+    rgba(255, 255, 255, .55) 100%);
+}
+.say-flip.on .fs-shade { opacity: 1; }
 
 /* 字体选择 */
 .say-fontpick {
@@ -1943,4 +1977,25 @@
   z-index: 4;
   font-size: 10px;
   letter-spacing: 1.2px;
+}
+/* 翻起那张纸的右侧卷边：靠近边线压暗，边缘一线高光 */
+.say-flip .fs-face::after {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0; right: 0;
+  width: 38px;
+  pointer-events: none;
+  border-radius: 0 3px 3px 0;
+  background: linear-gradient(270deg,
+    rgba(64, 46, 20, .34) 0%,
+    rgba(96, 74, 40, .16) 26%,
+    rgba(255, 255, 255, .40) 58%,
+    rgba(255, 255, 255, 0) 100%);
+}
+/* 纸压在新页上的影子 */
+.say-flip .fs-front {
+  box-shadow: 22px 0 40px -22px rgba(48, 34, 14, .55);
+}
+.say-flip .fs-back {
+  box-shadow: -18px 0 34px -20px rgba(48, 34, 14, .5);
 }

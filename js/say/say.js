@@ -409,7 +409,7 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
       state.pageIdx = 0;
       show('sheet');
       renderSheet();
-      flipAt('say-flip');
+      flipAt('say-flip', null, 'back');
     }, 300);
   };
 
@@ -866,31 +866,78 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
     return b ? b.title : '';
   }
 
-  function flipAt(id, cb) {
+  /* 把这一页的样子抄一份贴到翻起来的那张纸上：正面是字，背面透一点点 */
+  function saySnapPage() {
+    var flip = $('say-flip');
+    if (!flip) return;
+    var src = document.querySelector('#say-sheet .sheet-in');
+    var faces = flip.querySelectorAll('.fs-paper');
+    for (var i = 0; i < faces.length; i++) {
+      faces[i].innerHTML = '';
+      if (!src) continue;
+      var c = src.cloneNode(true);
+      c.removeAttribute('id');
+      var ids = c.querySelectorAll('[id]');
+      for (var k = 0; k < ids.length; k++) ids[k].removeAttribute('id');
+      faces[i].appendChild(c);
+    }
+  }
+
+  /* 翻页：纸贴着左边装订线转过去。
+     dir='back' = 一张纸从左边翻回来盖上去（翻上一页 / 打开书 / 回到刚改好的那一页） */
+  function flipAt(id, cb, dir) {
     var m = $(id);
     if (!m) { cb && cb(); return; }
-    m.classList.remove('out');
+    var sheet = m.querySelector('.flip-sheet');
+    if (!sheet) { cb && cb(); return; }
+
+    if (dir === 'back') {
+      if (id === 'say-flip') saySnapPage();
+      m.classList.add('on');
+      sheet.style.transition = 'none';
+      sheet.style.transform = 'rotateY(-178deg)';
+      void sheet.offsetWidth;
+      sheet.style.transition = 'transform .5s cubic-bezier(.33, .06, .24, 1)';
+      sheet.style.transform = 'rotateY(0deg)';
+      cb && setTimeout(cb, 30);
+      setTimeout(function () {
+        m.classList.remove('on');
+        sheet.style.transition = 'none';
+        sheet.style.transform = 'rotateY(0deg)';
+      }, 560);
+      return;
+    }
+
+    if (id === 'say-flip') saySnapPage();
     m.classList.add('on');
-    setTimeout(function () { cb && cb(); }, 340);
+    sheet.style.transition = 'none';
+    sheet.style.transform = 'rotateY(0deg)';
+    void sheet.offsetWidth;
+    sheet.style.transition = 'transform .46s cubic-bezier(.36, .04, .26, 1)';
+    sheet.style.transform = 'rotateY(-178deg)';
+    setTimeout(function () { cb && cb(); }, 290);
     setTimeout(function () {
-      m.classList.add('out');
-      setTimeout(function () { m.classList.remove('on'); m.classList.remove('out'); }, 360);
-    }, 420);
+      m.classList.remove('on');
+      sheet.style.transition = 'none';
+      sheet.style.transform = 'rotateY(0deg)';
+    }, 545);
   }
-  function flip(cb) { flipAt('say-flip', cb); }
+  function flip(cb, dir) { flipAt('say-flip', cb, dir); }
 
   window.sayTurnNext = function () {
     var es = entriesOfBook();
     if (state.pageIdx >= es.length - 1) {
-      // 最后一页 → 掀角 = 开一页新的
-      flip(function () { sayNewEntry(); });
+      // 最后一页 → 掀角 = 翻开一张新的空白纸
+      sayNewEntry();
       return;
     }
     flip(function () { state.pageIdx++; renderSheet(); });
   };
   window.sayTurnPrev = function () {
     if (state.pageIdx <= 0) return;
-    flip(function () { state.pageIdx--; renderSheet(); });
+    state.pageIdx--;
+    renderSheet();
+    flipAt('say-flip', null, 'back');
   };
 
   /* ---------------- 翻到哪天 ---------------- */
@@ -1392,7 +1439,7 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
     show('write');
     renderWrite();
     initSayFonts();
-    flipAt('say-flip-w');
+    flipAt('say-flip-w', null, 'back');
   };
 
   function renderWrite() {
@@ -1463,7 +1510,7 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
     show('write');
     renderWrite();
     initSayFonts();
-    flipAt('say-flip-w');
+    flipAt('say-flip-w', null, 'back');
   };
 
   window.sayBackFromWrite = function () {
@@ -1473,7 +1520,7 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
       saveData();
       show('sheet');
       renderSheet();
-      flipAt('say-flip');
+      flipAt('say-flip', null, 'back');
       return;
     }
     var d = data.draft;
@@ -1526,7 +1573,7 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
       state.pageIdx = idx;
       show('sheet');
       renderSheet();
-      flipAt('say-flip');
+      flipAt('say-flip', null, 'back');
       sayToast('改好了');
       return;
     }
@@ -1555,7 +1602,7 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
     state.pageIdx = entriesOfBook().length - 1;
     show('sheet');
     renderSheet();
-    flipAt('say-flip');
+    flipAt('say-flip', null, 'back');
     sayToast('已经记下');
   };
 
@@ -1894,6 +1941,71 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
   window.sayExitApp = function () {
     if (typeof window.openPage === 'function') window.openPage('page-home');
   };
+
+  /* ---------------- 手指翻页：贴着右半张纸往左拉，纸就跟着走 ---------------- */
+  (function () {
+    var drag = { on: false, x: 0, y: 0, w: 1, ang: 0, moved: false, snapped: false };
+    function layer() { return $('say-flip'); }
+    function sheetEl() { return document.querySelector('#say-flip .flip-sheet'); }
+
+    function start(e) {
+      if (state.mode !== 'sheet' || e.touches.length !== 1) return;
+      var t = e.touches[0];
+      if (e.target.closest && e.target.closest('button, .sh-turn, a, input, textarea')) return;
+      var bg = document.querySelector('#say-sheet .sheet-bg');
+      if (!bg) return;
+      var r = bg.getBoundingClientRect();
+      if (t.clientX < r.left + r.width * 0.52) return;   // 只接右半边起手，左半边留给阅读
+      drag.on = true; drag.moved = false; drag.snapped = false;
+      drag.x = t.clientX; drag.y = t.clientY; drag.w = r.width; drag.ang = 0;
+    }
+
+    function move(e) {
+      if (!drag.on) return;
+      var t = e.touches[0];
+      var dx = drag.x - t.clientX;
+      var dy = Math.abs(drag.y - t.clientY);
+      if (!drag.moved) {
+        if (Math.abs(dx) < 10 && dy < 10) return;
+        if (dy > Math.abs(dx) * 1.2) { drag.on = false; return; }   // 主要是上下滑 → 让给正文滚动
+        drag.moved = true;
+      }
+      if (!drag.snapped) { saySnapPage(); drag.snapped = true; }
+      var a = -Math.min(178, Math.max(0, (dx / (drag.w * 1.15)) * 178));
+      drag.ang = a;
+      var L = layer(), S = sheetEl();
+      if (!L || !S) return;
+      L.classList.add('on');
+      S.style.transition = 'none';
+      S.style.transform = 'rotateY(' + a.toFixed(1) + 'deg)';
+      if (e.cancelable) e.preventDefault();
+    }
+
+    function end() {
+      if (!drag.on) return;
+      drag.on = false;
+      if (!drag.moved) return;
+      var L = layer(), S = sheetEl();
+      if (!L || !S) return;
+      var done = drag.ang <= -62;
+      S.style.transition = 'transform .3s cubic-bezier(.3, .06, .24, 1)';
+      S.style.transform = 'rotateY(' + (done ? -178 : 0) + 'deg)';
+      setTimeout(function () {
+        S.style.transition = 'none';
+        S.style.transform = 'rotateY(0deg)';
+        L.classList.remove('on');
+        if (!done) return;
+        var es = entriesOfBook();
+        if (state.pageIdx >= es.length - 1) sayNewEntry();
+        else { state.pageIdx++; renderSheet(); }
+      }, 320);
+    }
+
+    document.addEventListener('touchstart', start, { passive: true });
+    document.addEventListener('touchmove', move, { passive: false });
+    document.addEventListener('touchend', end, { passive: true });
+    document.addEventListener('touchcancel', end, { passive: true });
+  })();
 
   /* ---------------- 书柜手势 ---------------- */
   // 书柜是一排可以左右拖的书；长按改名由书脊自己处理，这里只需要保证滚动时
