@@ -19,7 +19,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <!-- 发布时务必与 js/build.js 的 __LIVE_BUILD__ 保持一致，否则 version-watch 会一直提示“新版已经好了” -->
-  <script>window.__BUILD__="20261121-2130";</script>
+  <script>window.__BUILD__="20261121-2150";</script>
   <script>
     (function () {
       var root = document.documentElement;
@@ -3688,16 +3688,17 @@
         <section class="view-page" id="page-prompt-presets">
           <header class="wechat-header">
             <button class="wechat-back-btn" onclick="openPage('page-home')">‹ 桌面</button>
-            <div class="wechat-title">聊天预设</div>
+            <div class="wechat-title">提示词预设</div>
             <button class="wechat-back-btn" style="color: #07c160; font-size: 13px; font-weight: 700; padding: 4px 14px; border-radius: 12px; border: 1px solid rgba(7,193,96,0.38);" onclick="savePromptPreset()">保存</button>
           </header>
           <div class="page-generic-body">
             <div style="padding: 2px 4px 12px;">
               <div style="font-size: 17px; font-weight: 800; color: var(--color-text-primary); letter-spacing: -0.2px;">🎭 像酒馆一样切换预设</div>
-              <div style="font-size: 11px; color: var(--color-text-secondary); line-height: 1.55; margin-top: 5px;">为日常、剧情、甜宠等不同状态准备多套提示词。开关和条目都只保存在本机，切换预设不会改角色卡或聊天记录。</div>
+              <div style="font-size: 11px; color: var(--color-text-secondary); line-height: 1.55; margin-top: 5px;">为线上聊天、线下剧场、长椅等不同场景准备多套提示词。开关和条目都只保存在本机，切换预设不会改角色卡或聊天记录。</div>
               <div id="prompt-scene-tabs" style="display: flex; gap: 5px; margin: 10px 0 7px; padding: 4px; border-radius: 12px; background: var(--bg-elevated); border: 0.5px solid var(--color-border);">
                 <button type="button" id="prompt-scene-chat" onclick="switchPromptPresetScene('chat')" style="flex: 1; min-height: 34px; padding: 6px 8px; border-radius: 9px; border: 1px solid transparent; background: transparent; color: var(--color-text-secondary); font-size: 11.5px; font-weight: 600; cursor: pointer; touch-action: manipulation;">线上聊天</button>
                 <button type="button" id="prompt-scene-theater" onclick="switchPromptPresetScene('theater')" style="flex: 1; min-height: 34px; padding: 6px 8px; border-radius: 9px; border: 1px solid transparent; background: transparent; color: var(--color-text-secondary); font-size: 11.5px; font-weight: 600; cursor: pointer; touch-action: manipulation;">线下剧场</button>
+                <button type="button" id="prompt-scene-forum" onclick="switchPromptPresetScene('forum')" style="flex: 1; min-height: 34px; padding: 6px 8px; border-radius: 9px; border: 1px solid transparent; background: transparent; color: var(--color-text-secondary); font-size: 11.5px; font-weight: 600; cursor: pointer; touch-action: manipulation;">长椅</button>
               </div>
               <div id="prompt-scene-note" style="font-size: 10.5px; color: var(--color-text-secondary); line-height: 1.45; margin: 0 2px 8px;">线上读取 24 条微信底座 + 自定义板块；从酒馆预设导入时只提取文风，不整包吞舞台设定。</div>
             </div>
@@ -6521,7 +6522,7 @@
     <script src="js/storage-center.js?v=2026111671"></script>
  <script src="js/api-presets.js?v=2026111472"></script>
 <script src="js/wechat/image-presets.js?v=2026111649"></script>
- <script src="js/prompt-presets.js?v=2026111409"></script>
+ <script src="js/prompt-presets.js?v=20261121-2150"></script>
   <script src="js/notify.js?v=2026111688"></script>
   <script src="js/keepalive.js?v=20261120-1205"></script>
   <script src="js/desktop/desktop.js?v=20261121-2130"></script>
@@ -6890,7 +6891,7 @@
   <script src="js/desktop/ledger.js?v=20261121-0300"></script>
   <script src="js/desktop/ledger-app.js?v=20261121-0300"></script>
   <script src="js/desktop/health.js?v=20261121-0500"></script>
-  <script src="js/desktop/forum.js?v=20261121-1730"></script>
+  <script src="js/desktop/forum.js?v=20261121-2150"></script>
 
     <!-- 头像上传与定制抽屉 -->
     <div class="ledger-drawer-mask theme-oled" id="vault-upload-drawer" onclick="closeVaultUploadDrawer()">

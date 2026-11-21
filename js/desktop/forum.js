@@ -819,17 +819,25 @@
     return !!a.apiKey;
   }
 
-  async function fmAsk(prompt, temperature) {
+  async function fmAsk(prompt, temperature, context) {
     var a = window.appData || {};
     if (!a.apiKey) throw new Error('没有 API Key');
     var base = String(a.apiBase || '').trim().replace(/\/+$/, '');
     if (!base.endsWith('/chat/completions')) base += '/chat/completions';
+    var messages = [{ role: 'system', content: prompt }];
+    try {
+      if (window.PromptPresets && typeof window.PromptPresets.injectMessages === 'function') {
+        var ctx = context || {};
+        ctx.scope = 'forum';
+        messages = window.PromptPresets.injectMessages(messages, ctx);
+      }
+    } catch (e) { console.warn('[forum] 预设注入失败', e); }
     var resp = await fetch(base, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + a.apiKey },
       body: JSON.stringify({
         model: a.model || 'deepseek-chat',
-        messages: [{ role: 'system', content: prompt }],
+        messages: messages,
         temperature: temperature == null ? 0.85 : temperature
       })
     });
@@ -896,6 +904,33 @@
     share: '这次发【分享帖】：只是想说一声。一件小事、一个发现、一句你此刻想到的话，不用求助也不用提问。'
   };
 
+  // 长椅也走预设：段落交给预设系统重排、剔除关掉的条目、注入自定义条目
+  function fmApplyPreset(base, extraCtx) {
+    try {
+      if (window.PromptPresets && typeof window.PromptPresets.apply === 'function') {
+        var ctx = extraCtx || {};
+        ctx.scope = 'forum';
+        return window.PromptPresets.apply(base, ctx);
+      }
+    } catch (e) { console.warn('[forum] 预设应用失败', e); }
+    return base;
+  }
+
+  // 发帖篇幅三档：一句 / 几行 / 一段
+  var FM_LEN_TIERS = [
+    { label: '一句', rule: '正文 12–30 字。一句话或两个短句，只写一个具体的瞬间、动作或念头；不铺垫、不解释、不总结。' },
+    { label: '几行', rule: '正文 40–80 字。2–4 句话，写清一件事：发生了什么、你在哪、你怎么想。' },
+    { label: '一段', rule: '正文 120–180 字。写成一小段有过程的事：起因、一个细节、结尾一句自己的感受；不要分点，不要总结成道理。' }
+  ];
+
+  // 短和中间多、长段少，免得每篇都一个长度
+  function fmPickLengthTier() {
+    var dice = Math.random();
+    if (dice < 0.4) return FM_LEN_TIERS[0];
+    if (dice < 0.8) return FM_LEN_TIERS[1];
+    return FM_LEN_TIERS[2];
+  }
+
   async function fmBuildCharPost(char, type) {
     var a = window.appData || {};
     var charName = char.name || '角色';
@@ -907,25 +942,34 @@
       }
     } catch (e) {}
     var nowText = new Date().toLocaleString('zh-CN', { hour12: false });
+    var tier = fmPickLengthTier();
 
-    var prompt = '你是' + charName + (char.tag ? '（' + char.tag + '）' : '') + '。\n'
+    var base = '### 你是谁\n'
+      + '你是' + charName + (char.tag ? '（' + char.tag + '）' : '') + '。\n'
       + '【角色设定】' + (String(char.intro || '').slice(0, 600) || '未设置') + '\n'
       + '【口吻参考】' + (String(char.prompt || '').slice(0, 600) || '未设置') + '\n'
       + (char.directives ? '【额外指令】' + String(char.directives).slice(0, 300) + '\n' : '')
-      + '【现在】' + nowText + '\n'
-      + (memo ? '【你记得的事】' + String(memo).slice(0, 700) + '\n' : '')
-      + '【你最近和' + meName() + '的聊天，只作素材，不要写成回复】\n' + (recent || '（最近没怎么聊）') + '\n\n'
-      + '你常去一个叫「长椅」的公共广场，那里谁都能坐下来发帖，有些是你不认识的邻居。\n\n'
-      + TYPE_RULE[type] + '\n\n'
-      + '【硬性要求】\n'
+      + '\n### 现在与记得的事\n'
+      + '现在是 ' + nowText + '。\n'
+      + (memo ? '【你记得的事】' + String(memo).slice(0, 700) : '（这次没有特别的记忆要提）')
+      + '\n\n### 最近的聊天（只作素材）\n'
+      + '下面是你和' + meName() + '最近的对话。只当素材：可以借用里面的情绪和细节，但不要写成对他的回复，正文里也不要提他。\n'
+      + (recent || '（最近没怎么聊）')
+      + '\n\n### 广场规矩\n'
+      + '你常去一个叫「长椅」的公共广场，谁都能坐下来发帖，很多是你不认识的邻居。\n'
       + '1. 第一人称，口语，像真人在手机上随手打的，不要书面腔，不要写成小说旁白。\n'
-      + '2. 正文 40–120 字，必须有具体的东西：物件、时间、地点、数字、动作。\n'
+      + '2. 必须有具体的东西：物件、时间、地点、数字、动作。\n'
       + '3. 这是公开广场，任何人都会看到。绝对不许提到' + meName() + '的身体、月经、体重、睡眠、钱、家里的私事。只写你自己的事。聊天素材里凡是涉及' + meName() + '私人的部分，一律丢掉。\n'
       + '4. 不要用"姐妹们""家人们""谁懂啊"这类网络套话，不要用感叹号堆情绪。\n'
-      + '5. 求助帖和问答帖必须有短标题（不超过 16 字）；分享帖 title 留空字符串。\n'
-      + '6. 只输出 JSON，不要解释，不要代码块：{"title":"标题或空","body":"正文","tags":["最多两个短标签"]}';
+      + '5. 允许这条帖子发出去没人回，也允许你只说一半就走。\n'
+      + '\n\n### 这次发什么\n' + TYPE_RULE[type]
+      + '\n\n### 篇幅\n这一条按「' + tier.label + '」写：' + tier.rule
+      + '\n\n### 输出格式\n'
+      + '求助帖和问答帖必须有短标题（不超过 16 字）；分享帖 title 留空字符串。\n'
+      + '只输出 JSON，不要解释，不要代码块：{"title":"标题或空","body":"正文","tags":["最多两个短标签"]}';
 
-    var txt = await fmAsk(prompt, 0.92);
+    var prompt = fmApplyPreset(base, { charName: charName, userName: meName() });
+    var txt = await fmAsk(prompt, 0.86, { charName: charName, userName: meName() });
     var o = fmParseJSON(txt);
     if (!o) throw new Error('解析失败');
     var body = String(o.body || '').trim();
@@ -1098,24 +1142,29 @@
 
   // ---------- 生成回复 ----------
   function fmReplyPrompt(char, post) {
-    var a = window.appData || {};
     var lines = (post.replies || []).map(function (r) { return '- ' + r.authorName + '：' + String(r.body).slice(0, 60); }).join('\n');
-    return '你是' + (char.name || '角色') + (char.tag ? '（' + char.tag + '）' : '') + '。\n'
+    var charName = char.name || '角色';
+    var base = '### 你是谁\n'
+      + '你是' + charName + (char.tag ? '（' + char.tag + '）' : '') + '。\n'
       + '【角色设定】' + (String(char.intro || '').slice(0, 500) || '未设置') + '\n'
       + '【口吻参考】' + (String(char.prompt || '').slice(0, 500) || '未设置') + '\n'
       + (char.directives ? '【额外指令】' + String(char.directives).slice(0, 200) + '\n' : '')
-      + '\n你在「长椅」广场刷到一个帖子：\n'
+      + '\n### 广场规矩\n'
+      + '你在「长椅」这个公共广场刷帖，谁都能看见谁。\n'
+      + '1. 口语，像真人随手回的，不要书面语，不要"加油你最棒"这种空话。\n'
+      + '2. 这是公开场合，不许提用户的隐私（身体、月经、体重、钱、家里的事）。\n'
+      + '\n\n### 回帖姿势\n'
+      + '1. 15–45 字，只回一句或两句。\n'
+      + '2. 要贴着帖子里具体的那个点说，不要泛泛安慰。\n'
+      + '3. 可以不同意、可以吐槽、可以只接一句，不要每个人都热情帮忙。\n'
+      + '4. 只输出这句话本身，不要引号、不要"回复："这种前缀、不要解释。\n'
+      + '\n\n### 这个帖子\n'
       + '【发帖人】' + dispName(post.authorKind, post.authorName) + '\n'
       + '【类型】' + (TYPE_LABEL[post.type] || '分享') + '\n'
       + (post.title ? '【标题】' + post.title + '\n' : '')
       + '【正文】' + post.body + '\n'
-      + (lines ? '【已经有人回了】\n' + lines + '\n' : '')
-      + '\n你要在下面留一条回应。\n【要求】\n'
-      + '1. 15–45 字，口语，像真人刷到帖子随手回的，不要书面语。\n'
-      + '2. 要贴着帖子里具体的那个点说，不要泛泛安慰，不要"加油你最棒"这种。\n'
-      + '3. 可以不同意、可以吐槽、可以只接一句，不要每个人都热情帮忙。\n'
-      + '4. 这是公开广场，不许提用户的隐私（身体、月经、体重、钱、家里的事）。\n'
-      + '5. 只输出这句话本身，不要引号、不要"回复："这种前缀、不要解释。';
+      + (lines ? '【已经有人回了】\n' + lines + '\n' : '');
+    return fmApplyPreset(base, { charName: charName, userName: meName() });
   }
 
   async function fmGenerateReplies() {
@@ -1147,7 +1196,7 @@
           if (!ch) continue;
           if (!fmHasAI()) continue;
           try {
-            var txt = await fmAsk(fmReplyPrompt(ch, cur), 0.88);
+            var txt = await fmAsk(fmReplyPrompt(ch, cur), 0.88, { charName: ch.name, userName: meName() });
             var line = String(txt).trim().replace(/^["“”'‘’「」]/g, '').replace(/["“”'‘’「」]$/g, '').replace(/^回复[:：]\s*/, '').split('\n')[0].trim();
             if (line) {
               reply = {

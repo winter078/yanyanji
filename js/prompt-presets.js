@@ -6,12 +6,27 @@
 
   const SCENES = {
     chat: { label: '线上聊天', short: '聊天', note: '线上读取 24 条微信底座 + 自定义板块；从酒馆预设导入时只提取文风，不整包吞舞台设定。' },
-    theater: { label: '线下剧场', short: '剧场', note: '线下读取舞台、角色、叙事、输出、连续性、配角、边界 7 条剧场底座 + 自定义板块；酒馆预设默认完整导入这里。' }
+    theater: { label: '线下剧场', short: '剧场', note: '线下读取舞台、角色、叙事、输出、连续性、配角、边界 7 条剧场底座 + 自定义板块；酒馆预设默认完整导入这里。' },
+    forum: { label: '长椅', short: '长椅', note: '长椅读取角色卡、记忆与最近聊天，8 条广场内置决定帖子的语体、边界、长短和回帖姿势。酒馆预设的演出控制在这里用不上，建议单独建一套。' }
   };
-  const SCENE_ORDER = ['chat', 'theater'];
+  const SCENE_ORDER = ['chat', 'theater', 'forum'];
 
   function normalizeScope(value) {
-    return value === 'theater' ? 'theater' : 'chat';
+    if (value === 'theater') return 'theater';
+    if (value === 'forum') return 'forum';
+    return 'chat';
+  }
+
+  function scopeDefaultName(value) {
+    const scope = normalizeScope(value);
+    if (scope === 'theater') return '剧场模式';
+    if (scope === 'forum') return '长椅模式';
+    return '新预设';
+  }
+
+  function presetScopeDefaultName(value) {
+    const scope = normalizeScope(value);
+    return scope === 'theater' ? '剧场模式' : '长椅模式';
   }
 
   const ENTRY_ROLES = {
@@ -138,10 +153,21 @@
     { id: 'theater_npc', title: '配角与旁白', group: 'directing', hint: '控制配角和环境，不替用户行动' },
     { id: 'theater_boundary', title: '剧场边界', group: 'rules', hint: '不替用户决定，不突然出戏' }
   ];
-  const BUILTINS_BY_SCOPE = { chat: CHAT_BUILTINS, theater: THEATER_BUILTINS };
-  const BUILTIN_MAPS = { chat: {}, theater: {} };
+  const FORUM_BUILTINS = [
+    { id: 'forum_who', title: '你是谁', group: 'foundation', hint: '角色卡里的性格、身份与说话方式' },
+    { id: 'forum_now', title: '现在与记得的事', group: 'world', hint: '现实时间感知 + 记忆卡片摘要' },
+    { id: 'forum_material', title: '最近的聊天（只作素材）', group: 'world', hint: '只当素材，不许写成回复' },
+    { id: 'forum_square', title: '广场规矩', group: 'rules', hint: '公开场合的语体与隐私边界' },
+    { id: 'forum_kind', title: '这次发什么', group: 'narrative', hint: '求助 / 问答 / 分享三类写法' },
+    { id: 'forum_length', title: '篇幅', group: 'narrative', hint: '一句 / 几行 / 一段，每次随机落一档' },
+    { id: 'forum_output', title: '输出格式', group: 'narrative', hint: 'JSON：title / body / tags' },
+    { id: 'forum_reply', title: '回帖姿势', group: 'interaction', hint: '角色在别人帖子下面怎么回应' }
+  ];
+  const BUILTINS_BY_SCOPE = { chat: CHAT_BUILTINS, theater: THEATER_BUILTINS, forum: FORUM_BUILTINS };
+  const BUILTIN_MAPS = { chat: {}, theater: {}, forum: {} };
   CHAT_BUILTINS.forEach(function(item) { BUILTIN_MAPS.chat[item.id] = item; });
   THEATER_BUILTINS.forEach(function(item) { BUILTIN_MAPS.theater[item.id] = item; });
+  FORUM_BUILTINS.forEach(function(item) { BUILTIN_MAPS.forum[item.id] = item; });
   const BUILTIN_MAP = BUILTIN_MAPS.chat;
 
   function builtinCatalog(scope) {
@@ -222,7 +248,7 @@
     const now = Date.now();
     return {
       id: uid('preset'),
-      name: name || (scope === 'theater' ? '剧场模式' : '新预设'),
+      name: name || scopeDefaultName(scope),
       scope: scope,
       author: '',
       version: '1.0',
@@ -299,7 +325,7 @@
     });
     return {
       id: preset.id || uid('preset'),
-      name: preset.name || (presetScope === 'theater' ? '剧场模式' : '未命名预设'),
+      name: preset.name || (presetScope === 'theater' ? '剧场模式' : presetScope === 'forum' ? '长椅模式' : '未命名预设'),
       scope: presetScope,
       author: typeof preset.author === 'string' ? preset.author.trim().slice(0, 40) : '',
       version: preset.version == null ? '' : String(preset.version).trim().slice(0, 20),
@@ -322,14 +348,14 @@
 
   function readActiveIds() {
     const raw = localStorage.getItem(K_ACTIVE);
-    if (!raw) return { chat: '', theater: '' };
+    if (!raw) return { chat: '', theater: '', forum: '' };
     try {
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        return { chat: String(parsed.chat || ''), theater: String(parsed.theater || '') };
+        return { chat: String(parsed.chat || ''), theater: String(parsed.theater || ''), forum: String(parsed.forum || '') };
       }
     } catch (e) {}
-    return { chat: String(raw || ''), theater: '' };
+    return { chat: String(raw || ''), theater: '', forum: '' };
   }
 
   let activeIds = readActiveIds();
@@ -350,7 +376,7 @@
     if (found) return found;
     let fallback = presets.find(function(p) { return p.scope === scope; });
     if (!fallback) {
-      fallback = makePreset(scope === 'chat' ? '日常模式' : '剧场模式', scope);
+      fallback = makePreset(scope === 'chat' ? '日常模式' : presetScopeDefaultName(scope), scope);
       presets.push(fallback);
       localStorage.setItem(K_PRESETS, JSON.stringify(presets));
     }
@@ -361,6 +387,7 @@
 
   ensureScenePreset('chat');
   ensureScenePreset('theater');
+  ensureScenePreset('forum');
 
   function entryGroup(entry) {
     if (!entry) return 'custom';
@@ -526,6 +553,30 @@
         else if (/^场景连续性/.test(heading)) id = 'theater_continuity';
         else if (/^配角与旁白/.test(heading)) id = 'theater_npc';
         else if (/^剧场边界/.test(heading)) id = 'theater_boundary';
+        if (id) sections[id] = chunk.trim();
+        else tails.push(chunk.trim());
+      });
+      if (!Object.keys(sections).length) return null;
+      return { preamble: preamble, sections: sections, tail: tails.join('\n\n') };
+    }
+    if (normalizeScope(scope) === 'forum') {
+      const chunks = source.split(/\n{2,}(?=###\s)/);
+      if (chunks.length < 2) return null;
+      const preamble = chunks.shift().trim();
+      const sections = {};
+      const tails = [];
+      chunks.forEach(function(chunk) {
+        const headingMatch = chunk.match(/^###\s*([^\n]*)/);
+        const heading = headingMatch ? headingMatch[1].trim() : '';
+        let id = '';
+        if (/^你是谁/.test(heading)) id = 'forum_who';
+        else if (/^现在与记得的事/.test(heading)) id = 'forum_now';
+        else if (/^最近的聊天/.test(heading)) id = 'forum_material';
+        else if (/^广场规矩/.test(heading)) id = 'forum_square';
+        else if (/^这次发什么/.test(heading)) id = 'forum_kind';
+        else if (/^篇幅/.test(heading)) id = 'forum_length';
+        else if (/^输出格式/.test(heading)) id = 'forum_output';
+        else if (/^回帖姿势/.test(heading)) id = 'forum_reply';
         if (id) sections[id] = chunk.trim();
         else tails.push(chunk.trim());
       });
@@ -722,23 +773,33 @@
     const builtinNote = document.getElementById('prompt-builtin-note');
     if (builtinNote) {
       builtinNote.style.display = '';
-      builtinNote.innerHTML = currentScene === 'chat'
-        ? '内置条目对应现有系统提示词区段；关掉只影响这套预设，不会删角色卡或聊天记录。自定义条目可以用 <span style="color: #22d3ee;">{{char}}</span> 和 <span style="color: #22d3ee;">{{user}}</span> 占位。'
-        : '剧场内置是运行时从故事设定生成的底座，锁定不能编辑；关掉只影响这套剧场预设，不会删角色卡或聊天记录。自定义条目可以用 <span style="color: #22d3ee;">{{char}}</span> 和 <span style="color: #22d3ee;">{{user}}</span> 占位。';
+      const tips = {
+        chat: '内置条目对应现有系统提示词区段；关掉只影响这套预设，不会删角色卡或聊天记录。自定义条目可以用 <span style="color: #22d3ee;">{{char}}</span> 和 <span style="color: #22d3ee;">{{user}}</span> 占位。',
+        theater: '剧场内置是运行时从故事设定生成的底座，锁定不能编辑；关掉只影响这套剧场预设，不会删角色卡或聊天记录。自定义条目可以用 <span style="color: #22d3ee;">{{char}}</span> 和 <span style="color: #22d3ee;">{{user}}</span> 占位。',
+        forum: '长椅内置是运行时从角色卡、记忆和聊天素材拼出来的段落，锁定不能编辑；关掉只影响这套长椅预设。自定义条目按你选的角色和位置注入。'
+      };
+      builtinNote.innerHTML = tips[currentScene] || tips.chat;
     }
     const builtinOrderNote = document.getElementById('prompt-builtin-order-note');
     if (builtinOrderNote) {
       builtinOrderNote.style.display = '';
-      builtinOrderNote.textContent = currentScene === 'chat'
-        ? '内置区段会按列表顺序真正重排；拖动会改变实际系统提示词的区段顺序，不只是列表显示。'
-        : '剧场 7 条底座会按列表顺序真正重排；自定义条目仍按角色/位置注入。';
+      const orderTips = {
+        chat: '内置区段会按列表顺序真正重排；拖动会改变实际系统提示词的区段顺序，不只是列表显示。',
+        theater: '剧场 7 条底座会按列表顺序真正重排；自定义条目仍按角色/位置注入。',
+        forum: '长椅 8 条内置会按列表顺序真正重排；自定义条目仍按角色/位置注入。'
+      };
+      builtinOrderNote.textContent = orderTips[currentScene] || orderTips.chat;
     }
     const importBtn = document.getElementById('prompt-import-button');
     if (importBtn) {
-      importBtn.textContent = currentScene === 'chat' ? '导入（酒馆仅文风）' : '导入预设';
-      importBtn.title = currentScene === 'chat'
-        ? '支持糯叽机、酒馆和本 App 预设；糯叽机按预设模式完整导入，线上酒馆只提取文风、口癖、句长和分段'
-        : '支持糯叽机、酒馆和本 App 预设；酒馆完整读取 prompts 与 prompt_order';
+      const importTips = {
+        chat: { text: '导入（酒馆仅文风）', title: '支持糯叽机、酒馆和本 App 预设；糯叽机按预设模式完整导入，线上酒馆只提取文风、口癖、句长和分段' },
+        theater: { text: '导入预设', title: '支持糯叽机、酒馆和本 App 预设；酒馆完整读取 prompts 与 prompt_order' },
+        forum: { text: '导入预设', title: '支持糯叽机、酒馆和本 App 预设；长椅更建议手写一套广场预设' }
+      };
+      const tip = importTips[currentScene] || importTips.chat;
+      importBtn.textContent = tip.text;
+      importBtn.title = tip.title;
     }
   }
 
