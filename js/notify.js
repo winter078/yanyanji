@@ -116,6 +116,7 @@
         diagEl.textContent = '方式:' + (standalone ? '主屏幕' : 'Safari') +
           ' 权限:' + perm +
           ' 订阅:' + (sub ? '有/' + ep : '无') +
+          ' 上次生成:' + (localStorage.getItem('momo_gen_diag') || '无') +
           ' 屏:' + screen.width + 'x' + screen.height +
           ' 视口:' + (window.visualViewport ? Math.round(window.visualViewport.height) : window.innerHeight);
       }

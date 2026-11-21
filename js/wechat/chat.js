@@ -5724,6 +5724,15 @@ ${catalog}
     }
 
     /* 服务端兜底生成：只有开着锁屏通知、并且真的订阅成功，才把这一句交给服务器 */
+    function setGenDiag(text) {
+      try {
+        const d = new Date();
+        const hh = String(d.getHours()).padStart(2, '0');
+        const mm = String(d.getMinutes()).padStart(2, '0');
+        const ss = String(d.getSeconds()).padStart(2, '0');
+        localStorage.setItem('momo_gen_diag', hh + ':' + mm + ':' + ss + ' ' + text);
+      } catch (e) {}
+    }
     window.__momServerGen = async function (opt) {
       try {
         if (typeof window.__momPushEnabled !== 'function' || !window.__momPushEnabled()) return null;
@@ -5760,6 +5769,7 @@ ${catalog}
           clearTimeout(timer);
         }
         if (!res || !res.ok) {
+          setGenDiag('服务器 HTTP ' + (res ? res.status : '无响应'));
           ackSrvTask(taskId, opt.charId || 'default', pack.endpoint);
           return null;
         }
@@ -5767,10 +5777,12 @@ ${catalog}
         if (j && j.ok && typeof j.content === 'string' && j.content) {
           window.__momSrvTask = { taskId: taskId, charId: opt.charId || 'default' };
           window.__momSrvEndpoint = pack.endpoint;
+          setGenDiag('服务端成功 · 推送 ' + (j.push && j.push.status ? j.push.status : (j.push ? 'err' : '未发')));
           return { taskId: taskId, content: j.content };
         }
+        setGenDiag('服务端失败 ' + ((j && j.error) || '?') + (j && j.detail ? ' ' + String(j.detail).slice(0, 30) : ''));
         return null;
-      } catch (e) { return null; }
+      } catch (e) { setGenDiag('调用出错 ' + String((e && e.message) || e).slice(0, 40)); return null; }
     };
 
     /* 正在生成时，聊天页里必须一直有“正在输入”的三个点；重画/切回来丢了就补上 */
@@ -6053,8 +6065,10 @@ ${catalog}
         // 开了锁屏通知的设备：这句交给服务器生成。页面被 iOS 冻住也不影响服务端跑完，
         // 出结果后直接锁屏推送，回到小手机再取回来补进聊天。
         if (!window.__groupMode && typeof window.__momServerGen === 'function') {
-          try {
-            const srvGen = await window.__momServerGen({
+          if (typeof window.__momPushEnabled !== 'function' || !window.__momPushEnabled()) {
+            setGenDiag('锁屏通知未开启，这条走本地');
+          }
+          try {            const srvGen = await window.__momServerGen({
               apiBase: cleanBase,
               model: modelToUse,
               messages: messagesPayload,

@@ -29,12 +29,12 @@ self.addEventListener('push', function (event) {
   // 小手机正在前台时不要弹锁屏通知（人就在看着屏幕），只把内容转给页面
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
-      var visible = false;
+      var active = false;
       for (var i = 0; i < list.length; i++) {
-        if (list[i].visibilityState === 'visible') visible = true;
+        if (list[i].visibilityState === 'visible' && list[i].focused) active = true;
         try { list[i].postMessage({ type: 'momo-push', payload: payload }); } catch (e) {}
       }
-      if (visible) return;
+      if (active) return;
       return self.registration.showNotification(title, options);
     }).catch(function () {
       return self.registration.showNotification(title, options);
