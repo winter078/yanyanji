@@ -177,35 +177,39 @@ function pushPreview(text) {  let t = String(text || '');
   return first.replace(/[\r\n]+/g, ' ').slice(0, 40);
 }
 
-// 把整段回复拆成一条条消息，和界面上的气泡一一对应
-function segmentReply(text, allowAction) {
+// 把整段回复拆成一条条消息，和界面上的气泡一一对应（按行拆，一行一个气泡）
+function segmentReply(text) {
   let t = String(text || '');
   t = t.replace(/<(?:thought|think|thinking)>[\s\S]*?<\/(?:thought|think|thinking)>/gi, '')
        .replace(/<(?:thought|think|thinking)>[\s\S]*$/i, '');
-  if (/【(?:绪言)?心声】/.test(t)) {
-    const dm = t.match(/(?:---|\*\*\*|===)/);
-    if (dm) t = t.slice(t.indexOf(dm[0]) + dm[0].length);
-    else t = t.replace(/【(?:绪言)?心声】[：:]?/g, '');
+
+  // 心声一律不进通知：有分隔线就切掉分隔线之前，没分隔线就切到第一个空行
+  const thinkIdx = t.search(/【(?:绪言)?心声】/);
+  if (thinkIdx >= 0) {
+    const after = t.slice(thinkIdx);
+    const dm = after.search(/\n\s*(?:---|\*\*\*|===)/);
+    if (dm >= 0) {
+      const cut = after.slice(dm);
+      const mark = cut.match(/\n\s*(?:---|\*\*\*|===)/);
+      t = after.slice(dm + mark[0].length);
+    } else {
+      const blank = after.search(/\r?\n\s*\r?\n/);
+      if (blank >= 0) {
+        t = t.slice(0, thinkIdx) + after.slice(blank);
+      } else {
+        t = t.slice(0, thinkIdx);
+      }
+    }
   }
-  t = t.split(/\r?\n/).filter(function (s) { return !/^[「『]?回复\s*\S+[：:]/.test(s.trim()); }).join('\n').trim();
-  if (!allowAction) {
-    const pure = t.replace(/\*[^*]+\*/g, '').replace(/（[^）]+）/g, '').replace(/\([^)]+\)/g, '').trim();
-    return [pure || t].filter(function (s) { return s; });
-  }
-  const segs = [];
-  const reg = /(\*[^*]+\*|（[^）]{3,}）|\([^)\n]{3,}\))/g;
-  let last = 0;
-  let m;
-  while ((m = reg.exec(t)) !== null) {
-    const before = t.slice(last, m.index).trim();
-    if (before) segs.push(before);
-    const act = m[0].replace(/^[\*（\(]+|[\*）\)]+$/g, '').trim();
-    if (act) segs.push(act);
-    last = m.index + m[0].length;
-  }
-  const rest = t.slice(last).trim();
-  if (rest) segs.push(rest);
-  return segs.length ? segs : [t];
+
+  const lines = t.split(/\r?\n/).map(function (s) { return s.trim(); }).filter(function (s) {
+    if (!s) return false;
+    if (/^(?:---|\*\*\*|===)$/.test(s)) return false;
+    if (/^【(?:绪言)?心声】/.test(s)) return false;
+    if (/^[「『]?回复\s*\S+[：:]/.test(s)) return false;
+    return true;
+  });
+  return lines;
 }
 
 // 一条气泡按它在通知栏该显示的样子处理
@@ -347,7 +351,7 @@ export async function onRequest(context) {
       const canPush = !!(subscription && subscription.endpoint);
 
       // 一条回复可能有十几句，通知栏就按气泡数量一条一条弹，跟真的聊天软件一样
-      const segs = segmentReply(content, !!body.actionDesc).slice(0, 20);
+      const segs = segmentReply(content).slice(0, 20);
       const payloads = [];
       segs.forEach(function (s, i) {
         const bodyText = notifText(s);
