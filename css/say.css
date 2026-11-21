@@ -1497,3 +1497,68 @@
   letter-spacing: 1.2px;
   color: rgba(140, 124, 98, .8);
 }
+/* 纸页底部：页码即目录入口 */
+.sh-idx-btn {
+  border: 0;
+  background: none;
+  padding: 6px 3px;
+  margin: -6px -3px;
+  font-family: var(--sy-sans);
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--sy-ink3);
+  -webkit-tap-highlight-color: transparent;
+}
+.sh-idx-btn i {
+  font-style: normal;
+  margin-left: 3px;
+  color: rgba(150, 128, 96, .9);
+}
+.sh-idx-btn:active { opacity: .55; }
+
+.sc-idx {
+  max-height: 48vh;
+  overflow-y: auto;
+  margin: 12px 0 2px;
+  -webkit-overflow-scrolling: touch;
+}
+.ix-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: 0;
+  background: none;
+  padding: 10px 4px;
+  border-bottom: 1px solid rgba(120, 100, 70, .10);
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+.ix-item:last-child { border-bottom: 0; }
+.ix-item.on { background: rgba(201, 169, 97, .13); }
+.ix-item:active { background: rgba(201, 169, 97, .2); }
+.ix-d {
+  flex: none;
+  width: 44px;
+  font-family: var(--sy-serif);
+  font-size: 13px;
+  letter-spacing: .5px;
+  color: #6B5A40;
+}
+.ix-s {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--sy-serif);
+  font-size: 13px;
+  color: #4A3F2E;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ix-p {
+  flex: none;
+  font-family: var(--sy-sans);
+  font-size: 9.5px;
+  letter-spacing: 1px;
+  color: rgba(150, 134, 108, .85);
+}

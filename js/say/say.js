@@ -797,12 +797,12 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
     if (weekEl) weekEl.textContent = weekLabel(e.date) + (e.mood ? ' · ' + e.mood : '');
     if (footEl) {
       var bookName = bookTitleOf(currentBookId());
-      footEl.innerHTML = '<span>第 ' + (state.pageIdx + 1) + ' 页</span>'
+      footEl.innerHTML = '<button class="sh-idx-btn" onclick="sayPageIndex()">第 ' + (state.pageIdx + 1) + ' 页 / ' + es.length + ' <i>›</i></button>'
         + '<span class="sh-arrows">'
         + '<button onclick="sayTurnPrev()"' + (state.pageIdx <= 0 ? ' disabled' : '') + '>‹</button>'
         + '<button onclick="sayTurnNext()">›</button>'
         + '</span>'
-        + '<span>' + esc(bookName) + ' · ' + es.length + ' 页</span>';
+        + '<span>' + esc(bookName) + '</span>';
     }
     if (stampEl) stampEl.style.display = (e.date === todayStr()) ? 'flex' : 'none';
 
@@ -888,6 +888,38 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
   window.sayTurnPrev = function () {
     if (state.pageIdx <= 0) return;
     flip(function () { state.pageIdx--; renderSheet(); });
+  };
+
+  /* ---------------- 翻到哪天 ---------------- */
+  window.sayPageIndex = function () {
+    var es = entriesOfBook();
+    if (!es.length) return;
+    if (es.length < 2) { sayToast('这一本只有一页'); return; }
+    cardMode = 'index';
+    var html = '<div class="sc-t">这一本写过的日子</div>'
+      + '<div class="sc-sub">点一天，直接翻到那一页。</div>'
+      + '<div class="sc-idx">';
+    for (var i = es.length - 1; i >= 0; i--) {
+      var e = es[i];
+      var snip = String(e.text || '').replace(/\s+/g, ' ').trim();
+      if (!snip) snip = (e.images && e.images.length) ? '（只有一张图）' : '（这页没写字）';
+      if (snip.length > 20) snip = snip.slice(0, 20) + '…';
+      html += '<button class="ix-item' + (i === state.pageIdx ? ' on' : '') + '" data-i="' + i + '" onclick="sayGotoPage(this)">'
+        + '<span class="ix-d">' + esc(String(e.date || '').slice(5).replace('-', '.')) + '</span>'
+        + '<span class="ix-s">' + esc(snip) + '</span>'
+        + '<span class="ix-p">' + (i + 1) + '</span>'
+        + '</button>';
+    }
+    html += '</div><div class="sc-row"><button class="sc-cancel" onclick="sayCloseCard()">合上</button></div>';
+    cardBody(html);
+  };
+
+  window.sayGotoPage = function (el) {
+    if (!el) return;
+    var i = parseInt(el.getAttribute('data-i'), 10);
+    if (isNaN(i)) return;
+    sayCloseCard();
+    flip(function () { state.pageIdx = i; renderSheet(); });
   };
 
   /* ---------------- 递一页给他 ---------------- */
