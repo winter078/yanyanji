@@ -6404,7 +6404,7 @@ ${catalog}
             pendingRemarkNotice = actor + '把你的备注改成了「' + nextNick + '」';
           }
         }
-        if (charRecall) recallLastCharacterMessage();
+        // 撤回在下面的分段阶段处理：优先撤这一轮最后一句，其次才撤上一轮。
         if (charReaction && CHAT_REACTION_EMOJIS.indexOf(charReaction) >= 0) {
           attachCharacterReaction(charReaction);
         }
@@ -6797,6 +6797,25 @@ ${catalog}
             }
           })();
 
+          // 撤回指令：优先撤这一轮里刚说的最后一句（它还没落库），
+          // 这一轮没说话时才去撤上一轮已发出的最后一条。
+          let recallSameTurn = '';
+          if (charRecall) {
+            for (let ri = segList.length - 1; ri >= 0; ri--) {
+              const rs = segList[ri];
+              if (rs && rs.type === 'speech' && String(rs.text || '').trim()) {
+                recallSameTurn = String(rs.text || '').trim();
+                segList.splice(ri, 1);
+                break;
+              }
+            }
+            if (recallSameTurn) {
+              segList.push({ type: 'recall', content: recallSameTurn });
+            } else {
+              recallLastCharacterMessage();
+            }
+          }
+
           let idx = 0;
           function flushPendingRemarkNotice() {
             if (!pendingRemarkNotice) return;
@@ -6879,6 +6898,29 @@ ${catalog}
                 return;
               }
               const role = item.type === 'action' ? 'action' : 'assistant';
+              if (item.type === 'recall') {
+                const recIdx = appData.chatHistory.length;
+                appData.chatHistory.push({
+                  id: 'msg_recall_' + Date.now() + '_' + recIdx,
+                  role: 'assistant',
+                  content: String(item.content || ''),
+                  time: getNowStr(),
+                  recalled: true,
+                  hiddenFromAI: true
+                });
+                renderRecallNotice(appData.chatHistory[recIdx]);
+                try { safeSaveChatHistory(); } catch (e) {}
+                scrollChatToBottom();
+                idx++;
+                if (idx < segList.length) {
+                  currentSegmentTimer = setTimeout(sendNextSegment, 700);
+                } else if (pendingAlbumImages.length) {
+                  currentSegmentTimer = setTimeout(appendPendingAlbumImages, 650);
+                } else {
+                  finishReply();
+                }
+                return;
+              }
               const curThought = (idx === 0 ? thought : '');
               const segContent = isImage ? ('[IMAGE:' + item.src + ']') : (isCard ? ('[SHARECARD:' + JSON.stringify(item.card) + ']') : item.text);
               const segIdx = appData.chatHistory.length;
