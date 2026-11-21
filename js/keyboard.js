@@ -1,7 +1,8 @@
 // 小手机 · 全局键盘避让
 // iOS 弹键盘时可视区被顶掉一截，页面本身不动，底部输入框就压在键盘底下。
-// 这里统一处理：任何页面、任何输入框（含以后新加的 App），只要键盘挡住它，
-// 就把最近的可滚动区域留出键盘高度的空白并把它滚到可视范围内。
+// 两种情况分别处理：
+// 1) 输入框在底部弹层里（发布动态、评论面板等）：把整个弹层抬到键盘上方，弹层内部自己滚；
+// 2) 输入框在普通页面里：给最近的可滚动区域在底部留出键盘高度，并把它滚进可视区。
 // 聊天页例外：聊天页的输入栏由 css/wechat.css 里的 --mom-kb-h 专门抬升。
 (function () {
   var vv = window.visualViewport;
@@ -35,9 +36,7 @@
     for (var i = 0; i < touched.length; i++) {
       if (touched[i].el === el && touched[i].prop === prop) { rec = touched[i]; break; }
     }
-    if (!rec) {
-      touched.push({ el: el, prop: prop, prev: el.style[prop] || '' });
-    }
+    if (!rec) touched.push({ el: el, prop: prop, prev: el.style[prop] || '' });
     el.style[prop] = value;
   }
 
@@ -58,14 +57,36 @@
     return null;
   }
 
-  function findPanel(el) {
+  // 找底部弹层：从输入框往上，最近的、贴着屏幕底部的定位容器
+  function findSheet(el) {
     var n = el.parentElement;
-    while (n && n !== document.body) {
+    var inner = 0;
+    while (n && n !== document.body && n !== document.documentElement) {
+      inner++;
+      if (inner > 8) break;
       var cs = getComputedStyle(n);
-      if (cs.position === 'fixed' || cs.position === 'absolute') return n;
+      var r = n.getBoundingClientRect();
+      if ((cs.position === 'fixed' || cs.position === 'absolute') &&
+          r.height > 120 && r.bottom >= (window.innerHeight - 60)) {
+        return n;
+      }
       n = n.parentElement;
     }
     return null;
+  }
+
+  function biggestChild(sheet) {
+    var card = null;
+    var best = 0;
+    var kids = sheet.children || [];
+    for (var i = 0; i < kids.length; i++) {
+      var c = kids[i];
+      var cs = getComputedStyle(c);
+      if (cs.position === 'absolute' && /inset|0px/.test(c.style.inset || '')) continue;
+      var h = c.getBoundingClientRect().height;
+      if (h > best) { best = h; card = c; }
+    }
+    return card;
   }
 
   function apply() {
@@ -84,24 +105,31 @@
     if (kb === last.kb && el === last.el && touched.length) return;
     last = { kb: kb, el: el };
 
-    var sc = findScrollable(el);
-    if (!sc) {
-      var panel = findPanel(el);
-      if (panel) {
-        setProp(panel, 'overflowY', 'auto');
-        setProp(panel, 'webkitOverflowScrolling', 'touch');
-        sc = panel;
+    var sheet = findSheet(el);
+    if (sheet) {
+      // 弹层整块抬到键盘上方，内部自己滚
+      setProp(sheet, 'paddingBottom', kb + 'px');
+      setProp(sheet, 'boxSizing', 'border-box');
+      var card = biggestChild(sheet);
+      if (card) {
+        setProp(card, 'maxHeight', '100%');
+        setProp(card, 'minHeight', '0px');
       }
+      setTimeout(function () {
+        try { el.scrollIntoView({ block: 'nearest' }); } catch (e) { try { el.scrollIntoView(); } catch (e2) {} }
+      }, 120);
+      return;
     }
-    if (!sc) return;
 
-    setProp(sc, 'paddingBottom', (kb + 28) + 'px');
-    setProp(sc, 'scrollPaddingBottom', (kb + 28) + 'px');
-
-    setTimeout(function () {
-      try { el.scrollIntoView({ block: 'nearest' }); }
-      catch (e) { try { el.scrollIntoView(); } catch (e2) {} }
-    }, 90);
+    // 普通页面：给可滚动区域留出键盘高度
+    var sc = findScrollable(el);
+    if (sc) {
+      setProp(sc, 'paddingBottom', (kb + 28) + 'px');
+      setProp(sc, 'scrollPaddingBottom', (kb + 28) + 'px');
+      setTimeout(function () {
+        try { el.scrollIntoView({ block: 'nearest' }); } catch (e) { try { el.scrollIntoView(); } catch (e2) {} }
+      }, 100);
+    }
   }
 
   function schedule(delay) {
