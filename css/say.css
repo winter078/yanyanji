@@ -2023,7 +2023,6 @@
   perspective: none;
   overflow: hidden;
   border-radius: 2px 3px 3px 2px;
-  transition: opacity .07s linear;
 }
 .say-flip.on { opacity: 1; }
 .say-flip .flip-page {
@@ -2356,4 +2355,31 @@
   border-radius: 50%;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12), 0 3px 7px -3px rgba(0, 0, 0, .4);
 }
-.cc-dot.on { box-shadow: inset 0 0 0 2px #FFFDF6, 0 0 0 2px #C8A96B; }
+.cc-dot.on { box-shadow: inset 0 0 0 2px #FFFDF6, 0 0 0 2px #C8A96B; }/* 往回翻：卷边从左边掀起来，明暗和投影都翻一面 */
+.say-flip .roll.lft {
+  background: linear-gradient(270deg,
+    #C0A877 0%,
+    #DCC79B 10%,
+    #FBF3E0 30%,
+    #FFFFFF 48%,
+    #F2E4C6 66%,
+    #D3BE8F 86%,
+    #B99F6C 100%);
+  box-shadow:
+    inset 4px 0 9px rgba(90, 68, 34, .28),
+    inset -4px 0 8px rgba(255, 255, 255, .75),
+    0 0 2px rgba(72, 52, 22, .30),
+    -18px 0 30px -4px rgba(48, 34, 14, .52),
+    -4px 0 6px rgba(48, 34, 14, .26);
+}
+.say-flip .roll.lft::before {
+  left: auto; right: -3px;
+  background: linear-gradient(270deg,
+    rgba(74, 55, 26, .55) 0%,
+    rgba(108, 84, 46, .34) 45%,
+    rgba(140, 116, 76, 0) 100%);
+}
+.say-flip .roll.lft::after {
+  right: auto; left: -20px;
+  background: linear-gradient(270deg, rgba(58, 42, 18, .16), rgba(58, 42, 18, .06) 55%, rgba(58, 42, 18, 0));
+}
