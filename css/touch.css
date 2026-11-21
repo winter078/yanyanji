@@ -14,8 +14,8 @@
   width: var(--mom-hit-w, 100%);
   height: var(--mom-hit-h, 100%);
   border-radius: 14px;
-  /* 只扩大可点范围，不遮挡视觉、不参与布局 */
-  pointer-events: auto;
+  /* 跟随按钮自身：正常按钮可点；藏在已关闭弹层里的按钮（父级 pointer-events:none）不会被重新点亮 */
+  pointer-events: inherit;
 }
 
 /* 横向并排的紧密按钮组，热区别往外撑太多，防止误点相邻按钮 */

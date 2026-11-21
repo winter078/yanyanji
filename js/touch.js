@@ -14,6 +14,17 @@
     if (el.__momPatched) return;
     var cs = getComputedStyle(el);
     if (cs.display === 'none' || cs.visibility === 'hidden') return;
+    if (cs.pointerEvents === 'none') return;
+    // 祖先里只要有一个不吃点击（已关闭但还 display:flex 的遮罩），就不要给它扩热区
+    var up = el.parentElement;
+    var depth = 0;
+    while (up && up !== document.body && depth < 8) {
+      try {
+        if (getComputedStyle(up).pointerEvents === 'none') return;
+      } catch (e) {}
+      up = up.parentElement;
+      depth++;
+    }
     var r = el.getBoundingClientRect();
     if (r.width === 0 || r.height === 0) return;
     if (r.width >= MIN && r.height >= MIN) return;
