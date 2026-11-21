@@ -2646,7 +2646,8 @@ window.syncNarrationModeUI = syncNarrationModeUI;
     }
 
     // ===== 工具调用胶囊：搜索 / 天气 / 小红书 =====
-    const TOOL_LABELS = { search: '搜索', weather: '天气', xhs: '小红书' };
+    const TOOL_LABELS = { search: '搜索', weather: '天气', xhs: '小红书', docx: '文档', xlsx: '表格', pptx: 'PPT', md: '文档' };
+    let pendingArtifactMeta = null;
     let toolSelMode = false;
     let toolSelSet = new Set();
 
@@ -4063,6 +4064,76 @@ window.syncNarrationModeUI = syncNarrationModeUI;
         group.classList.add('pic-stack-host');
         group.setAttribute('data-pic-role', role);
         refreshPicStack(imgBubble);
+      }
+      // 角色真的做好了一份可下载的文件（Word / Excel / PPT）
+      else if (cleanText.includes('[ARTIFACT:') && cleanText.includes(']')) {
+        const artMatch = cleanText.match(/\[ARTIFACT:([\s\S]*?)\]/);
+        let artInfo = { id: '', name: '文件', size: '', kind: '' };
+        if (artMatch) {
+          try { artInfo = JSON.parse(artMatch[1]); } catch (e) {}
+        }
+        const rawLeading = artMatch ? cleanText.replace(artMatch[0], '').trim() : '';
+        if (rawLeading) {
+          const speechBubble = document.createElement('div');
+          speechBubble.className = 'msg-bubble-wechat';
+          speechBubble.innerText = rawLeading;
+          if (msgIndex !== -1) bindBubbleLongPress(speechBubble, msgIndex);
+          col.appendChild(speechBubble);
+        }
+
+        const artCard = document.createElement('div');
+        artCard.className = 'msg-file-card-native msg-artifact-card';
+        artCard.style.cssText = 'background: var(--bg-surface); border: 0.5px solid var(--border-default); border-radius: 10px; padding: 12px 14px; width: 246px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; user-select: none; box-shadow: 0 2px 8px rgba(0,0,0,0.25);';
+        const infoCol = document.createElement('div');
+        infoCol.style.cssText = 'flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;';
+        const nameEl = document.createElement('div');
+        nameEl.style.cssText = 'font-size: 13.5px; font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3;';
+        nameEl.innerText = artInfo.name || '文件';
+        const metaEl = document.createElement('div');
+        metaEl.style.cssText = 'font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 6px;';
+        const kindTag = document.createElement('span');
+        kindTag.style.cssText = 'font-size: 9.5px; font-weight: 700; letter-spacing: .4px; padding: 1.5px 5px; border-radius: 4px; background: rgba(80,87,107,.16); color: #8d97ae;';
+        kindTag.innerText = (artInfo.kind === 'xlsx' ? 'XLSX' : artInfo.kind === 'pptx' ? 'PPTX' : artInfo.kind === 'docx' ? 'DOCX' : 'FILE');
+        const sizeEl = document.createElement('span');
+        sizeEl.innerText = (artInfo.size || '').replace(/\s*KB/i, ' K').replace(/\s*MB/i, ' M');
+        const dlEl = document.createElement('span');
+        dlEl.style.cssText = 'font-size: 10.5px; color: #5b8def;';
+        dlEl.innerText = '点开下载';
+        metaEl.appendChild(kindTag);
+        metaEl.appendChild(sizeEl);
+        metaEl.appendChild(dlEl);
+        infoCol.appendChild(nameEl);
+        infoCol.appendChild(metaEl);
+
+        const artIcon = document.createElement('div');
+        artIcon.style.cssText = 'width: 38px; height: 46px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;';
+        artIcon.innerHTML = `<svg width="34" height="42" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M0 4C0 1.79086 1.79086 0 4 0H22L34 12V38C34 40.2091 32.2091 42 30 42H4C1.79086 42 0 40.2091 0 38V4Z" fill="#3f6fd8"/>
+          <path d="M22 0L34 12H26C23.7909 12 22 10.2091 22 8V0Z" fill="#2f56ab"/>
+          <line x1="7" y1="22" x2="27" y2="22" stroke="#cfdcff" stroke-width="2.4" stroke-linecap="round"/>
+          <line x1="7" y1="29" x2="21" y2="29" stroke="#cfdcff" stroke-width="2.4" stroke-linecap="round"/>
+        </svg>`;
+        artCard.appendChild(infoCol);
+        artCard.appendChild(artIcon);
+
+        artCard.onclick = async (e) => {
+          if (document.body.classList.contains('chat-multi-mode')) return;
+          e.stopPropagation();
+          if (!artInfo.id || !window.MomArtifacts) {
+            alert('这个文件已经失效了，让它重新做一份吧');
+            return;
+          }
+          dlEl.innerText = '正在生成…';
+          try {
+            await window.MomArtifacts.download(artInfo.id);
+            dlEl.innerText = '已开始下载';
+          } catch (err) {
+            dlEl.innerText = '点开下载';
+            alert('下载失败：' + (err && err.message ? err.message : err));
+          }
+        };
+        if (msgIndex !== -1) bindBubbleLongPress(artCard, msgIndex);
+        bubbleWrap.appendChild(artCard);
       }
       // 如果是微信原生文件卡片 1:1 复刻 [FILECARD:...]
       else if (cleanText.includes('[FILECARD:') && cleanText.includes(']')) {
@@ -6169,19 +6240,40 @@ ${catalog}
           }
           return '';
         })();
-        if (window.MomTools && typeof window.MomTools.hasAnyTool === 'function' && window.MomTools.hasAnyTool()) {
+        const toolSnippet = recentMessages
+          .filter(function (m) { return m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string'; })
+          .slice(-4)
+          .map(function (m) { return (m.role === 'user' ? 'user：' : (appData.botRemark || '角色') + '：') + String(m.content).slice(0, 120); })
+          .join('\n');
+
+        // ========== 文件生成：角色真的给你做 Word / Excel / PPT ==========
+        pendingArtifactMeta = null;
+        if (window.MomArtifacts && typeof window.MomArtifacts.maybeCreate === 'function') {
+          try {
+            const made = await window.MomArtifacts.maybeCreate({ userText: lastUserForTools, contextSnippet: toolSnippet });
+            if (made && made.error) {
+              recentMessages.push({ role: 'system', content: '【文件生成失败】你刚才想给user做文件，但没成功（' + made.error + '）。如实告诉她这次没做成，不要假装已经做好，也不要编造文件内容。' });
+            } else if (made) {
+              pendingArtifactMeta = made;
+              recentMessages.push({ role: 'system', content: '【文件已生成】你刚为user做好了《' + made.name + '》（' + (window.MomArtifacts.kindLabel ? window.MomArtifacts.kindLabel(made.kind) : made.kind) + '，' + made.size + '）。回复里用一句自然的话把文件递给她，例如“给你，拿去用”；不要描述制作过程、技术细节，也不要自己写链接或文件名以外的代码。文件卡片会自动出现在你的回复后面。' });
+            }
+          } catch (artErr) {
+            console.warn('[Artifact] 文件生成异常：', artErr && artErr.message ? artErr.message : artErr);
+          }
+        }
+
+        // ========== 工具注册表 ==========
+        // 先让模型自己判断这轮要不要调用 搜索 / 小红书 / 天气，再真跑、把结果注入。
+        // 规划器不可用（比如中转站挂了）才退回原来的关键词前置检索，保证“帮我搜一下”还能用。
+        // 这一轮已经在做文件了，就不要再搜网页，别拖慢交付。
+        if (!pendingArtifactMeta && window.MomTools && typeof window.MomTools.hasAnyTool === 'function' && window.MomTools.hasAnyTool()) {
           if (typeof window.MomTools.promptBlock === 'function') {
             const toolBlock = window.MomTools.promptBlock();
             if (toolBlock) recentMessages.push({ role: 'system', content: toolBlock });
           }
           let toolOutputs = null;
           try {
-            const snippet = recentMessages
-              .filter(function (m) { return m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string'; })
-              .slice(-4)
-              .map(function (m) { return (m.role === 'user' ? 'user：' : (appData.botRemark || '角色') + '：') + String(m.content).slice(0, 120); })
-              .join('\n');
-            toolOutputs = await window.MomTools.planAndRun({ userText: lastUserForTools, contextSnippet: snippet });
+            toolOutputs = await window.MomTools.planAndRun({ userText: lastUserForTools, contextSnippet: toolSnippet });
           } catch (toolErr) {
             console.warn('[Tools] 工具编排异常：', toolErr && toolErr.message ? toolErr.message : toolErr);
             toolOutputs = null;
@@ -6853,6 +6945,27 @@ ${catalog}
           }
           function finishReply() {
             flushPendingRemarkNotice();
+            // 这一轮真做了文件：在角色说完之后补一张可下载的文件卡片
+            if (pendingArtifactMeta) {
+              const art = pendingArtifactMeta;
+              pendingArtifactMeta = null;
+              try {
+                const artIdx = appData.chatHistory.length;
+                const artPayload = '[ARTIFACT:' + JSON.stringify({ id: art.id, name: art.name, size: art.size, kind: art.kind }) + ']';
+                appData.chatHistory.push({
+                  role: 'assistant',
+                  content: artPayload,
+                  time: getNowStr(),
+                  artifact: true,
+                  hiddenFromAI: true
+                });
+                renderMessageBubble('assistant', artPayload, getNowStr(), '', artIdx);
+                safeSaveChatHistory();
+                scrollChatToBottom();
+              } catch (artErr) {
+                console.warn('[Artifact] 文件卡片落库失败：', artErr && artErr.message ? artErr.message : artErr);
+              }
+            }
             const genReq = pendingGeneratedImage;
             pendingGeneratedImage = null;
             if (genReq) {
