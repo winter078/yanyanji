@@ -5599,19 +5599,22 @@ ${catalog}
               window.openSingleChat();
             }
           } catch (e) {}
+          if (opts && opts.retryOnOpen) {
+            setTimeout(function () {
+              try { if (typeof window.__momRetryPendingGen === 'function') window.__momRetryPendingGen(); } catch (e) {}
+            }, 900);
+          }
         };
 
         // 如果已经在展示，执行轻度弹动刷新；如果初次入场，执行从上滑入 + 回弹
         toastEl.style.cssText = baseStyle + '; opacity: 0; transform: translateY(-80px); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease-out;';
         
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            if (toastEl) {
-              toastEl.style.opacity = '1';
-              toastEl.style.transform = 'translateY(0)';
-            }
-          });
-        });
+        setTimeout(function () {
+          if (toastEl) {
+            toastEl.style.opacity = '1';
+            toastEl.style.transform = 'translateY(0)';
+          }
+        }, 60);
 
         // 停留 4 秒后向上滑出并淡出 (0.25 秒)
         currentReplyToastTimer = setTimeout(function() {
@@ -5633,6 +5636,7 @@ ${catalog}
 
     function setGeneratingState(generating) {
       isGenerating = generating;
+      window.__momIsGenerating = !!generating;
       const genBtn = document.getElementById('gen-btn');
       const sendBtn = document.getElementById('send-btn');
       const stopBtn = document.getElementById('stop-btn');
@@ -5674,6 +5678,26 @@ ${catalog}
       console.log('[Chat] user按下了暂停生成');
     };
 
+    // ============ 生成续跑：离开页面 / 页面被系统回收后回来还能补上这条回复 ============
+    const PENDING_GEN_KEY = 'momo_pending_gen';
+    function markPendingGenStart() {
+      try {
+        let prev = null;
+        try { prev = JSON.parse(localStorage.getItem(PENDING_GEN_KEY) || 'null'); } catch (e) { prev = null; }
+        const tries = (prev && typeof prev.tries === 'number') ? prev.tries : 0;
+        localStorage.setItem(PENDING_GEN_KEY, JSON.stringify({
+          charId: activeChatCharId() || '',
+          at: Date.now(),
+          tries: tries
+        }));
+      } catch (e) {}
+    }
+    function clearPendingGen() {
+      try { localStorage.removeItem(PENDING_GEN_KEY); } catch (e) {}
+    }
+
+    window.__momTriggerAiReaction = function () { return triggerAiReaction(); };
+
     async function triggerAiReactionWithMedia(base64Img) {
       return triggerAiReaction();
     }
@@ -5687,6 +5711,7 @@ ${catalog}
         return;
       }
 
+      markPendingGenStart();
       setGeneratingState(true);
       currentAbortController = new AbortController();
       const summaryCharId = activeChatCharId();
@@ -5756,7 +5781,7 @@ ${catalog}
 
         for (let i = 0; i < historySlice.length; i++) {
           const m = historySlice[i];
-          if (!m || m.recalled || m.hiddenFromAI || m.role === 'system') continue;
+          if (!m || m.recalled || m.hiddenFromAI || m.role === 'system' || m.genError) continue;
           if (hasImage && m === targetImageMsg) {
             let imgData = quotedImgData || m.media || window._latestMomoImage || (function(){ try { return sessionStorage.getItem('momo_latest_img'); }catch(e){return null;} })() || '';
             if (!imgData && typeof m.content === 'string') {
@@ -6465,6 +6490,7 @@ ${catalog}
             clearChatTypingPlaceholders();
             setGeneratingState(false);
             currentSegmentTimer = null;
+            clearPendingGen();
             requestAutoMemory();
             const replyToastText = botReply
               .replace(/\[\[SEARCHCARD:\d+\]\]/g, '')
@@ -6557,14 +6583,30 @@ ${catalog}
           if (loading && loading.remove) loading.remove();
           clearChatTypingPlaceholders();
           setGeneratingState(false);
+          clearPendingGen();
           console.log('[Chat] 绪言回复已由user手动暂停');
           return;
         }
         if (loading && loading.remove) loading.remove();
         clearChatTypingPlaceholders();
-        renderMessageBubble('assistant', '（' + (appData.botRemark || '角色') + '微微歪头，指尖有些慌乱地检查线路：' + err.message + '。别急，再试一次或者去设置里看一下模型配置。）');
-        scrollChatToBottom();
         setGeneratingState(false);
+        const genErrText = '（' + (appData.botRemark || '角色') + '微微歪头，指尖有些慌乱地检查线路：' + err.message + '。别急，再试一次或者去设置里看一下模型配置。）';
+        // 这条提示必须落在历史里：否则切走页面 / 回来后就被“隐身”了，看起来像一直卡着没生成
+        try {
+          const errIdx = appData.chatHistory.length;
+          appData.chatHistory.push({ role: 'assistant', content: genErrText, time: getNowStr(), genError: true, maskId: currentMaskId() });
+          renderMessageBubble('assistant', genErrText, getNowStr(), '', errIdx);
+          scrollChatToBottom();
+          safeSaveChatHistory();
+        } catch (e2) {}
+        const errChatPage = document.getElementById('page-chat');
+        const errInChat = !!(errChatPage && errChatPage.classList.contains('active') && errChatPage.style.display !== 'none');
+        if (!errInChat && typeof showReplyArrivalToast === 'function') {
+          showReplyArrivalToast('刚才那条没发出来，点我重试', {
+            senderName: (appData.botRemark || '角色'),
+            retryOnOpen: true
+          });
+        }
       }
     }
 
@@ -7720,3 +7762,73 @@ ${uNick}，水喝到了没有？
       }, 260);
     } catch (e) {}
   };
+
+  /* 生成续跑：点✨后切走、或页面被系统回收，回来时若最后一句还是自己说的，就自动补上这条回复 */
+  (function () {
+    var KEY = 'momo_pending_gen';
+    var resuming = false;
+
+    function readPending() {
+      try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { return null; }
+    }
+    function dropPending() { try { localStorage.removeItem(KEY); } catch (e) {} }
+    function activeId() {
+      try {
+        if (window.WB && typeof window.WB.activeCharId === 'function') {
+          var id = window.WB.activeCharId();
+          if (id) return id;
+        }
+      } catch (e) {}
+      return localStorage.getItem('momo_active_char') || '';
+    }
+
+    function maybeResume() {
+      if (resuming) return;
+      if (window.__momIsGenerating) return;
+      var p = readPending();
+      if (!p) return;
+      var age = Date.now() - (p.at || 0);
+      if (age < 1200) return;
+      if (age > 30 * 60 * 1000) { dropPending(); return; }
+      var cid = activeId();
+      if (p.charId && cid && p.charId !== cid) return;
+      var hist = (window.appData && Array.isArray(window.appData.chatHistory)) ? window.appData.chatHistory : [];
+      var last = hist[hist.length - 1];
+      if (!last || last.role !== 'user') { dropPending(); return; }
+      if ((p.tries || 0) >= 2) { dropPending(); return; }
+      if (!window.appData || !window.appData.apiKey) return;
+      if (typeof window.__momTriggerAiReaction !== 'function') return;
+
+      p.tries = (p.tries || 0) + 1;
+      p.at = Date.now();
+      try { localStorage.setItem(KEY, JSON.stringify(p)); } catch (e) {}
+      resuming = true;
+      try {
+        console.log('[Chat] 上次那条回复没跑完，正在补生成（第 ' + p.tries + ' 次）');
+        window.__momTriggerAiReaction();
+      } catch (e) { resuming = false; }
+      setTimeout(function () { resuming = false; }, 1500);
+    }
+
+    /* 提示条被点击“重试”时用：清掉那条错误记录，再把最后一句自己说的话重新生成 */
+    window.__momRetryPendingGen = function () {
+      try {
+        var hist = window.appData && window.appData.chatHistory;
+        if (Array.isArray(hist)) {
+          while (hist.length && hist[hist.length - 1].genError) hist.pop();
+          try { if (typeof window.saveChatHistoryNow === 'function') window.saveChatHistoryNow(); } catch (e) {}
+          try { if (typeof window.loadChatHistory === 'function') window.loadChatHistory(); } catch (e) {}
+          var last = hist[hist.length - 1];
+          if (last && last.role === 'user' && typeof window.__momTriggerAiReaction === 'function' && !window.__momIsGenerating) {
+            window.__momTriggerAiReaction();
+          }
+        }
+      } catch (e) {}
+    };
+
+    function kick() { setTimeout(maybeResume, 1600); }
+    window.addEventListener('pageshow', function (ev) { if (ev && ev.persisted) return; kick(); });
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) kick(); });
+    if (document.readyState === 'complete') kick();
+    else window.addEventListener('load', kick);
+  })();
