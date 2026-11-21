@@ -251,37 +251,44 @@ function renderThemePresetsUI() {
               if (p.id === 'page-home' && pageId !== 'page-home') {
                 // 桌面垫在 App 下面，让 App 从图标上"长出来"
                 p.style.zIndex = '9';
-                // 从桌面进 App：桌面整块不动（壁纸不能缩放），只让图标和 Dock 轻轻收一下
+                // iOS 的"扎进去"：桌面从被点图标处整体放大 1.14 并虚化，App 同时从图标长大
                 const iv = document.getElementById('ios-viewport');
                 const dk = document.getElementById('home-dock-bar');
+                const ir = window.__momLastIconRect;
+                const originFor = (el) => {
+                  if (!ir || !el) return '50% 50%';
+                  const r = el.getBoundingClientRect();
+                  if (!r.width) return '50% 50%';
+                  const sc = (el.offsetWidth || r.width) / r.width || 1;
+                  const x = (ir.left + ir.width / 2 - r.left) / sc;
+                  const y = (ir.top + ir.height / 2 - r.top) / sc;
+                  return x.toFixed(1) + 'px ' + y.toFixed(1) + 'px';
+                };
+                const diveFrames = [
+                  { transform: 'scale(1)', filter: 'blur(0px)' },
+                  { transform: 'scale(1.14)', filter: 'blur(4px)' }
+                ];
+                const diveOpts = { duration: 260, easing: 'cubic-bezier(.38,0,.6,.95)', fill: 'forwards' };
                 if (iv && typeof iv.animate === 'function') {
-                  try {
-                    iv.animate(
-                      [{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(0.9)', opacity: 0.6 }],
-                      { duration: 200, easing: 'cubic-bezier(.4,0,.7,.4)', fill: 'forwards' }
-                    );
-                  } catch (e) {}
+                  try { iv.style.transformOrigin = originFor(iv); iv.animate(diveFrames, diveOpts); } catch (e) {}
                 }
                 if (dk && typeof dk.animate === 'function') {
-                  try {
-                    dk.animate(
-                      [{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(0.86)', opacity: 0.5 }],
-                      { duration: 200, delay: 20, easing: 'cubic-bezier(.4,0,.7,.4)', fill: 'forwards' }
-                    );
-                  } catch (e) {}
+                  try { dk.style.transformOrigin = originFor(dk); dk.animate(diveFrames, diveOpts); } catch (e) {}
                 }
                 let done2 = false;
                 const hideHome = () => {
                   if (done2) return;
                   done2 = true;
-                  try { if (iv && iv.getAnimations) iv.getAnimations().forEach(a => a.cancel()); } catch (e) {}
-                  try { if (dk && dk.getAnimations) dk.getAnimations().forEach(a => a.cancel()); } catch (e) {}
+                  try { if (iv) iv.getAnimations().forEach(a => { try { a.cancel(); } catch (e) {} }); } catch (e) {}
+                  try { if (dk) dk.getAnimations().forEach(a => { try { a.cancel(); } catch (e) {} }); } catch (e) {}
+                  try { if (iv) { iv.style.transform = ''; iv.style.filter = ''; iv.style.transformOrigin = ''; } } catch (e) {}
+                  try { if (dk) { dk.style.transform = ''; dk.style.filter = ''; dk.style.transformOrigin = ''; } } catch (e) {}
                   p.style.display = 'none';
                   p.style.opacity = '';
                   p.style.transform = '';
                   p.style.zIndex = '';
                 };
-                setTimeout(hideHome, 240);
+                setTimeout(hideHome, 300);
                 return;
               }
               if (pageId === 'page-home' && backRect) {
@@ -297,11 +304,12 @@ function renderThemePresetsUI() {
                 out = p.animate(
                   [
                     { opacity: 1, transform: 'scale(1)', transformOrigin: origin, borderRadius: '0px', offset: 0 },
-                    { opacity: 1, transform: 'scale(0.97)', transformOrigin: origin, borderRadius: '10px', offset: 0.34 },
-                    { opacity: 1, transform: 'scale(' + s + ')', transformOrigin: origin, borderRadius: endRadius, offset: 0.86 },
+                    { opacity: 1, transform: 'scale(0.86)', transformOrigin: origin, borderRadius: '22px', offset: 0.25 },
+                    { opacity: 1, transform: 'scale(' + s + ')', transformOrigin: origin, borderRadius: endRadius, offset: 0.75 },
+                    { opacity: 1, transform: 'scale(' + s + ')', transformOrigin: origin, borderRadius: endRadius, offset: 0.93 },
                     { opacity: 0, transform: 'scale(' + s + ')', transformOrigin: origin, borderRadius: endRadius, offset: 1 }
                   ],
-                  { duration: 360, easing: 'cubic-bezier(.32,0,.42,1)', fill: 'forwards' }
+                  { duration: 340, easing: 'cubic-bezier(.3,.05,.25,1)', fill: 'forwards' }
                 );
               } else {
                 out = p.animate(
@@ -382,49 +390,53 @@ function renderThemePresetsUI() {
             }
           } catch (e) {}
         }
-        // 回桌面：App 先收进去，桌面图标再一个个"浮"出来（一收一出，不从整块放大）
+        // 回桌面：App 收进图标的同时，桌面原本是"放大 + 虚化"，等 App 收好再弹回原位（iOS 的一收一出）
         if (pageId === 'page-home' && prevActive && prevActive.id !== 'page-home') {
           const iv = document.getElementById('ios-viewport');
           const dk = document.getElementById('home-dock-bar');
+          const ir = window.__momOpenIconRect;
+          const originFor = (el) => {
+            if (!ir || !el) return '50% 38%';
+            const r = el.getBoundingClientRect();
+            if (!r.width) return '50% 38%';
+            const sc = (el.offsetWidth || r.width) / r.width || 1;
+            const x = (ir.left + ir.width / 2 - r.left) / sc;
+            const y = (ir.top + ir.height / 2 - r.top) / sc;
+            return x.toFixed(1) + 'px ' + y.toFixed(1) + 'px';
+          };
+          const settle = [
+            { transform: 'scale(1.13)', filter: 'blur(4px)', offset: 0 },
+            { transform: 'scale(1.13)', filter: 'blur(4px)', offset: 0.62 },
+            { transform: 'scale(1.02)', filter: 'blur(0.6px)', offset: 0.84 },
+            { transform: 'scale(1)', filter: 'blur(0px)', offset: 1 }
+          ];
+          const opts = { duration: 380, easing: 'cubic-bezier(.25,.9,.3,1)', fill: 'forwards' };
           try {
             if (iv) {
               iv.getAnimations().forEach(a => { try { a.cancel(); } catch (e) {} });
-              iv.style.opacity = '';
-              iv.style.transform = '';
-              const icons = iv.querySelectorAll('.ios-app-card');
-              for (let i = 0; i < icons.length && i < 16; i++) {
-                const el = icons[i];
+              iv.style.transformOrigin = originFor(iv);
+              const a = iv.animate(settle, opts);
+              a.onfinish = () => {
                 try {
-                  el.getAnimations().forEach(a => { try { a.cancel(); } catch (e) {} });
-                  el.animate(
-                    [
-                      { opacity: 0, transform: 'translateY(16px) scale(.88)' },
-                      { opacity: 1, transform: 'translateY(0) scale(1.016)', offset: 0.66 },
-                      { opacity: 1, transform: 'translateY(0) scale(1)' }
-                    ],
-                    { duration: 320, delay: 100 + i * 7, easing: 'cubic-bezier(.22,.75,.3,1)', fill: 'both' }
-                  );
+                  a.cancel();
+                  iv.style.transform = '';
+                  iv.style.filter = '';
+                  iv.style.transformOrigin = '';
                 } catch (e) {}
-              }
+              };
             }
             if (dk) {
               dk.getAnimations().forEach(a => { try { a.cancel(); } catch (e) {} });
-              const dockItems = dk.querySelectorAll('.dock-app-item');
-              const di = dockItems.length ? dockItems : [dk];
-              for (let i = 0; i < di.length; i++) {
-                const el = di[i];
+              dk.style.transformOrigin = originFor(dk);
+              const b = dk.animate(settle, opts);
+              b.onfinish = () => {
                 try {
-                  el.getAnimations().forEach(a => { try { a.cancel(); } catch (e) {} });
-                  el.animate(
-                    [
-                      { opacity: 0, transform: 'translateY(20px) scale(.86)' },
-                      { opacity: 1, transform: 'translateY(0) scale(1.03)', offset: 0.68 },
-                      { opacity: 1, transform: 'translateY(0) scale(1)' }
-                    ],
-                    { duration: 340, delay: 170 + i * 6, easing: 'cubic-bezier(.22,.75,.3,1)', fill: 'both' }
-                  );
+                  b.cancel();
+                  dk.style.transform = '';
+                  dk.style.filter = '';
+                  dk.style.transformOrigin = '';
                 } catch (e) {}
-              }
+              };
             }
           } catch (e) {}
         }
