@@ -5761,6 +5761,7 @@ ${catalog}
               apiKey: appData.apiKey,
               model: opt.model,
               messages: opt.messages,
+              actionDesc: !!(appData.chatSettings && appData.chatSettings.enableActionDesc),
               subscription: pack,
               endpoint: pack.endpoint
             })

@@ -151,8 +151,7 @@ function subIdFor(endpoint) {
 }
 
 // 通知栏只能放一句：跳过心声、跳过思考块，取第一句真正说出口的话
-function pushPreview(text) {
-  let t = String(text || '');
+function pushPreview(text) {  let t = String(text || '');
   t = t.replace(/<(?:thought|think|thinking)>[\s\S]*?<\/(?:thought|think|thinking)>/gi, '')
        .replace(/<(?:thought|think|thinking)>[\s\S]*$/i, '');
   if (/【(?:绪言)?心声】/.test(t)) {
@@ -176,6 +175,49 @@ function pushPreview(text) {
     .trim();
   if (!first) first = '给你发了一条消息';
   return first.replace(/[\r\n]+/g, ' ').slice(0, 40);
+}
+
+// 把整段回复拆成一条条消息，和界面上的气泡一一对应
+function segmentReply(text, allowAction) {
+  let t = String(text || '');
+  t = t.replace(/<(?:thought|think|thinking)>[\s\S]*?<\/(?:thought|think|thinking)>/gi, '')
+       .replace(/<(?:thought|think|thinking)>[\s\S]*$/i, '');
+  if (/【(?:绪言)?心声】/.test(t)) {
+    const dm = t.match(/(?:---|\*\*\*|===)/);
+    if (dm) t = t.slice(t.indexOf(dm[0]) + dm[0].length);
+    else t = t.replace(/【(?:绪言)?心声】[：:]?/g, '');
+  }
+  t = t.split(/\r?\n/).filter(function (s) { return !/^[「『]?回复\s*\S+[：:]/.test(s.trim()); }).join('\n').trim();
+  if (!allowAction) {
+    const pure = t.replace(/\*[^*]+\*/g, '').replace(/（[^）]+）/g, '').replace(/\([^)]+\)/g, '').trim();
+    return [pure || t].filter(function (s) { return s; });
+  }
+  const segs = [];
+  const reg = /(\*[^*]+\*|（[^）]{3,}）|\([^)\n]{3,}\))/g;
+  let last = 0;
+  let m;
+  while ((m = reg.exec(t)) !== null) {
+    const before = t.slice(last, m.index).trim();
+    if (before) segs.push(before);
+    const act = m[0].replace(/^[\*（\(]+|[\*）\)]+$/g, '').trim();
+    if (act) segs.push(act);
+    last = m.index + m[0].length;
+  }
+  const rest = t.slice(last).trim();
+  if (rest) segs.push(rest);
+  return segs.length ? segs : [t];
+}
+
+// 一条气泡按它在通知栏该显示的样子处理
+function notifText(seg) {
+  let s = String(seg || '').trim();
+  if (/^\[IMAGE:/.test(s) || /\[IMAGE:/i.test(s)) return '发来一张图片';
+  if (/\[SHARECARD:/i.test(s)) return '分享了一个卡片';
+  s = s.replace(/\[\[SEARCHCARD:\d+\]\]/g, '')
+       .replace(/^[「『"“]([^」』"”]{1,80})[」』"”]$/, '$1')
+       .replace(/[\*#>]+/g, '')
+       .trim();
+  return s.replace(/[\r\n]+/g, ' ').slice(0, 80);
 }
 
 export async function onRequest(context) {
@@ -302,19 +344,46 @@ export async function onRequest(context) {
 
       let push = null;
       const subscription = body.subscription;
-      if (subscription && subscription.endpoint) {
-        try {
-          push = await sendPush(subscription, {
-            title: charName,
-            body: pushPreview(content),
-            url: '/phone.html?open=chat',
-            tag: 'momo-gen-' + taskId
-          }, env, 3600);
-        } catch (e) {
-          push = { error: String((e && e.message) || e) };
-        }
+      const canPush = !!(subscription && subscription.endpoint);
+
+      // 一条回复可能有十几句，通知栏就按气泡数量一条一条弹，跟真的聊天软件一样
+      const segs = segmentReply(content, !!body.actionDesc).slice(0, 20);
+      const payloads = [];
+      segs.forEach(function (s, i) {
+        const bodyText = notifText(s);
+        if (!bodyText) return;
+        payloads.push({
+          title: charName,
+          body: bodyText,
+          url: '/phone.html?open=chat',
+          tag: 'momo-gen-' + taskId + '-' + i,
+          gap: Math.min(Math.max((s || '').length * 45, 700), 1200)
+        });
+      });
+      if (!payloads.length) payloads.push({ title: charName, body: '给你发了一条消息', url: '/phone.html?open=chat', tag: 'momo-gen-' + taskId, gap: 0 });
+
+      if (!canPush) {
+        return json({ ok: true, taskId: taskId, content: content, push: null, segments: payloads.length }, 200, request);
       }
-      return json({ ok: true, taskId: taskId, content: content, push: push }, 200, request);
+
+      // 第一条立刻发（让人马上看到"他回了"），剩下的按打字节奏补，交给 waitUntil 跑完
+      try {
+        push = await sendPush(subscription, { title: payloads[0].title, body: payloads[0].body, url: payloads[0].url, tag: payloads[0].tag }, env, 3600);
+      } catch (e) {
+        push = { error: String((e && e.message) || e) };
+      }
+      if (payloads.length > 1) {
+        const rest = payloads.slice(1);
+        const tail = (async function () {
+          for (let i = 0; i < rest.length; i++) {
+            await new Promise(function (r) { setTimeout(r, rest[i].gap || 900); });
+            try { await sendPush(subscription, { title: rest[i].title, body: rest[i].body, url: rest[i].url, tag: rest[i].tag }, env, 3600); } catch (e) {}
+          }
+        })();
+        if (typeof context.waitUntil === 'function') context.waitUntil(tail);
+        else await tail;
+      }
+      return json({ ok: true, taskId: taskId, content: content, push: push, segments: payloads.length }, 200, request);
     }
 
     if (suffix === '/gen/pickup' && request.method === 'GET') {
