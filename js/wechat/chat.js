@@ -8002,6 +8002,18 @@ ${uNick}，水喝到了没有？
         setTimeout(maybeResume, 400);
       });
     }
+    window.__momPickup = pickupServerReply;
+    if ('serviceWorker' in navigator && navigator.serviceWorker.addEventListener) {
+      navigator.serviceWorker.addEventListener('message', function (ev) {
+        try {
+          var d = ev && ev.data ? ev.data : null;
+          if (!d || d.type !== 'momo-push') return;
+          var p = d.payload || {};
+          if (String(p.tag || '').indexOf('momo-gen-') !== 0) return;
+          setTimeout(function () { pickupServerReply(); }, 400);
+        } catch (e) {}
+      });
+    }
     window.addEventListener('pageshow', function (ev) { if (ev && ev.persisted) return; kick(); });
     document.addEventListener('visibilitychange', function () { if (!document.hidden) kick(); });
     if (document.readyState === 'complete') kick();

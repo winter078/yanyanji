@@ -26,7 +26,20 @@ self.addEventListener('push', function (event) {
     data: { url: payload.url || '/index.html?open=chat' }
   };
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  // 小手机正在前台时不要弹锁屏通知（人就在看着屏幕），只把内容转给页面
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
+      var visible = false;
+      for (var i = 0; i < list.length; i++) {
+        if (list[i].visibilityState === 'visible') visible = true;
+        try { list[i].postMessage({ type: 'momo-push', payload: payload }); } catch (e) {}
+      }
+      if (visible) return;
+      return self.registration.showNotification(title, options);
+    }).catch(function () {
+      return self.registration.showNotification(title, options);
+    })
+  );
 });
 
 self.addEventListener('notificationclick', function (event) {
