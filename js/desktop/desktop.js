@@ -223,9 +223,20 @@ function renderThemePresetsUI() {
 
       const allPages = document.querySelectorAll('.view-page');
       const prevActive = document.querySelector('.view-page.active');
+      // 关键：先把上一页残留的动画全部取消，否则 fill:forwards 的 opacity:0 会一直粘在元素上，
+      // 页面淡入播完之后又被拉回 0，看起来就是"只剩壁纸"
+      const clearAnim = (p) => {
+        try {
+          if (typeof p.getAnimations === 'function') p.getAnimations().forEach(a => { try { a.cancel(); } catch (e) {} });
+        } catch (e) {}
+        p.style.opacity = '';
+        p.style.transform = '';
+        p.style.zIndex = '';
+      };
       allPages.forEach(p => {
         p.classList.remove('active');
         try { p.style.animation = 'none'; } catch (e) {}
+        clearAnim(p);
         // 要退出这一页的话先留着它，动画播完再隐藏
         if (prevActive && p === prevActive && p.id !== pageId) {
           if (typeof p.animate === 'function') {
@@ -235,7 +246,16 @@ function renderThemePresetsUI() {
                 [{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(0.94)' }],
                 { duration: 180, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' }
               );
-              const hide = () => { p.style.display = 'none'; p.style.opacity = ''; p.style.zIndex = ''; };
+              let done = false;
+              const hide = () => {
+                if (done) return;
+                done = true;
+                try { out.cancel(); } catch (e) {}
+                p.style.display = 'none';
+                p.style.opacity = '';
+                p.style.transform = '';
+                p.style.zIndex = '';
+              };
               out.finished.then(hide, hide);
               setTimeout(hide, 220);
             } catch (e) { p.style.display = 'none'; }
@@ -256,6 +276,7 @@ function renderThemePresetsUI() {
 
       const target = document.getElementById(pageId);
       if (target) {
+        clearAnim(target);
         target.style.display = 'flex';
         target.classList.add('active');
         if (typeof target.animate === 'function') {
