@@ -297,10 +297,11 @@ function renderThemePresetsUI() {
                 out = p.animate(
                   [
                     { opacity: 1, transform: 'scale(1)', transformOrigin: origin, borderRadius: '0px', offset: 0 },
-                    { opacity: 0.88, transform: 'scale(0.975)', transformOrigin: origin, borderRadius: '8px', offset: 0.3 },
+                    { opacity: 1, transform: 'scale(0.97)', transformOrigin: origin, borderRadius: '10px', offset: 0.34 },
+                    { opacity: 1, transform: 'scale(' + s + ')', transformOrigin: origin, borderRadius: endRadius, offset: 0.86 },
                     { opacity: 0, transform: 'scale(' + s + ')', transformOrigin: origin, borderRadius: endRadius, offset: 1 }
                   ],
-                  { duration: 340, easing: 'cubic-bezier(.4,0,.6,1)', fill: 'forwards' }
+                  { duration: 360, easing: 'cubic-bezier(.32,0,.42,1)', fill: 'forwards' }
                 );
               } else {
                 out = p.animate(
@@ -319,7 +320,7 @@ function renderThemePresetsUI() {
                 p.style.zIndex = '';
               };
               out.finished.then(hide, hide);
-              setTimeout(hide, 380);
+              setTimeout(hide, 400);
             } catch (e) { p.style.display = 'none'; }
           } else {
             p.style.display = 'none';
@@ -370,46 +371,60 @@ function renderThemePresetsUI() {
                 ],
                 { duration: 400, easing: 'cubic-bezier(.2,.68,.26,1)' }
               );
+            } else if (isHome) {
+              // 壁纸直接出现，不做整页淡入（避免和 App 交叉淡化发灰）；图标另有浮现动画
+              target.style.opacity = '';
             } else {
-              const frames = isHome
-                ? [{ opacity: 0 }, { opacity: 1 }]
-                : [
-                    { opacity: 0, transform: 'scale(0.9)' },
-                    { opacity: 1, transform: 'scale(1)' }
-                  ];
-              target.animate(frames, {
-                duration: isHome ? 220 : 320,
-                easing: isHome ? 'cubic-bezier(.32,.72,0,1)' : 'cubic-bezier(.34,1.56,.64,1)'
-              });
+              target.animate(
+                [{ opacity: 0, transform: 'scale(0.9)' }, { opacity: 1, transform: 'scale(1)' }],
+                { duration: 320, easing: 'cubic-bezier(.34,1.56,.64,1)' }
+              );
             }
           } catch (e) {}
         }
-        // 回桌面：App 缩回去的同时，桌面图标和 Dock "弹出来"（一收一出）
+        // 回桌面：App 先收进去，桌面图标再一个个"浮"出来（一收一出，不从整块放大）
         if (pageId === 'page-home' && prevActive && prevActive.id !== 'page-home') {
           const iv = document.getElementById('ios-viewport');
           const dk = document.getElementById('home-dock-bar');
           try {
-            if (iv && typeof iv.animate === 'function') {
+            if (iv) {
               iv.getAnimations().forEach(a => { try { a.cancel(); } catch (e) {} });
-              iv.animate(
-                [
-                  { transform: 'scale(0.9)', opacity: 0.55 },
-                  { transform: 'scale(1.012)', opacity: 1, offset: 0.62 },
-                  { transform: 'scale(1)', opacity: 1 }
-                ],
-                { duration: 380, delay: 70, easing: 'cubic-bezier(.2,.8,.3,1)' }
-              );
+              iv.style.opacity = '';
+              iv.style.transform = '';
+              const icons = iv.querySelectorAll('.ios-app-card');
+              for (let i = 0; i < icons.length && i < 16; i++) {
+                const el = icons[i];
+                try {
+                  el.getAnimations().forEach(a => { try { a.cancel(); } catch (e) {} });
+                  el.animate(
+                    [
+                      { opacity: 0, transform: 'translateY(16px) scale(.88)' },
+                      { opacity: 1, transform: 'translateY(0) scale(1.016)', offset: 0.66 },
+                      { opacity: 1, transform: 'translateY(0) scale(1)' }
+                    ],
+                    { duration: 320, delay: 100 + i * 7, easing: 'cubic-bezier(.22,.75,.3,1)', fill: 'both' }
+                  );
+                } catch (e) {}
+              }
             }
-            if (dk && typeof dk.animate === 'function') {
+            if (dk) {
               dk.getAnimations().forEach(a => { try { a.cancel(); } catch (e) {} });
-              dk.animate(
-                [
-                  { transform: 'scale(0.86)', opacity: 0.5 },
-                  { transform: 'scale(1.02)', opacity: 1, offset: 0.6 },
-                  { transform: 'scale(1)', opacity: 1 }
-                ],
-                { duration: 400, delay: 95, easing: 'cubic-bezier(.2,.8,.3,1)' }
-              );
+              const dockItems = dk.querySelectorAll('.dock-app-item');
+              const di = dockItems.length ? dockItems : [dk];
+              for (let i = 0; i < di.length; i++) {
+                const el = di[i];
+                try {
+                  el.getAnimations().forEach(a => { try { a.cancel(); } catch (e) {} });
+                  el.animate(
+                    [
+                      { opacity: 0, transform: 'translateY(20px) scale(.86)' },
+                      { opacity: 1, transform: 'translateY(0) scale(1.03)', offset: 0.68 },
+                      { opacity: 1, transform: 'translateY(0) scale(1)' }
+                    ],
+                    { duration: 340, delay: 170 + i * 6, easing: 'cubic-bezier(.22,.75,.3,1)', fill: 'both' }
+                  );
+                } catch (e) {}
+              }
             }
           } catch (e) {}
         }
