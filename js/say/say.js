@@ -13,7 +13,10 @@
   var WEEK = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
   var MAX_IMAGES = 2;
 
-  var state = { mode: 'wall', bookKey: '', pageIdx: 0 };
+  var state = { mode: 'wall', bookId: '', pageIdx: 0, tab: 'shelf' };
+  var pressed = { timer: null, moved: false };
+  var meQuoteLast = '';
+  var cardMode = '';
   var data = loadData();
 
   /* ---------------- 小工具 ---------------- */
@@ -64,10 +67,15 @@
       var parsed = raw ? JSON.parse(raw) : null;
       if (parsed && typeof parsed === 'object') {
         if (!Array.isArray(parsed.entries)) parsed.entries = [];
+        // v2：多出「自定义本子」「书柜里改过的书名」「我」
+        if (!Array.isArray(parsed.books)) parsed.books = [];
+        if (!parsed.monthNames || typeof parsed.monthNames !== 'object') parsed.monthNames = {};
+        if (!parsed.me || typeof parsed.me !== 'object') parsed.me = {};
+        parsed.version = 2;
         return parsed;
       }
     } catch (e) {}
-    return { version: 1, entries: [], draft: null };
+    return { version: 2, entries: [], draft: null, books: [], monthNames: {}, me: {} };
   }
   function saveData() {
     try {
@@ -114,121 +122,434 @@
     }).catch(function () { return null; });
   }
 
-  /* ---------------- 本子 = 按月分组 ---------------- */
-  function books() {
-    var map = {};
+  /* ---------------- 书柜：月份书 + 自己开的书 ---------------- */
+  var BOOK_TINTS = ['t-brick', 't-olive', 't-clay', 't-indigo', 't-moss', 't-plum'];
+
+  function hashOf(s) {
+    var h = 7;
+    s = String(s || '');
+    for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 100003;
+    return h;
+  }
+  function tsOf(e) {
+    var t = Date.parse(e && e.created ? e.created : '') || 0;
+    if (!t) t = Date.parse(((e && e.date) || '') + 'T00:00:00') || 0;
+    return t;
+  }
+  function sortEntries(list) {
+    return list.slice().sort(function (a, b) { return tsOf(a) - tsOf(b); });
+  }
+  function bookLastAt(b) {
+    if (b.entries && b.entries.length) return tsOf(b.entries[b.entries.length - 1]);
+    if (!b.custom && b.monthKey) return Date.parse(b.monthKey + '-01T00:00:00') || 0;
+    return Date.parse(b.createdAt || '') || 0;
+  }
+
+  // 书柜上所有的书：按月自动装订的（含本月这本空书）+ 你自己开的
+  function shelfBooks() {
+    var byMonth = {}, byCustom = {};
     data.entries.forEach(function (e) {
-      var k = String(e.date || '').slice(0, 7);
-      if (!/^\d{4}-\d{2}$/.test(k)) return;
-      if (!map[k]) map[k] = [];
-      map[k].push(e);
+      if (e.bookId) {
+        if (!byCustom[e.bookId]) byCustom[e.bookId] = [];
+        byCustom[e.bookId].push(e);
+        return;
+      }
+      var k = bookMonthKey(e);
+      if (!k) return;
+      if (!byMonth[k]) byMonth[k] = [];
+      byMonth[k].push(e);
     });
-    var list = Object.keys(map).map(function (k) {
-      var items = map[k].slice().sort(function (a, b) {
-        return String(a.created || '').localeCompare(String(b.created || ''));
+
+    var list = [];
+    Object.keys(byMonth).forEach(function (k) {
+      var m = parseInt(k.slice(5, 7), 10);
+      list.push({
+        id: 'm-' + k, monthKey: k, year: k.slice(0, 4), month: m,
+        title: data.monthNames[k] || monthLabel(m),
+        entries: sortEntries(byMonth[k]), custom: false
       });
-      var year = k.slice(0, 4), m = parseInt(k.slice(5, 7), 10);
-      return { key: k, year: year, month: m, label: monthLabel(m), season: seasonOf(m), entries: items };
     });
-    list.sort(function (a, b) { return a.key < b.key ? 1 : -1; }); // 新的在左
+    var curKey = todayStr().slice(0, 7);
+    if (!byMonth[curKey]) {
+      var cm = parseInt(curKey.slice(5, 7), 10);
+      list.push({
+        id: 'm-' + curKey, monthKey: curKey, year: curKey.slice(0, 4), month: cm,
+        title: data.monthNames[curKey] || monthLabel(cm),
+        entries: [], custom: false
+      });
+    }
+
+    (data.books || []).forEach(function (b) {
+      if (!b || !b.id) return;
+      list.push({
+        id: b.id, monthKey: '', year: String(b.createdAt || '').slice(0, 4) || todayStr().slice(0, 4),
+        month: 0, title: String(b.title || '').trim() || '没名字的本子',
+        entries: sortEntries(byCustom[b.id] || []), custom: true,
+        createdAt: b.createdAt || '', tint: b.tint || ''
+      });
+    });
+
+    list.forEach(function (b) { b.lastAt = bookLastAt(b); });
+    list.sort(function (a, b) { return (b.lastAt || 0) - (a.lastAt || 0); });
+
+    list.forEach(function (b) {
+      var hh = hashOf(b.id);
+      b.tint = b.tint || BOOK_TINTS[hh % BOOK_TINTS.length];
+      b.h = 596 + (hh % 9) * 8;          // 596–660，高低不齐才像真书架
+      b.w = 42 + (hh % 5) * 3;           // 42–54
+    });
     return list;
   }
-  function currentBookKey() {
-    var bs = books();
-    if (bs.length === 0) return todayStr().slice(0, 7);
-    if (state.bookKey && bs.some(function (b) { return b.key === state.bookKey; })) return state.bookKey;
-    return bs[0].key;
+  function bookMonthKey(e) {
+    var k = String((e && e.date) || '').slice(0, 7);
+    return /^\d{4}-\d{2}$/.test(k) ? k : '';
+  }
+  function currentBookId() {
+    var bs = shelfBooks();
+    if (bs.length === 0) return 'm-' + todayStr().slice(0, 7);
+    if (state.bookId && bs.some(function (b) { return b.id === state.bookId; })) return state.bookId;
+    return bs[0].id;
   }
 
   /* ---------------- 入口 ---------------- */
   function show(mode) {
     state.mode = mode;
-    ['wall', 'sheet', 'write', 'rec'].forEach(function (m) {
+    ['wall', 'me', 'sheet', 'write', 'rec'].forEach(function (m) {
       var el = $('say-' + m);
       if (el) el.style.display = (m === mode ? 'flex' : 'none');
-      // 墙是列布局，纸页/书写/录音也是列（flco）
     });
     var stage = document.getElementById('say-stage');
-    if (stage) stage.classList.toggle('is-wall', mode === 'wall');
+    if (stage) stage.classList.toggle('is-top', mode === 'wall' || mode === 'me');
+    var top = $('say-top');
+    if (top) top.style.display = (mode === 'wall' || mode === 'me') ? 'flex' : 'none';
+  }
+  function setTab(t) {
+    state.tab = t;
+    ['shelf', 'me'].forEach(function (k) {
+      var el = $('say-tab-' + k);
+      if (el) el.classList.toggle('on', k === t);
+    });
   }
 
   function renderSayApp() {
     if (!state.draft) state.draft = null;
-    state.bookKey = currentBookKey();
-    show('wall');
-    renderWall();
+    if (!state.tab) state.tab = 'shelf';
+    state.bookId = currentBookId();
+    setTab(state.tab);
+    if (state.tab === 'me') { show('me'); renderMe(); }
+    else { show('wall'); renderShelf(); }
   }
   window.renderSayApp = renderSayApp;
 
-  /* ---------------- 本子墙 ---------------- */
-  function renderWall() {
+  window.sayTab = function (t) {
+    state.tab = t === 'me' ? 'me' : 'shelf';
+    setTab(state.tab);
+    if (state.tab === 'me') { show('me'); renderMe(); }
+    else { show('wall'); renderShelf(); }
+  };
+
+  /* ---------------- 书柜 ---------------- */
+  function renderShelf() {
     var shelf = $('say-shelf');
     if (!shelf) return;
-    var bs = books();
-    var key = currentBookKey();
-    state.bookKey = key;
-    var idx = bs.findIndex ? bs.findIndex(function (b) { return b.key === key; }) : -1;
-    var cur = idx >= 0 ? bs[idx] : null;
-    var m = parseInt(key.slice(5, 7), 10);
-    var year = key.slice(0, 4);
-    var count = cur ? cur.entries.length : 0;
-    var firstLine = '';
-    if (cur && cur.entries.length) {
-      firstLine = String(cur.entries[cur.entries.length - 1].text || '').replace(/\s+/g, ' ').slice(0, 9) || '一本本子';
-    } else {
-      firstLine = '这本还没写';
-    }
-    var left = idx >= 0 && bs[idx + 1] ? '<div class="bk side l" onclick="sayGoBook(' + (idx + 1) + ')"></div>' : '';
-    var right = idx > 0 ? '<div class="bk side r" onclick="sayGoBook(' + (idx - 1) + ')"></div>' : '';
-    shelf.innerHTML = left
-      + '<div class="bk main" onclick="sayOpenBook()">'
-      + '<div class="bk-spine"></div>'
-      + '<div class="bk-vert">' + esc(monthLabel(m)) + '</div>'
-      + '<div class="bk-moon">' + esc(seasonOf(m)) + '</div>'
-      + '<div class="bk-strip"><b>' + esc(firstLine) + '</b><span>' + count + ' 页</span></div>'
-      + '<div class="bk-tag">' + esc(year) + '</div>'
-      + '</div>'
-      + right;
+    var bs = shelfBooks();
+    var id = currentBookId();
+    state.bookId = id;
+
+    shelf.innerHTML = bs.map(function (b) {
+      var nm = String(b.title || '');
+      var short = nm.length > 11 ? nm.slice(0, 11) + '…' : nm;
+      var count = b.entries.length;
+      var foot = count ? count + '页' : '空的';
+      return '<div class="bk ' + esc(b.tint) + (b.id === id ? ' cur' : '') + '" data-id="' + esc(b.id) + '"'
+        + ' style="--bk-h:' + b.h + 'px;--bk-w:' + b.w + 'px;"'
+        + ' onclick="sayPickBook(this)"'
+        + ' ontouchstart="sayPressStart(this)" ontouchend="sayPressEnd()" ontouchmove="sayPressEnd()"'
+        + ' onmousedown="sayPressStart(this)" onmouseup="sayPressEnd()" onmouseleave="sayPressEnd()">'
+        + '<div class="bk-name">' + esc(short) + '</div>'
+        + '<div class="bk-foot">' + esc(foot) + '</div>'
+        + '</div>';
+    }).join('')
+      + '<div class="bk add" onclick="sayShelfAdd()"><b>＋</b><span>新一本</span></div>';
 
     var hint = $('say-hint');
-    if (hint) hint.textContent = bs.length <= 1 ? '点开本子，就是这一页' : '左右滑动，换一本';
-
+    if (hint) {
+      var total = data.entries.length;
+      hint.textContent = total ? ('一共 ' + total + ' 页 · 长按书脊可以改名') : '还没写下第一页';
+    }
     var dots = $('say-dots');
     if (dots) {
-      var total = Math.max(bs.length, 1);
-      var active = idx >= 0 ? idx : 0;
+      var active = 0;
+      for (var i = 0; i < bs.length; i++) if (bs[i].id === id) { active = i; break; }
       var html = '';
-      for (var i = 0; i < Math.min(total, 9); i++) {
-        html += '<i' + (i === active ? ' class="on"' : '') + '></i>';
+      for (var j = 0; j < Math.min(bs.length, 8); j++) {
+        html += '<i' + (j === active ? ' class="on"' : '') + '></i>';
       }
       dots.innerHTML = html;
+      dots.style.display = bs.length > 1 ? 'flex' : 'none';
     }
   }
-  window.sayGoBook = function (i) {
-    var bs = books();
-    if (!bs[i]) return;
-    state.bookKey = bs[i].key;
-    renderWall();
+
+  // 点一本书：先把它从架上抽出来，再摊成纸页
+  window.sayPickBook = function (el) {
+    if (!el) return;
+    var bid = el.getAttribute('data-id');
+    if (!bid) return;
+    if (pressed.moved) { pressed.moved = false; return; }   // 刚才是长按，不当作点开
+    state.bookId = bid;
+    el.classList.add('pulled');
+    setTimeout(function () {
+      el.classList.remove('pulled');
+      var es = entriesOfBook();
+      if (!es.length) { sayNewEntry(); return; }
+      state.pageIdx = es.length - 1;
+      show('sheet');
+      renderSheet();
+    }, 300);
   };
-  window.saySlideBook = function (dir) {
-    var bs = books();
-    if (bs.length <= 1) return;
-    var idx = bs.findIndex ? bs.findIndex(function (b) { return b.key === currentBookKey(); }) : -1;
-    var next = idx + dir;
-    if (next < 0 || next >= bs.length) return;
-    state.bookKey = bs[next].key;
-    renderWall();
+
+  window.sayOpenBook = function () { window.sayPickBook(document.querySelector('#say-shelf .bk.cur') || document.querySelector('#say-shelf .bk')); };
+
+  /* ---------------- 长按书脊：改名 / 删掉 ---------------- */
+  window.sayPressStart = function (el) {
+    clearTimeout(pressed.timer);
+    pressed.moved = false;
+    var bid = el && el.getAttribute ? el.getAttribute('data-id') : '';
+    if (!bid) return;
+    pressed.timer = setTimeout(function () {
+      pressed.moved = true;
+      sayBookMenu(bid);
+    }, 620);
   };
+  window.sayPressEnd = function () { clearTimeout(pressed.timer); };
+
+  function sayBookMenu(bid) {
+    var b = shelfBooks().filter(function (x) { return x.id === bid; })[0];
+    if (!b) return;
+    state.cardBookId = bid;
+    sayShelfCard('rename', b);
+  }
+
+  /* ---------------- 底部卡片（改名 / 新一本 / 改我） ---------------- */
+  function cardBody(html) {
+    var box = $('say-card');
+    if (!box) return null;
+    box.innerHTML = '<div class="sc-mask" onclick="if(event.target===this)sayCloseCard()"></div>'
+      + '<div class="sc-body">' + html + '</div>';
+    box.classList.add('on');
+    box.style.display = 'flex';
+    return box;
+  }
+  window.sayCloseCard = function () {
+    var box = $('say-card');
+    if (box) { box.classList.remove('on'); box.style.display = 'none'; box.innerHTML = ''; }
+    cardMode = '';
+  };
+
+  window.sayShelfAdd = function () { sayShelfCard('new', null); };
+
+  function sayShelfCard(mode, book) {
+    cardMode = mode;
+    var renaming = mode === 'rename';
+    var val = renaming ? (book && book.title || '') : '';
+    cardBody(
+      '<div class="sc-t">' + (renaming ? '这本书叫什么' : '开一本新的') + '</div>'
+      + '<div class="sc-sub">' + (renaming
+        ? (book && !book.custom ? '按月自动装订的这本，改名只改书脊上的字，日记还在。' : '名字会写在书脊上，最多十来个字。')
+        : '起个名字，比如「碎片」「晚上」「给妈妈的话」。') + '</div>'
+      + '<input class="sc-input" id="say-card-input" maxlength="16" value="' + esc(val) + '" placeholder="' + (renaming ? '十一月' : '碎片') + '">'
+      + '<div class="sc-row">'
+      + (renaming && book && book.custom
+        ? '<button class="sc-del" onclick="sayDeleteBook(this)" data-id="' + esc(book.id) + '">删掉这本</button>'
+        : '<button class="sc-cancel" onclick="sayCloseCard()">算了</button>')
+      + '<button class="sc-ok" onclick="saySaveCard()">' + (renaming ? '好了' : '开一本') + '</button>'
+      + '</div>'
+    );
+    setTimeout(function () {
+      var inp = $('say-card-input');
+      if (inp) inp.focus();
+    }, 260);
+  }
+
+  window.saySaveCard = function () {
+    var inp = $('say-card-input');
+    var v = inp ? String(inp.value || '').trim() : '';
+    if (cardMode === 'me') { saveMe(v); return; }
+    if (cardMode === 'new') {
+      var id = 'b-' + Date.now();
+      data.books.push({
+        id: id,
+        title: v || '没名字的本子',
+        createdAt: new Date().toISOString(),
+        tint: BOOK_TINTS[hashOf(id + v) % BOOK_TINTS.length]
+      });
+      if (!saveData()) { data.books.pop(); sayToast('存不下，先清点空间'); return; }
+      state.bookId = id;
+      sayCloseCard();
+      show('wall');
+      renderShelf();
+      sayToast('开了一本「' + (v || '没名字的本子') + '」');
+      return;
+    }
+    var bid = state.cardBookId || '';
+    if (bid.indexOf('m-') === 0) {
+      var k = bid.slice(2);
+      if (v) data.monthNames[k] = v; else delete data.monthNames[k];
+    } else {
+      var b = (data.books || []).filter(function (x) { return x.id === bid; })[0];
+      if (b) b.title = v || '没名字的本子';
+    }
+    saveData();
+    sayCloseCard();
+    renderShelf();
+    sayToast('改好了');
+  };
+
+  window.sayDeleteBook = function (el) {
+    var bid = el && el.getAttribute ? el.getAttribute('data-id') : '';
+    var b = (data.books || []).filter(function (x) { return x.id === bid; })[0];
+    if (!b) return;
+    var n = data.entries.filter(function (e) { return e.bookId === bid; }).length;
+    var sure = confirm('删掉「' + b.title + '」' + (n ? '和里面的 ' + n + ' 页？' : '？'));
+    if (!sure) return;
+    data.books = (data.books || []).filter(function (x) { return x.id !== bid; });
+    data.entries = data.entries.filter(function (e) { return e.bookId !== bid; });
+    saveData();
+    sayCloseCard();
+    state.bookId = '';
+    state.bookId = currentBookId();
+    renderShelf();
+    sayToast('删掉了');
+  };
+
+  /* ---------------- 我 ---------------- */
+  function meStat() {
+    var es = data.entries;
+    var earliest = '';
+    es.forEach(function (e) {
+      if (!earliest || String(e.date) < earliest) earliest = String(e.date || '');
+    });
+    var books = shelfBooks().filter(function (b) { return b.entries.length > 0; }).length;
+    return { pages: es.length, books: books, earliest: earliest };
+  }
+
+  // 随便抽一句旧话：每次进来都换，尽量不连着同一条
+  function randomQuote() {
+    var es = data.entries.filter(function (e) { return String(e.text || '').trim(); });
+    if (!es.length) return null;
+    var pick = null;
+    for (var t = 0; t < 6; t++) {
+      var cand = es[Math.floor(Math.random() * es.length)];
+      if (es.length === 1 || cand.id !== meQuoteLast) { pick = cand; break; }
+    }
+    if (!pick) pick = es[Math.floor(Math.random() * es.length)];
+    meQuoteLast = pick.id;
+    var lines = String(pick.text).split(/\n+/).map(function (s) { return s.trim(); }).filter(Boolean);
+    var line = lines.length ? lines[Math.floor(Math.random() * lines.length)] : '';
+    if (line.length > 62) line = line.slice(0, 62) + '…';
+    return { date: dateLabel(pick.date), text: line };
+  }
+
+  function recentHtml() {
+    var rec = data.entries.slice().sort(function (a, b) { return (tsOf(b) || 0) - (tsOf(a) || 0); }).slice(0, 3);
+    if (!rec.length) return '';
+    var rows = rec.map(function (e) {
+      var line = String(e.text || '').split(/\n+/).filter(function (s) { return s.trim(); })[0] || '';
+      if (line.length > 18) line = line.slice(0, 18) + '…';
+      var bid = e.bookId || ('m-' + bookMonthKey(e));
+      return '<div class="mr-item" onclick="sayOpenRecent(this)" data-id="' + esc(e.id) + '" data-bid="' + esc(bid) + '">'
+        + '<span class="mr-d">' + esc(String(e.date || '').slice(5)) + '</span>'
+        + '<i>' + esc(line || '（只有声音，还没写字）') + '</i></div>';
+    }).join('');
+    return '<div class="me-recent"><div class="mr-t">最近写的</div>' + rows + '</div>';
+  }
+
+  window.sayOpenRecent = function (el) {
+    var id = el ? el.getAttribute('data-id') : '';
+    var bid = el ? el.getAttribute('data-bid') : '';
+    if (!id) return;
+    if (bid) state.bookId = bid;
+    var es = entriesOfBook();
+    var idx = -1;
+    for (var i = 0; i < es.length; i++) { if (es[i].id === id) { idx = i; break; } }
+    if (idx < 0) return;
+    state.pageIdx = idx;
+    show('sheet');
+    renderSheet();
+  };
+
+  function renderMe() {
+    var box = $('say-me');
+    if (!box) return;
+    var me = data.me || {};
+    var nm = String(me.name || '').trim() || '我';
+    var line = String(me.line || '').trim();
+    var st = meStat();
+    var q = randomQuote();
+    var initial = nm.slice(0, 1);
+
+    var avatar = me.avatar
+      ? '<img src="' + esc(me.avatar) + '" alt="头像">'
+      : '<span>' + esc(initial) + '</span>';
+
+    var html = ''
+      + '<div class="me-card">'
+      + '<button class="me-edit" onclick="sayEditMe()">改</button>'
+      + '<div class="me-ava">' + avatar + '</div>'
+      + '<div class="me-name">' + esc(nm) + '</div>'
+      + '<div class="me-line">' + (line ? esc(line) : '<i>还没写一句关于自己的话</i>') + '</div>'
+      + '</div>'
+      + '<div class="me-stats">'
+      + '<div><b>' + st.pages + '</b><span>页</span></div>'
+      + '<div><b>' + st.books + '</b><span>本</span></div>'
+      + '<div><b>' + (st.earliest ? dateLabel(st.earliest).replace('日', '') : '—') + '</b><span>开始写</span></div>'
+      + '</div>'
+      + recentHtml()
+      + (q
+        ? '<div class="me-quote"><span class="mq-d">' + esc(q.date) + '</span>'
+          + '<div class="mq-t">' + esc(q.text) + '</div></div>'
+        : '<div class="me-quote empty"><div class="mq-t">写下第一页以后，这里会随机翻出一句你说过的话。</div></div>')
+      + (q ? '<div class="me-foot">每次进来，都会重新翻一句</div>' : '');
+
+    box.innerHTML = html;
+  }
+
+  window.sayEditMe = function () {
+    cardMode = 'me';
+    var me = data.me || {};
+    cardBody(
+      '<div class="sc-t">这是我</div>'
+      + '<div class="sc-sub">名字写在这里；一句话随便写，不写也行。</div>'
+      + '<input class="sc-input" id="say-card-input" maxlength="12" value="' + esc(me.name || '') + '" placeholder="名字">'
+      + '<input class="sc-input" id="say-card-line" maxlength="28" value="' + esc(me.line || '') + '" placeholder="一句话，比如记性不好，只好写下来">'
+      + '<div class="sc-row">'
+      + '<button class="sc-cancel" onclick="sayCloseCard()">算了</button>'
+      + '<button class="sc-ok" onclick="saySaveCard()">好了</button>'
+      + '</div>'
+    );
+    setTimeout(function () { var inp = $('say-card-input'); if (inp) inp.focus(); }, 260);
+  };
+
+  function saveMe(nameVal) {
+    var lineEl = $('say-card-line');
+    data.me = data.me || {};
+    data.me.name = nameVal;
+    data.me.line = lineEl ? String(lineEl.value || '').trim() : (data.me.line || '');
+    saveData();
+    sayCloseCard();
+    renderMe();
+    sayToast('记下了');
+  }
 
   /* ---------------- 一页纸 ---------------- */
   function entriesOfBook() {
-    var bs = books();
-    var key = currentBookKey();
-    var b = bs.filter(function (x) { return x.key === key; })[0];
+    var bs = shelfBooks();
+    var id = currentBookId();
+    var b = bs.filter(function (x) { return x.id === id; })[0];
     return b ? b.entries : [];
   }
 
-  window.sayOpenBook = function () {
+  window.sayOpenCurrentBook = function () {
     var es = entriesOfBook();
     if (!es.length) { sayNewEntry(); return; }
     state.pageIdx = es.length - 1;
@@ -253,12 +574,13 @@
     if (dateEl) dateEl.textContent = dateLabel(e.date);
     if (weekEl) weekEl.textContent = weekLabel(e.date) + (e.mood ? ' · ' + e.mood : '');
     if (footEl) {
+      var bookName = bookTitleOf(currentBookId());
       footEl.innerHTML = '<span>第 ' + (state.pageIdx + 1) + ' 页</span>'
         + '<span class="sh-arrows">'
         + '<button onclick="sayTurnPrev()"' + (state.pageIdx <= 0 ? ' disabled' : '') + '>‹</button>'
         + '<button onclick="sayTurnNext()">›</button>'
         + '</span>'
-        + '<span>' + esc(monthLabel(parseInt(String(e.date).slice(5, 7), 10))) + ' · ' + es.length + ' 页</span>';
+        + '<span>' + esc(bookName) + ' · ' + es.length + ' 页</span>';
     }
     if (stampEl) stampEl.style.display = (e.date === todayStr()) ? 'flex' : 'none';
 
@@ -286,7 +608,13 @@
     }
   }
 
-  window.sayBackToWall = function () { show('wall'); renderWall(); };
+  window.sayBackToWall = function () { show('wall'); renderShelf(); };
+
+  function bookTitleOf(id) {
+    var bs = shelfBooks();
+    var b = bs.filter(function (x) { return x.id === id; })[0];
+    return b ? b.title : '';
+  }
 
   function flip(cb) {
     var m = $('say-flip');
@@ -382,7 +710,7 @@
       saveData();
     }
     show('wall');
-    renderWall();
+    renderShelf();
   };
 
   window.saySaveEntry = function () {
@@ -393,6 +721,7 @@
       sayToast('这一页还是空的');
       return;
     }
+    var bid = state.bookId || currentBookId();
     var e = {
       id: 'e-' + Date.now(),
       date: d.date || todayStr(),
@@ -403,6 +732,7 @@
       images: (d.images || []).slice(0, MAX_IMAGES),
       audio: d.audio || '',
       paper: d.paper || '',
+      bookId: bid.indexOf('m-') === 0 ? '' : bid,
       created: new Date().toISOString()
     };
     data.entries.push(e);
@@ -412,7 +742,6 @@
       sayToast('空间不够了，先把大图删掉再存');
       return;
     }
-    state.bookKey = e.date.slice(0, 7);
     state.pageIdx = entriesOfBook().length - 1;
     show('sheet');
     renderSheet();
@@ -755,21 +1084,15 @@
     if (typeof window.openPage === 'function') window.openPage('page-home');
   };
 
-  /* ---------------- 本子墙滑动手势 ---------------- */
+  /* ---------------- 书柜手势 ---------------- */
+  // 书柜是一排可以左右拖的书；长按改名由书脊自己处理，这里只需要保证滚动时
+  // 不会因为手指微动被当成点击（滚动容器本来就吃 pan-x）
   function bindGestures() {
     var shelf = $('say-shelf');
     if (!shelf || shelf.__sayBound) return;
     shelf.__sayBound = true;
-    var x0 = 0, y0 = 0, t0 = 0;
-    shelf.addEventListener('touchstart', function (e) {
-      var t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; t0 = Date.now();
-    }, { passive: true });
-    shelf.addEventListener('touchend', function (e) {
-      var t = e.changedTouches[0];
-      var dx = t.clientX - x0, dy = t.clientY - y0;
-      if (Math.abs(dx) < 48 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
-      if (Date.now() - t0 > 700) return;
-      saySlideBook(dx < 0 ? 1 : -1);
+    shelf.addEventListener('touchmove', function () {
+      clearTimeout(pressed.timer);   // 一开始拖就别等长按了
     }, { passive: true });
   }
 

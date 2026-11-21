@@ -19,7 +19,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <!-- 发布时务必与 js/build.js 的 __LIVE_BUILD__ 保持一致，否则 version-watch 会一直提示“新版已经好了” -->
-  <script>window.__BUILD__="20261121-1730";</script>
+  <script>window.__BUILD__="20261121-1800";</script>
   <script>
     (function () {
       var root = document.documentElement;
@@ -178,7 +178,7 @@
   <link rel="stylesheet" href="css/watch.css?v=1789854172623" />
   <link rel="stylesheet" href="css/theater.css?v=20261120-1340" />
   <link rel="stylesheet" href="css/xhs.css?v=20261121-0415" />
-    <link rel="stylesheet" href="css/say.css?v=20261121-0500" />
+    <link rel="stylesheet" href="css/say.css?v=20261121-1800" />
 
   <link rel="stylesheet" href="css/reader.css?v=20261120-2235" />
   <link rel="stylesheet" href="css/ledger.css?v=20261121-0400">
@@ -5642,21 +5642,32 @@
         <section class="view-page say-screen" id="page-say" style="display: none;">
           <div class="say-stage" id="say-stage">
 
-            <!-- 1 本子墙 -->
-            <div class="say-wall" id="say-wall">
-              <div class="say-top">
-                <div class="say-top-l">
-                  <button class="say-back" onclick="sayExitApp()" aria-label="回桌面">‹</button>
-                  <div class="say-title">我说</div>
+            <!-- 顶部：回桌面 + 说 / 我 两个书签 -->
+            <div class="say-top" id="say-top">
+              <div class="say-top-l">
+                <button class="say-back" onclick="sayExitApp()" aria-label="回桌面">‹</button>
+                <div class="say-tabs">
+                  <button class="say-tab on" id="say-tab-shelf" onclick="sayTab('shelf')">说</button>
+                  <button class="say-tab" id="say-tab-me" onclick="sayTab('me')">我</button>
                 </div>
-                <button class="say-round" onclick="sayNewEntry()" aria-label="写一页">
-                  <svg viewBox="0 0 24 24"><path d="M4 20l4-1 10-10-3-3L5 16l-1 4z"/><path d="M14 6l3 3"/></svg>
-                </button>
               </div>
-              <div class="say-shelf" id="say-shelf"></div>
-              <div class="say-hint" id="say-hint">左右滑动，换一本</div>
+              <button class="say-round" onclick="sayNewEntry()" aria-label="写一页">
+                <svg viewBox="0 0 24 24"><path d="M4 20l4-1 10-10-3-3L5 16l-1 4z"/><path d="M14 6l3 3"/></svg>
+              </button>
+            </div>
+
+            <!-- 1 书柜 -->
+            <div class="say-wall" id="say-wall">
+              <div class="say-shelf-wrap">
+                <div class="say-shelf" id="say-shelf"></div>
+                <div class="shelf-board"></div>
+              </div>
+              <div class="say-hint" id="say-hint">还没写下第一页</div>
               <div class="say-dots" id="say-dots"></div>
             </div>
+
+            <!-- 2 我 -->
+            <div class="say-me" id="say-me" style="display: none;"></div>
 
             <!-- 2 一页纸 -->
             <div class="say-sheet" id="say-sheet" style="display: none;">
@@ -5735,6 +5746,9 @@
                 <svg viewBox="0 0 24 24"><rect x="9" y="3.5" width="6" height="10" rx="3"/><path d="M6 11a6 6 0 0 0 12 0"/><path d="M12 17v3.5M8.5 20.5h7"/></svg>
               </button>
             </div>
+
+            <!-- 5 底部卡片（改名 / 新一本 / 改我） -->
+            <div class="say-card" id="say-card" style="display: none;"></div>
 
           </div>
         </section>
@@ -6502,7 +6516,7 @@
   <script src="js/theater/memory-engine.js?v=2026111122"></script>
   <script src="js/theater/worldbooks.js?v=2026111571"></script>
   <script src="js/xhs/xhs.js?v=20261121-0415"></script>
-    <script src="js/say/say.js?v=20261121-0500"></script>
+    <script src="js/say/say.js?v=20261121-1800"></script>
   <script src="js/app.js?v=2026111342"></script>
 
 
