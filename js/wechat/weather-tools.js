@@ -189,13 +189,20 @@
   async function buildWeatherContext() {
     if (!readKey() || !readHost()) return '';
     if (lastContext && (Date.now() - lastFetchAt) < TTL) return lastContext;
+    var weatherTool = null;
     try {
-      var data = lastPayload || await requestWeather();
+      var data = lastPayload;
+      if (!data) {
+        weatherTool = (window.__momToolNotice && window.__momToolNotice.start) ? window.__momToolNotice.start('weather', '天气') : null;
+        data = await requestWeather();
+        if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(weatherTool, true);
+      }
       lastPayload = data;
       lastFetchAt = Date.now();
       lastContext = buildContext(data);
       return lastContext;
     } catch (err) {
+      if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(weatherTool, false);
       console.warn('[Weather] 天气获取失败，本次不注入：', weatherErrorText(err));
       return '';
     }

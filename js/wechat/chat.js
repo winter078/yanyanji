@@ -2584,6 +2584,145 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       pill.appendChild(close);
     }
 
+    // ===== 工具调用胶囊：搜索 / 天气 / 小红书 =====
+    const TOOL_LABELS = { search: '搜索', weather: '天气', xhs: '小红书' };
+    let toolSelMode = false;
+    let toolSelSet = new Set();
+
+    function toolLabelOf(m) {
+      const t = (m && m.toolCall) || {};
+      return TOOL_LABELS[t.key] || t.label || '工具';
+    }
+
+    function toolNoticeText(m) {
+      const t = (m && m.toolCall) || {};
+      const label = toolLabelOf(m);
+      if (t.status === 'fetching') return '正在获取「' + label + '」工具…';
+      if (t.status === 'running') return '正在' + label + '…';
+      if (t.status === 'fail') return '✕ ' + label + ' 调用失败';
+      return '✓ ' + label + ' 调用成功';
+    }
+
+    function ensureToolSelBar() {
+      let bar = document.getElementById('tool-sel-bar');
+      if (bar) return bar;
+      const host = document.getElementById('page-chat');
+      if (!host) return null;
+      bar = document.createElement('div');
+      bar.id = 'tool-sel-bar';
+      bar.innerHTML = '<span class="tsb-count">已选 0 条</span>' +
+        '<button type="button" class="tsb-cancel">取消</button>' +
+        '<button type="button" class="tsb-del">删除</button>';
+      host.appendChild(bar);
+      bar.querySelector('.tsb-cancel').addEventListener('click', function (e) { e.stopPropagation(); exitToolSelect(); });
+      bar.querySelector('.tsb-del').addEventListener('click', function (e) { e.stopPropagation(); deleteSelectedToolNotices(); });
+      return bar;
+    }
+    function refreshToolSelBar() {
+      const bar = ensureToolSelBar();
+      if (!bar) return;
+      bar.classList.toggle('on', toolSelMode);
+      const c = bar.querySelector('.tsb-count');
+      if (c) c.textContent = '已选 ' + toolSelSet.size + ' 条';
+    }
+    function refreshToolSelMarks() {
+      const nodes = document.querySelectorAll('.wechat-tool-notice');
+      Array.prototype.forEach.call(nodes, function (el) {
+        const on = toolSelMode && toolSelSet.has(String(el.getAttribute('data-id') || ''));
+        el.classList.toggle('sel-mode', toolSelMode);
+        const pill = el.querySelector('.wechat-tool-pill');
+        if (pill) pill.classList.toggle('sel', on);
+      });
+    }
+    function enterToolSelect(id) {
+      toolSelMode = true;
+      if (id) toolSelSet.add(String(id));
+      refreshToolSelMarks();
+      refreshToolSelBar();
+    }
+    function exitToolSelect() {
+      toolSelMode = false;
+      toolSelSet = new Set();
+      refreshToolSelMarks();
+      refreshToolSelBar();
+    }
+    function deleteSelectedToolNotices() {
+      const ids = Array.from(toolSelSet);
+      if (!ids.length) { exitToolSelect(); return; }
+      const history = appData.chatHistory || [];
+      history.forEach(function (m) {
+        if (m && m.id && ids.indexOf(String(m.id)) !== -1) m.hiddenFromView = true;
+      });
+      try { safeSaveChatHistory(); } catch (e) {}
+      exitToolSelect();
+      loadChatHistory();
+    }
+
+    function renderToolNotice(m) {
+      const container = document.getElementById('message-container');
+      if (!container) return null;
+      const div = document.createElement('div');
+      div.className = 'wechat-time-divider wechat-system-notice wechat-tool-notice' + (toolSelMode ? ' sel-mode' : '');
+      div.setAttribute('data-id', m.id || '');
+      const pill = document.createElement('span');
+      pill.className = 'wechat-time-pill wechat-system-pill wechat-tool-pill' + (toolSelMode && toolSelSet.has(String(m.id)) ? ' sel' : '');
+      const txt = document.createElement('span');
+      txt.className = 'wechat-tool-text';
+      txt.textContent = toolNoticeText(m);
+      pill.appendChild(txt);
+      pill.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = String(m.id || '');
+        if (!id) return;
+        if (!toolSelMode) { enterToolSelect(id); return; }
+        if (toolSelSet.has(id)) toolSelSet.delete(id); else toolSelSet.add(id);
+        if (!toolSelSet.size) { exitToolSelect(); return; }
+        refreshToolSelMarks();
+        refreshToolSelBar();
+      });
+      div.appendChild(pill);
+      container.appendChild(div);
+      return div;
+    }
+
+    // 工具真正发起网络请求时调用：先挂一条"正在获取"，结束再改成成功/失败
+    function startToolNotice(key, label) {
+      try {
+        const entry = {
+          id: 'tool_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+          role: 'system',
+          notice: true,
+          hiddenFromAI: true,
+          toolCall: { key: key, label: label || '', status: 'fetching' },
+          time: getNowStr(),
+          timestamp: Date.now()
+        };
+        if (!Array.isArray(appData.chatHistory)) appData.chatHistory = [];
+        appData.chatHistory.push(entry);
+        const el = renderToolNotice(entry);
+        const txt = el && el.querySelector('.wechat-tool-text');
+        setTimeout(function () {
+          if (!entry.toolCall || entry.toolCall.status !== 'fetching') return;
+          entry.toolCall.status = 'running';
+          if (txt) txt.textContent = toolNoticeText(entry);
+        }, 240);
+        try { scrollChatToBottom && scrollChatToBottom(); } catch (e) {}
+        return { entry: entry, txt: txt };
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function endToolNotice(handle, ok) {
+      if (!handle || !handle.entry) return;
+      handle.entry.toolCall.status = ok ? 'success' : 'fail';
+      try { if (handle.txt) handle.txt.textContent = toolNoticeText(handle.entry); } catch (e) {}
+      try { safeSaveChatHistory(); } catch (e) {}
+    }
+
+    window.__momToolNotice = { start: startToolNotice, end: endToolNotice };
+
     // 通话结束后，聊天里只留一条“通话时长”。点它才会出现打开通话记录的入口。
     function renderCallRecordNotice(m) {
       const container = document.getElementById('message-container');
@@ -4331,6 +4470,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
         appData.chatHistory.forEach((m, idx) => {
           if (!m) return;
           if (m.hiddenFromView) return;
+          if (m.toolCall) { renderToolNotice(m, idx); return; }
           const mTime = m.time || getNowStr();
           const mTs = parseMsgTimestampSafe(m);
           // 微信间隔判定：首条消息或与上一时间标间隔 >= 5 分钟

@@ -363,11 +363,12 @@
     lastSearchKey = searchKey;
     if (xhsUrl) {
       console.log('[XHS] 检测到链接，开始读取');
-      var shareCard = (info && info.card) || extractShareCard(text);
+      var xhsShareCard = (info && info.card) || extractShareCard(text);
       if (!readXhsKey()) {
         console.log('[XHS] 未填写深度解析 Key，只返回标题和作者');
-        return buildXhsLimitedContext(shareCard, xhsUrl);
+        return buildXhsLimitedContext(xhsShareCard, xhsUrl);
       }
+      var xhsTool = (window.__momToolNotice && window.__momToolNotice.start) ? window.__momToolNotice.start('xhs', '小红书') : null;
       try {
         var note = await requestXhs(xhsUrl);
         console.log('[XHS] 读取完成', note && note.title, note && note.imageTexts ? note.imageTexts.length : 0, note && note.comments ? note.comments.length : 0);
@@ -384,15 +385,19 @@
               at: Date.now()
             };
           } catch(e){}
+          if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(xhsTool, true);
           return buildXhsContext(note);
         }
-        return buildXhsLimitedContext(shareCard, xhsUrl);
+        if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(xhsTool, true);
+        return buildXhsLimitedContext(xhsShareCard, xhsUrl);
       } catch (xhsErr) {
         console.warn('[XHS] 笔记读取失败，回退到标题和作者：', xhsErr && xhsErr.message ? xhsErr.message : xhsErr);
+        if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(xhsTool, false);
         try { window.__momoXhsLastError = String(xhsErr && xhsErr.message ? xhsErr.message : xhsErr); } catch(e){}
-        return buildXhsLimitedContext(shareCard, xhsUrl);
+        return buildXhsLimitedContext(xhsShareCard, xhsUrl);
       }
     }
+    var searchTool = (window.__momToolNotice && window.__momToolNotice.start) ? window.__momToolNotice.start('search', '搜索') : null;
     try {
       var data = await requestSearch(text);
       try {
@@ -402,8 +407,10 @@
           at: Date.now()
         };
       } catch(e){}
+      if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(searchTool, true);
       return buildContext(data);
     } catch (err) {
+      if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(searchTool, false);
       try { window.__momoLastWebSearch = null; } catch(e){}
       return [
         '【联网搜索不可用】',
