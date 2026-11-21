@@ -213,7 +213,8 @@
       lastSeededAt: Number(s.lastSeededAt) || 0,
       lastCharSeedAt: Number(s.lastCharSeedAt) || 0,
       lastNpcAt: Number(s.lastNpcAt) || 0,
-      autoLevel: (s.autoLevel === 'quiet' || s.autoLevel === 'lively') ? s.autoLevel : 'normal',
+      autoLevel: (s.autoLevel === 'quiet' || s.autoLevel === 'lively' || s.autoLevel === 'off') ? s.autoLevel : 'normal',
+      autoLevelPrev: (s.autoLevelPrev === 'quiet' || s.autoLevelPrev === 'lively') ? s.autoLevelPrev : 'normal',
       seenAt: Number(s.seenAt) || 0,
       greetedAt: Number(s.greetedAt) || 0
     };
@@ -1015,6 +1016,8 @@
 
   async function fmEnsureFresh() {
     if (fm.seeding) return;
+    // 开关关着：不自己长帖子，什么都不补
+    if (loadState().autoLevel === 'off') return;
     fm.seeding = true;
     var changed = false;
     try {
@@ -1310,15 +1313,24 @@
     var s = document.getElementById('fm-sheet');
     if (!s) return;
     s.style.display = 'flex';
+    var off = st.autoLevel === 'off';
     var levels = [['quiet', '安静', '一天最多一条角色帖'], ['normal', '正常', '半天一条左右'], ['lively', '活跃', '几个小时就有人说话']];
     var html = '<div class="fm-sheet-title">长椅的设置</div>';
-    html += '<div class="fm-hint">你不在的时候，这里会自己长出帖子。选一个吵闹程度。</div>';
-    html += '<div class="fm-levels">';
+    html += '<div class="fm-auto">'
+      + '<div class="fm-auto-txt"><b>会自己长帖子</b>'
+      + '<span>' + (off ? '关着。长椅安安静静，只有你和你想看的。' : '开着。你不在的时候，这里会自己冒出新的帖子。') + '</span></div>'
+      + '<button class="fm-swt' + (off ? '' : ' on') + '" onclick="fmToggleAuto()" aria-label="自动发帖开关"></button>'
+      + '</div>';
+    html += '<div class="fm-levels' + (off ? ' off' : '') + '">';
     levels.forEach(function (l) {
       html += '<div class="fm-level' + (st.autoLevel === l[0] ? ' on' : '') + '" onclick="fmSetAutoLevel(\'' + l[0] + '\')">'
         + '<b>' + l[1] + '</b><span>' + l[2] + '</span></div>';
     });
     html += '</div>';
+    html += '<div class="fm-hint">' + (off
+      ? '关着的时候点一下上面任意一档，就等于重新打开。已经长出来的帖子都还在。'
+      : '关掉开关，长椅就不再自己长帖子了；想清静可以关。')
+      + '</div>';
     var total = loadPosts().length;
     html += '<div class="fm-hint">现在一共 ' + total + ' 条帖子。清空以后，长椅会重新长。</div>';
     html += '<button class="fm-op danger wide" onclick="fmClearAll()">清空所有帖子</button>';
@@ -1329,6 +1341,21 @@
   function fmSetAutoLevel(l) {
     var st = loadState();
     st.autoLevel = l;
+    st.autoLevelPrev = l;
+    saveState(st);
+    fmOpenSettings();
+  }
+
+  function fmToggleAuto() {
+    var st = loadState();
+    if (st.autoLevel === 'off') {
+      st.autoLevel = (st.autoLevelPrev === 'quiet' || st.autoLevelPrev === 'lively') ? st.autoLevelPrev : 'normal';
+      window.wxToast && window.wxToast('长椅又会长了');
+    } else {
+      st.autoLevelPrev = st.autoLevel;
+      st.autoLevel = 'off';
+      window.wxToast && window.wxToast('长椅不长了');
+    }
     saveState(st);
     fmOpenSettings();
   }
@@ -1370,6 +1397,7 @@
   window.fmPickProfileCover = fmPickProfileCover;
   window.fmSaveProfile = fmSaveProfile;
   window.fmSetAutoLevel = fmSetAutoLevel;
+  window.fmToggleAuto = fmToggleAuto;
   window.fmClearAll = fmClearAll;
   window.fmMarkSeen = fmMarkSeen;
 
