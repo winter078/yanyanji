@@ -248,6 +248,42 @@ function renderThemePresetsUI() {
               p.style.zIndex = '11';
               let out;
               const backRect = window.__momOpenIconRect;
+              if (p.id === 'page-home' && pageId !== 'page-home') {
+                // 桌面垫在 App 下面，让 App 从图标上"长出来"
+                p.style.zIndex = '9';
+                // 从桌面进 App：桌面整块不动（壁纸不能缩放），只让图标和 Dock 轻轻收一下
+                const iv = document.getElementById('ios-viewport');
+                const dk = document.getElementById('home-dock-bar');
+                if (iv && typeof iv.animate === 'function') {
+                  try {
+                    iv.animate(
+                      [{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(0.9)', opacity: 0.6 }],
+                      { duration: 200, easing: 'cubic-bezier(.4,0,.7,.4)', fill: 'forwards' }
+                    );
+                  } catch (e) {}
+                }
+                if (dk && typeof dk.animate === 'function') {
+                  try {
+                    dk.animate(
+                      [{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(0.86)', opacity: 0.5 }],
+                      { duration: 200, delay: 20, easing: 'cubic-bezier(.4,0,.7,.4)', fill: 'forwards' }
+                    );
+                  } catch (e) {}
+                }
+                let done2 = false;
+                const hideHome = () => {
+                  if (done2) return;
+                  done2 = true;
+                  try { if (iv && iv.getAnimations) iv.getAnimations().forEach(a => a.cancel()); } catch (e) {}
+                  try { if (dk && dk.getAnimations) dk.getAnimations().forEach(a => a.cancel()); } catch (e) {}
+                  p.style.display = 'none';
+                  p.style.opacity = '';
+                  p.style.transform = '';
+                  p.style.zIndex = '';
+                };
+                setTimeout(hideHome, 240);
+                return;
+              }
               if (pageId === 'page-home' && backRect) {
                 // 收回被点的那个图标位置
                 const pr = p.getBoundingClientRect();
@@ -348,7 +384,35 @@ function renderThemePresetsUI() {
             }
           } catch (e) {}
         }
-        if (pageId === 'page-app-store') {
+        // 回桌面：App 缩回去的同时，桌面图标和 Dock "弹出来"（一收一出）
+        if (pageId === 'page-home' && prevActive && prevActive.id !== 'page-home') {
+          const iv = document.getElementById('ios-viewport');
+          const dk = document.getElementById('home-dock-bar');
+          try {
+            if (iv && typeof iv.animate === 'function') {
+              iv.getAnimations().forEach(a => { try { a.cancel(); } catch (e) {} });
+              iv.animate(
+                [
+                  { transform: 'scale(0.9)', opacity: 0.55 },
+                  { transform: 'scale(1.012)', opacity: 1, offset: 0.62 },
+                  { transform: 'scale(1)', opacity: 1 }
+                ],
+                { duration: 380, delay: 70, easing: 'cubic-bezier(.2,.8,.3,1)' }
+              );
+            }
+            if (dk && typeof dk.animate === 'function') {
+              dk.getAnimations().forEach(a => { try { a.cancel(); } catch (e) {} });
+              dk.animate(
+                [
+                  { transform: 'scale(0.86)', opacity: 0.5 },
+                  { transform: 'scale(1.02)', opacity: 1, offset: 0.6 },
+                  { transform: 'scale(1)', opacity: 1 }
+                ],
+                { duration: 400, delay: 95, easing: 'cubic-bezier(.2,.8,.3,1)' }
+              );
+            }
+          } catch (e) {}
+        }
           if (typeof window.renderAppStore === 'function') defer(function () { window.renderAppStore(); });
         } else if (pageId === 'page-prompt-presets') {
           if (window.PromptPresets && typeof window.PromptPresets.renderSettings === 'function') window.PromptPresets.renderSettings();
