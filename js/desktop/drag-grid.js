@@ -834,10 +834,17 @@
     card.className = 'widget-card widget-hero-profile';
     card.style.cssText = 'position: relative; border-radius: 28px; overflow: hidden;';
     const h = (window.appData && window.appData.hero) ? window.appData.hero : { userName: 'user', userHandle: '@测试人员', userTag: '用户', locationText: '生活在真实世界中' };
+    // 名片背景必须写进模板里：桌面组件是刷新后重新生成的，
+    // 只靠 applyThemeAndImages 在启动时给 #hero-card-banner 上色会落空（那时元素还没建出来）
+    let banner = (window.appData && window.appData.heroBanner) || '';
+    if (!banner) { try { banner = localStorage.getItem('momo_hero_banner') || ''; } catch (e) { banner = ''; } }
+    const bannerStyle = banner
+      ? "background-image:url('" + banner.replace(/'/g, "\\'") + "'); background-size:cover; background-position:center;"
+      : '';
     card.innerHTML = `
       <div class="ios-delete-badge" onclick="event.stopPropagation(); removeDesktopWidget(${pageIndex}, ${wIndex})" title="移除组件">✕</div>
       <div class="hero-profile-card" style="margin: 0; box-shadow: none; border: none; height: 260px;">
-        <div class="hero-card-banner" id="hero-card-banner" onclick="triggerPick('heroBanner')" title="更换背景"></div>
+        <div class="hero-card-banner" id="hero-card-banner" style="${bannerStyle}" onclick="triggerPick('heroBanner')" title="更换背景"></div>
         <div class="hero-avatar-wrap" onclick="triggerPick('heroAvatar')" title="更换头像">
           <img id="hero-avatar-img" src="${(window.appData && window.appData.heroAvatar) || localStorage.getItem('momo_hero_avatar') || ''}" alt="头像" />
         </div>
