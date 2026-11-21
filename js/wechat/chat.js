@@ -1,4 +1,4 @@
-﻿
+
     var currentMenuGroupId = '';
     var CHAR_REMARK_KEY = 'momo_char_remarks_v1';
     var CHAT_IMAGE_STATE_KEY = 'momo_chat_image_state_v1';
@@ -3312,6 +3312,113 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       return true;
     }
 
+    // ===== 多图叠放：同一个人连着发的图收成一摞，可「展开 / 收起」=====
+    function picStackBox() {
+      return document.getElementById('message-container') || msgContainer;
+    }
+
+    function findTailPicStack(role) {
+      const box = picStackBox();
+      if (!box) return null;
+      const last = box.lastElementChild;
+      if (!last || !last.classList || !last.classList.contains('pic-stack-host')) return null;
+      if ((last.getAttribute('data-pic-role') || '') !== role) return null;
+      const stack = last.querySelector('.pic-stack');
+      if (!stack || stack.classList.contains('open')) return null;
+      return last;
+    }
+
+    function refreshPicStack(stack) {
+      if (!stack) return;
+      const imgs = Array.prototype.slice.call(stack.getElementsByTagName('img'));
+      const n = imgs.length;
+      const wrap = stack.parentElement;
+      const badge = wrap ? wrap.querySelector('.pic-stack-badge') : null;
+      const open = stack.classList.contains('open');
+
+      stack.classList.remove('stacked');
+      stack.style.width = '';
+      stack.style.height = '';
+      imgs.forEach(function (im) {
+        im.style.position = '';
+        im.style.left = '';
+        im.style.top = '';
+        im.style.zIndex = '';
+        im.style.width = '';
+        im.style.height = '';
+        im.style.marginTop = '';
+      });
+      if (badge) {
+        badge.style.display = (n >= 3) ? '' : 'none';
+        badge.innerText = (open ? '收起' : '展开 ' + n);
+      }
+      if (n < 3) {
+        stack.classList.remove('open');
+        return;
+      }
+
+      // 统一显示尺寸，跟单图时一致：宽 ≤200、高 ≤240
+      const iw = imgs[0].naturalWidth || 0;
+      const ih = imgs[0].naturalHeight || 0;
+      let dw = 200;
+      let dh = 150;
+      if (iw && ih) {
+        const r = Math.min(200 / iw, 240 / ih, 1);
+        dw = Math.max(60, Math.round(iw * r));
+        dh = Math.max(60, Math.round(ih * r));
+      }
+
+      if (open) {
+        stack.style.width = dw + 'px';
+        imgs.forEach(function (im, i) {
+          im.style.width = dw + 'px';
+          im.style.height = dh + 'px';
+          im.style.marginTop = (i === 0 ? '0' : '6px');
+        });
+        return;
+      }
+
+      const gapY = 22;
+      const gapX = 7;
+      stack.classList.add('stacked');
+      stack.style.width = (dw + gapX * (n - 1)) + 'px';
+      stack.style.height = (dh + gapY * (n - 1)) + 'px';
+      imgs.forEach(function (im, i) {
+        im.style.position = 'absolute';
+        im.style.width = dw + 'px';
+        im.style.height = dh + 'px';
+        im.style.left = (i * gapX) + 'px';
+        im.style.top = (i * gapY) + 'px';
+        im.style.zIndex = String(120 - i);
+      });
+    }
+
+    function togglePicStack(stack) {
+      if (!stack) return;
+      stack.classList.toggle('open');
+      refreshPicStack(stack);
+      try { if (typeof scheduleChatBubbleRefit === 'function') scheduleChatBubbleRefit(); } catch (e) {}
+    }
+
+    function addPicToStack(host, src, msgIndex) {
+      const stack = host.querySelector('.pic-stack');
+      if (!stack) return false;
+      const img = document.createElement('img');
+      img.src = src;
+      img.alt = '聊天图片';
+      img.onclick = function (e) {
+        e.stopPropagation();
+        openFullImageModal(src);
+      };
+      img.onload = function () { refreshPicStack(stack); };
+      stack.appendChild(img);
+      if (msgIndex !== -1 && typeof bindBubbleLongPress === 'function') {
+        bindBubbleLongPress(img, msgIndex);
+      }
+      refreshPicStack(stack);
+      try { if (typeof scheduleChatBubbleRefit === 'function') scheduleChatBubbleRefit(); } catch (e) {}
+      return true;
+    }
     function renderMessageBubble(role, text, time = getNowStr(), thought = '', msgIndex = -1, mediaData = null, isTyping = false) {
       if (role === 'system' || (typeof text === 'string' && text.startsWith('[SYSTEMHINT:'))) {
         let hintText = typeof text === 'string' ? text : '';
@@ -3325,6 +3432,17 @@ window.syncNarrationModeUI = syncNarrationModeUI;
         text = text.replace(/<(?:think|thinking|thought)>[\s\S]*?<\/(?:think|thinking|thought)>/gi, '');
         text = text.replace(/<(?:think|thinking|thought)>[\s\S]*$/gi, '');
         text = text.replace(/<\/?(?:think|thinking|thought)>/gi, '').trim();
+      }
+      // 【多图叠放】同一人连着发的图收进上一个图堆，不再单独起一条消息
+      if ((role === 'user' || role === 'assistant') && typeof text === 'string' && !(thought && String(thought).trim())) {
+        const picOnly = text.trim().match(/^\[IMAGE:([^\]]+)\]$/);
+        if (picOnly && picOnly[1]) {
+          const stackHost = findTailPicStack(role);
+          if (stackHost) {
+            addPicToStack(stackHost, picOnly[1], msgIndex);
+            return stackHost;
+          }
+        }
       }
       const group = document.createElement('div');
       group.className = `msg-group ${role === 'user' ? 'user' : 'bot'}`;
@@ -3646,18 +3764,32 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       else if (cleanText.startsWith('[IMAGE:') && cleanText.endsWith(']')) {
         const imgSrc = cleanText.slice(7, -1);
         const imgBubble = document.createElement('div');
-        imgBubble.className = 'msg-pic-bubble';
+        imgBubble.className = 'msg-pic-bubble pic-stack';
+        imgBubble.setAttribute('data-pic-role', role);
         const img = document.createElement('img');
         img.src = imgSrc;
         img.alt = '聊天图片';
         img.onclick = () => {
           openFullImageModal(imgSrc);
         };
+        img.onload = () => { refreshPicStack(imgBubble); };
         imgBubble.appendChild(img);
+        const picBadge = document.createElement('div');
+        picBadge.className = 'pic-stack-badge';
+        picBadge.style.display = 'none';
+        picBadge.onclick = (e) => {
+          e.stopPropagation();
+          togglePicStack(imgBubble);
+        };
         if (msgIndex !== -1) {
           bindBubbleLongPress(imgBubble, msgIndex);
+          bindBubbleLongPress(picBadge, msgIndex);
         }
         bubbleWrap.appendChild(imgBubble);
+        bubbleWrap.appendChild(picBadge);
+        group.classList.add('pic-stack-host');
+        group.setAttribute('data-pic-role', role);
+        refreshPicStack(imgBubble);
       }
       // 如果是微信原生文件卡片 1:1 复刻 [FILECARD:...]
       else if (cleanText.includes('[FILECARD:') && cleanText.includes(']')) {

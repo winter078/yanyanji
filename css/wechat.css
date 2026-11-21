@@ -131,6 +131,51 @@
 .msg-pic-bubble img:hover {
   transform: scale(1.02);
 }
+/* 多图叠放：连着发 3 张以上收成一摞，点「展开 N」平铺，再点「收起」 */
+.msg-pic-bubble.pic-stack {
+  overflow: visible;
+  position: relative;
+}
+.msg-pic-bubble.pic-stack.stacked {
+  background: transparent;
+  box-shadow: none;
+  max-width: none;
+  max-height: none;
+}
+.pic-stack.stacked img {
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow: -4px 5px 14px rgba(0, 0, 0, 0.45);
+}
+.msg-pic-bubble.pic-stack.open {
+  overflow: visible;
+  max-width: none;
+  max-height: none;
+  background: transparent;
+  box-shadow: none;
+}
+.pic-stack.open img {
+  border-radius: 10px;
+  border: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+.pic-stack-badge {
+  display: block;
+  width: fit-content;
+  margin: 8px auto 0;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--text-muted, #9aa0aa);
+  font-size: 11.5px;
+  line-height: 1.3;
+  cursor: pointer;
+  user-select: none;
+}
+.pic-stack-badge:active {
+  background: rgba(255, 255, 255, 0.16);
+}
 
 .msg-text-card {
   background: linear-gradient(145deg, var(--bg-elevated-solid), var(--bg-surface));

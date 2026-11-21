@@ -1,4 +1,4 @@
-﻿
+
 // 通用 iOS 优雅文本编辑抽屉
 let currentQuickModalCallback = null;
 function openQuickTextModal(title, label, defaultValue, callback) {
@@ -492,11 +492,6 @@ function renderThemePresetsUI() {
         g1.appendChild(g2.children[cardIdx]);
         switchIosSlide(0);
       }
-    }
-
-    // 番茄钟小彩蛋
-    function openPomodoro() {
-      alert('【绪言监督提醒】\nuser，专心画画或写代码25分钟。时间到了绪言会抱你去喝温水休息！');
     }
 
     // ================= 绪言心声陪伴随笔 & 档案编辑逻辑 =================

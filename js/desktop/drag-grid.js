@@ -240,17 +240,6 @@
       categoryName: '角色伴侣',
       desc: '不接 API 的独立字卡 App，用自己的词库和角色对话，记忆只存里面'
     },
-    'app-pomodoro': {
-      id: 'app-pomodoro',
-      type: 'app',
-      action: 'openPomodoro',
-      icon: '☕',
-      name: '番茄钟',
-      bg: 'rgba(200,240,220,0.2)',
-      category: 'life',
-      categoryName: '专注工具',
-      desc: '沉浸专注番茄钟，陪伴你高效学习与工作'
-    },
     'app-gallery-photos': {
       id: 'app-gallery-photos',
       type: 'app',
@@ -288,7 +277,6 @@
     'app-yanyan-cat': '<circle cx="12" cy="13" r="6.2"/><path d="M6.8 9.4l-1-4.4 4.2 2.2M17.2 9.4l1-4.4-4.2 2.2"/><path d="M9.6 12.4h.01M14.4 12.4h.01M10.4 15.2c1 .9 2.2 .9 3.2 0"/>',
     'app-avatar-vault': '<circle cx="9" cy="8.6" r="3"/><path d="M3.4 19c.9-3 2.9-4.6 5.6-4.6s4.7 1.6 5.6 4.6"/><circle cx="16.6" cy="9.6" r="2.4"/><path d="M15.4 14.6c2.4 0 4.1 1.5 4.9 4"/>',
     'app-wordcards': '<rect x="4.2" y="5.2" width="7" height="13.6" rx="2"/><rect x="12.8" y="5.2" width="7" height="13.6" rx="2"/><path d="M7.7 9.2h.01M7.7 12h.01M7.7 14.8h.01M16.3 9.2h.01M16.3 12h.01M16.3 14.8h.01"/>',
-    'app-pomodoro': '<circle cx="12" cy="13" r="7"/><path d="M12 9.6v3.8l2.6 1.6M9.4 3.6h5.2M12 3.6v2.2"/>',
     'app-gallery-photos': '<rect x="3" y="6.5" width="18" height="13" rx="3"/><circle cx="12" cy="13" r="3.2"/><path d="M8 6.5l1-2h6l1 2"/>',
     'dock-wechat': '<path d="M4.4 7.4a3.4 3.4 0 0 1 3.4-3.4h8.4a3.4 3.4 0 0 1 3.4 3.4v3.4a3.4 3.4 0 0 1-3.4 3.4H11l-4.2 3.1v-3.1A3.4 3.4 0 0 1 4.4 10.8z"/><circle cx="9" cy="9" r=".9" fill="currentColor" stroke="none"/><circle cx="12.6" cy="9" r=".9" fill="currentColor" stroke="none"/><circle cx="16.2" cy="9" r=".9" fill="currentColor" stroke="none"/>',
   };
@@ -403,7 +391,7 @@
       if (widgetCleanupChanged) saveDesktopStorage();
 
       // 角色人设 App 已并入通讯录；个人名片已并入微信「我」；时间线、随笔日记 App 已下架：把旧桌面里残留的图标清掉
-      const REMOVED_DESK_APP_IDS = ['app-gallery', 'app-diary', 'app-weibo', 'app-me', 'app-css-editor'];
+      const REMOVED_DESK_APP_IDS = ['app-gallery', 'app-diary', 'app-weibo', 'app-me', 'app-css-editor', 'app-pomodoro'];
       let removedAppsChanged = false;
       const stripRemovedApps = function(slot) {
         if (!slot) return slot;
