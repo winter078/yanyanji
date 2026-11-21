@@ -170,8 +170,9 @@
     if (!mapNow || typeof mapNow !== 'object') mapNow = {};
     var ref = clone(g.members[0].history);
 
-    // 选中的角色拿到完整一份（保留它自己的那份，内容本来就相同）
-    mapNow[chosen.id] = clone(Array.isArray(mapNow[chosen.id]) ? mapNow[chosen.id] : ref);
+    // 选中的角色拿到完整一份：自己本来有就保留自己那份，自己是空的就用重复组里的这份
+    var own = Array.isArray(mapNow[chosen.id]) ? mapNow[chosen.id] : [];
+    mapNow[chosen.id] = own.length ? clone(own) : clone(ref);
     g.members.forEach(function (m) {
       if (m.id !== chosen.id) mapNow[m.id] = [];
     });
