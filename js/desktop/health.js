@@ -639,13 +639,17 @@
     html += '<div class="hp-field"><div class="hp-field-label">日期（可以往前选）</div>' +
       '<input class="hp-input" id="hp-cyc-date" type="date" value="' + ds + '"></div>';
     html += '<div class="hp-hint">' + status + '</div>';
-    html += '<button class="hp-primary pink" data-k="start" onclick="hpCycleAction(this.dataset.k)">把这天记作经期开始</button>';
+    if (isStart) {
+      html += '<button class="hp-primary pink" data-k="move" onclick="hpCycleAction(this.dataset.k)">按上面的日期改这个开始</button>';
+      html += '<button class="hp-primary ghost" data-k="remove" onclick="hpCycleAction(this.dataset.k)">撤销这个经期开始</button>';
+    } else {
+      html += '<button class="hp-primary pink" data-k="start" onclick="hpCycleAction(this.dataset.k)">把这天记作经期开始</button>';
+    }
     if (last && last <= ds) {
       html += '<button class="hp-primary ghost" data-k="end" onclick="hpCycleAction(this.dataset.k)">把这天记作经期结束</button>';
     }
-    if (isStart) {
-      html += '<button class="hp-primary ghost" data-k="move" onclick="hpCycleAction(this.dataset.k)">按上面的日期改这个开始</button>';
-      html += '<button class="hp-primary ghost" data-k="remove" onclick="hpCycleAction(this.dataset.k)">撤销这个经期开始</button>';
+    if (last && c.ends && c.ends[last]) {
+      html += '<button class="hp-primary ghost" data-k="unend" onclick="hpCycleAction(this.dataset.k)">撤销这次的结束日（' + fmtCN(c.ends[last]) + '）</button>';
     }
     openSheet('经期 · ' + fmtCN(ds), html);
   }
@@ -710,6 +714,19 @@
       saveCycle(c);
       closeSheet();
       toast('把这个开始改到了 ' + fmtCN(ds));
+      hpRenderAll();
+      return;
+    }
+
+    if (kind === 'unend') {
+      var l2 = lastStartBefore(c, ds);
+      if (!l2) { toast('这天之前还没有经期开始'); return; }
+      if (!(c.ends && c.ends[l2])) { toast('这次没有记过结束日'); return; }
+      var oldEnd = c.ends[l2];
+      delete c.ends[l2];
+      saveCycle(c);
+      closeSheet();
+      toast('撤销了 ' + fmtCN(oldEnd) + ' 的结束日，这次按默认 ' + c.periodLen + ' 天算');
       hpRenderAll();
       return;
     }
