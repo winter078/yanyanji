@@ -883,44 +883,71 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
     }
   }
 
-  /* 翻页：纸贴着左边装订线转过去。
-     dir='back' = 一张纸从左边翻回来盖上去（翻上一页 / 打开书 / 回到刚改好的那一页） */
+  /* 翻页：一页纸贴着右边被卷走。p=0 整页盖着，p=1 卷到底。
+     dir='back' = 一张纸从左边展开盖上来（翻上一页 / 打开书 / 回到刚改好的那一页） */
+  function sayCurlSet(p, id, w, h) {
+    var m = $(id || 'say-flip');
+    if (!m) return;
+    var page = m.querySelector('.flip-page');
+    var roll = m.querySelector('.roll');
+    if (!page) return;
+    var W = w || page.clientWidth || 1;
+    var H = h || page.clientHeight || 1;
+    var k = Math.max(0, Math.min(1, p));
+    var tilt = H * 0.052;                       // 卷边是斜着卷起来的，不是拿刀切齐
+    var cut = (1 - k) * (W + tilt + 60) - 60;   // k=0 整页盖住，k=1 彻底卷走
+    page.style.clipPath = 'polygon(-40px -40px, '
+      + (cut + tilt / 2).toFixed(1) + 'px -40px, '
+      + (cut - tilt / 2).toFixed(1) + 'px ' + (H + 40) + 'px, -40px ' + (H + 40) + 'px)';
+    if (roll) {
+      var ang = Math.atan2(tilt, H) * 180 / Math.PI;
+      roll.style.transform = 'translateX(' + (cut - W + 17).toFixed(1) + 'px) skewX(' + (-ang).toFixed(2) + 'deg)';
+      roll.style.opacity = (k <= .01 || k >= .99) ? '0' : '1';
+    }
+  }
+  function sayCurlAnim(id, p0, p1, ms, done) {
+    var page = $(id) && $(id).querySelector('.flip-page');
+    var W = page ? page.clientWidth : 1;
+    var H = page ? page.clientHeight : 1;
+    var t0 = (window.performance && performance.now) ? performance.now() : Date.now();
+    var finished = false;
+    function finish() {
+      if (finished) return;
+      finished = true;
+      sayCurlSet(p1, id, W, H);
+      if (done) done();
+    }
+    function step() {
+      if (finished) return;
+      var tt = (window.performance && performance.now) ? performance.now() : Date.now();
+      var k = Math.min(1, (tt - t0) / ms);
+      var e = 1 - Math.pow(1 - k, 3);
+      sayCurlSet(p0 + (p1 - p0) * e, id, W, H);
+      if (k < 1) requestAnimationFrame(step);
+      else finish();
+    }
+    requestAnimationFrame(step);
+    setTimeout(finish, ms + 160);   // 兜底：万一这一帧没跑，也别卡在中间
+  }
+  /* 翻一页：纸（= 现在看到的这一页）贴着右边卷走，底下先换成新的一页，卷开就露出来。
+     顺序很关键：拍纸 → 换底页 → 卷走，绝不能在卷完之后才换底页，那样整段都是同一页在动。 */
   function flipAt(id, cb, dir) {
     var m = $(id);
-    if (!m) { cb && cb(); return; }
-    var sheet = m.querySelector('.flip-sheet');
-    if (!sheet) { cb && cb(); return; }
-
-    if (dir === 'back') {
-      if (id === 'say-flip') saySnapPage();
-      m.classList.add('on');
-      sheet.style.transition = 'none';
-      sheet.style.transform = 'rotateY(-178deg)';
-      void sheet.offsetWidth;
-      sheet.style.transition = 'transform .5s cubic-bezier(.33, .06, .24, 1)';
-      sheet.style.transform = 'rotateY(0deg)';
-      cb && setTimeout(cb, 30);
-      setTimeout(function () {
-        m.classList.remove('on');
-        sheet.style.transition = 'none';
-        sheet.style.transform = 'rotateY(0deg)';
-      }, 560);
-      return;
-    }
-
-    if (id === 'say-flip') saySnapPage();
+    if (!m || !m.querySelector('.flip-page')) { cb && cb(); return; }
+    var page = m.querySelector('.flip-page');
+    var W = page.clientWidth || 1, H = page.clientHeight || 1;
     m.classList.add('on');
-    sheet.style.transition = 'none';
-    sheet.style.transform = 'rotateY(0deg)';
-    void sheet.offsetWidth;
-    sheet.style.transition = 'transform .46s cubic-bezier(.36, .04, .26, 1)';
-    sheet.style.transform = 'rotateY(-178deg)';
-    setTimeout(function () { cb && cb(); }, 290);
-    setTimeout(function () {
+    if (id === 'say-flip' && dir !== 'back') saySnapPage();   // 纸 = 这一页的样子
+    else {
+      var faces = m.querySelectorAll('.fs-paper');             // 进入书 / 回来时卷的是一张空白纸
+      for (var i = 0; i < faces.length; i++) faces[i].innerHTML = '';
+    }
+    if (cb) cb();                             // 底页先换成新内容
+    sayCurlSet(0, id, W, H);
+    sayCurlAnim(id, 0, 1, dir === 'back' ? 290 : 280, function () {
+      sayCurlSet(0, id, W, H);
       m.classList.remove('on');
-      sheet.style.transition = 'none';
-      sheet.style.transform = 'rotateY(0deg)';
-    }, 545);
+    });
   }
   function flip(cb, dir) { flipAt('say-flip', cb, dir); }
 
@@ -935,9 +962,7 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
   };
   window.sayTurnPrev = function () {
     if (state.pageIdx <= 0) return;
-    state.pageIdx--;
-    renderSheet();
-    flipAt('say-flip', null, 'back');
+    flip(function () { state.pageIdx--; renderSheet(); });
   };
 
   /* ---------------- 翻到哪天 ---------------- */
@@ -1948,18 +1973,10 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
     if (typeof window.openPage === 'function') window.openPage('page-home');
   };
 
-  /* ---------------- 手指翻页：纸的右半边往左拖 = 下一页，往右拖 = 上一页 ---------------- */
+  /* ---------------- 手指翻页：右半张纸往左拖 = 卷走这一页，往右拖 = 展开上一页 ---------------- */
   (function () {
-    var drag = { on: false, x: 0, y: 0, w: 1, ang: 0, dir: '', pre: -1 };
+    var drag = { on: false, x: 0, y: 0, w: 1, h: 1, p: 0, dir: '', pre: -1 };
     function layer() { return $('say-flip'); }
-    function sheetEl() { return document.querySelector('#say-flip .flip-sheet'); }
-    function park(a) {
-      var L = layer(), S = sheetEl();
-      if (!L || !S) return;
-      L.classList.add('on');
-      S.style.transition = 'none';
-      S.style.transform = 'rotateY(' + a.toFixed(1) + 'deg)';
-    }
 
     function start(e) {
       if (state.mode !== 'sheet' || e.touches.length !== 1) return;
@@ -1969,8 +1986,11 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
       if (!bg) return;
       var r = bg.getBoundingClientRect();
       if (t.clientX < r.left + r.width * 0.5) return;   // 左半边留给阅读
-      drag.on = true; drag.moved = false; drag.dir = ''; drag.ang = 0; drag.pre = -1;
-      drag.x = t.clientX; drag.y = t.clientY; drag.w = r.width;
+      var page = document.querySelector('#say-flip .flip-page');
+      drag.on = true; drag.dir = ''; drag.p = 0; drag.pre = -1;
+      drag.x = t.clientX; drag.y = t.clientY;
+      drag.w = (page && page.clientWidth) || r.width;
+      drag.h = (page && page.clientHeight) || r.height;
     }
 
     function move(e) {
@@ -1979,24 +1999,28 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
       var dx = drag.x - t.clientX;          // 往左拖为正
       var dy = Math.abs(drag.y - t.clientY);
       if (!drag.dir) {
-        if (Math.abs(dx) < 10 && dy < 10) return;
+        if (Math.abs(dx) < 8 && dy < 8) return;
         if (dy > Math.abs(dx) * 1.2) { drag.on = false; return; }   // 上下滑 → 让给正文滚动
         if (dx > 0) {
+          if (state.pageIdx >= entriesOfBook().length - 1) { drag.on = false; return; }
           drag.dir = 'next';
-          saySnapPage();                   // 纸的正面就是正在离开的这一页
+          saySnapPage();                    // 纸 = 正在离开的这一页
+          state.pageIdx++;                  // 底下先摆成下一页，卷起来就露它
+          renderSheet();
         } else {
           if (state.pageIdx <= 0) { drag.on = false; return; }
           drag.dir = 'prev';
           drag.pre = state.pageIdx;
-          state.pageIdx = drag.pre - 1;
+          saySnapPage();                    // 纸 = 正在离开的这一页
+          state.pageIdx = drag.pre - 1;     // 底下换成上一页，卷起来就露它
           renderSheet();
-          saySnapPage();                   // 纸的正面是翻回来的那一页
         }
       }
-      var k = Math.min(178, Math.max(0, (Math.abs(dx) / (drag.w * 1.15)) * 178));
-      var a = drag.dir === 'next' ? -k : (-178 + k);
-      drag.ang = a;
-      park(a);
+      var k = Math.abs(dx) / (drag.w * 1.05);
+      var p = drag.dir === 'next' ? Math.min(1, k) : Math.max(0, 1 - k);
+      drag.p = p;
+      layer().classList.add('on');
+      sayCurlSet(p, 'say-flip', drag.w, drag.h);
       if (e.cancelable) e.preventDefault();
     }
 
@@ -2004,25 +2028,15 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
       if (!drag.on) return;
       drag.on = false;
       if (!drag.dir) return;
-      var L = layer(), S = sheetEl();
-      if (!L || !S) return;
-      var done = drag.dir === 'next' ? (drag.ang <= -62) : (drag.ang >= -116);
-      var endAng = done ? (drag.dir === 'next' ? -178 : 0) : (drag.dir === 'next' ? 0 : -178);
-      S.style.transition = 'transform .3s cubic-bezier(.3, .06, .24, 1)';
-      S.style.transform = 'rotateY(' + endAng + 'deg)';
-      setTimeout(function () {
-        if (drag.dir === 'prev' && !done && drag.pre >= 0) {
-          state.pageIdx = drag.pre;        // 没翻成 → 退回原来那页（纸还盖着，看不出来）
-          renderSheet();
-        }
-        S.style.transition = 'none';
-        S.style.transform = 'rotateY(0deg)';
-        L.classList.remove('on');
-        if (drag.dir !== 'next' || !done) return;
-        var es = entriesOfBook();
-        if (state.pageIdx >= es.length - 1) sayNewEntry();
-        else { state.pageIdx++; renderSheet(); }
-      }, 320);
+      var m = layer(), W = drag.w, H = drag.h;
+      var done = drag.dir === 'next' ? drag.p > .5 : drag.p < .5;
+      var target = drag.dir === 'next' ? (done ? 1 : 0) : (done ? 0 : 1);
+      sayCurlAnim('say-flip', drag.p, target, 200, function () {
+        if (drag.dir === 'next' && !done) { state.pageIdx--; renderSheet(); }
+        if (drag.dir === 'prev' && !done && drag.pre >= 0) { state.pageIdx = drag.pre; renderSheet(); }
+        sayCurlSet(0, 'say-flip', W, H);
+        m.classList.remove('on');
+      });
     }
 
     document.addEventListener('touchstart', start, { passive: true });
@@ -2030,7 +2044,6 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
     document.addEventListener('touchend', end, { passive: true });
     document.addEventListener('touchcancel', end, { passive: true });
   })();
-
   /* ---------------- 书柜手势 ---------------- */
   // 书柜是一排可以左右拖的书；长按改名由书脊自己处理，这里只需要保证滚动时
   // 不会因为手指微动被当成点击（滚动容器本来就吃 pan-x）
