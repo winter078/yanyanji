@@ -4096,11 +4096,15 @@ window.syncNarrationModeUI = syncNarrationModeUI;
         kindTag.innerText = (artInfo.kind === 'xlsx' ? 'XLSX' : artInfo.kind === 'pptx' ? 'PPTX' : artInfo.kind === 'docx' ? 'DOCX' : 'FILE');
         const sizeEl = document.createElement('span');
         sizeEl.innerText = (artInfo.size || '').replace(/\s*KB/i, ' K').replace(/\s*MB/i, ' M');
+        const scopeEl = document.createElement('span');
+        scopeEl.style.cssText = 'font-size: 10px; color: var(--text-muted); opacity: .85;';
+        scopeEl.innerText = artInfo.scope || '';
         const dlEl = document.createElement('span');
         dlEl.style.cssText = 'font-size: 10.5px; color: #5b8def;';
         dlEl.innerText = '点开下载';
         metaEl.appendChild(kindTag);
         metaEl.appendChild(sizeEl);
+        if (artInfo.scope) metaEl.appendChild(scopeEl);
         metaEl.appendChild(dlEl);
         infoCol.appendChild(nameEl);
         infoCol.appendChild(metaEl);
@@ -6246,11 +6250,44 @@ ${catalog}
           .map(function (m) { return (m.role === 'user' ? 'user：' : (appData.botRemark || '角色') + '：') + String(m.content).slice(0, 120); })
           .join('\n');
 
+        // 做文件时只取「当前这个话题」的聊天片段：遇到明显时间断层或条数上限就停。
+        // 除非user明确说“全部/所有聊天记录”，否则绝不把整本流水账塞进去。
+        const buildTopicSnippet = function (limit, wide) {
+          const hist = (appData.chatHistory || []).filter(function (m) {
+            return m && !m.hiddenFromView && (m.role === 'user' || m.role === 'assistant');
+          });
+          const timeToMin = function (str) {
+            const mt = String(str || '').match(/^(\d{1,2}):(\d{2})$/);
+            return mt ? (parseInt(mt[1], 10) * 60 + parseInt(mt[2], 10)) : null;
+          };
+          const picks = [];
+          const maxN = wide ? 40 : (limit || 10);
+          let lastMin = null;
+          for (let i = hist.length - 1; i >= 0 && picks.length < maxN; i--) {
+            const m = hist[i];
+            const text = String(m.content || '');
+            if (/^\[(?:ARTIFACT|FILECARD|SHARECARD|IMAGE|STICKER|TEXTCARD)/.test(text)) continue;
+            const tMin = timeToMin(m.time);
+            if (!wide && lastMin !== null && tMin !== null && Math.abs(lastMin - tMin) >= 25) break;
+            if (tMin !== null) lastMin = tMin;
+            picks.push((m.role === 'user' ? 'user：' : (appData.botRemark || '角色') + '：') + text.replace(/\s+/g, ' ').slice(0, 180));
+          }
+          picks.reverse();
+          return picks.join('\n').slice(0, 1800);
+        };
+
         // ========== 文件生成：角色真的给你做 Word / Excel / PPT ==========
         pendingArtifactMeta = null;
         if (window.MomArtifacts && typeof window.MomArtifacts.maybeCreate === 'function') {
           try {
-            const made = await window.MomArtifacts.maybeCreate({ userText: lastUserForTools, contextSnippet: toolSnippet });
+            const wantsAllChat = /(全部|所有|整个聊天|从头到尾|全量|一直以来)/.test(lastUserForTools);
+            const wantsNarrow = /(刚才|刚刚|这段|这个话题|这一小段|只整理|只打包)/.test(lastUserForTools) && !wantsAllChat;
+            const topicSnippet = buildTopicSnippet(wantsNarrow ? 6 : 10, wantsAllChat);
+            const made = await window.MomArtifacts.maybeCreate({
+              userText: lastUserForTools,
+              contextSnippet: topicSnippet,
+              scopeNote: topicSnippet ? '本话题 ' + topicSnippet.split('\n').length + ' 条' : '无对话素材'
+            });
             if (made && made.error) {
               recentMessages.push({ role: 'system', content: '【文件生成失败】你刚才想给user做文件，但没成功（' + made.error + '）。如实告诉她这次没做成，不要假装已经做好，也不要编造文件内容。' });
             } else if (made) {
@@ -6951,7 +6988,7 @@ ${catalog}
               pendingArtifactMeta = null;
               try {
                 const artIdx = appData.chatHistory.length;
-                const artPayload = '[ARTIFACT:' + JSON.stringify({ id: art.id, name: art.name, size: art.size, kind: art.kind }) + ']';
+                const artPayload = '[ARTIFACT:' + JSON.stringify({ id: art.id, name: art.name, size: art.size, kind: art.kind, scope: art.scopeNote || '' }) + ']';
                 appData.chatHistory.push({
                   role: 'assistant',
                   content: artPayload,

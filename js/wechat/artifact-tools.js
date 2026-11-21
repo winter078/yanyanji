@@ -8,7 +8,7 @@
   //   3) 聊天里落一张可点开下载的卡片；刷新后凭 localStorage 里的 spec 重新生成
 
   var STORE_KEY = 'momo_artifacts_v1';
-  var LIB_V = '20261122-2812';
+  var LIB_V = '20261122-2813';
   var loaded = {};
 
   function loadScript(src) {
@@ -246,12 +246,13 @@
       '你是一名专业文档撰写助手，不是角色扮演。根据用户的要求，直接产出一份可以直接拿去用的' + label + '内容。',
       '要求：',
       '1. 内容具体、可执行，不要空话套话；用户没给细节时，按常见工作场景补齐合理内容，并保持中立专业。',
-      '2. 中文输出；标题和小标题简洁。',
-      '3. 只输出严格 JSON，不要 markdown 代码块，不要解释。',
-      '4. JSON 结构必须是：' + schemaFor(kind),
-      kind === 'docx' ? '5. Word 文档 4~8 个小节，每节 2~4 段或要点；需要时带一个表格。' : '',
-      kind === 'xlsx' ? '5. 表格 1~3 个工作表，每表 5~20 行，列名清晰，数值列给具体数字。' : '',
-      kind === 'pptx' ? '5. 演示文稿 6~10 页，每页 3~6 条要点，每条不超过 24 字。' : ''
+      '2. 素材范围：只把与这次要求直接相关的对话内容当素材，提炼后重写；不要把聊天记录原样搬进文件，无关闲聊、亲密称呼和语气词全部忽略。',
+      '3. 中文输出；标题和小标题简洁。',
+      '4. 只输出严格 JSON，不要 markdown 代码块，不要解释。',
+      '5. JSON 结构必须是：' + schemaFor(kind),
+      kind === 'docx' ? '6. Word 文档 4~8 个小节，每节 2~4 段或要点；需要时带一个表格。' : '',
+      kind === 'xlsx' ? '6. 表格 1~3 个工作表，每表 5~20 行，列名清晰，数值列给具体数字。' : '',
+      kind === 'pptx' ? '6. 演示文稿 6~10 页，每页 3~6 条要点，每条不超过 24 字。' : ''
     ].filter(Boolean).join('\n');
     var controller = new AbortController();
     var timer = setTimeout(function () { controller.abort(); }, 90000);
@@ -264,7 +265,7 @@
           model: app.model || 'deepseek-chat',
           messages: [
             { role: 'system', content: sys },
-            { role: 'user', content: (contextSnippet ? '相关对话背景：\n' + contextSnippet + '\n\n' : '') + '用户的要求：' + String(userText || '') }
+            { role: 'user', content: (contextSnippet ? '本次话题相关的对话片段（只作素材，不是全部聊天记录）：\n' + contextSnippet + '\n\n' : '') + '用户的要求：' + String(userText || '') }
           ],
           temperature: 0.4,
           max_tokens: 2600
@@ -304,6 +305,7 @@
         title: title,
         name: safeName(title, extOf(kind)),
         spec: spec,
+        scopeNote: String(opts.scopeNote || ''),
         createdAt: Date.now(),
         size: ''
       };
