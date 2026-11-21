@@ -3324,81 +3324,52 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       if (!last || !last.classList || !last.classList.contains('pic-stack-host')) return null;
       if ((last.getAttribute('data-pic-role') || '') !== role) return null;
       const stack = last.querySelector('.pic-stack');
-      if (!stack || stack.classList.contains('open')) return null;
+      if (!stack) return null;
       return last;
     }
 
+    // 多张图拼成微信那样的方阵：3 张三列、4 张 2×2、5 张以上 3×3；点任意一张看大图
     function refreshPicStack(stack) {
       if (!stack) return;
       const imgs = Array.prototype.slice.call(stack.getElementsByTagName('img'));
       const n = imgs.length;
-      const wrap = stack.parentElement;
-      const badge = wrap ? wrap.querySelector('.pic-stack-badge') : null;
-      const open = stack.classList.contains('open');
 
       stack.classList.remove('stacked');
+      stack.classList.remove('open');
+      stack.style.display = '';
+      stack.style.gridTemplateColumns = '';
+      stack.style.gap = '';
       stack.style.width = '';
       stack.style.height = '';
       imgs.forEach(function (im) {
+        im.style.width = '';
+        im.style.height = '';
+        im.style.aspectRatio = '';
+        im.style.objectFit = '';
+        im.style.borderRadius = '';
+        im.style.marginTop = '';
         im.style.position = '';
         im.style.left = '';
         im.style.top = '';
         im.style.zIndex = '';
-        im.style.width = '';
-        im.style.height = '';
-        im.style.marginTop = '';
       });
-      if (badge) {
-        badge.style.display = (n >= 3) ? '' : 'none';
-        badge.innerText = (open ? '收起' : '展开 ' + n);
-      }
-      if (n < 3) {
-        stack.classList.remove('open');
-        return;
-      }
 
-      // 统一显示尺寸，跟单图时一致：宽 ≤200、高 ≤240
-      const iw = imgs[0].naturalWidth || 0;
-      const ih = imgs[0].naturalHeight || 0;
-      let dw = 200;
-      let dh = 150;
-      if (iw && ih) {
-        const r = Math.min(200 / iw, 240 / ih, 1);
-        dw = Math.max(60, Math.round(iw * r));
-        dh = Math.max(60, Math.round(ih * r));
-      }
+      // 只有 1 张时保持原样：一张正常大图
+      if (n < 2) return;
 
-      if (open) {
-        stack.style.width = dw + 'px';
-        imgs.forEach(function (im, i) {
-          im.style.width = dw + 'px';
-          im.style.height = dh + 'px';
-          im.style.marginTop = (i === 0 ? '0' : '6px');
-        });
-        return;
-      }
-
-      const gapY = 22;
-      const gapX = 7;
-      stack.classList.add('stacked');
-      stack.style.width = (dw + gapX * (n - 1)) + 'px';
-      stack.style.height = (dh + gapY * (n - 1)) + 'px';
-      imgs.forEach(function (im, i) {
-        im.style.position = 'absolute';
-        im.style.width = dw + 'px';
-        im.style.height = dh + 'px';
-        im.style.left = (i * gapX) + 'px';
-        im.style.top = (i * gapY) + 'px';
-        im.style.zIndex = String(120 - i);
+      const cols = (n === 2 || n === 4) ? 2 : 3;
+      stack.style.display = 'grid';
+      stack.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
+      stack.style.gap = '2px';
+      stack.style.width = '200px';
+      imgs.forEach(function (im) {
+        im.style.width = '100%';
+        im.style.height = '100%';
+        im.style.aspectRatio = '1 / 1';
+        im.style.objectFit = 'cover';
       });
     }
 
-    function togglePicStack(stack) {
-      if (!stack) return;
-      stack.classList.toggle('open');
-      refreshPicStack(stack);
-      try { if (typeof scheduleChatBubbleRefit === 'function') scheduleChatBubbleRefit(); } catch (e) {}
-    }
 
     function addPicToStack(host, src, msgIndex) {
       const stack = host.querySelector('.pic-stack');
@@ -3774,19 +3745,10 @@ window.syncNarrationModeUI = syncNarrationModeUI;
         };
         img.onload = () => { refreshPicStack(imgBubble); };
         imgBubble.appendChild(img);
-        const picBadge = document.createElement('div');
-        picBadge.className = 'pic-stack-badge';
-        picBadge.style.display = 'none';
-        picBadge.onclick = (e) => {
-          e.stopPropagation();
-          togglePicStack(imgBubble);
-        };
         if (msgIndex !== -1) {
           bindBubbleLongPress(imgBubble, msgIndex);
-          bindBubbleLongPress(picBadge, msgIndex);
         }
         bubbleWrap.appendChild(imgBubble);
-        bubbleWrap.appendChild(picBadge);
         group.classList.add('pic-stack-host');
         group.setAttribute('data-pic-role', role);
         refreshPicStack(imgBubble);
