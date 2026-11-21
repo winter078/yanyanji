@@ -413,6 +413,7 @@ function renderThemePresetsUI() {
             }
           } catch (e) {}
         }
+        if (pageId === 'page-app-store') {
           if (typeof window.renderAppStore === 'function') defer(function () { window.renderAppStore(); });
         } else if (pageId === 'page-prompt-presets') {
           if (window.PromptPresets && typeof window.PromptPresets.renderSettings === 'function') window.PromptPresets.renderSettings();
