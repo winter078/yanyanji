@@ -6254,21 +6254,21 @@ ${catalog}
         // 除非user明确说“全部/所有聊天记录”，否则绝不把整本流水账塞进去。
         const buildTopicSnippet = function (limit, wide) {
           const hist = (appData.chatHistory || []).filter(function (m) {
-            return m && !m.hiddenFromView && (m.role === 'user' || m.role === 'assistant');
+            return m && !m.hiddenFromView && !m.artifact && !m.notice && !m.toolCall && (m.role === 'user' || m.role === 'assistant');
           });
           const timeToMin = function (str) {
             const mt = String(str || '').match(/^(\d{1,2}):(\d{2})$/);
             return mt ? (parseInt(mt[1], 10) * 60 + parseInt(mt[2], 10)) : null;
           };
           const picks = [];
-          const maxN = wide ? 40 : (limit || 10);
+          const maxN = wide ? 40 : (limit || 24);
           let lastMin = null;
           for (let i = hist.length - 1; i >= 0 && picks.length < maxN; i--) {
             const m = hist[i];
             const text = String(m.content || '');
             if (/^\[(?:ARTIFACT|FILECARD|SHARECARD|IMAGE|STICKER|TEXTCARD)/.test(text)) continue;
             const tMin = timeToMin(m.time);
-            if (!wide && lastMin !== null && tMin !== null && Math.abs(lastMin - tMin) >= 25) break;
+            if (!wide && lastMin !== null && tMin !== null && Math.abs(lastMin - tMin) >= 30) break;
             if (tMin !== null) lastMin = tMin;
             picks.push((m.role === 'user' ? 'user：' : (appData.botRemark || '角色') + '：') + text.replace(/\s+/g, ' ').slice(0, 180));
           }
@@ -6282,7 +6282,7 @@ ${catalog}
           try {
             const wantsAllChat = /(全部|所有|整个聊天|从头到尾|全量|一直以来)/.test(lastUserForTools);
             const wantsNarrow = /(刚才|刚刚|这段|这个话题|这一小段|只整理|只打包)/.test(lastUserForTools) && !wantsAllChat;
-            const topicSnippet = buildTopicSnippet(wantsNarrow ? 6 : 10, wantsAllChat);
+            const topicSnippet = buildTopicSnippet(wantsNarrow ? 8 : 24, wantsAllChat);
             const made = await window.MomArtifacts.maybeCreate({
               userText: lastUserForTools,
               contextSnippet: topicSnippet,

@@ -8,7 +8,7 @@
   //   3) 聊天里落一张可点开下载的卡片；刷新后凭 localStorage 里的 spec 重新生成
 
   var STORE_KEY = 'momo_artifacts_v1';
-  var LIB_V = '20261122-2813';
+  var LIB_V = '20261122-2814';
   var loaded = {};
 
   function loadScript(src) {
