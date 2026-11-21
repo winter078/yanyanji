@@ -15,7 +15,7 @@
 #page-home .home-dock-bar {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  background: rgba(24, 24, 32, 0.46) !important;
+  background: rgba(24, 24, 32, 0.66) !important;
   border: 1px solid rgba(255, 255, 255, 0.18) !important;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.14) !important;
 }
