@@ -779,7 +779,8 @@
     post = data && data.post ? data.post : null;
     if (!post) return { post: null, comments: [] };
     try {
-      var cdata = await requestTwitter('comments', { id: String(id || ''), limit: 20 });
+      var conversationId = String(post.conversation_id || '').trim() || String(id || '');
+      var cdata = await requestTwitter('comments', { id: conversationId, limit: 20 });
       comments = (cdata && Array.isArray(cdata.comments)) ? cdata.comments : [];
       comments = comments.slice().sort(function (a, b) {
         return Number(b && b.like_count || 0) - Number(a && a.like_count || 0);
