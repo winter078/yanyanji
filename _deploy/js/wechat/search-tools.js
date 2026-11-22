@@ -737,10 +737,27 @@
     }
   }
 
+  // 用户点名要某一篇、某个主页/小红书号时，站内搜索抓不到就给他一个「去小红书搜」的入口卡，
+  // 让他点一下直接跳进 App 的搜索结果，而不是塞几张不相干的网页链接。
+  function xhsSearchCard(keyword, note) {
+    var kw = String(keyword || '').replace(/[\[\]]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 40);
+    if (!kw) return null;
+    return {
+      kind: 'xhs',
+      searchOnly: true,
+      title: '在小红书搜「' + kw + '」',
+      desc: note || '点一下直接跳到小红书的搜索结果，能看到相关笔记和主页',
+      url: 'https://www.xiaohongshu.com/search_result?keyword=' + encodeURIComponent(kw),
+      brandName: '小红书',
+      brandIcon: '📕'
+    };
+  }
+
   async function findXhsNote(keyword) {
-    var q = String(keyword || '').trim().slice(0, 60);
-    if (!q || !isEnabled() || !readApiKey()) return null;
-    var tries = ['site:xiaohongshu.com/explore ' + q, 'site:xiaohongshu.com ' + q, '小红书 ' + q];
+    var q = String(keyword || '').trim().replace(/[\[\]]/g, ' ').slice(0, 60);
+    if (!q) return null;
+    if (!isEnabled() || !readApiKey()) return xhsSearchCard(q, '点一下直接跳到小红书的搜索结果');
+    var tries = ['site:xiaohongshu.com/explore "' + q + '"', 'site:xiaohongshu.com/explore ' + q, 'site:xiaohongshu.com "' + q + '"', 'site:xiaohongshu.com ' + q];
     var candidates = [];
     for (var i = 0; i < tries.length && candidates.length < 6; i++) {
       try {
@@ -757,7 +774,11 @@
         console.warn('[XHS] 搜索失败：', eSearch && eSearch.message ? eSearch.message : eSearch);
       }
     }
-    if (!candidates.length) return null;
+    if (!candidates.length) {
+      // 搜不到具体笔记（点名的帖子多半没被搜索引擎收录）：不要编链接，给一个站内搜索入口。
+      return xhsSearchCard(q, /^\d{6,20}$/.test(q)
+        ? '点一下用小红书号搜她，App 里能直接进她的主页' : '点一下直接跳到小红书的搜索结果');
+    }
     // 有解析 Key 就用解析结果做校验：已删除/仅自己可见的笔记会直接报“读不到”，换下一条；
     // 没有 Key 只能靠页面探测（抓到的往往是小红书通用壳，判断力有限）。
     var hit = null;
@@ -771,7 +792,7 @@
           if (parsed && (parsed.title || parsed.desc)) { hit = candidates[a]; note = parsed; break; }
         } catch (eParse) {}
       }
-      if (!hit) return null;
+      if (!hit) return xhsSearchCard(q, '点一下直接跳到小红书的搜索结果');
     } else {
       for (var k = 0; k < candidates.length; k++) {
         var probe = await probeNote(candidates[k].url);
@@ -782,10 +803,10 @@
         if (probed >= 3) break;
       }
       if (!hit) hit = fallback;
-      if (!hit) return null;
+      if (!hit) return xhsSearchCard(q, '点一下直接跳到小红书的搜索结果');
     }
     var title = (note && note.title) ? String(note.title) : String(hit.title || '小红书笔记');
-    if (looksLikeXhsAd(title, hit.url)) return null;
+    if (looksLikeXhsAd(title, hit.url)) return xhsSearchCard(q, '点一下直接跳到小红书的搜索结果');
     var desc = (note && note.desc) ? String(note.desc) : String(hit.snippet || '');
     var cover = (note && Array.isArray(note.images) && note.images[0]) ? note.images[0] : '';
     return {

@@ -3560,7 +3560,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       }
       // 用户自己发的小红书链接已经是一张分享卡，角色读完只回文字，不再追加第二张卡。
       // 即使小红书读取失败后回退成普通搜索，也不要把无关搜索卡追加到回复末尾。
-      const isXhsQuery = /(?:xiaohongshu\.com|xhslink\.com)/i.test(String(state.query || ''));
+      const isXhsQuery = /(?:xiaohongshu\.com|xhslink\.com|小红书|小某书|红书)/i.test(String(state.query || ''));
       if (state.kind === 'xhs' || isXhsQuery) {
         try { window.__momoLastWebSearch = null; } catch (e) {}
         return { text: replyText, cards: [], inline: false };
@@ -4341,6 +4341,27 @@ window.syncNarrationModeUI = syncNarrationModeUI;
               if (kind === 'watch') { if (typeof window.playSharedVideo === 'function') window.playSharedVideo(cardData); return; }
               if (kind === 'read') { if (typeof window.playSharedBook === 'function') window.playSharedBook(cardData); return; }
               if (cardData.url) {
+                // 「在小红书搜…」入口卡：同样先拉 App 的搜索结果页，拉不起来再退回网页。
+                if (cardData.searchOnly || /xiaohongshu\.com\/search_result/i.test(cardData.url)) {
+                  const kw = (function () {
+                    try { return new URL(cardData.url).searchParams.get('keyword') || ''; } catch (e) { return ''; }
+                  })();
+                  if (kw) {
+                    let searchFellBack = false;
+                    const searchFallback = function () {
+                      if (searchFellBack) return;
+                      searchFellBack = true;
+                      if (typeof window.openLinkViewer === 'function') window.openLinkViewer(cardData.url, cardData.title);
+                      else window.location.href = cardData.url;
+                    };
+                    try { window.location.href = 'xhsdiscover://search/result?keyword=' + encodeURIComponent(kw); } catch (e) {}
+                    setTimeout(function () {
+                      if (document.hidden) return;
+                      searchFallback();
+                    }, 1600);
+                    return;
+                  }
+                }
                 // 小红书笔记在网页端常被限制成“因权限或已被删除”，但 App 里能看：
                 // 先尝试用深链拉起小红书，拉不起来再退回内嵌网页。
                 const xhsId = (function () {
@@ -6361,18 +6382,64 @@ ${catalog}
             return lines;
           })();
           const xhsLine = recentUserLines.filter(function (t) { return /(小红书|小某书|红书)/.test(t); })[0] || '';
-          const wantsXhs = !!xhsLine && /(发|分享|给|来|推|甩|整)/.test(xhsLine) &&
+          const wantsXhs = !!xhsLine && /(发|分享|给|来|推|甩|整|搜|找|查|主页|笔记|帖子|ID|id)/.test(xhsLine) &&
             !/(怎么|如何|为什么)/.test(xhsLine);
           if (wantsXhs && !/(h?ttps?:\/\/|xiaohongshu\.com|xhslink\.com)/i.test(xhsLine) && typeof window.__momFindXhsNote === 'function') {
-            const topic = String(xhsLine || '')
-              .replace(/(小红书|小某书|红书)/g, ' ')
-              .replace(/(帮我|给我|替我|麻烦|请|能不能|可以|发我|发给我|发|分享|来|推|甩|整|一篇|一条|一个|笔记|帖子|看看|看|呗|吧|呀|啊|快点|快)/g, ' ')
-              .replace(/[，。！？、,.!?：:；;]/g, ' ')
-              .replace(/\s+/g, ' ').trim().slice(0, 40);
+            // 关键词优先级：引号/书名号里的标题 > 「帖子是…」后面的标题 > 纯数字小红书号 > 整句清洗
+            // 用户经常分几条发（先说“她小红书号”，再说“帖子是”，最后给标题），所以要跨最近几条找。
+            const quoted = (function () {
+              for (let qi = 0; qi < recentUserLines.length; qi++) {
+                const m = String(recentUserLines[qi]).match(/[《“"「]([^》”"」]{2,40})[》”"」]/);
+                if (m && m[1]) return m[1].trim();
+              }
+              return '';
+            })();
+            const afterShi = (function () {
+              for (let si = 0; si < recentUserLines.length; si++) {
+                const m = String(recentUserLines[si]).match(/帖子是[：:\s]*([^，。！？]{4,40})/);
+                if (m && m[1]) return m[1].trim();
+              }
+              return '';
+            })();
+            const titleLine = (function () {
+              for (let ti = recentUserLines.length - 1; ti >= 0; ti--) {
+                const s = String(recentUserLines[ti] || '').replace(/[，。！？、,.!?]/g, ' ').trim();
+                if (s.length < 5 || s.length > 40) continue;
+                if (/(小红书|小某书|红书|帖子|主页|笔记|发我|发给|能不能|帮我|搜一下|找一下|快点|好了|可以吗)/.test(s)) continue;
+                return s;
+              }
+              return '';
+            })();
+            const xhsIdMatch = (function () {
+              for (let xi = 0; xi < recentUserLines.length; xi++) {
+                const m = String(recentUserLines[xi]).match(/\b(\d{6,20})\b/);
+                if (m && m[1]) return m[1];
+              }
+              return '';
+            })();
+            const topic = quoted || afterShi || titleLine || xhsIdMatch || (function () {
+              const cleaned = String(xhsLine || '')
+                .replace(/(小红书|小某书|红书|小红书号|ID|id|主页)/g, ' ')
+                .replace(/(你|我|她|他|帮我|帮我搜|给我|替我|麻烦|请|能不能|可以|发我|发给我|发|分享|来|推|甩|整|一篇|一条|一个|一篇|这篇|那篇|这个|那个|笔记|帖子|看看|看|呗|吧|呀|啊|快点|快|搜|找|查|一下|试|试试)/g, ' ')
+                .replace(/(如果|是|个|的|呢|吗|吧)/g, ' ')
+                .replace(/[，。！？、,.!?：:；;]/g, ' ')
+                .replace(/\s+/g, ' ').trim();
+              return cleaned.slice(0, 40);
+            })();
             const found = await window.__momFindXhsNote(topic || '推荐');
-            if (found) {
+            const alreadySent = !!found && recentMessages.some(function (m) {
+              return m && typeof m.content === 'string' && m.content.indexOf('[SHARECARD:') >= 0 &&
+                m.content.indexOf(found.title.replace(/[\[\]]/g, '').slice(0, 20)) >= 0;
+            });
+            if (found && alreadySent) {
+              recentMessages.push({ role: 'system', content: '【这张小红书卡片你刚刚已经发过了】不要再重复发卡，也不要再解释取不到主页；用一两句话接住她的话就行。' });
+            } else if (found) {
               pendingShareCard = found;
-              recentMessages.push({ role: 'system', content: '【已找到一篇真实的小红书笔记：《' + found.title + '》】回复里自然提一句“给你找了一篇”，不要自己写链接、不要编造笔记内容；卡片会自动出现在你的回复后面。绝对不要说“需要你给链接才能查”。' });
+              if (found.searchOnly) {
+                recentMessages.push({ role: 'system', content: '【你没法直接翻别人的主页/列表，站内搜索也没抓到她点名的这篇：' + topic + '】你已经给她放了一张「在小红书搜' + topic + '」的入口卡，点开就会跳到小红书 App 的搜索结果，她能在里面找到笔记和主页。回复里只用角色口吻说“我这边只能帮你搜到入口，你点开这张卡直接看”，不要编造笔记标题/内容，不要说“需要你把链接发我”，也不要提接口、后台、技术限制这类词。卡片会自动出现在回复后面。' });
+              } else {
+                recentMessages.push({ role: 'system', content: '【已找到一篇真实的小红书笔记：《' + found.title + '》】回复里自然提一句“给你找了一篇”，不要自己写链接、不要编造笔记内容；卡片会自动出现在你的回复后面。绝对不要说“需要你给链接才能查”。' });
+              }
             } else {
               recentMessages.push({ role: 'system', content: '【没搜到能分享的小红书笔记】如实说这次没找到可分享的具体笔记，不要编造链接或标题，也不要说“你把链接发来”。' });
             }
