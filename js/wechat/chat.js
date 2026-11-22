@@ -2787,7 +2787,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
     }
 
     // ===== 工具调用胶囊：搜索 / 天气 / 小红书 =====
-    const TOOL_LABELS = { search: '搜索', weather: '天气', xhs: '小红书', docx: '文档', xlsx: '表格', pptx: 'PPT', md: '文档' };
+    const TOOL_LABELS = { search: '搜索', weather: '天气', xhs: '小红书', douyin: '抖音', docx: '文档', xlsx: '表格', pptx: 'PPT', md: '文档' };
     let pendingArtifactMeta = null;
     let pendingShareCard = null;
     let toolSelMode = false;
@@ -3634,7 +3634,8 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       // 用户自己发的小红书链接已经是一张分享卡，角色读完只回文字，不再追加第二张卡。
       // 即使小红书读取失败后回退成普通搜索，也不要把无关搜索卡追加到回复末尾。
       const isXhsQuery = /(?:xiaohongshu\.com|xhslink\.com|小红书|小某书|红书)/i.test(String(state.query || '')) || !!window.__momXhsQueryTurn;
-      if (state.kind === 'xhs' || isXhsQuery) {
+      const isDouyinQuery = /(?:douyin\.com|v\.douyin\.com|iesdouyin|抖音)/i.test(String(state.query || '')) || !!window.__momDouyinQueryTurn;
+      if (state.kind === 'xhs' || isXhsQuery || state.kind === 'douyin' || isDouyinQuery) {
         try { window.__momoLastWebSearch = null; } catch (e) {}
         return { text: replyText, cards: [], inline: false };
       }
@@ -4472,6 +4473,26 @@ window.syncNarrationModeUI = syncNarrationModeUI;
                   setTimeout(function () {
                     if (document.hidden) return;
                     fallback();
+                  }, 1600);
+                  return;
+                }
+                // 抖音视频：先拉 App 的视频页，拉不起来再退回网页。
+                const douyinId = String(cardData.videoId || '').trim() || (function () {
+                  const m = String(cardData.url).match(/douyin\.com\/(?:video|note)\/(\d{15,25})/);
+                  return m ? m[1] : '';
+                })();
+                if (douyinId) {
+                  let dyFellBack = false;
+                  const dyFallback = function () {
+                    if (dyFellBack) return;
+                    dyFellBack = true;
+                    if (typeof window.openLinkViewer === 'function') window.openLinkViewer(cardData.url, cardData.title);
+                    else window.location.href = cardData.url;
+                  };
+                  try { window.location.href = 'snssdk1128://aweme/detail/' + douyinId; } catch (e) {}
+                  setTimeout(function () {
+                    if (document.hidden) return;
+                    dyFallback();
                   }, 1600);
                   return;
                 }
@@ -6480,6 +6501,7 @@ ${catalog}
         pendingShareCard = null;
         window.__momXhsQueryTurn = false;
         window.__momXhsLastTopic = '';
+        window.__momDouyinQueryTurn = false;
         try { localStorage.removeItem('momo_pending_share_card_v1'); } catch (e) {}
         try {
           const recentUserLines = (function () {
@@ -6490,7 +6512,9 @@ ${catalog}
             }
             return lines;
           })();
-          const xhsLine = recentUserLines.filter(function (t) { return /(小红书|小某书|红书)/.test(t); })[0] || '';
+          const latestLine = recentUserLines[0] || '';
+          const latestIsDouyin = /(抖音|douyin)/i.test(latestLine) && !/(小红书|小某书|红书)/i.test(latestLine);
+          const xhsLine = latestIsDouyin ? '' : (recentUserLines.filter(function (t) { return /(小红书|小某书|红书)/.test(t); })[0] || '');
           const wantsXhs = !!xhsLine && /(发|分享|给|来|推|甩|整|搜|找|查|主页|笔记|帖子|ID|id)/.test(xhsLine) &&
             !/(怎么|如何|为什么)/.test(xhsLine);
           // 主页绑定：她从小红书 App 复制一次主页长链接，之后就能直接发「她的主页」卡片
@@ -6666,8 +6690,50 @@ ${catalog}
               recentMessages.push({ role: 'system', content: '【没搜到能分享的小红书笔记】如实说这次没找到可分享的具体笔记，不要编造链接或标题，也不要说“你把链接发来”。' });
             }
           }
+
+          // 抖音：用户点名要视频时，搜一条真实视频、读完文案再发卡。
+          const douyinLine = recentUserLines.filter(function (t) { return /(抖音|douyin)/i.test(t); })[0] || '';
+          const wantsDouyin = !!douyinLine && !xhsLine &&
+            /(发|分享|给|来|推|甩|整|搜|找|查|看|刷|视频)/.test(douyinLine) &&
+            !/(怎么|如何|为什么|教程|运营|账号怎么做)/.test(douyinLine) &&
+            !/(douyin\.com|v\.douyin\.com|iesdouyin)/i.test(douyinLine);
+          if (wantsDouyin) {
+            const douyinTopic = (function () {
+              for (let qi = 0; qi < recentUserLines.length; qi++) {
+                const m = String(recentUserLines[qi]).match(/[《“"「]([^》”"」]{2,40})[》”"」]/);
+                if (m && m[1]) return m[1].trim();
+              }
+              return String(douyinLine)
+                .replace(/(抖音|douyin|短视频|视频|帮我|给我|替我|麻烦|请|能不能|可以|发我|发给我|发|分享|来|推|甩|整|搜|找|查|看|刷|一个|一条|一篇|这个|那个|一下|的|吧|呗|呀|啊|呢|吗)/gi, ' ')
+                .replace(/[，。！？、,.!?：:；;]/g, ' ')
+                .replace(/\s+/g, ' ').trim().slice(0, 40);
+            })();
+            if (douyinTopic && typeof window.__momFindDouyinVideo === 'function') {
+              window.__momDouyinQueryTurn = true;
+              const douyinTool = (window.__momToolNotice && window.__momToolNotice.start)
+                ? window.__momToolNotice.start('douyin', '抖音') : null;
+              let douyinCard = null;
+              try {
+                douyinCard = await window.__momFindDouyinVideo(douyinTopic);
+              } catch (eDouyin) {
+                douyinCard = null;
+              }
+              if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(douyinTool, !!(douyinCard && !douyinCard.douyinSearchOnly));
+              if (douyinCard) {
+                pendingShareCard = douyinCard;
+                if (douyinCard.douyinSearchOnly) {
+                  recentMessages.push({ role: 'system', content: '【这次没翻到具体的抖音视频：' + douyinTopic + '】你给她放了一张「在抖音搜' + douyinTopic + '」的入口卡，点开就是抖音搜索结果。回复里用角色口吻说“我这边只能帮你搜到入口，你点开看”，不要编造视频标题，不要说“需要你把链接发我”，也不要提接口、后台、技术限制。' });
+                } else {
+                  const readText = douyinCard.readNote && douyinCard.readNote.desc ? ('你已经看过这条视频的文案，开头是：' + douyinCard.readNote.desc.slice(0, 220)) : '你已经看过封面和标题。';
+                  recentMessages.push({ role: 'system', content: '【已找到一条真实的抖音视频：《' + douyinCard.title + '》】' + readText + ' 回复里用你自己的话提一句它讲了什么（别大段复述、别编造文案没有的内容），再说“给你找了一个”；卡片会自动跟在后面。绝对不要说“需要你给链接才能查”，也不要把方括号标记写出来。' });
+                }
+              } else {
+                recentMessages.push({ role: 'system', content: '【这次没找到能分享的抖音视频】如实说没找到，不要编造链接或标题，也不要说“你把链接发来”。' });
+              }
+            }
+          }
         } catch (eShare) {
-          console.warn('[XHS] 分享笔记失败：', eShare && eShare.message ? eShare.message : eShare);
+          console.warn('[Share] 分享卡片失败：', eShare && eShare.message ? eShare.message : eShare);
         }
 
         const toolSnippet = recentMessages

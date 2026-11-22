@@ -10,11 +10,13 @@
   var STATUS_PATH = '/api/search/status';
   var XHS_PATH = '/api/xhs';
   var EVERY_PATH = '/api/xhs/everyinfra';
+  var DOUYIN_PATH = '/api/douyin';
   var STATUS_TIMEOUT = 12000;
   var SEARCH_TIMEOUT = 30000;
   var XHS_TIMEOUT = 90000;
   var XHS_SEARCH_TIMEOUT = 55000;
   var EVERY_TIMEOUT = 55000;
+  var DOUYIN_TIMEOUT = 55000;
 
   function readEnabled() {
     try { return localStorage.getItem(ENABLED_KEY) === 'true'; } catch (e) { return false; }
@@ -300,6 +302,84 @@
       if (detail && detail.note) full = detail.note;
     } catch (e) {}
     return everyNoteCard(full);
+  }
+
+  function douyinVideoId(value) {
+    var text = String(value || '');
+    var m = text.match(/(?:video|note)\/(\d{15,25})/i) || text.match(/(?:modal_id|aweme_id)=(\d{15,25})/i) || text.match(/^\s*(\d{15,25})\s*$/);
+    return m ? m[1] : '';
+  }
+
+  async function requestDouyin(action, params) {
+    var key = readEveryKey();
+    if (!key) throw new Error('missing_everyinfra_key');
+    var resp = await timeoutFetch(DOUYIN_PATH, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: action, params: params || {}, api_key: key })
+    }, DOUYIN_TIMEOUT);
+    return await readJson(resp);
+  }
+
+  function douyinSearchCard(keyword) {
+    var kw = String(keyword || '').replace(/[\[\]]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 40);
+    if (!kw) return null;
+    return {
+      kind: 'douyin',
+      douyinSearchOnly: true,
+      title: '在抖音搜「' + kw + '」',
+      desc: '点一下直接跳到抖音的搜索结果，能看到相关视频',
+      url: 'https://www.douyin.com/search/' + encodeURIComponent(kw),
+      brand: '抖音',
+      brandIcon: '🎵'
+    };
+  }
+
+  function douyinVideoCard(video) {
+    if (!video) return null;
+    var title = String(video.title || '').replace(/[\[\]]/g, '').slice(0, 120) || '抖音视频';
+    var desc = String(video.text || '').replace(/[\[\]]/g, '').replace(/\s+/g, ' ').slice(0, 80);
+    var id = douyinVideoId(video.id || video.url);
+    var url = String(video.url || (id ? ('https://www.douyin.com/video/' + id) : ''));
+    if (!url) return null;
+    return {
+      kind: 'douyin',
+      title: title,
+      desc: desc,
+      cover: String(video.cover || ''),
+      url: url,
+      videoId: id,
+      brand: '抖音',
+      brandIcon: '🎵',
+      readNote: {
+        author: String(video.author || '').slice(0, 60),
+        desc: String(video.text || '').replace(/[\[\]]/g, '').replace(/\s+/g, ' ').slice(0, 320)
+      }
+    };
+  }
+
+  async function findDouyinVideo(keyword) {
+    var q = String(keyword || '').trim().replace(/[\[\]]/g, ' ').slice(0, 60);
+    if (!q) return null;
+    if (!readEveryKey()) return douyinSearchCard(q);
+    var data = await requestDouyin('search', { keyword: q });
+    var rows = (data && Array.isArray(data.results)) ? data.results : [];
+    var pick = null;
+    for (var i = 0; i < rows.length; i++) {
+      var row = rows[i];
+      if (!row || !row.url || !/douyin\.com\/(video|note)\//i.test(row.url)) continue;
+      pick = row;
+      break;
+    }
+    if (!pick) return douyinSearchCard(q);
+    var full = pick;
+    try {
+      var detail = await requestDouyin('video', { url: pick.url, id: pick.id });
+      if (detail && detail.video) full = detail.video;
+    } catch (e) {
+      console.warn('[Douyin] 读视频详情失败，先用搜索摘要：', e && e.message ? e.message : e);
+    }
+    return douyinVideoCard(full);
   }
 
   function firstXhsUrl(text) {
@@ -1221,7 +1301,7 @@
   window.__momXhsSearchCard = xhsSearchCard;
   window.__momFindXhsNote = findXhsNote;
   window.__momFindXhsLatest = findXhsLatest;
-  window.__momBindXhsProfile = bindXhsProfile;
+  window.__momFindDouyinVideo = findDouyinVideo;  window.__momBindXhsProfile = bindXhsProfile;
   window.__momEnrichXhsProfileName = enrichXhsProfileName;
   window.__momGetXhsProfile = latestXhsProfile;
   window.__momGetXhsProfiles = xhsProfilesForChar;
