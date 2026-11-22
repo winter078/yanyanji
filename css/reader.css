@@ -3765,7 +3765,8 @@ body[data-theme="dark"] #page-reader .xianguo-add-btn,
    📖 纸质阅读模式：暖纸底 + 宋体正文（参考图）
    ============================================================ */
 .xianguo-reading-container {
-  position: relative;
+  position: absolute;
+  inset: 0;
   background:
     radial-gradient(125% 80% at 50% -10%, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 62%),
     radial-gradient(130% 110% at 50% 110%, rgba(122, 96, 60, 0.13), rgba(122, 96, 60, 0) 58%),
