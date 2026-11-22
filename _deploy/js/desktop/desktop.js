@@ -1,4 +1,4 @@
-﻿
+
 // 通用 iOS 优雅文本编辑抽屉
 let currentQuickModalCallback = null;
 function openQuickTextModal(title, label, defaultValue, callback) {
@@ -220,43 +220,257 @@ function renderThemePresetsUI() {
       document.querySelectorAll('.grid-drag-ghost').forEach(el => el.remove());
       // 清理任何残留在屏幕上的拖拽虚影
       document.querySelectorAll('.grid-drag-ghost').forEach(el => el.remove());
+      // 切页时把顶层弹层/抽屉收干净，避免有面板残留在桌面上
+      if (typeof window.__momCloseOverlays === 'function') {
+        try { window.__momCloseOverlays(); } catch (e) {}
+      }
 
       const allPages = document.querySelectorAll('.view-page');
+      const prevActive = document.querySelector('.view-page.active');
+      // 关键：先把上一页残留的动画全部取消，否则 fill:forwards 的 opacity:0 会一直粘在元素上，
+      // 页面淡入播完之后又被拉回 0，看起来就是"只剩壁纸"
+      const clearAnim = (p) => {
+        try {
+          if (typeof p.getAnimations === 'function') p.getAnimations().forEach(a => { try { a.cancel(); } catch (e) {} });
+        } catch (e) {}
+        p.style.opacity = '';
+        p.style.transform = '';
+        p.style.zIndex = '';
+      };
       allPages.forEach(p => {
         p.classList.remove('active');
+        try { p.style.animation = 'none'; } catch (e) {}
+        clearAnim(p);
+        // 要退出这一页的话先留着它，动画播完再隐藏
+        if (prevActive && p === prevActive && p.id !== pageId) {
+          if (typeof p.animate === 'function') {
+            try {
+              p.style.zIndex = '11';
+              let out;
+              const backRect = window.__momOpenIconRect;
+              if (p.id === 'page-home' && pageId !== 'page-home') {
+                // 桌面垫在 App 下面，让 App 从图标上"长出来"
+                p.style.zIndex = '9';
+                // iOS 的"扎进去"：桌面从被点图标处整体放大 1.14 并虚化，App 同时从图标长大
+                const iv = document.getElementById('ios-viewport');
+                const dk = document.getElementById('home-dock-bar');
+                const ir = window.__momLastIconRect;
+                const originFor = (el) => {
+                  if (!ir || !el) return '50% 50%';
+                  const r = el.getBoundingClientRect();
+                  if (!r.width) return '50% 50%';
+                  const sc = (el.offsetWidth || r.width) / r.width || 1;
+                  const x = (ir.left + ir.width / 2 - r.left) / sc;
+                  const y = (ir.top + ir.height / 2 - r.top) / sc;
+                  return x.toFixed(1) + 'px ' + y.toFixed(1) + 'px';
+                };
+                const diveFrames = [
+                  { transform: 'scale(1)' },
+                  { transform: 'scale(1.12)' }
+                ];
+                const diveOpts = { duration: 260, easing: 'cubic-bezier(.38,0,.6,.95)', fill: 'forwards' };
+                if (iv && typeof iv.animate === 'function') {
+                  try { iv.style.transformOrigin = originFor(iv); iv.animate(diveFrames, diveOpts); } catch (e) {}
+                }
+                if (dk && typeof dk.animate === 'function') {
+                  try { dk.style.transformOrigin = originFor(dk); dk.animate(diveFrames, diveOpts); } catch (e) {}
+                }
+                let done2 = false;
+                const hideHome = () => {
+                  if (done2) return;
+                  done2 = true;
+                  try { if (iv) iv.getAnimations().forEach(a => { try { a.cancel(); } catch (e) {} }); } catch (e) {}
+                  try { if (dk) dk.getAnimations().forEach(a => { try { a.cancel(); } catch (e) {} }); } catch (e) {}
+                  try { if (iv) { iv.style.transform = ''; iv.style.filter = ''; iv.style.transformOrigin = ''; } } catch (e) {}
+                  try { if (dk) { dk.style.transform = ''; dk.style.filter = ''; dk.style.transformOrigin = ''; } } catch (e) {}
+                  p.style.display = 'none';
+                  p.style.opacity = '';
+                  p.style.transform = '';
+                  p.style.zIndex = '';
+                };
+                setTimeout(hideHome, 300);
+                return;
+              }
+              if (pageId === 'page-home' && backRect) {
+                // 收回被点的那个图标位置
+                const pr = p.getBoundingClientRect();
+                const pw = p.offsetWidth || pr.width || 1;
+                const scalePx = pr.width / pw || 1;
+                const cx = (backRect.left + backRect.width / 2 - pr.left) / scalePx;
+                const cy = (backRect.top + backRect.height / 2 - pr.top) / scalePx;
+                const s = Math.max(0.06, Math.min(0.6, backRect.width / (pr.width || 1)));
+                const origin = cx.toFixed(1) + 'px ' + cy.toFixed(1) + 'px';
+                const endRadius = Math.min(160, Math.round(19 / s)) + 'px';
+                out = p.animate(
+                  [
+                    { opacity: 1, transform: 'scale(1)', transformOrigin: origin, borderRadius: '0px', offset: 0 },
+                    { opacity: 1, transform: 'scale(0.86)', transformOrigin: origin, borderRadius: '22px', offset: 0.25 },
+                    { opacity: 1, transform: 'scale(' + s + ')', transformOrigin: origin, borderRadius: endRadius, offset: 0.75 },
+                    { opacity: 1, transform: 'scale(' + s + ')', transformOrigin: origin, borderRadius: endRadius, offset: 0.93 },
+                    { opacity: 0, transform: 'scale(' + s + ')', transformOrigin: origin, borderRadius: endRadius, offset: 1 }
+                  ],
+                  { duration: 340, easing: 'cubic-bezier(.3,.05,.25,1)', fill: 'forwards' }
+                );
+              } else {
+                out = p.animate(
+                  [{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(0.94)' }],
+                  { duration: 180, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' }
+                );
+              }
+              let done = false;
+              const hide = () => {
+                if (done) return;
+                done = true;
+                try { out.cancel(); } catch (e) {}
+                p.style.display = 'none';
+                p.style.opacity = '';
+                p.style.transform = '';
+                p.style.zIndex = '';
+              };
+              out.finished.then(hide, hide);
+              setTimeout(hide, 400);
+            } catch (e) { p.style.display = 'none'; }
+          } else {
+            p.style.display = 'none';
+          }
+          return;
+        }
         p.style.display = 'none'; // 强制 display: none，彻底粉碎 iOS Safari 幽灵图层缓存
       });
 
+      // 重活往后挪：先让动画跑起来，渲染留到下一帧之后
+      const defer = (fn) => {
+        requestAnimationFrame(function () {
+          setTimeout(function () { try { fn(); } catch (e) { console.warn('[page] render failed', e); } }, 90);
+        });
+      };
+
       const target = document.getElementById(pageId);
       if (target) {
+        clearAnim(target);
         target.style.display = 'flex';
         target.classList.add('active');
+        if (typeof target.animate === 'function') {
+          try {
+            target.style.animation = 'none';
+            void target.offsetWidth;
+            const isHome = pageId === 'page-home';
+            const iconRect = window.__momLastIconRect || null;
+            window.__momOpenIconRect = iconRect;
+            window.__momLastIconRect = null;
+            // 回桌面时只做淡入，不缩放：壁纸在屏幕根节点上，缩放会让壁纸跟着动
+            // 打开 App 从被点的图标位置长出来（iOS 的 zoom 效果）；没有图标位置时退回普通 spring
+            if (!isHome && iconRect) {
+              const pr = target.getBoundingClientRect();
+              const pw = target.offsetWidth || pr.width || 1;
+              const scalePx = pr.width / pw || 1;
+              const cx = (iconRect.left + iconRect.width / 2 - pr.left) / scalePx;
+              const cy = (iconRect.top + iconRect.height / 2 - pr.top) / scalePx;
+              const s = Math.max(0.06, Math.min(0.6, iconRect.width / (pr.width || 1)));
+              const origin = cx.toFixed(1) + 'px ' + cy.toFixed(1) + 'px';
+              // 放大过程中保持"小圆角"观感：起点按缩放比例放大圆角，视觉半径接近图标圆角
+              const startRadius = Math.min(160, Math.round(19 / s)) + 'px';
+              target.animate(
+                [
+                  { opacity: 0, transform: 'scale(' + s + ')', transformOrigin: origin, borderRadius: startRadius, offset: 0 },
+                  { opacity: 0.9, transform: 'scale(1.03)', transformOrigin: origin, borderRadius: '14px', offset: 0.52 },
+                  { opacity: 1, transform: 'scale(0.994)', transformOrigin: origin, borderRadius: '5px', offset: 0.76 },
+                  { opacity: 1, transform: 'scale(1)', transformOrigin: origin, borderRadius: '0px', offset: 1 }
+                ],
+                { duration: 400, easing: 'cubic-bezier(.2,.68,.26,1)' }
+              );
+            } else if (isHome) {
+              // 壁纸直接出现，不做整页淡入（避免和 App 交叉淡化发灰）；图标另有浮现动画
+              target.style.opacity = '';
+            }
+            // 应用内部跳页（设置/聊天/关系图等，没有桌面图标起点）不做缩放回弹，
+            // 弹簧动效只保留在「桌面图标点击 → 打开 App」这一条路径上。
+          } catch (e) {}
+        }
+        // 回桌面：App 收进图标的同时，桌面原本是"放大 + 虚化"，等 App 收好再弹回原位（iOS 的一收一出）
+        if (pageId === 'page-home' && prevActive && prevActive.id !== 'page-home') {
+          const iv = document.getElementById('ios-viewport');
+          const dk = document.getElementById('home-dock-bar');
+          const ir = window.__momOpenIconRect;
+          const originFor = (el) => {
+            if (!ir || !el) return '50% 38%';
+            const r = el.getBoundingClientRect();
+            if (!r.width) return '50% 38%';
+            const sc = (el.offsetWidth || r.width) / r.width || 1;
+            const x = (ir.left + ir.width / 2 - r.left) / sc;
+            const y = (ir.top + ir.height / 2 - r.top) / sc;
+            return x.toFixed(1) + 'px ' + y.toFixed(1) + 'px';
+          };
+          const settle = [
+            { transform: 'scale(1.12)', offset: 0 },
+            { transform: 'scale(1.12)', offset: 0.62 },
+            { transform: 'scale(1.015)', offset: 0.86 },
+            { transform: 'scale(1)', offset: 1 }
+          ];
+          const opts = { duration: 380, easing: 'cubic-bezier(.25,.9,.3,1)', fill: 'forwards' };
+          try {
+            if (iv) {
+              iv.getAnimations().forEach(a => { try { a.cancel(); } catch (e) {} });
+              iv.style.transformOrigin = originFor(iv);
+              const a = iv.animate(settle, opts);
+              a.onfinish = () => {
+                try {
+                  a.cancel();
+                  iv.style.transform = '';
+                  iv.style.filter = '';
+                  iv.style.transformOrigin = '';
+                } catch (e) {}
+              };
+            }
+            if (dk) {
+              dk.getAnimations().forEach(a => { try { a.cancel(); } catch (e) {} });
+              dk.style.transformOrigin = originFor(dk);
+              const b = dk.animate(settle, opts);
+              b.onfinish = () => {
+                try {
+                  b.cancel();
+                  dk.style.transform = '';
+                  dk.style.filter = '';
+                  dk.style.transformOrigin = '';
+                } catch (e) {}
+              };
+            }
+          } catch (e) {}
+        }
         if (pageId === 'page-app-store') {
-          if (typeof window.renderAppStore === 'function') window.renderAppStore();
+          if (typeof window.renderAppStore === 'function') defer(function () { window.renderAppStore(); });
         } else if (pageId === 'page-prompt-presets') {
           if (window.PromptPresets && typeof window.PromptPresets.renderSettings === 'function') window.PromptPresets.renderSettings();
         } else if (pageId === 'page-gallery-photos') {
-          if (typeof renderPhotos === 'function') renderPhotos();
+          if (typeof renderPhotos === 'function') defer(function () { renderPhotos(); });
         } else if (pageId === 'page-yanyan-cat') {
-          if (typeof renderYanyanCatPage === 'function') renderYanyanCatPage();
+          if (typeof renderYanyanCatPage === 'function') defer(function () { renderYanyanCatPage(); });
         } else if (pageId === 'page-avatar-vault') {
-          if (typeof renderVaultView === 'function') renderVaultView();
+          if (typeof renderVaultView === 'function') defer(function () { renderVaultView(); });
         } else if (pageId === 'page-ledger') {
-          if (typeof renderLedgerApp === 'function') renderLedgerApp();
+          if (typeof renderLedgerApp === 'function') defer(function () { renderLedgerApp(); });
+        } else if (pageId === 'page-health') {
+          if (typeof window.renderHealthApp === 'function') defer(function () { window.renderHealthApp(); });
+        } else if (pageId === 'page-forum') {
+          if (typeof window.renderForumApp === 'function') defer(function () { window.renderForumApp(); });
         } else if (pageId === 'page-reader') {
-          if (typeof renderReaderShelf === 'function') renderReaderShelf();
+          if (typeof renderReaderShelf === 'function') defer(function () { renderReaderShelf(); });
         } else if (pageId === 'page-watch') {
-          if (typeof initWatchApp === 'function') initWatchApp();
+          if (typeof initWatchApp === 'function') defer(function () { initWatchApp(); });
         } else if (pageId === 'page-wechat-main') {
-          syncWechatMainPreview();
+          defer(function () { syncWechatMainPreview(); });
         } else if (pageId === 'page-moments') {
-          renderMomentsFeed();
+          defer(function () {
+            var feed = document.getElementById('moments-feed-container');
+            if (feed && typeof window.__momFlip === 'function') window.__momFlip(feed, renderMomentsFeed);
+            else renderMomentsFeed();
+          });
         } else if (pageId === 'page-me') {
-          syncMeProfileUI();
+          defer(function () { syncMeProfileUI(); });
         } else if (pageId === 'page-world') {
-          renderWorldBookshelf();
+          defer(function () { renderWorldBookshelf(); });
         } else if (pageId === 'page-palace') {
-          renderPalaceMemories();
+          defer(function () { renderPalaceMemories(); });
         } else if (pageId === 'page-char-setting') {
           if (!window.__editingCharId) {
             if (typeof getActiveCharacter === 'function' && typeof fillCharacterEditorById === 'function') {
@@ -267,13 +481,17 @@ function renderThemePresetsUI() {
             }
           }
         } else if (pageId === 'page-xhs') {
-          if (typeof window.renderXhsApp === 'function') window.renderXhsApp();
+          if (typeof window.renderXhsApp === 'function') defer(function () { window.renderXhsApp(); });
+        } else if (pageId === 'page-say') {
+          if (typeof window.renderSayApp === 'function') defer(function () { window.renderSayApp(); });
         } else if (pageId === 'page-chat-setting') {
           if (typeof renderChatSettingsUI === 'function') renderChatSettingsUI();
           if (typeof window.renderCharacterImageSettingsUI === 'function') window.renderCharacterImageSettingsUI();
           if (typeof window.renderChatPinUI === 'function') window.renderChatPinUI();
         } else if (pageId === 'page-theme') {
-          if (typeof renderThemePresetsUI === 'function') renderThemePresetsUI();
+          if (typeof renderThemePresetsUI === 'function') defer(function () { renderThemePresetsUI(); });
+        } else if (pageId === 'page-stickers') {
+          if (typeof window.renderStickerPage === 'function') defer(function () { window.renderStickerPage(); });
         }
       }
 
@@ -290,7 +508,7 @@ function renderThemePresetsUI() {
       }
 
       if (pageId === 'page-daysmatter') {
-        if (typeof renderDaysMatter === 'function') renderDaysMatter();
+        if (typeof renderDaysMatter === 'function') defer(function () { renderDaysMatter(); });
       }
       if (pageId === 'page-chat') {
         if (typeof loadChatHistory === 'function') loadChatHistory();
@@ -298,7 +516,7 @@ function renderThemePresetsUI() {
         if (c) setTimeout(() => { c.scrollTop = c.scrollHeight; }, 30);
       }
       if (pageId === 'page-rp') {
-        renderRpStream();
+        defer(function () { renderRpStream(); });
       }
     }
 
@@ -484,11 +702,6 @@ function renderThemePresetsUI() {
         g1.appendChild(g2.children[cardIdx]);
         switchIosSlide(0);
       }
-    }
-
-    // 番茄钟小彩蛋
-    function openPomodoro() {
-      alert('【绪言监督提醒】\nuser，专心画画或写代码25分钟。时间到了绪言会抱你去喝温水休息！');
     }
 
     // ================= 绪言心声陪伴随笔 & 档案编辑逻辑 =================

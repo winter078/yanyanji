@@ -382,12 +382,9 @@ function renderThemePresetsUI() {
             } else if (isHome) {
               // 壁纸直接出现，不做整页淡入（避免和 App 交叉淡化发灰）；图标另有浮现动画
               target.style.opacity = '';
-            } else {
-              target.animate(
-                [{ opacity: 0, transform: 'scale(0.9)' }, { opacity: 1, transform: 'scale(1)' }],
-                { duration: 320, easing: 'cubic-bezier(.34,1.56,.64,1)' }
-              );
             }
+            // 应用内部跳页（设置/聊天/关系图等，没有桌面图标起点）不做缩放回弹，
+            // 弹簧动效只保留在「桌面图标点击 → 打开 App」这一条路径上。
           } catch (e) {}
         }
         // 回桌面：App 收进图标的同时，桌面原本是"放大 + 虚化"，等 App 收好再弹回原位（iOS 的一收一出）
