@@ -1081,7 +1081,63 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       writeProactiveSettingsMap(map);
     })();
 
+    function renderXhsProfileSettings() {
+      const box = document.getElementById('xhs-profile-list');
+      const status = document.getElementById('xhs-profile-status');
+      if (!box) return;
+      let list = [];
+      try { list = (typeof window.__momGetXhsProfiles === 'function') ? (window.__momGetXhsProfiles() || []) : []; } catch (e) { list = []; }
+      if (status && !status.getAttribute('data-keep')) status.innerText = '';
+      if (!list.length) {
+        box.innerHTML = '<div style="font-size:12px;color:var(--color-text-secondary);line-height:1.5;">还没有存过主页。把她的小红书主页长链接粘在下面就行，存一次以后按名字或号都能找到。</div>';
+        return;
+      }
+      box.innerHTML = '';
+      list.forEach(function (p) {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:12px;background:var(--bg-elevated);border:1px solid var(--border-default);';
+        const info = document.createElement('div');
+        info.style.cssText = 'flex:1;min-width:0;';
+        const nm = String(p.name || '').trim() || '未命名博主';
+        const id = String(p.xhsId || '').trim();
+        info.innerHTML = '<div style="font-size:13.5px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + nm.replace(/[<>&]/g, '') + '</div>' +
+          '<div style="font-size:11px;color:var(--color-text-secondary);margin-top:2px;">' + (id ? ('小红书号 ' + id) : '已存主页链接') + '</div>';
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.innerText = '删除';
+        del.style.cssText = 'flex-shrink:0;padding:6px 10px;border-radius:9px;border:1px solid rgba(239,68,68,0.30);background:rgba(239,68,68,0.10);color:var(--danger-primary);font-size:12px;cursor:pointer;';
+        del.onclick = function () {
+          if (typeof window.__momRemoveXhsProfile === 'function') window.__momRemoveXhsProfile(p.userId);
+          if (status) status.innerText = '已删除「' + nm + '」，下次它找不到了，需要重新粘链接。';
+          renderXhsProfileSettings();
+        };
+        row.appendChild(info);
+        row.appendChild(del);
+        box.appendChild(row);
+      });
+    }
+    window.renderXhsProfileSettings = renderXhsProfileSettings;
+
+    window.importXhsProfileFromSettings = function () {
+      const input = document.getElementById('xhs-profile-link-input');
+      const status = document.getElementById('xhs-profile-status');
+      const text = String((input && input.value) || '').trim();
+      if (!text) { if (status) status.innerText = '先把主页长链接粘进来。'; return; }
+      let saved = null;
+      try { saved = (typeof window.__momBindXhsProfile === 'function') ? window.__momBindXhsProfile(text) : null; } catch (e) { saved = null; }
+      if (!saved) {
+        if (status) status.innerText = '这条链接里没有主页 ID，需要 App 里「⋯ → 分享 → 复制链接」得到的长链接（带 /user/profile/）。';
+        return;
+      }
+      if (input) input.value = '';
+      renderXhsProfileSettings();
+      if (status) status.innerText = '已存下：' + (String(saved.name || '').trim() || '这位博主');
+    };
+
     function renderChatSettingsUI() {
+      if (typeof window.renderXhsProfileSettings === 'function') {
+        try { window.renderXhsProfileSettings(); } catch (e) {}
+      }
       const activeProactiveId = activeChatCharId();
       if (activeProactiveId) applyProactiveSettingsToChatSettings(activeProactiveId);
       if (typeof window.syncMaskEntry === 'function') {
@@ -5326,7 +5382,7 @@ ${(() => {
   try {
     const list = (typeof window.__momGetXhsProfiles === 'function') ? (window.__momGetXhsProfiles() || []) : [];
     const items = list.filter(p => p && p.userId).slice(0, 5)
-      .map(p => '- ' + (String(p.name || '').trim() || '她分享过的博主') + ' · 小红书主页（链接已经存好了，她要时直接给她主页卡片，不用再问链接）');
+      .map(p => '- ' + (String(p.name || '').trim() || '她分享过的博主') + '（小红书号 ' + String(p.xhsId || '未存') + '）· 小红书主页（链接已经存好了，她按名字或号来找你时，直接给她主页卡片，不用再问链接）');
     return items.length ? items.join('\n') : '暂无（还没存过别人主页）。';
   } catch (e) { return '暂无（还没存过别人主页）。'; }
 })()}
@@ -6420,6 +6476,16 @@ ${catalog}
           const wantsProfile = !!xhsLine && /(主页|她的帖子|她的笔记|她发的帖子|她发的笔记|小红书号|\bID\b|\bid\b)/.test(xhsLine) &&
             !/(怎么|如何|为什么)/.test(xhsLine);
           // 她直接喊你记住的那个博主名字（比如“粉毛爱妻”），也当主页请求处理
+          const matchedIdProfile = (function () {
+            if (typeof window.__momFindXhsProfileById !== 'function') return null;
+            for (let mi = 0; mi < recentUserLines.length; mi++) {
+              const idm = String(recentUserLines[mi] || '').match(/\b(\d{8,20})\b/);
+              if (!idm) continue;
+              const p = window.__momFindXhsProfileById(idm[1]);
+              if (p) return p;
+            }
+            return null;
+          })();
           const mentionsSavedProfile = (function () {
             let list = [];
             try { list = (typeof window.__momGetXhsProfiles === 'function' ? window.__momGetXhsProfiles() : []) || []; } catch (e) { list = []; }
@@ -6447,11 +6513,14 @@ ${catalog}
               pendingShareCard = boundCard;
               recentMessages.push({ role: 'system', content: '【她已经把小红书主页长链接交给你了，你记住了】回复里自然说一句“记住了/存好了”，卡片会自动跟在后面；不要说“需要你每次发链接”，也不要提接口、抓取、技术限制。' });
             }
-          } else if ((wantsProfile || mentionsSavedProfile) && savedProfile && !hasNamedNote && typeof window.__momXhsProfileCard === 'function') {
-            const savedCard = window.__momXhsProfileCard('', savedProfile);
+          } else if ((wantsProfile || mentionsSavedProfile || matchedIdProfile) && (matchedIdProfile || savedProfile) && !hasNamedNote && typeof window.__momXhsProfileCard === 'function') {
+            const savedCard = window.__momXhsProfileCard('', matchedIdProfile || savedProfile);
             if (savedCard) {
               pendingShareCard = savedCard;
-              recentMessages.push({ role: 'system', content: '【你已经记住了她的小红书主页】她问主页/帖子时，你直接给她一张「她的小红书主页」卡片，点开就能进去翻全部笔记。回复里用角色口吻叫她点开看，别编造具体笔记标题或内容，别说“只能搜入口”，也别提接口、后台、技术限制。' });
+              const byId = !!matchedIdProfile;
+              recentMessages.push({ role: 'system', content: byId
+                ? '【她报的这个小红书号你认得，是之前存过的博主】直接给她主页卡片，说一句“这个号我记得”，别再说要链接，也别提接口、后台、技术限制。'
+                : '【你已经记住了她的小红书主页】她问主页/帖子时，你直接给她一张「她的小红书主页」卡片，点开就能进去翻全部笔记。回复里用角色口吻叫她点开看，别编造具体笔记标题或内容，别说“只能搜入口”，也别提接口、后台、技术限制。' });
             }
           } else if (wantsXhs && !/(h?ttps?:\/\/|xiaohongshu\.com|xhslink\.com)/i.test(xhsLine) && typeof window.__momFindXhsNote === 'function') {
             // 关键词优先级：引号/书名号里的标题 > 「帖子是…」后面的标题 > 纯数字小红书号 > 整句清洗

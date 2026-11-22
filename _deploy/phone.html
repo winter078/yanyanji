@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" style="background:#15171b;color-scheme:dark">
 <head>
 
 
@@ -18,6 +18,8 @@
   <meta http-equiv="Cache-Control" content="no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <!-- 发布时务必与 js/build.js 的 __LIVE_BUILD__ 保持一致，否则 version-watch 会一直提示“新版已经好了” -->
+  <script>window.__BUILD__="20261122-2834";</script>
   <script>
     (function () {
       var root = document.documentElement;
@@ -124,6 +126,37 @@
         document.addEventListener(t, function (e) { e.preventDefault(); }, { passive: false });
       });
       document.addEventListener('dblclick', function (e) { e.preventDefault(); }, { passive: false });
+      /* 键盘：iOS 弹键盘时整块可视区被顶掉一截，页面本身不动，
+         底部的聊天输入栏就被压在键盘底下（点输入框看不见自己打什么）。
+         这里把"被顶掉的高度"算进 --mom-kb-h，聊天页的输入栏按它抬到键盘上方。 */
+      (function () {
+        var vv = window.visualViewport;
+        if (!vv) return;
+        var cur = -1;
+        function apply() {
+          try {
+            var ih = window.innerHeight || 0;
+            var overlap = ih - vv.height;
+            var kb = overlap > 120 ? Math.round(overlap) : 0;
+            if (Math.abs(kb - cur) < 2) return;
+            cur = kb;
+            var d = document.documentElement;
+            d.style.setProperty('--mom-kb-h', kb + 'px');
+            if (kb > 0) d.classList.add('kb-open');
+            else d.classList.remove('kb-open');
+            if (typeof window.__momOnKbChange === 'function') window.__momOnKbChange(kb);
+          } catch (e) {}
+        }
+        window.__momKbApply = apply;
+        vv.addEventListener('resize', apply);
+        vv.addEventListener('scroll', apply);
+        window.addEventListener('resize', apply);
+        window.addEventListener('orientationchange', function () { setTimeout(apply, 320); });
+        document.addEventListener('focusin', function () { setTimeout(apply, 280); });
+        document.addEventListener('focusout', function () { setTimeout(apply, 360); });
+        apply();
+      })();
+
       /* 键盘收起 / 缩放后视口被顶起来时，把滚动位置强制拉回 0，避免整页被"上推"露出底部黑块 */
       function lockScroll() {
         try { window.scrollTo(0, 0); document.documentElement.scrollTop = 0; document.body.scrollTop = 0; } catch (e) {}
@@ -143,14 +176,14 @@
     })();
   </script>
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <!-- status-bar-style 已按 WebKit 官方说明移除：该键已废弃，状态栏改为自动取页面同色 -->
   <meta name="apple-mobile-web-app-title" content="言言机" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="theme-color" content="#15171b" />
-  <!-- 这套组合照着开源小手机 ai-virtual-phone（float）抄：
-       black-translucent = 内容画到状态栏下面（顶栏透明、白字压在壁纸上，就是"图一"那种）；
-       manifest 里的 display_override:fullscreen = 整屏 844（不是 797）；
-       viewport-fit=cover = 让 env(safe-area-inset-*) 生效。三样缺一样，就退回浅色实心条或多一条底带。 -->
+  <meta name="color-scheme" content="dark" />
+  <!-- 2026-11-20 决定：用 black（黑底白字、内容从状态栏下沿开始）。
+      理由：black 模式下系统把页面放在 47~844，底栏能贴屏幕底（用户选的"图一底栏"）；
+      而 black-translucent 会把页面放在 0~797，底部永远空出 47（系统用 manifest 底色填，页面改不到）。 -->
   <link rel="manifest" href="/manifest.json" />
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
@@ -160,30 +193,39 @@
 
   
   <!-- 模块化分类样式表 (清晰规整，对应各业务模块) -->
-  <link rel="stylesheet" href="css/base.css?v=2026111904" />
+  <link rel="stylesheet" href="css/base.css?v=2026111906" />
   <link rel="stylesheet" href="css/story-skin.css?v=2026111408" />
   <link rel="stylesheet" href="css/world.css?v=2026111013" />
   <link rel="stylesheet" href="css/themes.css?v=2026111001" />
-  <link rel="stylesheet" href="css/desktop.css?v=2026111720" />
+  <link rel="stylesheet" href="css/desktop.css?v=2026112004" />
   <link rel="stylesheet" href="css/notify.css" />
-  <link rel="stylesheet" href="css/wechat.css?v=2026111652" />
+  <link rel="stylesheet" href="css/wechat.css?v=20261122-2834" />
   <link rel="stylesheet" href="css/call.css?v=2026111649" />
   <link rel="stylesheet" href="css/skin-qq.css?v=2026111022" />
   <link rel="stylesheet" href="css/moments.css?v=2026111652" />
   <link rel="stylesheet" href="css/album.css?v=2026111432" />
   <link rel="stylesheet" href="css/music.css?v=1789840833455" />
+<link rel="stylesheet" href="css/music-app.css?v=20261121-0415" />
   <link rel="stylesheet" href="css/watch.css?v=1789854172623" />
-  <link rel="stylesheet" href="css/theater.css?v=2026111421" />
-  <link rel="stylesheet" href="css/xhs.css?v=2026111010" />
+  <link rel="stylesheet" href="css/theater.css?v=20261120-1340" />
+  <link rel="stylesheet" href="css/xhs.css?v=20261121-0415" />
+    <link rel="stylesheet" href="css/say.css?v=20261122-2834" />
 
-  <link rel="stylesheet" href="css/reader.css?v=1789850936013" />
-  <link rel="stylesheet" href="css/ledger.css?v=1789998920125?v=1789998920125">
+  <link rel="stylesheet" href="css/reader.css?v=20261120-2235" />
+  <link rel="stylesheet" href="css/ledger.css?v=20261121-0400">
+  <link rel="stylesheet" href="css/ledger-app.css?v=20261121-0300">
+  <link rel="stylesheet" href="css/health.css?v=20261121-0500">
+<link rel="stylesheet" href="css/forum.css?v=20261121-1730">
   <link rel="stylesheet" href="css/avatar-vault.css?v=2026111145">
   <link rel="stylesheet" href="css/chat-appearance.css?v=2026111308">
   <link rel="stylesheet" href="css/masks.css?v=2026111652">
   <link rel="stylesheet" href="css/voice-input.css?v=2026111573">
   <link rel="stylesheet" href="css/app-store.css?v=2026111002" />
     <link rel="stylesheet" href="css/contacts.css?v=2026111652" />
+<link rel="stylesheet" href="css/perf.css?v=20261122-2834" />
+<link rel="stylesheet" href="css/touch.css?v=20261122-2834" />
+<link rel="stylesheet" href="css/motion.css?v=20261122-2834" />
+<link rel="stylesheet" href="css/drawer-fix.css?v=20261122-2834" />
   <script src="js/supabase_sync.js"></script>
 </head>
 <body>
@@ -197,7 +239,7 @@
   <input type="file" id="input-art-square" accept="image/*" style="display: none;" onchange="uploadImageFile(event, 'artSquare')" />
   <input type="file" id="input-moments-cover" accept="image/*" style="display: none;" onchange="handleMomentsCoverFileUpload(event)" />
   <input type="file" id="input-chat-file" accept=".txt,.md,.json,.csv,.log,.js,.ts,.html,.css,.py" style="display: none;" onchange="handleSendFile(event)" />
-  <input type="file" id="input-chat-pic" accept="image/*" style="display: none;" onchange="handleSendPicture(event)" />
+  <input type="file" id="input-chat-pic" accept="image/*" multiple style="display: none;" onchange="handleSendPicture(event)" />
   <input type="file" id="input-bot-avatar" accept="image/*" style="display: none;" onchange="uploadBotAvatar(event)" />
   <input type="file" id="input-restore-backup" accept=".json" style="display: none;" onchange="importFullBackup(event)" />
   <input type="file" id="input-sticker-pic" accept="image/*" style="display: none;" onchange="handleImportSticker(event)" />
@@ -569,6 +611,11 @@
                   <span class="me-menu-label">个人名片</span>
                   <span class="me-menu-arrow">›</span>
                 </div>
+                <div class="me-menu-item" onclick="openPage('page-stickers')">
+                  <span class="me-menu-icon">😀</span>
+                  <span class="me-menu-label">表情包库</span>
+                  <span class="me-menu-arrow">›</span>
+                </div>
                 <div class="me-menu-item" onclick="openPage('page-theme')">
                   <span class="me-menu-icon">🖼️</span>
                   <span class="me-menu-label">手机外观与背景切换</span>
@@ -692,9 +739,6 @@
               <div class="wechat-sub-hint" id="chat-sync-sub-hint">虚拟伴侣 · 正在连线 <span id="sync-dot-status" style="display:inline-block; width:6px; height:6px; border-radius:50%;  margin-left:4px; box-shadow:0 0 6px #10b981;" title="电脑手机实时互通"></span></div>
             </div>
             <div class="chat-header-actions">
-              <button class="chat-call-entry" type="button" onclick="openChatVoiceCall()" title="语音通话" aria-label="语音通话">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
-              </button>
               <button class="wechat-back-btn" style="font-size: 16px; color: var(--color-text-secondary);" onclick="openChatMore()">···</button>
             </div>
           </header>
@@ -833,6 +877,14 @@
                   <div class="plus-v3-text">文字图</div>
                 </div>
 
+                <!-- 语音通话（从顶栏挪进 + 抽屉） -->
+                <div class="plus-v3-item" onclick="togglePlusDrawer(); openChatVoiceCall();" id="drawer-item-call">
+                  <div class="plus-v3-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                  </div>
+                  <div class="plus-v3-text">语音通话</div>
+                </div>
+
                 <!-- 3. 继续回应 -->
                 <div class="plus-v3-item" onclick="resendLastReply()">
                   <div class="plus-v3-icon">
@@ -881,40 +933,22 @@
             <div class="sticker-drawer" id="sticker-drawer" style="height: 480px; max-height: 85vh; background: var(--chat-drawer-bg, var(--bg-surface)); border-top: 1px solid var(--border-default); display: flex; flex-direction: column;">
               <div class="drawer-top-handle" onclick="toggleStickerDrawer()" style="cursor: pointer;"></div>
               
-              <!-- 1. 顶部搜索与双控系统 (搜寻贴图 + 导入 + 管理/完成) -->
+              <!-- 1. 顶部搜索：这里只负责挑一张发出去，增减/分类在「微信 - 我 - 表情包库」 -->
               <div style="padding: 6px 14px 8px; display: flex; gap: 10px; align-items: center;">
                 <div style="flex: 1; position: relative; display: flex; align-items: center;">
                   <span style="position: absolute; left: 10px; font-size: 13px; color: var(--color-text-secondary);">🔍</span>
                   <input type="text" id="sticker-search-input" class="form-input-box" style="width: 100%; padding: 7px 12px 7px 30px; border-radius: 18px; background: var(--glass-soft); border: 1px solid var(--color-border); color: var(--color-text-primary); font-size: 13px; box-sizing: border-box;" placeholder="搜寻贴图" oninput="handleSearchSticker(this.value)" />
                 </div>
-                <div style="display: flex; gap: 8px; align-items: center;">
-                  <button type="button" style="color: var(--info-primary); background: none; border: none; font-size: 14px; font-weight: 700; cursor: pointer; padding: 4px 6px;" onclick="openStickerImportModal()">导入</button>
-                  <button type="button" id="btn-sticker-manage" style="color: var(--text-secondary); background: none; border: none; font-size: 14px; font-weight: 700; cursor: pointer; padding: 4px 6px;" onclick="toggleStickerManageMode()">管理</button>
-                </div>
               </div>
 
               <div style="padding: 0 16px 6px; font-size: 10.5px; color: var(--text-muted); display: flex; justify-content: space-between; gap: 8px;">
-                <span>全局表情库 · 所有角色共用</span>
-                <span>角色只看名称和分类，不看图片</span>
+                <span>点一张，直接发出去</span>
+                <span>增减与分类在「我 · 表情包库」</span>
               </div>
 
-              <!-- 2. 横向分类滚动条 + 动态加组 (+) -->
+              <!-- 2. 横向分类滚动条 -->
               <div id="sticker-category-tabs-bar" style="display: flex; align-items: center; gap: 16px; padding: 4px 16px 8px; overflow-x: auto; border-bottom: 1px solid var(--color-border); scrollbar-width: none;">
                 <!-- 动态生成各标签 -->
-              </div>
-
-              <!-- 3. 管理模式工具栏 (全选 / 导出 / 移动 / 删除 / 清空) 默认隐藏 -->
-              <div id="sticker-manage-toolbar" style="display: none; padding: 8px 16px; background: var(--glass-faint); border-bottom: 1px solid var(--color-border); align-items: center; justify-content: space-between;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <button type="button" onclick="toggleSelectAllStickers()" style="background: none; border: none; color: var(--stickers-accent); font-size: 13px; font-weight: 700; cursor: pointer;">全选</button>
-                  <span id="sticker-selected-count-label" style="font-size: 12px; color: var(--color-text-secondary);">0 条</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 12px;">
-                  <button type="button" onclick="exportSelectedStickers()" style="background: none; border: none; color: var(--success-primary); font-size: 13px; font-weight: 600; cursor: pointer;">导出</button>
-                  <button type="button" onclick="openMoveStickersModal()" style="background: none; border: none; color: var(--info-primary); font-size: 13px; font-weight: 600; cursor: pointer;">移动</button>
-                  <button type="button" onclick="deleteSelectedStickers()" style="background: none; border: none; color: var(--danger-primary); font-size: 13px; font-weight: 600; cursor: pointer;">删除</button>
-                  <button type="button" onclick="clearAllCurrentCategoryStickers()" style="background: none; border: none; color: var(--danger-primary); font-size: 13px; font-weight: 700; cursor: pointer;">清空全部</button>
-                </div>
               </div>
 
               <!-- 4. 主展示区域：【贴图视图】与【颜文字视图】 -->
@@ -1005,6 +1039,23 @@
               </div>
               <div class="ios-cell-row" style="display:block; padding:12px 16px;">
                 <button type="button" style="width:100%; background:transparent; border:1px solid var(--border-default); color:var(--color-text-secondary); padding:10px 12px; border-radius:12px; font-size:12.5px; cursor:pointer;" onclick="deleteActiveCharacter()">删除这个角色卡</button>
+              </div>
+            </div>
+
+            <!-- 小红书主页收藏：每个角色独立，可自己删 -->
+            <div class="ios-card-group">
+              <div class="ios-card-header">
+                <span class="ios-card-title">小红书主页收藏</span>
+                <span style="font-size: 11.5px; color: var(--color-text-secondary);">当前角色 · 最多 6 个</span>
+              </div>
+              <div class="ios-cell-row" style="display:block; padding:12px 16px;">
+                <div id="xhs-profile-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+                <div style="display:flex; gap:8px; margin-top:10px;">
+                  <input id="xhs-profile-link-input" placeholder="粘贴她的小红书主页长链接（…/user/profile/…）" style="flex:1; min-width:0; padding:9px 11px; border-radius:10px; border:1px solid var(--border-default); background:var(--bg-base); color:var(--text-primary); font-size:12px;" />
+                  <button type="button" onclick="importXhsProfileFromSettings()" style="flex-shrink:0; padding:9px 14px; border-radius:10px; border:none; background:#C9645E; color:#fff; font-size:12.5px; font-weight:600; cursor:pointer;">存下</button>
+                </div>
+                <div id="xhs-profile-status" style="font-size:11px; color:var(--color-text-secondary); line-height:1.5; margin-top:7px;"></div>
+                <div style="font-size:11px; color:var(--color-text-secondary); line-height:1.5; margin-top:4px;">存一次就够。下次你发她的名字或小红书号，角色会直接把她的主页卡片发给你。删掉后它就找不到了，需要重新粘链接。</div>
               </div>
             </div>
 
@@ -1992,8 +2043,14 @@
               <span class="rp-top-caret">⌄</span>
               <select id="rp-actor-select" class="rp-actor-select" aria-label="切换剧场角色" onfocus="syncRpActorUI()" onchange="switchRpCharacter(this.value)"></select>
             </label>
-            <button class="rp-top-setting-btn" onclick="openPage('page-story-setting')" title="故事设定">设定</button>
+            <div class="rp-top-right">
+              <button class="rp-top-archive-btn" onclick="openRpArchivePanel()" title="剧场存档">存档</button>
+              <button class="rp-top-setting-btn" onclick="openPage('page-story-setting')" title="故事设定">设定</button>
+            </div>
           </header>
+
+          <!-- 图书联动：正在演绎的书（只有从阅读器点「用这本书开剧场」时才显示） -->
+          <div class="rp-book-stage-bar" id="rp-book-stage-bar" style="display: none;"></div>
 
           <div class="rp-theater-screen">
             <!-- 剧场叙事对话流 -->
@@ -2079,6 +2136,13 @@
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></svg>
                   </div>
                   <div class="plus-v3-text">角色扮演</div>
+                </div>
+
+                <div class="plus-v3-item" onclick="exportRpStoryToBook()">
+                  <div class="plus-v3-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3h11a3 3 0 0 1 3 3v15H7a3 3 0 0 0-3 3V3z"></path><path d="M4 19a3 3 0 0 1 3-3h11"></path></svg>
+                  </div>
+                  <div class="plus-v3-text">存成书，去阅读看</div>
                 </div>
 
                 <div class="plus-v3-divider"></div>
@@ -3206,297 +3270,321 @@
 
         <!-- ================= user的生活手账 (Momo Ledger) ================= -->
         <section class="view-page theme-paper" id="page-ledger">
-          <header class="ledger-header">
-            <button class="ledger-header-btn" onclick="openPage('page-home')">‹ 桌面</button>
-            <div class="ledger-header-title">
-              <span>📒</span>
-              <span>生活手帖</span>
-            </div>
-            <div class="ledger-header-actions">
-              <div class="ledger-theme-toggle" onclick="toggleLedgerTheme()" title="切换日间纸感 / 夜间微光">
-                <span>🌓</span>
-              </div>
-            </div>
-          </header>
+          <div class="la-app">
 
-          <div class="ledger-scroll-body">
-            <!-- 1. Hero 概览与管账人批注卡片 (图四红框：增加扇形分布图按钮) -->
-            <div class="ledger-hero-banner">
-              <div class="ledger-hero-meta">
-                <div class="ledger-month-badge">
-                  <span>🗓</span>
-                  <span id="ledger-current-month-label">2026年9月账本</span>
+            <!-- ============ 账本 ============ -->
+            <div class="la-panel active" id="la-panel-book">
+              <header class="la-head">
+                <div class="la-head-left">
+                  <button class="la-round la-back" onclick="openPage('page-home')" title="返回桌面">‹</button>
+                  <div class="la-head-title">账本</div>
                 </div>
-                <!-- 图四红框位置：扇形分布图入口 -->
-                <button type="button" class="ledger-chart-btn" onclick="openLedgerChartModal()" title="查看花销扇形分布图">
-                  <span>📊</span>
-                  <span>支出分布图</span>
-                </button>
-              </div>
-
-              <div class="ledger-overview-row">
-                <div>
-                  <div style="font-size: 12px; color: var(--ledger-text-sub); margin-bottom: 2px;">本月总支出</div>
-                  <div class="ledger-expense-total">
-                    <small>¥</small><span id="ledger-total-expense-val">0.00</span>
-                  </div>
-                </div>
-                <div class="ledger-sub-stats">
-                  <div>进账: <strong id="ledger-sub-income-val">¥0.00</strong></div>
-                  <div>结余: <strong id="ledger-sub-balance-val">¥0.00</strong></div>
-                </div>
-              </div>
-
-              <!-- 角色管账人寄语与印章 -->
-              <div class="ledger-xuyan-quote">
-                <div class="ledger-xuyan-avatar">言</div>
-                <div>
-                  <div style="font-size: 11px; font-weight: 700; color: var(--ledger-accent); margin-bottom: 2px;">管账人 · 角色：</div>
-                  <div>“user，想买什么就放心买。每一笔生活细节，我都替你记好了。”</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- 2. 分类筛选胶囊条 (图二横向滚动 + 最右侧加号) -->
-            <div class="ledger-capsule-wrapper">
-              <div class="ledger-capsule-bar" id="ledger-capsule-container">
-                <!-- 动态注入横向滚动分类胶囊 -->
-              </div>
-              <div class="ledger-capsule-add" onclick="openAddCategoryModal()" title="新增自定义分类">
-                <span>➕</span>
-                <span>新增</span>
-              </div>
-            </div>
-
-            <!-- 3. 账单明细列表 -->
-            <div>
-              <div class="ledger-group-title">
-                <span>流水明细 (点击卡片查看与编辑)</span>
-                <span>角色批注 &amp; 印章</span>
-              </div>
-              <div id="ledger-entries-list">
-                <!-- 动态注入流水卡片 -->
-              </div>
-            </div>
-          </div>
-
-          <!-- 底部悬浮记账胶囊按钮 (常驻前置) -->
-          <div class="ledger-float-action" onclick="openLedgerDrawer()">
-            <span>✏️</span>
-            <span>记一笔生活</span>
-          </div>
-
-          <!-- 底部悬浮记账胶囊按钮 -->
-          <!-- ================= ③ 记一笔抽屉 (防截断、内部纵向滚动) ================= -->
-          <div class="ledger-drawer-mask" id="ledger-create-drawer" onclick="closeLedgerDrawer()">
-            <div class="ledger-drawer-card" onclick="event.stopPropagation()">
-              <div class="ledger-drawer-handle"></div>
-              
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div style="font-size: 16px; font-weight: 700; color: var(--ledger-text);">记一笔账单</div>
-                <button type="button" onclick="closeLedgerDrawer()" style="background: none; border: none; font-size: 18px; color: var(--ledger-text-muted); cursor: pointer;">✕</button>
-              </div>
-
-              <!-- 支出 / 收入切换 -->
-              <div class="ledger-type-switcher">
-                <button type="button" class="ledger-type-btn active" id="ledger-type-btn-expense" onclick="setLedgerType('expense')">支出</button>
-                <button type="button" class="ledger-type-btn" id="ledger-type-btn-income" onclick="setLedgerType('income')">收入</button>
-              </div>
-
-              <!-- 金额快速输入框 -->
-              <div class="ledger-amount-input-box">
-                <span>¥</span>
-                <input type="number" id="ledger-input-amount" placeholder="0.00" step="0.01" />
-              </div>
-
-              <!-- 备注文案 -->
-              <div>
-                <input type="text" id="ledger-input-title" placeholder="备注（如：新出的水彩颜料、多肉葡萄）" style="width: 100%; padding: 10px 12px; background: var(--ledger-card-bg); border: 1px solid var(--ledger-card-border); border-radius: 12px; color: var(--ledger-text); font-size: 13.5px; box-sizing: border-box;" />
-              </div>
-
-              <!-- 分类选择器 -->
-              <div>
-                <div style="font-size: 12px; font-weight: 600; color: var(--ledger-text-sub); margin-bottom: 6px;">选择分类</div>
-                <div class="ledger-category-picker-wrapper">
-                  <div class="ledger-category-picker" id="ledger-cat-picker-grid"></div>
-                </div>
-              </div>
-
-              <!-- 猫咪心情挂件 -->
-              <div>
-                <div style="font-size: 12px; font-weight: 600; color: var(--ledger-text-sub); margin-bottom: 6px;">随账挂一只猫咪心情</div>
-                <div class="ledger-cat-sticker-select" id="ledger-sticker-picker-row"></div>
-              </div>
-
-              <button type="button" onclick="submitNewLedgerRecord()" style="width: 100%; padding: 12px; background: var(--ledger-text); color: var(--ledger-bg); border: none; border-radius: 14px; font-size: 14.5px; font-weight: 700; cursor: pointer; margin-top: 4px;">确认记下 · 交给角色管账</button>
-            </div>
-          </div>
-
-          <!-- ================= ① 图一：账单详情、AI批注生成、编辑、删除弹窗 ================= -->
-          <div class="ledger-drawer-mask" id="ledger-detail-modal" onclick="closeLedgerDetailModal()">
-            <div class="ledger-drawer-card" onclick="event.stopPropagation()">
-              <div class="ledger-drawer-handle"></div>
-
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div style="font-size: 16px; font-weight: 700; color: var(--ledger-text);">账单详情与批注</div>
-                <button type="button" onclick="closeLedgerDetailModal()" style="background: none; border: none; font-size: 18px; color: var(--ledger-text-muted); cursor: pointer;">✕</button>
-              </div>
-
-              <!-- 核心账目卡片 -->
-              <div class="ledger-detail-card">
-                <div class="ledger-detail-head">
-                  <div class="ledger-sticker-icon" style="width: 48px; height: 48px;">
-                    <img id="ledger-detail-sticker-img" src="assets/stickers/cat_tietie.png" alt="cat" style="width: 42px; height: 42px;" />
-                  </div>
-                  <div>
-                    <div id="ledger-detail-title" style="font-size: 16px; font-weight: 800; color: var(--ledger-text);">账目名称</div>
-                    <div id="ledger-detail-amount" style="font-size: 22px; font-weight: 800; margin-top: 2px;">¥0.00</div>
-                  </div>
-                </div>
-
-                <div class="ledger-detail-body-row">
-                  <span>记录时间</span>
-                  <strong id="ledger-detail-date">2026-09-20 14:30</strong>
-                </div>
-                <div class="ledger-detail-body-row">
-                  <span>消费分类</span>
-                  <strong id="ledger-detail-category">🎨 画材/板绘</strong>
-                </div>
-              </div>
-
-              <!-- 角色管账人批注泡泡与印章 -->
-              <div class="ledger-detail-ai-quote-box">
-                <div class="ledger-detail-ai-header">
-                  <span>管账人 · 角色手札：</span>
-                  <div id="ledger-detail-stamp" class="ledger-stamp green">角色批准</div>
-                </div>
-                <div class="ledger-detail-ai-text" id="ledger-detail-ai-text">
-                  “好用的画具才能陪我们江工画出神仙作。”
-                </div>
-              </div>
-
-              <!-- 操作按钮矩阵 -->
-              <div class="ledger-detail-actions-grid">
-                <!-- 真机连通 API 生成 / 重新生成角色回复 -->
-                <button type="button" class="ledger-btn-ai-regen" id="ledger-btn-regen-ai" onclick="triggerAiLedgerReply(true)">
-                  <span>✨</span>
-                  <span>重新生成角色批注</span>
-                </button>
-
-                <div class="ledger-detail-btn-row">
-                  <button type="button" class="ledger-btn-secondary" onclick="openEditRecordDrawer()">
-                    <span>✏️ 编辑账目</span>
+                <div class="la-head-actions">
+                  <button class="la-round" onclick="lgOpenCalendar()" title="收支日历">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3.6" y="5" width="16.8" height="15" rx="2.4"/><path d="M3.6 9.4h16.8"/><path d="M8 3.4v3.2M16 3.4v3.2"/></svg>
                   </button>
-                  <button type="button" class="ledger-btn-danger" onclick="deleteCurrentLedgerRecord()">
-                    <span>🗑️ 删除账单</span>
+                  <button class="la-round" onclick="lgOpenSettings()" title="更多">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="5.5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18.5" cy="12" r="1.5"/></svg>
                   </button>
                 </div>
+              </header>
+              <div class="la-body" id="la-book-scroll">
+                <div class="la-search">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.4"/><path d="M16 16l4.4 4.4"/></svg>
+                  <input id="la-search-input" placeholder="搜索备注、分类" oninput="laSearch(this.value)" />
+                </div>
+
+                <div class="la-month-row">
+                  <div class="la-month-label" id="la-month-label">本月</div>
+                  <div class="la-month-nav">
+                    <button onclick="laShiftMonth(-1)">‹</button>
+                    <button onclick="laShiftMonth(1)">›</button>
+                  </div>
+                  <button class="la-cal-btn" onclick="lgOpenCalendar()">收支日历</button>
+                </div>
+
+                <div class="la-total-card">
+                  <div class="la-total-label">总支出</div>
+                  <div class="la-total-num" id="la-total-expense">¥0.00</div>
+                  <div class="la-total-sub">
+                    <span>总收入 <b id="la-total-income">¥0.00</b></span>
+                    <span>月结余 <b id="la-total-balance">¥0.00</b></span>
+                  </div>
+                </div>
+
+                <div class="la-budget" onclick="lgOpenSettings()">
+                  <span class="la-budget-label">本月预算</span>
+                  <span class="la-budget-text" id="la-budget-text">未设置</span>
+                  <div class="la-budget-bar"><i id="la-budget-fill" style="width:0%"></i></div>
+                </div>
+
+                <div class="la-feed" id="la-feed"></div>
+              </div>
+              <button class="la-fab" onclick="lgOpenKeypad()" title="记一笔">＋</button>
+            </div>
+
+            <!-- ============ 资产 ============ -->
+            <div class="la-panel" id="la-panel-assets">
+              <header class="la-head">
+                <div class="la-head-title">资产</div>
+                <div class="la-head-actions">
+                  <button class="la-round" onclick="laAddAccount()" title="新增账户">＋</button>
+                  <button class="la-round" onclick="lgOpenSettings()" title="更多">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="5.5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18.5" cy="12" r="1.5"/></svg>
+                  </button>
+                </div>
+              </header>
+              <div class="la-body">
+                <div class="la-net-card">
+                  <div class="la-net-label">净资产</div>
+                  <div class="la-net-num" id="la-net-assets">¥0.00</div>
+                  <div class="la-net-sub">
+                    <span>总资产 <b id="la-gross-assets">¥0.00</b></span>
+                    <span>总负债 <b id="la-gross-debt">¥0.00</b></span>
+                  </div>
+                </div>
+
+                <div class="la-pair">
+                  <div class="la-pair-card">
+                    <span class="la-pair-ico in">↓</span>
+                    <div class="la-pair-body">
+                      <div class="la-pair-label">总借入</div>
+                      <div class="la-pair-num" id="la-borrow-in">¥0.00</div>
+                    </div>
+                  </div>
+                  <div class="la-pair-card">
+                    <span class="la-pair-ico out">↑</span>
+                    <div class="la-pair-body">
+                      <div class="la-pair-label">总借出</div>
+                      <div class="la-pair-num" id="la-borrow-out">¥0.00</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="la-sec-head">
+                  <span>资金账户 <i id="la-acc-count">(5)</i></span>
+                  <span class="la-sec-sum" id="la-acc-sum">余额 ¥0.00</span>
+                </div>
+                <div class="la-list" id="la-asset-list"></div>
+
+                <div class="la-sec-head">
+                  <span>应付账户 <i id="la-debt-count">(0)</i></span>
+                  <span class="la-sec-sum" id="la-debt-sum">欠款 ¥0.00</span>
+                </div>
+                <div class="la-list" id="la-debt-list"></div>
+              </div>
+            </div>
+
+            <!-- ============ 统计 ============ -->
+            <div class="la-panel" id="la-panel-stats">
+              <header class="la-head">
+                <div class="la-head-title">统计</div>
+                <div class="la-head-actions">
+                  <button class="la-round" onclick="lgOpenCalendar()" title="收支日历">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3.6" y="5" width="16.8" height="15" rx="2.4"/><path d="M3.6 9.4h16.8"/><path d="M8 3.4v3.2M16 3.4v3.2"/></svg>
+                  </button>
+                </div>
+              </header>
+              <div class="la-body">
+                <div class="la-seg" id="la-stats-seg">
+                  <span onclick="laSetStatsRange('week')">周</span>
+                  <span class="active" onclick="laSetStatsRange('month')">月</span>
+                  <span onclick="laSetStatsRange('year')">年</span>
+                  <span onclick="laSetStatsRange('all')">全部</span>
+                </div>
+
+                <div class="la-period-row">
+                  <button class="la-period-btn" onclick="laShiftStats(-1)">‹</button>
+                  <div class="la-period-label" id="la-stats-period">本月</div>
+                  <button class="la-period-btn" onclick="laShiftStats(1)">›</button>
+                </div>
+
+                <div class="la-stat-card">
+                  <div class="la-stat-head">
+                    <span class="la-stat-badge">¥</span>
+                    <span class="la-stat-title">收支统计</span>
+                  </div>
+                  <div class="la-stat-grid">
+                    <div class="la-stat-cell">
+                      <div class="la-stat-k">支出</div>
+                      <div class="la-stat-v" id="la-stat-expense">¥0.00</div>
+                    </div>
+                    <div class="la-stat-cell">
+                      <div class="la-stat-k">收入</div>
+                      <div class="la-stat-v" id="la-stat-income">¥0.00</div>
+                    </div>
+                    <div class="la-stat-cell">
+                      <div class="la-stat-k">结余</div>
+                      <div class="la-stat-v" id="la-stat-balance">¥0.00</div>
+                    </div>
+                    <div class="la-stat-cell">
+                      <div class="la-stat-k">日均支出</div>
+                      <div class="la-stat-v" id="la-stat-avg">¥0.00</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="la-stat-card">
+                  <div class="la-stat-head">
+                    <span class="la-stat-badge">▤</span>
+                    <span class="la-stat-title">支出统计图</span>
+                    <span class="la-stat-avg" id="la-stat-chart-avg">平均值 ¥0</span>
+                  </div>
+                  <div class="la-chart" id="la-chart"></div>
+                </div>
+
+                <div class="la-stat-card">
+                  <div class="la-stat-head">
+                    <span class="la-stat-badge">◔</span>
+                    <span class="la-stat-title">分类占比</span>
+                  </div>
+                  <div class="la-donut-wrap">
+                    <canvas id="lg-donut" width="560" height="560"></canvas>
+                    <div class="la-donut-center">
+                      <div class="la-donut-label">支出</div>
+                      <div class="la-donut-sum" id="lg-donut-sum">0.00</div>
+                    </div>
+                  </div>
+                  <div class="la-rank" id="la-rank"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ============ 工资库 ============ -->
+            <div class="la-panel" id="la-panel-wage">
+              <header class="la-head">
+                <div class="la-head-title">工资库</div>
+                <div class="la-head-actions">
+                  <button class="la-round" onclick="laOpenWageSetting()" title="设置日薪">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14"/><path d="M8.4 8.4l3.6-3.4 3.6 3.4"/></svg>
+                  </button>
+                </div>
+              </header>
+              <div class="la-body">
+                <div class="la-net-card la-wage-card">
+                  <div class="la-net-label">待入账工资</div>
+                  <div class="la-net-num" id="la-wage-pending">¥0.00</div>
+                  <div class="la-net-sub">
+                    <span>已打卡 <b id="la-wage-days">0</b> 天</span>
+                    <span>日薪 <b id="la-wage-rate">¥0.00</b></span>
+                  </div>
+                </div>
+
+                <button class="la-punch-btn" id="la-punch-btn" onclick="laToggleTodayPunch()">今天上班打卡</button>
+
+                <div class="la-sec-head">
+                  <span>本月打卡 <i id="la-wage-month">(0 天)</i></span>
+                  <span class="la-sec-sum" id="la-wage-month-sum">¥0.00</span>
+                </div>
+                <div class="la-punch-grid" id="la-punch-grid"></div>
+
+                <div class="la-wage-actions">
+                  <button class="la-btn-primary" id="la-settle-btn" onclick="laSettleWage()">发工资了 · 结为进账</button>
+                </div>
+
+                <div class="la-sec-head">
+                  <span>入账记录</span>
+                </div>
+                <div class="la-list" id="la-wage-log"></div>
+              </div>
+            </div>
+
+            <!-- ============ 底部胶囊 tab ============ -->
+            <nav class="la-tabbar">
+              <button class="la-tab active" id="la-tab-book" onclick="laSwitchTab('book')">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M5.6 3.8h9.2a2.4 2.4 0 0 1 2.4 2.4v13.6a1.6 1.6 0 0 0 1.6 1.6H7.2a1.6 1.6 0 0 1-1.6-1.6V3.8z"/><path d="M8.2 8.4h6M8.2 12h6"/></svg>
+                <span>账本</span>
+              </button>
+              <button class="la-tab" id="la-tab-assets" onclick="laSwitchTab('assets')">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 3.8l8 4.2-8 4.2-8-4.2z"/><path d="M4 12.2l8 4.2 8-4.2"/><path d="M4 16.4l8 4.2 8-4.2"/></svg>
+                <span>资产</span>
+              </button>
+              <button class="la-tab" id="la-tab-stats" onclick="laSwitchTab('stats')">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M5 19.6V11"/><path d="M12 19.6V4.4"/><path d="M19 19.6v-5.6"/></svg>
+                <span>统计</span>
+              </button>
+              <button class="la-tab" id="la-tab-wage" onclick="laSwitchTab('wage')">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="8.2"/><path d="M12 8.2v7.6"/><path d="M9.4 10h4a1.7 1.7 0 0 1 0 3.4H9.4"/></svg>
+                <span>工资</span>
+              </button>
+            </nav>
+          </div>
+
+          <!-- ============ 弹层区 ============ -->
+          <div class="lg-mask lg-sheet-mask" id="lg-keypad-layer" onclick="lgCloseKeypad()">
+            <div class="lg-keypad" onclick="event.stopPropagation()">
+              <div class="lg-kp-grab"></div>
+              <div class="lg-kp-head">
+                <div class="lg-type-switch">
+                  <span class="active" id="lg-type-exp" onclick="lgSetType('expense')">支出</span>
+                  <span id="lg-type-inc" onclick="lgSetType('income')">收入</span>
+                </div>
+                <button class="lg-kp-close" onclick="lgCloseKeypad()">✕</button>
+              </div>
+              <div class="lg-kp-amount"><em>¥</em><span id="lg-kp-amount">0</span></div>
+              <div class="lg-kp-cats" id="lg-kp-cats"></div>
+              <div class="lg-kp-meta">
+                <input type="text" id="lg-kp-note" class="lg-kp-note" placeholder="备注（可选）" maxlength="30" />
+                <div class="lg-kp-rows">
+                  <span class="lg-kp-chip" id="lg-kp-account" onclick="lgOpenAccountPicker()">现金</span>
+                  <span class="lg-kp-chip" id="lg-kp-date" onclick="lgOpenDatePicker()">今天</span>
+                </div>
+                <input type="date" id="lg-kp-date-input" class="lg-hidden-date" />
+              </div>
+              <div class="lg-keyboard" id="lg-keyboard">
+                <button class="lg-key" onclick="lgKey('7')">7</button>
+                <button class="lg-key" onclick="lgKey('8')">8</button>
+                <button class="lg-key" onclick="lgKey('9')">9</button>
+                <button class="lg-key lg-key-fn" onclick="lgKey('del')">⌫</button>
+                <button class="lg-key" onclick="lgKey('4')">4</button>
+                <button class="lg-key" onclick="lgKey('5')">5</button>
+                <button class="lg-key" onclick="lgKey('6')">6</button>
+                <button class="lg-key lg-key-fn" onclick="lgKey('clear')">C</button>
+                <button class="lg-key" onclick="lgKey('1')">1</button>
+                <button class="lg-key" onclick="lgKey('2')">2</button>
+                <button class="lg-key" onclick="lgKey('3')">3</button>
+                <button class="lg-key lg-key-save" onclick="lgSubmitRecord()" id="lg-key-save">保存</button>
+                <button class="lg-key lg-key-zero" onclick="lgKey('0')">0</button>
+                <button class="lg-key" onclick="lgKey('.')">.</button>
               </div>
             </div>
           </div>
 
-          <!-- ================= ① 账目编辑抽屉 ================= -->
-          <div class="ledger-drawer-mask" id="ledger-edit-drawer" onclick="closeEditRecordDrawer()">
-            <div class="ledger-drawer-card" onclick="event.stopPropagation()">
-              <div class="ledger-drawer-handle"></div>
-
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div style="font-size: 16px; font-weight: 700; color: var(--ledger-text);">修改账目信息</div>
-                <button type="button" onclick="closeEditRecordDrawer()" style="background: none; border: none; font-size: 18px; color: var(--ledger-text-muted); cursor: pointer;">✕</button>
+          <div class="lg-mask" id="lg-calendar-layer" onclick="lgCloseCalendar()">
+            <div class="lg-page" onclick="event.stopPropagation()">
+              <header class="lg-page-head">
+                <div class="lg-page-title" id="lg-cal-title">日历</div>
+                <div class="lg-cal-nav">
+                  <button class="lg-icon-btn" onclick="lgCalShift(-1)">‹</button>
+                  <button class="lg-icon-btn" onclick="lgCalShift(1)">›</button>
+                </div>
+                <button class="lg-close" onclick="lgCloseCalendar()">✕</button>
+              </header>
+              <div class="lg-cal-scroll">
+                <div class="lg-cal-week">
+                  <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+                </div>
+                <div class="lg-cal-grid" id="lg-cal-grid"></div>
+                <div class="lg-cal-day" id="lg-cal-day"></div>
               </div>
-
-              <div>
-                <label style="font-size: 12px; font-weight: 600; color: var(--ledger-text-sub); display: block; margin-bottom: 4px;">账目名称</label>
-                <input type="text" id="ledger-edit-title-input" style="width: 100%; padding: 10px 12px; background: var(--ledger-card-bg); border: 1px solid var(--ledger-card-border); border-radius: 12px; color: var(--ledger-text); font-size: 14px; box-sizing: border-box;" />
-              </div>
-
-              <div>
-                <label style="font-size: 12px; font-weight: 600; color: var(--ledger-text-sub); display: block; margin-bottom: 4px;">金额 (元)</label>
-                <input type="number" id="ledger-edit-amount-input" step="0.01" style="width: 100%; padding: 10px 12px; background: var(--ledger-card-bg); border: 1px solid var(--ledger-card-border); border-radius: 12px; color: var(--ledger-text); font-size: 16px; font-weight: 700; box-sizing: border-box;" />
-              </div>
-
-              <div>
-                <label style="font-size: 12px; font-weight: 600; color: var(--ledger-text-sub); display: block; margin-bottom: 4px;">消费分类</label>
-                <select id="ledger-edit-cat-select" style="width: 100%; padding: 10px 12px; background: var(--ledger-card-bg); border: 1px solid var(--ledger-card-border); border-radius: 12px; color: var(--ledger-text); font-size: 14px; box-sizing: border-box;"></select>
-              </div>
-
-              <div>
-                <label style="font-size: 12px; font-weight: 600; color: var(--ledger-text-sub); display: block; margin-bottom: 4px;">记录时间</label>
-                <input type="text" id="ledger-edit-date-input" placeholder="YYYY-MM-DD HH:MM" style="width: 100%; padding: 10px 12px; background: var(--ledger-card-bg); border: 1px solid var(--ledger-card-border); border-radius: 12px; color: var(--ledger-text); font-size: 13.5px; box-sizing: border-box;" />
-              </div>
-
-              <button type="button" onclick="submitEditRecordChanges()" style="width: 100%; padding: 12px; background: var(--ledger-text); color: var(--ledger-bg); border: none; border-radius: 14px; font-size: 14.5px; font-weight: 700; cursor: pointer; margin-top: 6px;">保存修改</button>
             </div>
           </div>
 
-          <!-- ================= ② 新增自定义分类弹窗 ================= -->
-          <div class="ledger-drawer-mask" id="ledger-add-category-modal" onclick="closeAddCategoryModal()">
-            <div class="ledger-drawer-card" onclick="event.stopPropagation()">
-              <div class="ledger-drawer-handle"></div>
-
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div style="font-size: 16px; font-weight: 700; color: var(--ledger-text);">新增自定义分类</div>
-                <button type="button" onclick="closeAddCategoryModal()" style="background: none; border: none; font-size: 18px; color: var(--ledger-text-muted); cursor: pointer;">✕</button>
-              </div>
-
-              <div>
-                <label style="font-size: 12px; font-weight: 600; color: var(--ledger-text-sub); display: block; margin-bottom: 4px;">分类名称</label>
-                <input type="text" id="ledger-cat-input-name" placeholder="如：水彩颜料、追星周边、盲盒" style="width: 100%; padding: 10px 12px; background: var(--ledger-card-bg); border: 1px solid var(--ledger-card-border); border-radius: 12px; color: var(--ledger-text); font-size: 14px; box-sizing: border-box;" />
-              </div>
-
-              <div style="display: flex; gap: 10px;">
-                <div style="flex: 1;">
-                  <label style="font-size: 12px; font-weight: 600; color: var(--ledger-text-sub); display: block; margin-bottom: 4px;">图标 Emoji</label>
-                  <input type="text" id="ledger-cat-input-icon" value="🏷️" style="width: 100%; padding: 10px 12px; background: var(--ledger-card-bg); border: 1px solid var(--ledger-card-border); border-radius: 12px; color: var(--ledger-text); font-size: 15px; text-align: center; box-sizing: border-box;" />
-                </div>
-                <div style="flex: 2;">
-                  <label style="font-size: 12px; font-weight: 600; color: var(--ledger-text-sub); display: block; margin-bottom: 4px;">默认印章文案</label>
-                  <input type="text" id="ledger-cat-input-stamp" value="user专享" style="width: 100%; padding: 10px 12px; background: var(--ledger-card-bg); border: 1px solid var(--ledger-card-border); border-radius: 12px; color: var(--ledger-text); font-size: 14px; box-sizing: border-box;" />
-                </div>
-              </div>
-
-              <div>
-                <label style="font-size: 12px; font-weight: 600; color: var(--ledger-text-sub); display: block; margin-bottom: 4px;">角色预设批语</label>
-                <input type="text" id="ledger-cat-input-quote" value="只要user喜欢，就值得。" style="width: 100%; padding: 10px 12px; background: var(--ledger-card-bg); border: 1px solid var(--ledger-card-border); border-radius: 12px; color: var(--ledger-text); font-size: 13.5px; box-sizing: border-box;" />
-              </div>
-
-              <button type="button" onclick="submitNewCategory()" style="width: 100%; padding: 12px; background: var(--ledger-text); color: var(--ledger-bg); border: none; border-radius: 14px; font-size: 14.5px; font-weight: 700; cursor: pointer; margin-top: 6px;">创建并保存分类</button>
+          <div class="lg-mask" id="lg-settings-layer" onclick="lgCloseSettings()">
+            <div class="lg-page" onclick="event.stopPropagation()">
+              <header class="lg-page-head">
+                <div class="lg-page-title">设置</div>
+                <button class="lg-close" onclick="lgCloseSettings()">✕</button>
+              </header>
+              <div class="lg-settings-scroll" id="lg-settings-body"></div>
             </div>
           </div>
 
-          <!-- ================= ④ 图四：扇形花销分布图弹窗 ================= -->
-          <div class="ledger-drawer-mask" id="ledger-chart-modal" onclick="closeLedgerChartModal()">
-            <div class="ledger-chart-modal-card" onclick="event.stopPropagation()">
-              <div class="ledger-drawer-handle"></div>
-
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div style="font-size: 16px; font-weight: 700; color: var(--ledger-text);">📊 本月花销扇形分布</div>
-                <button type="button" onclick="closeLedgerChartModal()" style="background: none; border: none; font-size: 18px; color: var(--ledger-text-muted); cursor: pointer;">✕</button>
-              </div>
-
-              <!-- 扇形 Canvas 区域 -->
-              <div class="ledger-canvas-box">
-                <canvas id="ledger-pie-canvas" width="220" height="220"></canvas>
-                <div class="ledger-canvas-center-text">
-                  <div class="ledger-canvas-center-label">总支出</div>
-                  <div class="ledger-canvas-center-val" id="ledger-chart-center-val">¥0</div>
-                </div>
-              </div>
-
-              <!-- 角色管账人花销分析 -->
-              <div class="ledger-xuyan-quote" style="margin-top: 4px;">
-                <div class="ledger-xuyan-avatar">言</div>
-                <div>
-                  <div style="font-size: 11px; font-weight: 700; color: var(--ledger-accent); margin-bottom: 2px;">管账人月度花销点评：</div>
-                  <div id="ledger-chart-xuyan-analysis">“正在分析user的开支分布...”</div>
-                </div>
-              </div>
-
-              <!-- 分类花销排行明细 -->
-              <div>
-                <div style="font-size: 12.5px; font-weight: 700; color: var(--ledger-text-sub); margin-bottom: 8px;">各类别支出与占比排行</div>
-                <div class="ledger-breakdown-list" id="ledger-chart-breakdown-list"></div>
-              </div>
+          <div class="lg-mask" id="lg-account-layer" onclick="lgCloseAccountPicker()">
+            <div class="lg-sheet" onclick="event.stopPropagation()">
+              <div class="lg-sheet-title">记到哪个账户</div>
+              <div id="lg-account-list"></div>
+              <div class="lg-sheet-cancel" onclick="lgCloseAccountPicker()">取消</div>
             </div>
           </div>
         </section>
@@ -3657,16 +3745,17 @@
         <section class="view-page" id="page-prompt-presets">
           <header class="wechat-header">
             <button class="wechat-back-btn" onclick="openPage('page-home')">‹ 桌面</button>
-            <div class="wechat-title">聊天预设</div>
+            <div class="wechat-title">提示词预设</div>
             <button class="wechat-back-btn" style="color: #07c160; font-size: 13px; font-weight: 700; padding: 4px 14px; border-radius: 12px; border: 1px solid rgba(7,193,96,0.38);" onclick="savePromptPreset()">保存</button>
           </header>
           <div class="page-generic-body">
             <div style="padding: 2px 4px 12px;">
               <div style="font-size: 17px; font-weight: 800; color: var(--color-text-primary); letter-spacing: -0.2px;">🎭 像酒馆一样切换预设</div>
-              <div style="font-size: 11px; color: var(--color-text-secondary); line-height: 1.55; margin-top: 5px;">为日常、剧情、甜宠等不同状态准备多套提示词。开关和条目都只保存在本机，切换预设不会改角色卡或聊天记录。</div>
+              <div style="font-size: 11px; color: var(--color-text-secondary); line-height: 1.55; margin-top: 5px;">为线上聊天、线下剧场、长椅等不同场景准备多套提示词。开关和条目都只保存在本机，切换预设不会改角色卡或聊天记录。</div>
               <div id="prompt-scene-tabs" style="display: flex; gap: 5px; margin: 10px 0 7px; padding: 4px; border-radius: 12px; background: var(--bg-elevated); border: 0.5px solid var(--color-border);">
                 <button type="button" id="prompt-scene-chat" onclick="switchPromptPresetScene('chat')" style="flex: 1; min-height: 34px; padding: 6px 8px; border-radius: 9px; border: 1px solid transparent; background: transparent; color: var(--color-text-secondary); font-size: 11.5px; font-weight: 600; cursor: pointer; touch-action: manipulation;">线上聊天</button>
                 <button type="button" id="prompt-scene-theater" onclick="switchPromptPresetScene('theater')" style="flex: 1; min-height: 34px; padding: 6px 8px; border-radius: 9px; border: 1px solid transparent; background: transparent; color: var(--color-text-secondary); font-size: 11.5px; font-weight: 600; cursor: pointer; touch-action: manipulation;">线下剧场</button>
+                <button type="button" id="prompt-scene-forum" onclick="switchPromptPresetScene('forum')" style="flex: 1; min-height: 34px; padding: 6px 8px; border-radius: 9px; border: 1px solid transparent; background: transparent; color: var(--color-text-secondary); font-size: 11.5px; font-weight: 600; cursor: pointer; touch-action: manipulation;">长椅</button>
               </div>
               <div id="prompt-scene-note" style="font-size: 10.5px; color: var(--color-text-secondary); line-height: 1.45; margin: 0 2px 8px;">线上读取 24 条微信底座 + 自定义板块；从酒馆预设导入时只提取文风，不整包吞舞台设定。</div>
             </div>
@@ -4128,10 +4217,10 @@
                 <span style="font-size: 11.5px; color: var(--color-text-secondary);">后台连线</span>
                 <span id="bg-link-status" style="font-size: 11px; color: var(--color-text-secondary);">检查中…</span>
                 <label class="ios-switch" style="margin-left: auto;">
-                  <input type="checkbox" id="bg-link-toggle" checked onchange="toggleBackgroundLink(this.checked)" />
+                  <input type="checkbox" id="bg-link-toggle" onchange="toggleBackgroundLink(this.checked)" />
                 </label>
               </div>
-              <div style="font-size: 10px; color: var(--color-text-secondary); line-height: 1.45; margin-top: 5px;">开着的时候控制中心会显示「言言机 · 后台连线中」，系统也不容易把小手机冻住。</div>
+              <div style="font-size: 10px; color: var(--color-text-secondary); line-height: 1.45; margin-top: 5px;">默认关闭。开着的时候控制中心会显示「言言机 · 后台连线中」，系统不容易把小手机冻住；代价是这段静音也在占音频通道，你切去看抖音/小红书的视频会被系统暂停。要挂机等角色说话再打开。</div>
               <div style="display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap;">
                 <button type="button" onclick="tryLocalNotification()" style="padding: 6px 10px; border-radius: 9px; border: 1px solid var(--color-border); background: var(--bg-elevated); color: var(--color-text-secondary); font-size: 11px; cursor: pointer;">本地弹一条试试</button>
                 <span style="font-size: 10px; color: var(--color-text-muted); font-family: ui-monospace, Consolas, monospace;">构建 v2026111720</span>
@@ -4141,8 +4230,8 @@
                   var t = document.getElementById('bg-link-toggle');
                   if (!t) return;
                   try {
-                    t.checked = localStorage.getItem('momo_bg_link') !== '0';
-                  } catch (e) { t.checked = true; }
+                    t.checked = localStorage.getItem('momo_bg_link') === '1';
+                  } catch (e) { t.checked = false; }
                 })();
               </script>
               <div style="font-size: 10px; color: var(--color-text-secondary); line-height: 1.45; margin-top: 8px;">iOS 上只在「主屏幕图标」里打开时才收得到；在 Safari 标签页里浏览时不会弹。每天提醒是服务端按点发的，手机不用开着。</div>
@@ -4174,6 +4263,69 @@
           </div>
         </section>
 
+        <!-- ================= 💚 健康 App ================= -->
+        <section class="view-page" id="page-health" style="display: none;">
+          <div class="hp-head">
+            <button class="hp-back" onclick="openPage('page-home')" aria-label="返回桌面">‹</button>
+            <div class="hp-head-title" id="hp-head-title">健康</div>
+            <button class="hp-gear" onclick="hpOpenSettings()" aria-label="设置">⋯</button>
+          </div>
+          <div class="hp-body" id="hp-body">
+            <div class="hp-panel" id="hp-panel-today"><div id="hp-today"></div></div>
+            <div class="hp-panel" id="hp-panel-cycle" style="display: none;"><div id="hp-cycle"></div></div>
+            <div class="hp-panel" id="hp-panel-sleep" style="display: none;"><div id="hp-sleep"></div></div>
+            <div class="hp-panel" id="hp-panel-body" style="display: none;"><div id="hp-body-wrap"></div></div>
+          </div>
+          <div class="hp-tabbar">
+            <div class="hp-tab on" id="hp-tab-today" onclick="hpSwitchTab('today')"><i>☀️</i>今天</div>
+            <div class="hp-tab" id="hp-tab-cycle" onclick="hpSwitchTab('cycle')"><i>🌸</i>周期</div>
+            <div class="hp-tab" id="hp-tab-sleep" onclick="hpSwitchTab('sleep')"><i>🌙</i>睡眠</div>
+            <div class="hp-tab" id="hp-tab-body" onclick="hpSwitchTab('body')"><i>📏</i>身体</div>
+          </div>
+        </section>
+
+        <!-- ================= 🪑 长椅 App（公共广场：求助 / 问答 / 分享） ================= -->
+        <section class="view-page" id="page-forum" style="display: none;">
+          <div class="fm-head">
+            <button class="fm-back" onclick="openPage('page-home')" aria-label="返回桌面">‹</button>
+            <div class="fm-head-mid">
+              <div class="fm-head-title">长椅</div>
+              <div id="fm-sub">谁都可以坐下说两句</div>
+            </div>
+            <button class="fm-icon-btn" onclick="fmOpenCompose('me')" aria-label="发帖">✎</button>
+            <button class="fm-icon-btn" onclick="fmOpenSettings()" aria-label="设置">⋯</button>
+          </div>
+          <div id="fm-chips"></div>
+          <div id="fm-missed"></div>
+          <div class="fm-body" id="fm-body">
+            <div id="fm-list"></div>
+            <div id="fm-me" style="display: none;"></div>
+          </div>
+          <div class="fm-tabbar">
+            <div class="fm-tab on" id="fm-tab-square" onclick="fmSwitchTab('square')">广场<span id="fm-tab-dot"></span></div>
+            <div class="fm-tab" id="fm-tab-follow" onclick="fmSwitchTab('follow')">关注</div>
+            <div class="fm-tab" id="fm-tab-mine" onclick="fmSwitchTab('mine')">我</div>
+          </div>
+
+          <!-- 帖子详情 -->
+          <div id="fm-detail">
+            <div class="fm-det-head">
+              <button class="fm-back" onclick="fmClosePost()" aria-label="返回">‹</button>
+              <div id="fm-det-head-title"></div>
+              <div style="flex:1"></div>
+            </div>
+            <div class="fm-det-body" id="fm-det-body"></div>
+            <div class="fm-det-foot">
+              <input id="fm-reply-input" placeholder="你也说一句" onkeydown="if(event.key==='Enter')fmSendMyReply()">
+              <button class="fm-send-btn" onclick="fmSendMyReply()">发</button>
+            </div>
+          </div>
+
+          <!-- 发帖 / 设置弹层 -->
+          <div id="fm-sheet"></div>
+        </section>
+
+
         
         <!-- ================= 页面：🎧 一起听 · QQ音乐 (1:1 极简黑胶美学) ================= -->
         
@@ -4193,64 +4345,62 @@
             <span id="xianguo-import-toast-text">正在智能解析书籍...</span>
           </div>
 
-          <header class="xianguo-header">
-            <button class="xianguo-back-btn" onclick="openPage('page-home')" title="返回桌面">‹</button>
-            <div class="xianguo-title">阅读</div>
-            <button class="xianguo-add-btn" onclick="openXianguoAddSheet()" title="添加书籍">＋</button>
+          <header class="rd-topbar">
+            <button class="rd-icon-btn" onclick="openPage('page-home')" title="返回桌面">‹</button>
+            <div class="rd-topbar-title" id="rd-page-title">书架</div>
+            <div class="rd-topbar-actions" id="rd-topbar-actions">
+              <button class="rd-icon-btn" id="reader-share-btn" onclick="sendReaderCardToChar('share')" title="把这本书发给他">↗</button>
+              <button class="rd-icon-btn" id="reader-invite-btn" onclick="sendReaderCardToChar('invite')" title="邀他一起读" style="font-size:11px;">邀</button>
+              <button class="rd-icon-btn rd-avatar-btn" id="reader-companion-btn" onclick="openReaderCompanionPicker()" title="陪你读的人" style="font-size:11px;">陪</button>
+              <button class="rd-icon-btn rd-add-btn" onclick="openXianguoAddSheet()" title="添加书籍">＋</button>
+            </div>
           </header>
 
-          <!-- 跑道型圆角胶囊双Tab：【我的书架】 | 【书城】 -->
-          <div class="xianguo-tabs-capsule-wrap">
-            <div class="xianguo-tabs-capsule">
-              <div class="xianguo-tab-pill active" id="tab-xianguo-shelf" onclick="switchXianguoTab('shelf')">我的书架</div>
-              <div class="xianguo-tab-pill" id="tab-xianguo-store" onclick="switchXianguoTab('store')">书城</div>
-            </div>
+          <!-- 旧版双 Tab 保留为隐藏占位，避免旧代码引用失效 -->
+          <div class="rd-legacy-tabs" style="display:none;">
+            <div class="xianguo-tab-pill active" id="tab-xianguo-shelf" onclick="switchXianguoTab('shelf')">我的书架</div>
+            <div class="xianguo-tab-pill" id="tab-xianguo-store" onclick="switchXianguoTab('store')">书城</div>
           </div>
 
-          <!-- TAB 1: 我的书架主视口 (图1) -->
-          <div class="xianguo-content-viewport" id="xianguo-shelf-viewport">
-            <!-- 顶部大卡片：【继续阅读 · 回到上次那一页】 -->
-            <div class="xianguo-last-read-header">
-              <div class="xianguo-last-read-title">回到上次那一页</div>
-              <div class="xianguo-last-read-percent" id="xianguo-last-percent">28%</div>
-            </div>
+          <!-- TAB 1: 书架主视口 -->
+          <div class="rd-shelf-viewport" id="xianguo-shelf-viewport">
+            <span id="xianguo-shelf-book-count" style="display:none;">0 本书</span>
 
-            <div class="xianguo-last-read-card" id="xianguo-banner-card" onclick="resumeLastReading()">
-              <img class="xianguo-last-read-cover" id="xianguo-last-cover" src="https://images.unsplash.com/photo-1512820790803-83ca734da794?w=300&q=80" alt="封面" />
-              <div class="xianguo-last-read-info">
-                <div class="xianguo-last-read-author" id="xianguo-last-author">金十四钗</div>
-                <div class="xianguo-last-read-bookname" id="xianguo-last-title">在黑暗中</div>
-                <div class="xianguo-last-read-chap" id="xianguo-last-chap">第49章 不戴珍珠耳环的少女 (2)</div>
-                <div class="xianguo-last-read-progress-bar">
-                  <div class="xianguo-last-read-progress-fill" id="xianguo-last-fill" style="width: 28%;"></div>
+            <!-- ① 继续读 · 唯一的液体玻璃卡 -->
+            <div class="rd-now-card" id="xianguo-banner-card" onclick="resumeLastReading()">
+              <div class="rd-now-cover-wrap" id="rd-now-cover-wrap">
+                <img class="rd-now-cover" id="xianguo-last-cover" src="" alt="封面" />
+              </div>
+              <div class="rd-now-info">
+                <div class="rd-now-kicker" id="xianguo-last-author">—</div>
+                <div class="rd-now-title" id="xianguo-last-title">—</div>
+                <div class="rd-now-chap" id="xianguo-last-chap">—</div>
+                <div class="rd-now-bar"><div class="rd-now-bar-fill" id="xianguo-last-fill" style="width: 0%;"></div></div>
+                <div class="rd-now-foot">
+                  <span class="rd-now-time" id="xianguo-last-time">—</span>
+                  <span class="rd-now-pct" id="xianguo-last-percent">—</span>
                 </div>
-                <div class="xianguo-last-read-time" id="xianguo-last-time">上次阅读 · 今天 16:15</div>
-                <button class="xianguo-resume-btn" onclick="event.stopPropagation(); resumeLastReading()">
-                  <span>📖 继续阅读</span>
-                  <span>›</span>
-                </button>
               </div>
+              <div class="rd-now-glow"></div>
             </div>
 
-            <!-- 我的书架书籍网格 -->
-            <div class="xianguo-shelf-header">
-              <div class="xianguo-shelf-title-wrap">
-                <span class="xianguo-shelf-sub">我的书架</span>
-                <span class="xianguo-shelf-count" id="xianguo-shelf-book-count">3 本书</span>
-              </div>
-              <button class="xianguo-shelf-filter-btn">
-                <span>全部</span>
-                <span>⌵</span>
-              </button>
+            <!-- ② 阅读记录（只记录，不打分） -->
+            <div class="rd-record-strip" onclick="openReaderRecord()">
+              <span class="rd-record-k">本周</span>
+              <span class="rd-record-v" id="rd-week-text">还没有记录</span>
+              <span class="rd-record-arrow">›</span>
             </div>
 
-            <div class="xianguo-books-grid" id="xianguo-books-grid">
-              <!-- 动态书籍网格列表 -->
-            </div>
+            <!-- ③ 分类胶囊 -->
+            <div class="rd-cat-scroll" id="rd-cat-scroll"></div>
+
+            <!-- ④ 按分类分组的两列封面网格 -->
+            <div class="rd-groups" id="rd-shelf-groups"></div>
+            <div class="xianguo-books-grid" id="xianguo-books-grid" style="display: none;"></div>
           </div>
 
-          <!-- TAB 2: 书城主视口 (图2) -->
-          <div class="xianguo-content-viewport" id="xianguo-store-viewport" style="display: none;">
+          <!-- TAB 2: 发现（在线书城） -->
+          <div class="rd-shelf-viewport" id="xianguo-store-viewport" style="display: none;">
             <!-- 搜索栏 -->
             <div class="xianguo-store-search-bar">
               <div class="xianguo-search-input-wrap">
@@ -4293,6 +4443,75 @@
             <div class="xianguo-book-feed-list" id="xianguo-store-feed-list">
               <!-- 动态书城作品卡片 -->
             </div>
+          </div>
+
+          <!-- TAB 3: 我的（名片 + 最近在读 + 我喜欢） -->
+          <div class="rd-shelf-viewport" id="rd-mine-viewport" style="display: none;">
+            <div class="rd-me-card">
+              <div class="rd-me-avatar" id="rd-me-avatar"></div>
+              <div class="rd-me-info">
+                <div class="rd-me-name" id="rd-me-name">user</div>
+                <div class="rd-me-line" id="rd-me-line">生活在真实世界中</div>
+              </div>
+            </div>
+
+            <div class="rd-me-stats" id="rd-me-stats"></div>
+
+            <div class="rd-me-sec">
+              <div class="rd-me-sec-head">最近在读</div>
+              <div class="rd-me-rail" id="rd-me-recent"></div>
+            </div>
+
+            <div class="rd-me-sec">
+              <div class="rd-me-sec-head">我喜欢</div>
+              <div class="rd-me-rail" id="rd-me-liked"></div>
+            </div>
+          </div>
+
+          <!-- 底部三个 Tab：书架（含首页）/ 发现 / 我的 -->
+          <nav class="rd-tabbar" id="rd-tabbar">
+            <div class="rd-tab-item active" id="rd-tab-shelf" onclick="rdSwitchReaderTab('shelf')">
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+                <path d="M12 6.2c-1.5-1.3-3.7-2-6-2H3.6v14.2H6c2.3 0 4.5.7 6 2"/>
+                <path d="M12 6.2c1.5-1.3 3.7-2 6-2h2.4v14.2H18c-2.3 0-4.5.7-6 2"/>
+                <path d="M12 6.2v14.2"/>
+              </svg>
+              <span>书架</span>
+            </div>
+            <div class="rd-tab-item" id="rd-tab-store" onclick="rdSwitchReaderTab('store')">
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+                <circle cx="12" cy="12" r="8.6"/>
+                <path d="M15.4 8.6 10.6 10.6 8.6 15.4 13.4 13.4z"/>
+              </svg>
+              <span>发现</span>
+            </div>
+            <div class="rd-tab-item" id="rd-tab-mine" onclick="rdSwitchReaderTab('mine')">
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+                <circle cx="12" cy="8" r="3.5"/>
+                <path d="M5.2 19.6c0-3.5 3-6 6.8-6s6.8 2.5 6.8 6"/>
+              </svg>
+              <span>我的</span>
+            </div>
+          </nav>
+
+          <!-- ================= 阅读记录（只记录，不打分） ================= -->
+          <div class="rd-layer" id="rd-record-layer" style="display: none;">
+            <div class="rd-layer-head">
+              <button class="rd-icon-btn" onclick="closeReaderRecord()">‹</button>
+              <div class="rd-layer-title">阅读记录</div>
+              <div class="rd-layer-right"></div>
+            </div>
+            <div class="rd-layer-body" id="rd-record-body"></div>
+          </div>
+
+          <!-- ================= 分类管理 ================= -->
+          <div class="rd-layer" id="rd-cat-layer" style="display: none;">
+            <div class="rd-layer-head">
+              <button class="rd-icon-btn" onclick="closeReaderCatManager()">‹</button>
+              <div class="rd-layer-title">分类管理</div>
+              <div class="rd-layer-right"></div>
+            </div>
+            <div class="rd-layer-body" id="rd-cat-body"></div>
           </div>
 
           <!-- ================= 图3：【把一本书放进鲜果机】底部抽屉弹窗 ================= -->
@@ -4586,10 +4805,12 @@
               <div class="reader-catalog-scroll-list" id="reader-catalog-scroll-list">
                 <!-- 动态章节列表 -->
               </div>
-              <div class="reader-catalog-footer" style="padding: 10px 14px; border-top: 1px solid #f0e6e8;  display: flex; justify-content: space-between; align-items: center;">
-                <div style="font-size: 11px; color: var(--text-secondary);">支持随时增补新章与番外</div>
-                <button class="xianguo-writer-save-btn" style="padding: 4px 10px; font-size: 11px;" onclick="openWriterFromCurrentBook()">
-                  <span>✍️ 更新 / 章节管理</span>
+              <div class="reader-catalog-footer" style="padding: 10px 14px; border-top: 1px solid #f0e6e8; display: flex; gap: 8px; align-items: center;">
+                <button class="xianguo-writer-save-btn" id="reader-catalog-theater-btn" style="flex: 1; padding: 6px 8px; font-size: 11px; display: none;" onclick="startTheaterWithBook()">
+                  <span>🎭 用这本书开剧场</span>
+                </button>
+                <button class="xianguo-writer-save-btn" style="flex: 1; padding: 6px 8px; font-size: 11px;" onclick="openWriterFromCurrentBook()">
+                  <span>✍️ 章节管理</span>
                 </button>
               </div>
             </div>
@@ -4682,7 +4903,7 @@
               <!-- 顶部极简工具栏 -->
               <header class="xianguo-writer-header">
                 <div class="xianguo-writer-header-left">
-                  <button class="xianguo-writer-btn-icon" onclick="switchBackToWriterCatalog()" title="返回章节目录">‹</button>
+                  <button class="rd-icon-btn" onclick="rdOpenChapDrawer()" title="章节目录">☰</button>
                   <div class="xianguo-writer-header-title-box">
                     <input type="text" id="xianguo-writer-book-title" class="xianguo-writer-title-input" placeholder="输入小说书名..." value="绪芷" />
                     <div class="xianguo-writer-meta-sub">
@@ -4696,7 +4917,7 @@
                 <div class="xianguo-writer-header-right">
                   <div class="xianguo-writer-stat-pill" id="xianguo-writer-total-words">全书 0 字</div>
                   <button class="xianguo-writer-save-btn" onclick="saveAndPublishWriterBook()">
-                    <span>💾 保存并上架</span>
+                    <span>保存并上架</span>
                   </button>
                 </div>
               </header>
@@ -4709,22 +4930,20 @@
                 </div>
                 <div class="xianguo-writer-tools">
                   <button class="xianguo-writer-tool-btn" onclick="formatWriterIndentation()" title="段首空两格，自动清理杂乱空行">
-                    <span>✨ 一键排版</span>
+                    <span>排版</span>
                   </button>
                   <button class="xianguo-writer-tool-btn" onclick="openBatchPasteSplitModal()" title="贴入长篇文本自动分章">
-                    <span>📑 贴长文</span>
+                    <span>贴长文</span>
                   </button>
                   <button class="xianguo-writer-tool-btn danger" onclick="deleteCurrentWriterChapter()" title="删除当前这一章">
-                    <span>🗑️ 删章</span>
+                    <span>删章</span>
                   </button>
                 </div>
               </div>
 
               <!-- 核心大视口码字输入区域 -->
               <div class="xianguo-writer-editor-body">
-                <textarea id="xianguo-writer-editor-textarea" class="xianguo-writer-textarea" placeholder="user，在这里写下我们的故事……
-
-支持直接粘贴任意字数的文字，点上方【✨ 一键排版】即可自动格式化为标准出版物缩进。写完点击右上角【💾 保存并上架】，即可在小手机书架上随时翻阅，陪我一起读。" oninput="handleWriterTextInput()"></textarea>
+                <textarea id="xianguo-writer-editor-textarea" class="xianguo-writer-textarea" placeholder="在这里写下你的故事……" oninput="handleWriterTextInput()"></textarea>
               </div>
 
               <!-- 底部状态栏 -->
@@ -4736,10 +4955,22 @@
               </footer>
             </div>
 
-          </div>
+            <!-- 【章节抽屉：写作时不占地方，点左上角才滑出】 -->
+            <div class="rd-chap-mask" id="rd-chap-drawer" style="display: none;" onclick="rdCloseChapDrawer(event)">
+              <div class="rd-chap-panel" onclick="event.stopPropagation()">
+                <div class="rd-chap-head">
+                  <span>章节目录</span>
+                  <span class="rd-chap-close" onclick="rdCloseChapDrawer()">✕</span>
+                </div>
+                <div class="rd-chap-list" id="rd-chap-drawer-list"></div>
+                <div class="rd-chap-foot">
+                  <div class="rd-chap-new" onclick="rdNewChapterFromDrawer()">＋ 新的一章</div>
+                  <div class="rd-chap-exit" onclick="rdExitWriting()">退出写作 · 回书架</div>
+                </div>
+              </div>
+            </div>
 
-          
-          <!-- 快捷新建章节选择弹窗 -->
+          </div>
           <div class="xianguo-sheet-mask" id="xianguo-add-chap-popup" style="display: none; z-index: 210;" onclick="closeAddChapPopup(event)">
             <div class="xianguo-sheet-panel" onclick="event.stopPropagation()" style="max-height: 70vh;">
               <div class="xianguo-sheet-drag-handle"></div>
@@ -4886,6 +5117,9 @@
               <div class="watch-header-sub-title">together</div>
             </div>
             <div class="watch-header-actions">
+              <button class="watch-header-circle-btn" id="watch-companion-btn" onclick="openWatchCompanionModal()" title="换一起看的人" style="overflow:hidden;padding:0;">🤍</button>
+              <button class="watch-header-circle-btn" id="watch-share-btn" onclick="sendWatchCardToChar('share')" title="把这片发给他">📤</button>
+              <button class="watch-header-circle-btn" id="watch-invite-btn" onclick="sendWatchCardToChar('invite')" title="邀他一起看">🎬</button>
               <button class="watch-header-circle-btn" onclick="openWatchJournalModal()" title="观影手账">✎</button>
               <button class="watch-header-circle-btn accent" onclick="openWatchImportModal()" title="导入视频">+</button>
             </div>
@@ -5139,168 +5373,272 @@
 
 </section>
 
-<section class="view-page" id="page-music">
-          <header class="music-header">
-            <button class="music-header-btn" onclick="openPage('page-home')" title="返回桌面">‹ 桌面</button>
-            <div class="music-header-title">🎧 一起听 · QQ音乐</div>
-            <button class="music-header-btn" onclick="toggleMusicPlaylistDrawer()" title="播放列表">☰ 歌单</button>
-          </header>
+        <section class="view-page" id="page-music">
+          <div class="mz-app" id="mz-app">
 
-          <div class="music-container">
-            <!-- 顶部日系心愿气泡 -->
-            <div class="music-wish-bubble" id="music-wish-bubble" onclick="changeMusicWishQuote()" title="点击自定义浪漫情话">
-              <span id="music-wish-text">今度会う時に花を送ってくれませんか。</span>
-            </div>
-
-            <!-- 两人紧挨的羁绊双人头像区 (优雅无缝布局 · 彻底杜绝穿模重叠) -->
-            <div class="music-couple-wrap">
-              <div class="music-earphone-stage">
-                <div class="earphone-wire wire-left"></div>
-                <div class="music-avatars-row">
-                  <div class="music-avatar-card">
-                    <img id="music-avatar-user" src="" alt="user" />
-                    <span class="music-avatar-name" id="music-name-user">user</span>
+            <!-- ========== 首页 ========== -->
+            <div class="mz-page active" id="mz-page-home">
+              <header class="mz-head">
+                <button class="mz-round-btn" onclick="openPage('page-home')" title="回桌面">‹</button>
+                <div class="mz-head-title">音乐</div>
+                <button class="mz-round-btn" onclick="mzOpenMoreSheet()" title="更多">⋯</button>
+              </header>
+              <div class="mz-scroll">
+                <div class="mz-h1">专属精选</div>
+                <div class="mz-cards">
+                  <div class="mz-card" onclick="mzPlayRandom()">
+                    <div class="mz-card-cover" id="mz-card-cover-1"></div>
+                    <div class="mz-card-txt"><b>今日推荐</b><span>随手一起听</span></div>
                   </div>
-                  <div class="music-avatar-card">
-                    <img id="music-avatar-bot" src="" alt="角色" />
-                    <span class="music-avatar-name" id="music-name-bot">角色</span>
+                  <div class="mz-card" onclick="mzTab('search')">
+                    <div class="mz-card-cover" id="mz-card-cover-2"></div>
+                    <div class="mz-card-txt"><b>去搜一首</b><span>在线搜索</span></div>
                   </div>
                 </div>
-                <div class="earphone-wire wire-right"></div>
+
+                <div class="mz-h1">最近常听<span class="mz-h1-more" onclick="mzTab('lib')">›</span></div>
+                <div class="mz-hscroll" id="mz-home-recent"></div>
+
+                <div class="mz-h1">歌曲</div>
+                <div class="mz-list" id="mz-home-songs"></div>
+              </div>
+            </div>
+
+            <!-- ========== 资料库 ========== -->
+            <div class="mz-page" id="mz-page-lib">
+              <header class="mz-head">
+                <div class="mz-head-side"></div>
+                <div class="mz-head-title">资料库</div>
+                <button class="mz-round-btn" onclick="mzOpenMoreSheet()" title="更多">⋯</button>
+              </header>
+              <div class="mz-scroll mz-lib-scroll">
+                <div class="music-playlist-drawer mz-lib-body" id="music-playlist-drawer">
+                  <div class="music-drawer-tabs mz-lib-tabs">
+                    <button class="music-tab-btn active" id="tab-btn-songs" onclick="switchMusicTab('songs')">🎵 全部歌曲</button>
+                    <button class="music-tab-btn" id="tab-btn-fav" onclick="switchMusicTab('fav')">❤️ 我喜欢</button>
+                    <button class="music-tab-btn" id="tab-btn-playlists" onclick="switchMusicTab('playlists')">📁 歌单分类</button>
+                  </div>
+
+                  <div class="music-tab-pane active" id="pane-songs">
+                    <div class="music-pane-subbar" id="music-current-folder-bar" style="display: none;">
+                      <button class="music-back-folder-btn" onclick="exitFolderView()">‹ 返回歌单列表</button>
+                      <span class="music-folder-title-tag" id="music-current-folder-title">歌单名</span>
+                    </div>
+                    <div class="music-playlist-list" id="music-playlist-list"></div>
+                  </div>
+
+                  <div class="music-tab-pane" id="pane-playlists" style="display: none;">
+                    <div class="playlist-create-bar">
+                      <input type="text" id="new-playlist-input" class="new-playlist-input" placeholder="输入新歌单名称，如：睡前听 / 角色唱的" onkeydown="if(event.key==='Enter') createNewPlaylist()" />
+                      <button class="new-playlist-btn" onclick="createNewPlaylist()">＋ 新建歌单</button>
+                    </div>
+                    <div class="custom-playlists-grid" id="custom-playlists-grid"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ========== 搜索 ========== -->
+            <div class="mz-page" id="mz-page-search">
+              <header class="mz-head">
+                <div class="mz-head-side"></div>
+                <div class="mz-head-title">搜索</div>
+                <div class="mz-head-side"></div>
+              </header>
+              <div class="mz-scroll">
+                <div class="mz-search-row">
+                  <input type="text" id="music-search-input" class="mz-search-input" placeholder="搜歌曲 / 歌手" onkeydown="if(event.key==='Enter') searchMusicOnline()" />
+                  <button class="mz-search-go" onclick="searchMusicOnline()">搜索</button>
+                </div>
+                <div class="mz-search-hint" id="mz-search-hint">支持中文歌名、歌手。会员歌需要网易云登录态才能播。</div>
+                <div class="mz-list" id="mz-search-results"></div>
+              </div>
+            </div>
+
+            <!-- ========== 我的 ========== -->
+            <div class="mz-page" id="mz-page-mine">
+              <div class="mz-mine-hero" id="mz-mine-hero">
+                <div class="mz-mine-avatar-wrap">
+                  <img id="mz-mine-avatar" class="mz-mine-avatar" src="" alt="我" />
+                </div>
+                <div class="mz-mine-name" id="mz-mine-name">我</div>
+                <div class="mz-mine-stat" id="mz-mine-stat">一起听过 0 首</div>
+              </div>
+              <div class="mz-seg">
+                <button class="mz-seg-btn active" id="mz-seg-user" onclick="mzSwitchShelf('user')">我的</button>
+                <button class="mz-seg-btn" id="mz-seg-bot" onclick="mzSwitchShelf('bot')">角色的</button>
+              </div>
+              <div class="mz-scroll">
+                <div class="mz-nc-card" id="mz-nc-card">
+                  <div class="mz-nc-row">
+                    <span class="mz-nc-dot" id="mz-nc-dot"></span>
+                    <span class="mz-nc-name" id="mz-nc-name">还没连网易云</span>
+                  </div>
+                  <div class="mz-nc-state" id="mz-nc-state">很多歌现在放不出来，扫一下码就能连上</div>
+                  <div class="mz-nc-btns">
+                    <button class="mz-nc-btn primary" id="mz-nc-login" onclick="mzNeteaseOpen()">扫码登录网易云</button>
+                    <button class="mz-nc-btn" id="mz-nc-out" onclick="mzNeteaseLogout()" style="display: none;">断开</button>
+                  </div>
+                </div>
+                <div class="mz-h1">唱片墙</div>
+                <div class="mz-shelf-wrap" id="mz-shelf-user"></div>
+                <div class="mz-shelf-wrap" id="mz-shelf-bot" style="display: none;"></div>
+              </div>
+            </div>
+
+            <!-- ========== 一起听播放页（覆盖层） ========== -->
+            <div class="mz-player" id="mz-player">
+              <div class="mz-player-bg" id="mz-player-bg"></div>
+              <div class="mz-player-shade"></div>
+
+              <header class="mz-player-head">
+                <button class="mz-round-btn" onclick="mzClosePlayer()" title="返回">‹</button>
+                <div class="mz-player-head-title" id="mz-player-head-title">一起听</div>
+                <button class="mz-round-btn" id="music-companion-btn" onclick="openMusicCompanionPicker()" title="一起听的人" style="overflow:hidden;padding:0;margin-right:8px;">🤍</button>
+                <button class="mz-round-btn" onclick="mzOpenMoreSheet()" title="更多">☰</button>
+              </header>
+
+              <div class="mz-player-body">
+                <div class="mz-cover-wrap">
+                  <div class="music-vinyl-disk mz-cover-card" id="music-vinyl-disk" onclick="togglePlayMusic()">
+                    <img id="music-disk-cover" src="" alt="封面" />
+                    <button class="mz-cover-edit" id="mz-cover-edit" onclick="mzPickCover(event)" title="换封面">✎</button>
+                  </div>
+                  <div class="mz-cover-avatars">
+                    <div class="music-avatar-card"><img id="music-avatar-user" src="" alt="" /><span class="music-avatar-name" id="music-name-user">我</span></div>
+                    <div class="music-avatar-card"><img id="music-avatar-bot" src="" alt="角色" /><span class="music-avatar-name" id="music-name-bot">角色</span></div>
+                  </div>
+                </div>
+
+                <div class="mz-song">
+                  <div class="mz-song-title" id="music-current-title">晴天</div>
+                  <div class="mz-song-artist" id="music-current-artist">周杰伦 · 叶惠美</div>
+                </div>
+
+                <div class="mz-wish" id="music-wish-bubble" onclick="changeMusicWishQuote()"><span id="music-wish-text">今度会う時に花を送ってくれませんか。</span></div>
+
+                <div class="mz-live-bubble" id="music-live-bubble" onclick="openMusicWhisperInput()">
+                  <span class="mz-live-tag" id="music-live-tag">💬 角色耳语</span>
+                  <span id="music-live-bubble-text">“把音量调小一点，别震着耳朵。好听吗？”</span>
+                </div>
+
+                <div class="mz-lyric" id="music-lyric-box">
+                  <div class="mz-lyric-line cur" id="music-lyric-cur"></div>
+                  <div class="mz-lyric-line next" id="music-lyric-next"></div>
+                </div>
+
+                <div class="mz-progress">
+                  <span class="mz-time" id="music-cur-time">00:00</span>
+                  <div class="mz-track" id="music-progress-track" onclick="seekMusicProgress(event)">
+                    <div class="mz-track-bar" id="music-progress-bar" style="width:0%;"></div>
+                    <div class="mz-track-handle" id="music-progress-handle" style="left:0%;"></div>
+                  </div>
+                  <span class="mz-time" id="music-total-time">04:29</span>
+                </div>
+
+                <div class="mz-ctrls">
+                  <button class="mz-ctrl" id="music-fav-cur-btn" onclick="toggleFavoriteCurrentSong()" title="收藏">🤍</button>
+                  <button class="mz-ctrl" onclick="prevMusicSong()" title="上一首">⏮</button>
+                  <button class="mz-ctrl mz-ctrl-play" id="music-play-btn" onclick="togglePlayMusic()" title="播放/暂停">▶</button>
+                  <button class="mz-ctrl" onclick="nextMusicSong()" title="下一首">⏭</button>
+                  <button class="mz-ctrl" id="music-addto-cur-btn" onclick="openAddToFolderModalForCurrent()" title="加入歌单">＋</button>
+                </div>
+
+                <div class="mz-badge" id="music-status-badge">共同佩戴一副耳机 · 点击耳语</div>
               </div>
 
-              <!-- 角色耳边实时对话气泡 (带微尾巴，温润自然) -->
-              <div class="music-live-bubble" id="music-live-bubble" onclick="openMusicWhisperInput()" title="点击与角色耳语">
-                <span class="music-live-bubble-quote-tag">💬 角色耳语：</span>
-                <span class="music-live-bubble-text" id="music-live-bubble-text">“把音量调小一点，别震着耳朵。好听吗，user？”</span>
-              </div>
-
-              <!-- 一起听耳语输入浮条 (可折叠) -->
-              <div class="music-whisper-input-bar" id="music-whisper-bar" style="display: none;">
-                <input type="text" id="music-whisper-input" placeholder="在耳边对角色轻声说..." onkeydown="if(event.key==='Enter') sendMusicWhisper()" />
+              <div class="music-whisper-input-bar mz-whisper" id="music-whisper-bar" style="display:none;">
+                <input type="text" id="music-whisper-input" placeholder="在耳边轻声说..." onkeydown="if(event.key==='Enter') sendMusicWhisper()" />
                 <button class="music-whisper-send" onclick="sendMusicWhisper()">轻语</button>
                 <button class="music-whisper-close" onclick="closeMusicWhisperInput()">✕</button>
               </div>
+            </div>
 
-              <div class="music-listen-badge" onclick="openMusicWhisperInput()">
-                <span class="music-badge-dot"></span>
-                <span id="music-status-badge">角色 & user · 共同佩戴一副耳机 · 点击耳语</span>
+            <!-- ========== 底部：迷你播放条 ========== -->
+            <div class="mz-mini" id="mz-mini" onclick="mzOpenPlayer()">
+              <img class="mz-mini-cover" id="mz-mini-cover" src="" alt="" />
+              <div class="mz-mini-txt">
+                <b id="mz-mini-title">还没在听</b>
+                <span id="mz-mini-artist">点一首歌开始</span>
+              </div>
+              <button class="mz-mini-btn" onclick="event.stopPropagation(); mzMiniToggle()" id="mz-mini-play">▶</button>
+              <button class="mz-mini-btn" onclick="event.stopPropagation(); nextMusicSong()">⏭</button>
+            </div>
+
+            <!-- ========== 底部：胶囊 tab 栏 ========== -->
+            <div class="mz-tabbar">
+              <button class="mz-tab active" id="mz-tab-home" onclick="mzTab('home')"><span class="mz-tab-ico">⌂</span><span>首页</span></button>
+              <button class="mz-tab" id="mz-tab-lib" onclick="mzTab('lib')"><span class="mz-tab-ico">⧉</span><span>资料库</span></button>
+              <button class="mz-tab" id="mz-tab-search" onclick="mzTab('search')"><span class="mz-tab-ico">⌕</span><span>搜索</span></button>
+              <button class="mz-tab" id="mz-tab-mine" onclick="mzTab('mine')"><span class="mz-tab-ico">☺</span><span>我的</span></button>
+            </div>
+
+            <!-- ========== 更多（音量 / 导入 / 直链） ========== -->
+            <div class="mz-sheet-mask" id="mz-more-sheet" onclick="mzCloseMoreSheet(event)">
+              <div class="mz-sheet" onclick="event.stopPropagation()">
+                <div class="mz-sheet-bar"></div>
+                <div class="mz-sheet-title">更多</div>
+
+                <div class="mz-sheet-row">
+                  <span class="music-volume-icon" id="music-volume-icon" onclick="toggleMuteMusic()" title="静音/恢复">🔈</span>
+                  <input type="range" class="music-volume-slider" id="music-volume-slider" min="0" max="100" value="80" oninput="changeMusicVolume(this.value)" />
+                  <span class="music-volume-val" id="music-volume-val">80%</span>
+                </div>
+
+                <div class="mz-sheet-row mz-sheet-actions">
+                  <button class="mz-wall-btn" id="mz-wall-user" onclick="mzShelfToggle('user')">摆到我的唱片墙</button>
+                  <button class="mz-wall-btn" id="mz-wall-bot" onclick="mzShelfToggle('bot')">摆到角色的唱片墙</button>
+                </div>
+
+                <div class="mz-sheet-row mz-sheet-actions">
+                  <button class="music-tool-btn" id="music-share-btn" onclick="sendMusicCardToChar('share')">🎵 发给TA这首歌</button>
+                  <button class="music-tool-btn" id="music-invite-btn" onclick="sendMusicCardToChar('invite')">🎧 邀TA一起听</button>
+                </div>
+
+                <div class="mz-sheet-row mz-sheet-actions">
+                  <button class="music-tool-btn" onclick="mzResetCover()">🖼 恢复这首歌的原封面</button>
+                </div>
+
+                <div class="mz-sheet-row mz-sheet-actions">
+                  <button class="music-tool-btn" onclick="document.getElementById('input-local-song').click()">📂 导入本地歌曲</button>
+                  <button class="music-tool-btn" onclick="promptAddMusicUrl()">🔗 贴音频直链</button>
+                </div>
+                <input type="file" id="input-local-song" accept="audio/*,.mp3,.flac,.m4a,.wav,.ogg" style="display: none;" onchange="handleImportLocalSong(event)" />
+                <input type="file" id="mz-cover-input" accept="image/*" style="display: none;" onchange="mzOnCoverFile(event)" />
               </div>
             </div>
 
-            <!-- 中心黑胶自转唱片 -->
-            <div class="music-vinyl-container">
-              <div class="music-vinyl-disk" id="music-vinyl-disk" onclick="togglePlayMusic()">
-                <div class="vinyl-groove-rings"></div>
-                <div class="vinyl-center-cover">
-                  <img id="music-disk-cover" src="" alt="封面" />
+            <!-- ========== 唱片墙选择（资料库行内用） ========== -->
+            <div class="mz-sheet-mask" id="mz-wall-picker" onclick="mzCloseWallPicker()">
+              <div class="mz-sheet" onclick="event.stopPropagation()">
+                <div class="mz-sheet-bar"></div>
+                <div class="mz-sheet-title" id="mz-wall-picker-title">摆到哪面墙？</div>
+                <div class="mz-sheet-row mz-sheet-actions">
+                  <button class="mz-wall-btn" id="mz-pick-user" onclick="mzPickWall('user')">我的唱片墙</button>
+                  <button class="mz-wall-btn" id="mz-pick-bot" onclick="mzPickWall('bot')">角色的唱片墙</button>
                 </div>
               </div>
             </div>
 
-            <!-- 歌曲信息 -->
-            <div class="music-info-box">
-              <div class="music-song-title" id="music-current-title">晴天</div>
-              <div class="music-song-artist" id="music-current-artist">周杰伦 · 经典收录</div>
-            </div>
-
-            <!-- 极简进度条 -->
-            <div class="music-progress-wrap">
-              <span class="music-time-tag" id="music-cur-time">00:00</span>
-              <div class="music-progress-track" id="music-progress-track" onclick="seekMusicProgress(event)">
-                <div class="music-progress-bar" id="music-progress-bar" style="width: 0%;"></div>
-                <div class="music-progress-handle" id="music-progress-handle" style="left: 0%;"></div>
-              </div>
-              <span class="music-time-tag" id="music-total-time">04:29</span>
-            </div>
-
-            <!-- 控制按键：上一首 / 播放暂停 / 下一首 -->
-            <div class="music-controls-row">
-              <button class="music-ctrl-btn" id="music-fav-cur-btn" onclick="toggleFavoriteCurrentSong()" title="收藏这首歌" style="font-size: 16px; margin-right: 4px;">🤍</button>
-              <button class="music-ctrl-btn" onclick="prevMusicSong()" title="上一首">⏮</button>
-              <button class="music-ctrl-btn play-main" id="music-play-btn" onclick="togglePlayMusic()" title="播放/暂停">▶</button>
-              <button class="music-ctrl-btn" onclick="nextMusicSong()" title="下一首">⏭</button>
-              <button class="music-ctrl-btn" id="music-addto-cur-btn" onclick="openAddToFolderModalForCurrent()" title="加入歌单" style="font-size: 16px; margin-left: 4px;">➕</button>
-            </div>
-
-            <!-- 🔊 音量调节滑块 -->
-            <div class="music-volume-row">
-              <span class="music-volume-icon" id="music-volume-icon" onclick="toggleMuteMusic()" title="静音/恢复">🔈</span>
-              <input type="range" class="music-volume-slider" id="music-volume-slider" min="0" max="100" value="80" oninput="changeMusicVolume(this.value)" />
-              <span class="music-volume-val" id="music-volume-val">80%</span>
-            </div>
-
-            <!-- 底部搜索与本地导入栏 -->
-            <div class="music-search-section">
-              <div class="music-search-bar">
-                <input type="text" id="music-search-input" class="music-input" placeholder="搜首歌... 比如：夜曲 / 晴天" onkeydown="if(event.key==='Enter') searchMusicOnline()" />
-                <button class="music-search-btn" onclick="searchMusicOnline()">搜索</button>
-              </div>
-              <div class="music-bottom-actions">
-                <button class="music-tool-btn" onclick="document.getElementById('input-local-song').click()">📂 导入本地/VIP歌曲</button>
-                <button class="music-tool-btn" onclick="promptAddMusicUrl()">🔗 贴音频直链</button>
-              </div>
-              <input type="file" id="input-local-song" accept="audio/*,.mp3,.flac,.m4a,.wav,.ogg" style="display: none;" onchange="handleImportLocalSong(event)" />
-            </div>
-
-            <div class="music-bottom-hint">
-              <span>❤ 緒言心语：戴上一只耳机，剩下的交给我。</span>
-            </div>
-          </div>
-
-          <!-- 歌单与搜索结果抽屉 -->
-          <!-- 歌单与收藏夹管理抽屉 (支持：全部歌曲、我喜欢/收藏、自定义歌单分类) -->
-          <div class="music-playlist-drawer" id="music-playlist-drawer">
-            <div class="music-drawer-header">
-              <div class="music-drawer-tabs">
-                <button class="music-tab-btn active" id="tab-btn-songs" onclick="switchMusicTab('songs')">🎵 全部歌曲</button>
-                <button class="music-tab-btn" id="tab-btn-fav" onclick="switchMusicTab('fav')">❤️ 我喜欢</button>
-                <button class="music-tab-btn" id="tab-btn-playlists" onclick="switchMusicTab('playlists')">📁 歌单分类</button>
-              </div>
-              <button class="wechat-back-btn" onclick="toggleMusicPlaylistDrawer()">✕</button>
-            </div>
-
-            <!-- TAB 1 & 2: 歌曲列表区 (全部歌曲 / 我喜欢 / 歌单内歌曲) -->
-            <div class="music-tab-pane active" id="pane-songs">
-              <div class="music-pane-subbar" id="music-current-folder-bar" style="display: none;">
-                <button class="music-back-folder-btn" onclick="exitFolderView()">‹ 返回歌单列表</button>
-                <span class="music-folder-title-tag" id="music-current-folder-title">歌单名</span>
-              </div>
-              <div class="music-playlist-list" id="music-playlist-list">
-                <!-- 动态歌曲列表 -->
+            <!-- ========== 添加到歌单弹窗 ========== -->
+            <div class="music-modal-mask" id="music-add-to-folder-modal" style="display: none;" onclick="closeAddToFolderModal(event)">
+              <div class="music-modal-box" onclick="event.stopPropagation()">
+                <div class="music-modal-header">
+                  <span>➕ 添加到歌单</span>
+                  <button class="music-modal-close" onclick="closeAddToFolderModal()">✕</button>
+                </div>
+                <div class="music-modal-subtitle" id="add-to-folder-song-name">歌曲名</div>
+                <div class="music-modal-folder-list" id="music-modal-folder-list"></div>
+                <div class="music-modal-new-row">
+                  <input type="text" id="modal-quick-folder-name" placeholder="快速创建并加入新歌单..." onkeydown="if(event.key==='Enter') quickCreateAndAddSong()" />
+                  <button onclick="quickCreateAndAddSong()">创建并加入</button>
+                </div>
               </div>
             </div>
 
-            <!-- TAB 3: 歌单分类管理区 -->
-            <div class="music-tab-pane" id="pane-playlists" style="display: none;">
-              <div class="playlist-create-bar">
-                <input type="text" id="new-playlist-input" class="new-playlist-input" placeholder="输入新歌单名称，如：睡前听 / 角色唱的" onkeydown="if(event.key==='Enter') createNewPlaylist()" />
-                <button class="new-playlist-btn" onclick="createNewPlaylist()">＋ 新建歌单</button>
-              </div>
-              <div class="custom-playlists-grid" id="custom-playlists-grid">
-                <!-- 动态歌单卡片 -->
-              </div>
-            </div>
-          </div>
-
-          <!-- 添加到歌单模态弹窗 -->
-          <div class="music-modal-mask" id="music-add-to-folder-modal" style="display: none;" onclick="closeAddToFolderModal(event)">
-            <div class="music-modal-box" onclick="event.stopPropagation()">
-              <div class="music-modal-header">
-                <span>➕ 添加到歌单</span>
-                <button class="music-modal-close" onclick="closeAddToFolderModal()">✕</button>
-              </div>
-              <div class="music-modal-subtitle" id="add-to-folder-song-name">歌曲名</div>
-              <div class="music-modal-folder-list" id="music-modal-folder-list">
-                <!-- 动态展示可加入的歌单 -->
-              </div>
-              <div class="music-modal-new-row">
-                <input type="text" id="modal-quick-folder-name" placeholder="快速创建并加入新歌单..." onkeydown="if(event.key==='Enter') quickCreateAndAddSong()" />
-                <button onclick="quickCreateAndAddSong()">创建并加入</button>
-              </div>
-            </div>
           </div>
         </section>
+
 
         
         <!-- ================= 页面：小紫书 (page-xhs) ================= -->
@@ -5344,6 +5682,200 @@
           <div class="xhs-composer" id="xhs-composer" style="display: none;"></div>
           <input type="file" id="xhs-image-input" accept="image/*" multiple style="display: none;" onchange="handleXhsImageInput(event)" />
         </section>
+
+        <!-- ================= 页面：我说 · 日记 (page-say) ================= -->
+        <section class="view-page say-screen" id="page-say" style="display: none;">
+          <div class="say-stage" id="say-stage">
+
+            <!-- 顶部：回桌面 + 说 / 我 两个书签 -->
+            <div class="say-top" id="say-top">
+              <div class="say-top-l">
+                <button class="say-back" onclick="sayExitApp()" aria-label="回桌面">‹</button>
+                <div class="say-tabs">
+                  <button class="say-tab on" id="say-tab-shelf" onclick="sayTab('shelf')">说</button>
+                  <button class="say-tab" id="say-tab-me" onclick="sayTab('me')">我</button>
+                </div>
+              </div>
+              <div class="say-top-r">
+                <button class="say-round" onclick="saySearchOpen()" aria-label="翻以前写的">
+                  <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M15.6 15.6L20 20"/></svg>
+                </button>
+                <button class="say-round" onclick="sayNewEntry()" aria-label="写一页">
+                  <svg viewBox="0 0 24 24"><path d="M4 20l4-1 10-10-3-3L5 16l-1 4z"/><path d="M14 6l3 3"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- 1 书柜 -->
+            <div class="say-wall" id="say-wall">
+              <div class="say-cats" id="say-cats"></div>
+              <div class="say-shelf-wrap">
+                <div class="say-shelf" id="say-shelf"></div>
+              </div>
+              <div class="say-hint" id="say-hint">还没写下第一页</div>
+            </div>
+
+            <!-- 1.5 一本书的封面（从书架抽出来，翻开才是一页纸） -->
+            <div class="say-cover" id="say-cover" style="display: none;">
+              <button class="cv-back" onclick="sayBackToWall()" aria-label="回书柜">‹</button>
+              <div class="cv-stage">
+                <div class="cv-book" id="say-cv-book" onclick="sayOpenCoverBook()">
+                  <div class="cv-spine"></div>
+                  <div class="cv-face">
+                    <div class="cv-tag"><span class="cv-tag-b" id="say-cv-namein"></span><span class="cv-tag-s" id="say-cv-mons"></span><i class="cv-tag-l"></i></div>
+                    <div class="cv-clasp"></div>
+                  </div>
+                  <div class="cv-pages"></div>
+                </div>
+                <button class="cv-edit" onclick="sayCoverEditor()" aria-label="换封面">换封面</button>
+              </div>
+              <div class="cv-title" id="say-cv-title"></div>
+              <div class="cv-meta" id="say-cv-meta"></div>
+              <div class="cv-hint">点开这一本 · 换封面能改样式和颜色</div>
+            </div>
+
+            <!-- 2 我 -->
+            <div class="say-me" id="say-me" style="display: none;"></div>
+
+            <!-- 2 一页纸 -->
+            <div class="say-sheet" id="say-sheet" style="display: none;">
+              <div class="sheet-bg">
+                <div class="say-grain"></div>
+                <div class="sheet-in">
+                  <div class="sh-head">
+                    <div class="sh-date" id="say-page-date"></div>
+                    <div class="sh-week" id="say-page-week"></div>
+                    <button class="sh-edit" id="say-page-edit" onclick="sayEditPage()">改这页</button>
+                  </div>
+                  <div class="sh-body" id="say-page-body"></div>
+                  <div class="sh-reply" id="say-page-reply" style="display: none;" onclick="sayOpenReplies()"></div>
+                  <div class="sh-foot" id="say-page-foot"></div>
+                </div>
+                <button class="sh-give" id="say-give" onclick="sayDeliverPage()">递给他</button>
+                <div class="sh-stamp" id="say-stamp"><span>今日<br>已记</span></div>
+                <div class="sh-page-hint" id="say-page-hint"></div>
+                <div class="say-flip" id="say-flip"><div class="flip-page"><div class="fs-paper"></div><div class="roll"></div></div></div>
+              </div>
+              <button class="sh-back" onclick="sayBackToWall()" aria-label="回本子">‹</button>
+              <div class="sh-turn" onclick="sayTurnNext()"></div>
+            </div>
+
+            <!-- 3 书写 -->
+            <div class="say-write" id="say-write" style="display: none;">
+              <div class="wr-sheet" id="say-write-sheet">
+                <div class="wr-head">
+                  <div class="say-top-l">
+                    <button class="say-back" style="background: rgba(120,100,70,.1); color:#4A3F2E;" onclick="sayBackFromWrite()" aria-label="回本子">‹</button>
+                    <div class="wr-date" id="say-write-date"></div>
+                  </div>
+                  <button class="wr-done" onclick="saySaveEntry()">写好了</button>
+                </div>
+                <div class="wr-paper" id="say-write-paper">
+                  <textarea class="wr-area" id="say-write-area" placeholder="今天……" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
+                  <div class="wr-figs" id="say-write-figs"></div>
+                  <div class="wr-recbar" id="say-wr-recbar"></div>
+                </div>
+              <div class="wr-tools">
+                <div class="wr-row">
+                  <button class="wr-tool" onclick="sayOpenRecorder()">
+                    <div class="cir"><svg viewBox="0 0 24 24"><rect x="9" y="3.5" width="6" height="10" rx="3"/><path d="M6 11a6 6 0 0 0 12 0"/><path d="M12 17v3.5M8.5 20.5h7"/></svg></div>
+                    <span>说</span>
+                  </button>
+                  <button class="wr-tool" onclick="sayPickMood()">
+                    <div class="cir"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M9 14c.8-1.2 1.9-1.8 3-1.8S14.2 12.8 15 14"/><path d="M9.5 10h.01M14.5 10h.01"/></svg></div>
+                    <span>心情</span>
+                  </button>
+                  <button class="wr-tool" onclick="sayPickPhoto()">
+                    <div class="cir"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.4"/><path d="M5 17l5-4 3.5 2.6L18 11l1 1"/></svg></div>
+                    <span>图</span>
+                  </button>
+                  <button class="wr-tool" onclick="sayPickPaper()">
+                    <div class="cir"><svg viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></div>
+                    <span>纸</span>
+                  </button>
+                  <button class="wr-tool" onclick="sayPickFont()">
+                    <div class="cir"><svg viewBox="0 0 24 24"><path d="M5 19.5L10.6 5h2.8L19 19.5"/><path d="M7.3 14.6h9.4"/></svg></div>
+                    <span>字</span>
+                  </button>
+                </div>
+                <div class="wr-bar"><i></i></div>
+              </div>
+                <div class="wr-foot"><span class="wr-ft-l" id="say-write-book">say</span><span class="wr-ft-r" id="say-write-pgn">01</span></div>
+                <div class="wr-turn"></div>
+                <div class="say-flip" id="say-flip-w"><div class="flip-page"><div class="fs-paper"></div><div class="roll"></div></div></div>
+              </div>
+              <div class="say-moodpick" id="say-moodpick"></div>
+              <div class="say-fontpick" id="say-fontpick"></div>
+              <input type="file" id="say-photo-input" accept="image/*" style="display: none;" onchange="sayHandlePhoto(event)" />
+              <input type="file" id="say-font-input" accept=".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2" style="display: none;" onchange="sayImportFont(event)" />
+            </div>
+
+            <!-- 4 录音 -->
+            <div class="say-rec" id="say-rec" style="display: none;">
+              <div class="rec-ghost" id="say-rec-ghost"></div>
+              <div class="rec-dim"></div>
+              <button class="rec-close" onclick="sayCloseRecorder()">收起</button>
+              <div class="rec-card">
+                <div class="rec-top"><div class="rec-t">说着，我记着</div><div class="rec-time" id="say-rec-time">00:00</div></div>
+                <div class="rec-wave" id="say-rec-wave"></div>
+                <div class="rec-tip">说完松开，声音就留在这一页了；字，你自己写。</div>
+                <div class="rec-actions" id="say-rec-actions"></div>
+              </div>
+              <button class="rec-mic" id="say-rec-mic"
+                      onpointerdown="sayRecDown(event)"
+                      onpointerup="sayRecUp()"
+                      onpointercancel="sayRecUp()">
+                <svg viewBox="0 0 24 24"><rect x="9" y="3.5" width="6" height="10" rx="3"/><path d="M6 11a6 6 0 0 0 12 0"/><path d="M12 17v3.5M8.5 20.5h7"/></svg>
+              </button>
+            </div>
+
+            <!-- 5 底部卡片（改名 / 新一本 / 改我） -->
+            <div class="say-card" id="say-card" style="display: none;"></div>
+            <input type="file" id="say-avatar-input" accept="image/*" style="display: none;" onchange="sayHandleAvatar(event)" />
+
+          </div>
+        </section>
+
+<!-- 表情包库（微信 - 我 进入）：导入 / 新建分类 / 管理 / 编辑 / 删除，聊天抽屉只负责发 -->
+<section class="view-page" id="page-stickers">
+  <header class="wechat-header">
+    <button class="wechat-back-btn" onclick="openWechatMain('me')">‹ 我</button>
+    <div class="wechat-title">表情包库</div>
+    <button class="wechat-back-btn" style="color: var(--color-text-primary); font-size: 13px; font-weight: 700; padding: 4px 14px; border-radius: 12px;" onclick="openStickerImportModal()">导入</button>
+  </header>
+  <div class="page-generic-body" style="padding: 0; overflow-y: auto;">
+    <div style="padding: 10px 16px 2px; font-size: 10.5px; line-height: 1.7; color: var(--text-muted);">
+      全局表情库 · 所有角色共用。角色只认名字、分类和说明，不看图片本身。
+    </div>
+
+    <div style="padding: 8px 14px 6px; display: flex; gap: 10px; align-items: center;">
+      <div style="flex: 1; position: relative; display: flex; align-items: center;">
+        <span style="position: absolute; left: 10px; font-size: 13px; color: var(--color-text-secondary);">🔍</span>
+        <input type="text" id="sk-search" class="form-input-box" style="width: 100%; padding: 7px 12px 7px 30px; border-radius: 18px; background: var(--glass-soft); border: 1px solid var(--color-border); color: var(--color-text-primary); font-size: 13px; box-sizing: border-box;" placeholder="按名字找一张" oninput="handleSearchSticker(this.value)" />
+      </div>
+      <button type="button" id="sk-manage-btn" style="color: var(--text-secondary); background: none; border: none; font-size: 14px; font-weight: 700; cursor: pointer; padding: 4px 6px; white-space: nowrap;" onclick="toggleStickerManageMode()">管理</button>
+    </div>
+
+    <div id="sk-cat-tabs" style="display: flex; align-items: center; gap: 16px; padding: 4px 16px 8px; overflow-x: auto; border-bottom: 1px solid var(--color-border); scrollbar-width: none;"></div>
+
+    <div id="sk-manage-toolbar" style="display: none; padding: 8px 16px; background: var(--glass-faint); border-bottom: 1px solid var(--color-border); align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <button type="button" onclick="toggleSelectAllStickers()" style="background: none; border: none; color: var(--stickers-accent); font-size: 13px; font-weight: 700; cursor: pointer;">全选</button>
+        <span id="sk-sel-count" style="font-size: 12px; color: var(--color-text-secondary);">0 条</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <button type="button" onclick="exportSelectedStickers()" style="background: none; border: none; color: var(--success-primary); font-size: 13px; font-weight: 600; cursor: pointer;">导出</button>
+        <button type="button" onclick="openMoveStickersModal()" style="background: none; border: none; color: var(--info-primary); font-size: 13px; font-weight: 600; cursor: pointer;">移动</button>
+        <button type="button" onclick="deleteSelectedStickers()" style="background: none; border: none; color: var(--danger-primary); font-size: 13px; font-weight: 600; cursor: pointer;">删除</button>
+        <button type="button" onclick="clearAllCurrentCategoryStickers()" style="background: none; border: none; color: var(--danger-primary); font-size: 13px; font-weight: 700; cursor: pointer;">清空</button>
+      </div>
+    </div>
+
+    <div style="padding: 12px 14px 30px;">
+      <div id="sk-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;"></div>
+    </div>
+  </div>
+</section>
 
 <section class="view-page" id="page-me">
           <header class="wechat-header">
@@ -6078,32 +6610,46 @@
     <script src="js/storage-center.js?v=2026111671"></script>
  <script src="js/api-presets.js?v=2026111472"></script>
 <script src="js/wechat/image-presets.js?v=2026111649"></script>
- <script src="js/prompt-presets.js?v=2026111409"></script>
-  <script src="js/notify.js?v=2026111688"></script>
-  <script src="js/keepalive.js?v=2026111688"></script>
-  <script src="js/desktop/desktop.js?v=2026111343"></script>
+ <script src="js/prompt-presets.js?v=20261121-2150"></script>
+  <script src="js/notify.js?v=20261122-2834"></script>
+  <script src="js/keepalive.js?v=20261120-1205"></script>
+  <script src="js/desktop/desktop.js?v=20261122-2834"></script>
+<script src="js/motion.js?v=20261122-2834"></script>
+<script src="js/layout-motion.js?v=20261122-2834"></script>
+<script src="js/sheet-drag.js?v=20261122-2834"></script>
+<script src="js/press.js?v=20261122-2834"></script>
+<script src="js/touch.js?v=20261122-2834"></script>
   <script src="js/desktop/days.js?v=1789904839051"></script>
 <script src="js/desktop/yanyan-cat.js?v=1789925866085"></script>
-<script src="js/desktop/drag-grid.js?v=2026111433"></script>
+<script src="js/desktop/drag-grid.js?v=20261122-2834"></script>
 <script src="js/desktop/app-store.js?v=2026111002"></script>
-  <script src="js/wechat/stickers.js?v=2026111150"></script>
-  <script src="js/wechat/search-tools.js?v=2026111316"></script>
-  <script src="js/wechat/weather-tools.js?v=2026111668"></script>
-  <script src="js/wechat/chat.js?v=2026111663"></script>
+  <script src="js/wechat/stickers.js?v=20261121-2130"></script>
+  <script src="js/wechat/search-tools.js?v=20261122-2834"></script>
+  <script src="js/wechat/weather-tools.js?v=20261122-2834"></script>
+  <script src="js/wechat/tool-registry.js?v=20261122-2834"></script>
+  <script src="js/wechat/artifact-tools.js?v=20261122-2834"></script>
+  <script src="js/wechat/chat.js?v=20261122-2834"></script>
   <script src="js/wechat/voice-input.js?v=2026111591"></script>
   <script src="js/wechat/call.js?v=2026111649"></script>
   <script src="js/wechat/image-gen.js?v=2026111649"></script>
   <script src="js/wechat/moments.js?v=2026111660"></script>
   <script src="js/wechat/characters.js?v=2026111655"></script>
   <script src="js/wechat/group-chat.js?v=2026111652"></script>
-  <script src="js/media/music.js?v=2026111102"></script>
-  <script src="js/media/watch.js?v=1789856078493"></script>
-  <script src="js/theater/theater.js?v=2026111421"></script>
+  <script src="js/media/music.js?v=20261121-0415"></script>
+<script src="js/media/music-ui.js?v=20261121-0415"></script>
+<script src="js/media/music-lyrics.js?v=20261121-0430"></script>
+<script src="js/qrcode.js?v=2026112010"></script>
+<script src="js/media/netease-login.js?v=2026112011"></script>
+  <script src="js/media/companion.js?v=20261120-2235"></script>
+  <script src="js/media/watch.js?v=20261120-2235"></script>
+  <script src="js/theater/theater.js?v=20261120-1352"></script>
   <script src="js/theater/palace.js?v=2026111121"></script>
   <script src="js/theater/memory-engine.js?v=2026111122"></script>
   <script src="js/theater/worldbooks.js?v=2026111571"></script>
-  <script src="js/xhs/xhs.js?v=2026111010"></script>
-  <script src="js/app.js?v=2026111342"></script>
+  <script src="js/xhs/xhs.js?v=20261121-0415"></script>
+    <script src="js/say/say.js?v=20261122-2834"></script>
+  <script src="js/keyboard.js?v=20261122-2834"></script>
+<script src="js/app.js?v=2026111342"></script>
 
 
   <!-- 发布动态：手机内全屏发布面板（布局参考小红书，配色沿用深色低亮度） -->
@@ -6264,7 +6810,7 @@
     </div>
   </div>
 
-  <script src="js/media/reader.js?v=2026111341"></script>
+  <script src="js/media/reader.js?v=20261120-2235"></script>
 
         <!-- 记忆宫殿辅助弹窗合集 (纯正暗黑系 OLED) -->
     <!-- 1. 自定义范围总结弹窗 -->
@@ -6438,7 +6984,10 @@
         </div>
       </div>
     </div>
-  <script src="js/desktop/ledger.js?v=1789915352248"></script>
+  <script src="js/desktop/ledger.js?v=20261121-0300"></script>
+  <script src="js/desktop/ledger-app.js?v=20261121-0300"></script>
+  <script src="js/desktop/health.js?v=20261121-2245"></script>
+  <script src="js/desktop/forum.js?v=20261121-2150"></script>
 
     <!-- 头像上传与定制抽屉 -->
     <div class="ledger-drawer-mask theme-oled" id="vault-upload-drawer" onclick="closeVaultUploadDrawer()">
@@ -6760,52 +7309,8 @@
   </div>
 </div>
 
-<div id="edge-test-red" style="display:none;position:fixed;left:0;right:0;bottom:0;height:8px;background:#ff0044;z-index:99999;pointer-events:none"></div>
-  <div id="edge-test-blue" style="display:none;position:absolute;left:0;right:0;top:836px;height:8px;background:#00a2ff;z-index:99999;pointer-events:none"></div>
   <div id="__sa_top" style="position:fixed;top:0;left:0;width:1px;height:env(safe-area-inset-top,0px);opacity:0;pointer-events:none"></div>
   <div id="__sa_bot" style="position:fixed;bottom:0;left:0;width:1px;height:env(safe-area-inset-bottom,0px);opacity:0;pointer-events:none"></div>
-  <div id="layout-diag" style="display:none;position:fixed;left:0;right:0;top:0;z-index:2147483647;background:rgba(0,0,0,.94);color:#7cf6ff;font:12px/1.55 monospace;padding:6px 8px;white-space:pre-wrap;pointer-events:none"></div>
-<script>
-  (function () {
-    function upd() {
-      var d = document.getElementById('layout-diag');
-      if (!d) return;
-      /* 诊断条平时不出现，只有网址后面带 ?diag=1 时才显示（留着以后排查用） */
-      var on = /[?&]diag=1/.test(location.search);
-      d.style.display = on ? 'block' : 'none';
-      if (!on) return;
-      var ph = document.getElementById('phone-screen-root');
-      var home = document.getElementById('page-home');
-      var r = ph ? ph.getBoundingClientRect() : null;
-      var rh = home ? home.getBoundingClientRect() : null;
-      var vv = window.visualViewport;
-      var cls = document.documentElement.className;
-      var dk = document.getElementById('home-dock-bar');
-      var rk = dk ? dk.getBoundingClientRect() : null;
-      var saT = document.getElementById('__sa_top');
-      var saB = document.getElementById('__sa_bot');
-      d.textContent =
-        'v1825 · tall ' + (document.querySelector('.device-wrapper').classList.contains('app-tall') ? '1' : '0') +
-        ' · 视口 ' + window.innerWidth + 'x' + window.innerHeight +
-        ' · 屏 ' + screen.width + 'x' + screen.height + ' · dpr ' + window.devicePixelRatio +
-        '\nhtml ' + document.documentElement.clientHeight + ' · body ' + document.body.clientHeight +
-        ' · 文档高 ' + document.documentElement.scrollHeight +
-        ' · vv ' + (vv ? Math.round(vv.height) : '-') +
-        '\n手机屏 y' + (r ? Math.round(r.top) : -1) + ' h' + (r ? Math.round(r.height) : -1) +
-        ' 底' + (r ? Math.round(r.bottom) : -1) +
-        ' · 首页 y' + (rh ? Math.round(rh.top) : -1) + ' h' + (rh ? Math.round(rh.height) : -1) +
-        ' 底' + (rh ? Math.round(rh.bottom) : -1) +
-        '\ndock 底' + (rk ? Math.round(rk.bottom) : -1) +
-        ' · 底部缝 ' + (rk ? Math.round(window.innerHeight - rk.bottom) : -1) + 'px' +
-        ' · 安全区 上' + (saT ? Math.round(saT.getBoundingClientRect().height) : -1) +
-        '/下' + (saB ? Math.round(saB.getBoundingClientRect().height) : -1) +
-        '\nclass ' + (cls || '(无)');
-    }
-    if (document.readyState !== 'loading') setTimeout(upd, 600);
-    else window.addEventListener('load', function () { setTimeout(upd, 600); });
-    window.addEventListener('resize', function () { setTimeout(upd, 300); });
-  })();
-</script>
 
 <script>
   (function () {
@@ -6821,7 +7326,7 @@
       var img = cs.backgroundImage;
       if (img && img !== 'none') {
         root.style.setProperty('background-image', img, 'important');
-        root.style.setProperty('background-size', '100% ' + (sh || 844) + 'px', 'important');
+        root.style.setProperty('background-size', '100% ' + (window.screen.height || 844) + 'px', 'important');
         root.style.setProperty('background-position', 'center bottom', 'important');
         root.style.setProperty('background-repeat', 'no-repeat', 'important');
       }
@@ -6892,7 +7397,339 @@
     window.addEventListener('load', window.__momStripColor);
     try { new MutationObserver(window.__momStripColor).observe(ph, { attributes: true, attributeFilter: ['style', 'class'] }); } catch (e) {}
   })();
-<div id="chinprobe" style="position:fixed;left:0;right:0;bottom:-52px;height:56px;background:#00e676;z-index:99999;pointer-events:none"></div>
+
+<script>
+  /* 屏幕最底下那条（版面和屏幕的差值：iPhone 上是 797 与 844 之间那 47）：
+     用一个只占这条区域的壁纸层去补，几何和页面同一套（整屏高度、居中顶对齐），
+     再往下平移 vh，让这一条正好接上壁纸自己的最后一段，接缝就消失 */
+  (function () {
+    function build() {
+      if (window.innerWidth > 600) return;
+      var ph = document.getElementById('phone-screen-root');
+      if (!ph) return;
+      var sh = Math.round(window.screen.height || 844);
+      var vh = Math.round(window.innerHeight || 0);
+      var gap = sh - vh;
+      var el = document.getElementById('__mom_strip');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = '__mom_strip';
+        document.body.appendChild(el);
+      }
+      if (gap <= 4) { el.style.display = 'none'; return; }
+      var cs = getComputedStyle(ph);
+      var img = cs.backgroundImage;
+      el.style.cssText = 'position:fixed;left:0;right:0;top:' + vh + 'px;height:' + gap + 'px;' +
+        'margin:0;padding:0;pointer-events:none;z-index:1;background-repeat:no-repeat;' +
+        'background-position:center -' + vh + 'px;background-size:100% ' + sh + 'px;' +
+        'background-color:' + (cs.backgroundColor || 'transparent') + ';';
+      if (img && img !== 'none') {
+        el.style.backgroundImage = img;
+      } else {
+        el.style.backgroundImage = 'none';
+        el.style.backgroundColor = cs.backgroundColor || 'transparent';
+      }
+    }
+    window.__momStripFill = build;
+    build();
+    window.addEventListener('load', build);
+    window.addEventListener('resize', build);
+    var ph = document.getElementById('phone-screen-root');
+    if (ph) { try { new MutationObserver(build).observe(ph, { attributes: true, attributeFilter: ['style', 'class'] }); } catch (e) {} }
+  })();
+</script>
+<script>
+  /* 底部那 47（版面 797 与屏幕 844 的差）：WebKit 不让页面元素画进去，
+     但最底层画布的颜色是能画进去的（洋红探针已验证）。
+     所以这里改成：取“页面最后一行的真实颜色”去填，再渐变到壁纸最底行的颜色，
+     接缝处就是同一个像素色，理论上完全看不见。 */
+  (function () {
+    var root = document.documentElement;
+    var ph = document.getElementById('phone-screen-root');
+    if (!ph) return;
+    /* 最底层画布不再铺壁纸图片（页面已经盖满 0~797），免得把我们设的渐变盖掉 */
+    window.__momPageBg = function () {
+      if (window.innerWidth > 600) return;
+      root.style.removeProperty('background-image');
+    };
+    var stripEl = document.getElementById('__mom_strip');
+    if (stripEl) stripEl.style.display = 'none';
+
+    function sample(url) {
+      return new Promise(function (res) {
+        var img = new Image();
+        img.onload = function () {
+          try {
+            var w = Math.max(1, Math.round(window.innerWidth || 390));
+            var h = Math.round(window.screen.height || 844);
+            var vh = Math.round(window.innerHeight || h);
+            var c = document.createElement('canvas');
+            c.width = w; c.height = h;
+            var x = c.getContext('2d');
+            /* 和 CSS 里 background-size:100% <整屏高>px 完全同一套几何 */
+            x.drawImage(img, 0, 0, w, h);
+            var rowColor = function (y) {
+              var yy = Math.min(h - 1, Math.max(0, y));
+              var d = x.getImageData(0, yy, w, 1).data;
+              var r = 0, g = 0, b = 0;
+              for (var i = 0; i < d.length; i += 4) { r += d[i]; g += d[i + 1]; b += d[i + 2]; }
+              var n = d.length / 4;
+              return 'rgb(' + Math.round(r / n) + ',' + Math.round(g / n) + ',' + Math.round(b / n) + ')';
+            };
+            res({ pageBottom: rowColor(vh - 1), screenBottom: rowColor(h - 1), pct: (vh / h * 100) });
+          } catch (e) { res(null); }
+        };
+        img.onerror = function () { res(null); };
+        img.src = url;
+      });
+    }
+
+    function applyColor(col) {
+      root.style.setProperty('--mom-device-bottom', col);
+      root.style.setProperty('background-color', col, 'important');
+      try {
+        document.body.style.setProperty('background', col, 'important');
+        document.body.style.setProperty('background-color', col, 'important');
+      } catch (e) {}
+    }
+
+    window.__momStripColor = function () {
+      if (window.innerWidth > 600) return;
+      var cs = getComputedStyle(ph);
+      var m = /url\("?([^")]+)"?\)/.exec(cs.backgroundImage || '');
+      if (!m) {
+        root.style.removeProperty('background-image');
+        var solid = cs.backgroundColor;
+        if (solid && solid !== 'rgba(0, 0, 0, 0)') applyColor(solid);
+        return;
+      }
+      sample(m[1]).then(function (s) {
+        if (!s) return;
+        var sh = Math.round(window.screen.height || 844);
+        applyColor(s.pageBottom);
+        /* 0~页面底边：纯页面底边色（被页面盖住，无所谓）；
+           从页面底边那条线开始渐变到壁纸最底色，那 47 就顺着壁纸走出去 */
+        root.style.setProperty('background-image',
+          'linear-gradient(to bottom,' + s.pageBottom + ' ' + s.pct.toFixed(2) + '%,' +
+          s.screenBottom + ' 100%)', 'important');
+        root.style.setProperty('background-size', '100% ' + sh + 'px', 'important');
+        root.style.setProperty('background-position', 'center top', 'important');
+        root.style.setProperty('background-repeat', 'no-repeat', 'important');
+      });
+    };
+    /* 已改用页面收口方案，这里不再取样刷色 */
+  })();
+</script>
+<script>
+  /* 真满屏尝试：把壁纸铺到 body 的“整屏高度”上（844），而不是只铺页面那块（797）。
+     body 的盒子一旦变成 844，它的背景就能画到 797~844 那 47 里，
+     并且和页面用的是同一套几何（整屏高、居中顶对齐），所以是壁纸真正的延续。 */
+  (function () {
+    var root = document.documentElement;
+    var ph = document.getElementById('phone-screen-root');
+    if (!ph) return;
+
+    function parseColor(col) {
+      var ctx = document.createElement('canvas').getContext('2d');
+      ctx.fillStyle = '#000000';
+      ctx.fillStyle = col;
+      var norm = ctx.fillStyle;
+      if (norm.charAt(0) === '#') {
+        return [parseInt(norm.substr(1, 2), 16), parseInt(norm.substr(3, 2), 16), parseInt(norm.substr(5, 2), 16)];
+      }
+      var m = norm.match(/[0-9.]+/g) || [0, 0, 0];
+      return [Math.round(+m[0]), Math.round(+m[1]), Math.round(+m[2])];
+    }
+
+    function build() {
+      if (window.innerWidth > 600) return;
+      var sh = Math.round(window.screen.height || 844);
+      var cs = getComputedStyle(ph);
+      var img = cs.backgroundImage;
+      var bg = cs.backgroundColor;
+      var rgb = parseColor((bg && bg !== 'rgba(0, 0, 0, 0)') ? bg : '#15171b');
+      var solid = 'rgb(' + rgb.join(',') + ')';
+      /* 画布兜底色：和页面底色一致 */
+      root.style.setProperty('background-color', solid, 'important');
+      root.style.removeProperty('background-image');
+      /* 页面自己那层收口（上一版的渐隐）先撤掉，交给 body 的整屏壁纸接管 */
+      var f = document.getElementById('__mom_fade');
+      if (f) f.style.display = 'none';
+      var s = document.getElementById('__mom_strip');
+      if (s) s.style.display = 'none';
+      try {
+        document.body.style.setProperty('height', sh + 'px', 'important');
+        document.body.style.setProperty('bottom', 'auto', 'important');
+        document.body.style.setProperty('background-color', solid, 'important');
+        if (img && img !== 'none') {
+          document.body.style.setProperty('background-image', img, 'important');
+          document.body.style.setProperty('background-size', '100% ' + sh + 'px', 'important');
+          document.body.style.setProperty('background-position', 'center top', 'important');
+          document.body.style.setProperty('background-repeat', 'no-repeat', 'important');
+        } else {
+          document.body.style.setProperty('background-image', 'none', 'important');
+        }
+      } catch (e) {}
+    }
+
+    window.__momStripColor = function () {};
+    /* 整屏铺壁纸方案已废弃：实测 canvas 那 47pt 只能显示纯色，图片/渐变都画不进去。
+       改由 desktop.css 的 momBottomSeam（页面底边渐隐到画布色）收口。
+       这里只把上一版写进 body 的尺寸/背景清干净，不再参与布局。 */
+    window.__momFullBleed = function () { return 'disabled'; };
+    try {
+      ['height', 'bottom', 'background-image', 'background-size', 'background-position',
+       'background-repeat', 'background-color'].forEach(function (p) {
+        document.body.style.removeProperty(p);
+      });
+    } catch (e) {}
+    window.addEventListener('load', function () { try { document.body.style.removeProperty('height'); } catch (e) {} });
+    window.addEventListener('resize', function () { try { document.body.style.removeProperty('height'); } catch (e) {} });
+  })();
+</script>
+
+<script>
+  /* dock 投影：样式表里的 !important 压不住时，用内联 !important 收尾（内联重要声明优先级最高） */
+  (function () {
+    function kill() {
+      var dk = document.getElementById('home-dock-bar');
+      if (!dk) return;
+      dk.style.setProperty('box-shadow', 'none', 'important');
+      dk.style.setProperty('-webkit-box-shadow', 'none', 'important');
+    }
+    kill();
+    document.addEventListener('DOMContentLoaded', kill);
+    setTimeout(kill, 1200);
+  })();
+</script><script>
+  /* ===== 底部 47pt 取色收口（真机实测结论）=====
+     事实（本机 390x844，iPhone 14）：
+       · 主屏模式给页面的绘制区只有 0~797，797~844 里任何元素都画不进去（elementFromPoint 返回 null）；
+       · 那 47 只有最底层画布能上色，而且实测：画布能吃纯色，吃不了图片/渐变（html 上挂了 data:jpeg 也画不出来）；
+       · default（白条）模式正好相反：页面被放到 47~844，底栏贴底，但顶部 47 被系统占掉。
+     所以在"顶部透明"这一版里，唯一能让那条缝消失的办法是：
+       把壁纸第 796 行（也就是页面能画到的最后一行）的颜色取样出来，刷到画布上。
+     壁纸是 data: URL，不会被 canvas 跨域污染，取色是准的。 */
+  (function () {
+    var root = document.documentElement;
+    var ps = document.getElementById('phone-screen-root');
+    if (!ps) return;
+
+    function wallpaperUrl() {
+      /* 每次重新取节点：壁纸层可能被页面重绘替换 */
+      var cur = document.getElementById('phone-screen-root');
+      if (cur) {
+        var im = getComputedStyle(cur).backgroundImage || '';
+        var m = /url\(["']?([^"')]+)["']?\)/.exec(im);
+        if (m && im !== 'none') return m[1];
+      }
+      /* 兜底：找覆盖大半屏、且带图片的元素（壁纸可能挂在别的层） */
+      var W = window.innerWidth, H2 = window.innerHeight;
+      var all = document.querySelectorAll('div, section, body, html');
+      for (var i = 0; i < all.length; i++) {
+        var el = all[i], r = el.getBoundingClientRect();
+        if (r.width < W * 0.9 || r.height < H2 * 0.85) continue;
+        var bgi = getComputedStyle(el).backgroundImage || '';
+        if (bgi !== 'none' && bgi.indexOf('url(') === 0) {
+          var mm = /url\(["']?([^"')]+)["']?\)/.exec(bgi);
+          if (mm) return mm[1];
+        }
+      }
+      return null;
+    }
+
+    function hex2(n) { return ('0' + n).toString(16).slice(-2); }
+
+    function sampleAndPaint() {
+      if (!root.classList.contains('ios')) return;
+      var url = wallpaperUrl();
+      if (!url) return;
+      var W = Math.round(window.innerWidth);
+      var H = Math.round(window.innerHeight);           /* 797 */
+      var screenH = Math.round(window.screen.height);   /* 844 */
+      var img = new Image();
+      img.onload = function () {
+        try {
+          var c = document.createElement('canvas');
+          c.width = W; c.height = screenH;
+          var ctx = c.getContext('2d');
+          /* 与 CSS 完全同一套几何：background-size: 100% 100vh，position: center top */
+          ctx.drawImage(img, 0, 0, W, screenH);
+          /* 取页面最后一行（innerHeight-1 附近）的横向平均色，多取几行更稳 */
+          var y0 = Math.max(0, H - 3), y1 = Math.min(screenH - 1, H + 1);
+          var r = 0, g = 0, b = 0, n = 0;
+          for (var y = y0; y <= y1; y++) {
+            for (var x = 8; x < W - 8; x += 6) {
+              var p = ctx.getImageData(x, y, 1, 1).data;
+              r += p[0]; g += p[1]; b += p[2]; n++;
+            }
+          }
+          if (!n) return;
+          var col = 'rgb(' + Math.round(r / n) + ',' + Math.round(g / n) + ',' + Math.round(b / n) + ')';
+          root.style.setProperty('background-color', col, 'important');
+          if (document.body) document.body.style.setProperty('background-color', col, 'important');
+          root.style.setProperty('background-image', 'none', 'important');
+          if (document.body) document.body.style.setProperty('background-image', 'none', 'important');
+          window.__momStripColor = function () { return col; };
+        } catch (e) { /* 万一被跨域污染就放弃，不报错、不改任何东西 */ }
+      };
+      img.onerror = function () {};
+      img.src = url;
+    }
+
+    sampleAndPaint();
+    window.addEventListener('load', sampleAndPaint);
+    window.addEventListener('resize', sampleAndPaint);
+    setTimeout(sampleAndPaint, 900);
+    setTimeout(sampleAndPaint, 2200);
+    try {
+      new MutationObserver(sampleAndPaint).observe(ps, { attributes: true, attributeFilter: ['style', 'class'] });
+    } catch (e) {}
+  })();
+</script>
+<style id="__momNoGradient">
+/* 删掉底部那条渐变（是上一版 momBottomSeam 留下的），并保持 dock 无投影 */
+html.ios #page-home {
+  background-image: none !important;
+  background-color: transparent !important;
+  padding-bottom: 0 !important;
+}
+html.ios .view-container::after {
+  content: none !important;
+  display: none !important;
+  background: none !important;
+}
+html.ios #home-dock-bar,
+html.ios .home-dock-bar {
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+}
+
+/* 2026-11-20 统一各页头部（第一步，只动头部）：
+   真机量下来同一种头部有三种写法 —— 107(内边距47)、86(内边距24)、71/64(内边距32)，
+   所以有的顶到天上、有的半空悬着。这里统一成：内边距 15 + 下 8，内容起点约 62pt，
+   正好对齐用户指定的基准「一起听」的 63pt。
+   选择器用 html.ios 前缀，是为了压过 base.css 里 html.ios .wechat-header{padding-top:47px} 那条。 */
+html.ios .wechat-header,
+html.ios .wechat-main-header,
+html.ios .moments-header,
+html.ios .glass-header,
+html.ios .ios-setting-nav,
+html.ios .ledger-header,
+html.ios .vault-header,
+html.ios .yanyan-header-bar,
+html.ios .album-top,
+html.ios .watch-header {
+  padding-top: 15px !important;
+  padding-bottom: 8px !important;
+  height: auto !important;
+  min-height: 0 !important;
+  box-sizing: border-box !important;
+  align-items: center !important;
+}
+</style>
+
+<script src="js/version-watch.js?v=20261121-0150"></script>
 </body>
 </html>
 <!-- live_preview_refresh_trigger:1790094973085 -->

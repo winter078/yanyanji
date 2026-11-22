@@ -293,13 +293,23 @@
   // ========== 记住她的主页：用户从小红书 App 复制一次主页长链接 ==========
   // 网页端抓不到别人的作品列表（要登录 + 风控），但主页长链接里带 user_id + xsec_token，
   // 存下来以后就能直接把「她的主页」卡片深链打开，她自己进去翻任意一篇。
-  var XHS_PROFILE_KEY = 'momo_xhs_profiles_v1';
+  var XHS_PROFILE_KEY = 'momo_xhs_profiles_v2';
+
+  function xhsCurrentCharId() {
+    try { return String(localStorage.getItem('momo_active_char') || ''); } catch (e) { return ''; }
+  }
 
   function xhsProfileList() {
+    var list = [];
     try {
       var arr = JSON.parse(localStorage.getItem(XHS_PROFILE_KEY) || '[]');
-      return Array.isArray(arr) ? arr : [];
-    } catch (e) { return []; }
+      if (Array.isArray(arr)) list = arr;
+    } catch (e) { list = []; }
+    return list.filter(function (p) { return p && /[0-9a-f]{20,26}/i.test(String(p.userId || '')); });
+  }
+
+  function saveXhsProfileList(list) {
+    try { localStorage.setItem(XHS_PROFILE_KEY, JSON.stringify(list.slice(0, 30))); } catch (e) {}
   }
 
   function parseXhsProfileUrl(text) {
@@ -315,25 +325,64 @@
   function bindXhsProfile(text) {
     var found = parseXhsProfileUrl(text);
     if (!found) return null;
-    var rest = String(text || '').replace(/https?:\/\/[^\s<>"']+/g, ' ');
+    var charId = xhsCurrentCharId();
+    var rest = String(text || '')
+      .replace(/https?:\/\/[^\s<>"']+/g, ' ')
+      .replace(/\b\d{8,20}\b/g, ' ');
     var name = rest
-      .replace(/(小红书|小某书|红书|主页|个人主页|链接|这是|她|的|号|ID|id|帮我|记住|这个|存一下|一下|复制|来自)/g, ' ')
+      .replace(/(小红书|小某书|红书|主页|个人主页|链接|这是|她|的|号|ID|id|帮我|记住|这个|存一下|一下|复制|来自|博主|网友)/g, ' ')
       .replace(/[，。！？、,.!?：:；;【】\[\]（）()]/g, ' ')
       .replace(/\s+/g, ' ').trim().slice(0, 16);
-    var item = { userId: found.userId, url: found.url, name: name, at: Date.now() };
-    try {
-      var list = xhsProfileList().filter(function (p) { return p && p.userId !== found.userId; });
-      list.unshift(item);
-      while (list.length > 5) list.pop();
-      localStorage.setItem(XHS_PROFILE_KEY, JSON.stringify(list));
-    } catch (e) {}
-    return item;
+    var xhsId = (String(text || '').match(/\b(\d{8,20})\b/) || [])[1] || '';
+    var exists = null;
+    var list = xhsProfileList();
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].userId === found.userId || (xhsId && list[i].xhsId === xhsId)) { exists = list[i]; break; }
+    }
+    if (!exists) exists = { userId: found.userId, url: found.url, charId: charId, name: '', xhsId: '', at: Date.now() };
+    // 只补空字段，不覆盖已有的昵称/小红书号
+    if (!exists.name && name) exists.name = name;
+    if (!exists.xhsId && xhsId) exists.xhsId = xhsId;
+    exists.url = found.url;
+    exists.charId = exists.charId || charId;
+    exists.at = Date.now();
+    list = list.filter(function (p) { return p !== exists && p.userId !== exists.userId; });
+    list.unshift(exists);
+    // 每个角色最多留 6 个，避免越存越多
+    var mine = list.filter(function (p) { return (p.charId || '') === charId; });
+    if (mine.length > 6) {
+      var drop = mine.slice(6);
+      list = list.filter(function (p) { return drop.indexOf(p) < 0; });
+    }
+    saveXhsProfileList(list);
+    return exists;
+  }
+
+  function removeXhsProfile(userId) {
+    var key = String(userId || '');
+    if (!key) return;
+    saveXhsProfileList(xhsProfileList().filter(function (p) { return p.userId !== key; }));
   }
 
   function latestXhsProfile() {
+    var charId = xhsCurrentCharId();
     var list = xhsProfileList();
+    for (var i = 0; i < list.length; i++) if (list[i].charId === charId) return list[i];
+    for (var j = 0; j < list.length; j++) if (!list[j].charId) return list[j];
+    return null;
+  }
+
+  function xhsProfilesForChar() {
+    var charId = xhsCurrentCharId();
+    return xhsProfileList().filter(function (p) { return (p.charId || '') === charId || !p.charId; });
+  }
+
+  function findXhsProfileById(id) {
+    var key = String(id || '').trim();
+    if (!key) return null;
+    var list = xhsProfilesForChar();
     for (var i = 0; i < list.length; i++) {
-      if (list[i] && /[0-9a-f]{20,26}/i.test(String(list[i].userId || ''))) return list[i];
+      if (String(list[i].xhsId || '') === key) return list[i];
     }
     return null;
   }
@@ -888,7 +937,9 @@
   window.__momFindXhsNote = findXhsNote;
   window.__momBindXhsProfile = bindXhsProfile;
   window.__momGetXhsProfile = latestXhsProfile;
-  window.__momGetXhsProfiles = xhsProfileList;
+  window.__momGetXhsProfiles = xhsProfilesForChar;
+  window.__momFindXhsProfileById = findXhsProfileById;
+  window.__momRemoveXhsProfile = removeXhsProfile;
   window.__momXhsProfileCard = xhsProfileCard;
   window.__momXhsProfileUrl = parseXhsProfileUrl;
   window.__momRunWebSearch = runWebSearchRaw;

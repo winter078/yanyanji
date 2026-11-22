@@ -19,7 +19,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <!-- 发布时务必与 js/build.js 的 __LIVE_BUILD__ 保持一致，否则 version-watch 会一直提示“新版已经好了” -->
-  <script>window.__BUILD__="20261122-2833";</script>
+  <script>window.__BUILD__="20261122-2834";</script>
   <script>
     (function () {
       var root = document.documentElement;
@@ -199,7 +199,7 @@
   <link rel="stylesheet" href="css/themes.css?v=2026111001" />
   <link rel="stylesheet" href="css/desktop.css?v=2026112004" />
   <link rel="stylesheet" href="css/notify.css" />
-  <link rel="stylesheet" href="css/wechat.css?v=20261122-2833" />
+  <link rel="stylesheet" href="css/wechat.css?v=20261122-2834" />
   <link rel="stylesheet" href="css/call.css?v=2026111649" />
   <link rel="stylesheet" href="css/skin-qq.css?v=2026111022" />
   <link rel="stylesheet" href="css/moments.css?v=2026111652" />
@@ -209,7 +209,7 @@
   <link rel="stylesheet" href="css/watch.css?v=1789854172623" />
   <link rel="stylesheet" href="css/theater.css?v=20261120-1340" />
   <link rel="stylesheet" href="css/xhs.css?v=20261121-0415" />
-    <link rel="stylesheet" href="css/say.css?v=20261122-2833" />
+    <link rel="stylesheet" href="css/say.css?v=20261122-2834" />
 
   <link rel="stylesheet" href="css/reader.css?v=20261120-2235" />
   <link rel="stylesheet" href="css/ledger.css?v=20261121-0400">
@@ -222,10 +222,10 @@
   <link rel="stylesheet" href="css/voice-input.css?v=2026111573">
   <link rel="stylesheet" href="css/app-store.css?v=2026111002" />
     <link rel="stylesheet" href="css/contacts.css?v=2026111652" />
-<link rel="stylesheet" href="css/perf.css?v=20261122-2833" />
-<link rel="stylesheet" href="css/touch.css?v=20261122-2833" />
-<link rel="stylesheet" href="css/motion.css?v=20261122-2833" />
-<link rel="stylesheet" href="css/drawer-fix.css?v=20261122-2833" />
+<link rel="stylesheet" href="css/perf.css?v=20261122-2834" />
+<link rel="stylesheet" href="css/touch.css?v=20261122-2834" />
+<link rel="stylesheet" href="css/motion.css?v=20261122-2834" />
+<link rel="stylesheet" href="css/drawer-fix.css?v=20261122-2834" />
   <script src="js/supabase_sync.js"></script>
 </head>
 <body>
@@ -1039,6 +1039,23 @@
               </div>
               <div class="ios-cell-row" style="display:block; padding:12px 16px;">
                 <button type="button" style="width:100%; background:transparent; border:1px solid var(--border-default); color:var(--color-text-secondary); padding:10px 12px; border-radius:12px; font-size:12.5px; cursor:pointer;" onclick="deleteActiveCharacter()">删除这个角色卡</button>
+              </div>
+            </div>
+
+            <!-- 小红书主页收藏：每个角色独立，可自己删 -->
+            <div class="ios-card-group">
+              <div class="ios-card-header">
+                <span class="ios-card-title">小红书主页收藏</span>
+                <span style="font-size: 11.5px; color: var(--color-text-secondary);">当前角色 · 最多 6 个</span>
+              </div>
+              <div class="ios-cell-row" style="display:block; padding:12px 16px;">
+                <div id="xhs-profile-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+                <div style="display:flex; gap:8px; margin-top:10px;">
+                  <input id="xhs-profile-link-input" placeholder="粘贴她的小红书主页长链接（…/user/profile/…）" style="flex:1; min-width:0; padding:9px 11px; border-radius:10px; border:1px solid var(--border-default); background:var(--bg-base); color:var(--text-primary); font-size:12px;" />
+                  <button type="button" onclick="importXhsProfileFromSettings()" style="flex-shrink:0; padding:9px 14px; border-radius:10px; border:none; background:#C9645E; color:#fff; font-size:12.5px; font-weight:600; cursor:pointer;">存下</button>
+                </div>
+                <div id="xhs-profile-status" style="font-size:11px; color:var(--color-text-secondary); line-height:1.5; margin-top:7px;"></div>
+                <div style="font-size:11px; color:var(--color-text-secondary); line-height:1.5; margin-top:4px;">存一次就够。下次你发她的名字或小红书号，角色会直接把她的主页卡片发给你。删掉后它就找不到了，需要重新粘链接。</div>
               </div>
             </div>
 
@@ -6594,24 +6611,24 @@
  <script src="js/api-presets.js?v=2026111472"></script>
 <script src="js/wechat/image-presets.js?v=2026111649"></script>
  <script src="js/prompt-presets.js?v=20261121-2150"></script>
-  <script src="js/notify.js?v=20261122-2833"></script>
+  <script src="js/notify.js?v=20261122-2834"></script>
   <script src="js/keepalive.js?v=20261120-1205"></script>
-  <script src="js/desktop/desktop.js?v=20261122-2833"></script>
-<script src="js/motion.js?v=20261122-2833"></script>
-<script src="js/layout-motion.js?v=20261122-2833"></script>
-<script src="js/sheet-drag.js?v=20261122-2833"></script>
-<script src="js/press.js?v=20261122-2833"></script>
-<script src="js/touch.js?v=20261122-2833"></script>
+  <script src="js/desktop/desktop.js?v=20261122-2834"></script>
+<script src="js/motion.js?v=20261122-2834"></script>
+<script src="js/layout-motion.js?v=20261122-2834"></script>
+<script src="js/sheet-drag.js?v=20261122-2834"></script>
+<script src="js/press.js?v=20261122-2834"></script>
+<script src="js/touch.js?v=20261122-2834"></script>
   <script src="js/desktop/days.js?v=1789904839051"></script>
 <script src="js/desktop/yanyan-cat.js?v=1789925866085"></script>
-<script src="js/desktop/drag-grid.js?v=20261122-2833"></script>
+<script src="js/desktop/drag-grid.js?v=20261122-2834"></script>
 <script src="js/desktop/app-store.js?v=2026111002"></script>
   <script src="js/wechat/stickers.js?v=20261121-2130"></script>
-  <script src="js/wechat/search-tools.js?v=20261122-2833"></script>
-  <script src="js/wechat/weather-tools.js?v=20261122-2833"></script>
-  <script src="js/wechat/tool-registry.js?v=20261122-2833"></script>
-  <script src="js/wechat/artifact-tools.js?v=20261122-2833"></script>
-  <script src="js/wechat/chat.js?v=20261122-2833"></script>
+  <script src="js/wechat/search-tools.js?v=20261122-2834"></script>
+  <script src="js/wechat/weather-tools.js?v=20261122-2834"></script>
+  <script src="js/wechat/tool-registry.js?v=20261122-2834"></script>
+  <script src="js/wechat/artifact-tools.js?v=20261122-2834"></script>
+  <script src="js/wechat/chat.js?v=20261122-2834"></script>
   <script src="js/wechat/voice-input.js?v=2026111591"></script>
   <script src="js/wechat/call.js?v=2026111649"></script>
   <script src="js/wechat/image-gen.js?v=2026111649"></script>
@@ -6630,8 +6647,8 @@
   <script src="js/theater/memory-engine.js?v=2026111122"></script>
   <script src="js/theater/worldbooks.js?v=2026111571"></script>
   <script src="js/xhs/xhs.js?v=20261121-0415"></script>
-    <script src="js/say/say.js?v=20261122-2833"></script>
-  <script src="js/keyboard.js?v=20261122-2833"></script>
+    <script src="js/say/say.js?v=20261122-2834"></script>
+  <script src="js/keyboard.js?v=20261122-2834"></script>
 <script src="js/app.js?v=2026111342"></script>
 
 
