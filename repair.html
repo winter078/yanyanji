@@ -218,6 +218,17 @@
     html += '<div class="card"><div class="name">没有找到更早的自动快照</div><div class="preview">说明周绪言原来的记录在覆盖前没有被应用自动保存过。</div></div>';
   }
 
+  html += '<div class="card">' +
+    '<div class="name">从备份文件恢复记录</div>' +
+    '<div class="warn">选一个之前下载的备份 JSON，把里面某个角色的记录恢复到当前角色。会先自动备份。</div>' +
+    '<div style="font-size:12px;color:#9aa0aa;">恢复到：</div>' +
+    '<select id="import-target">' +
+    entries.map(function (e) { return '<option value="' + esc(e.id) + '">' + esc(e.name) + '（' + e.count + ' 条）</option>'; }).join('') +
+    '</select>' +
+    '<input type="file" id="import-file" accept=".json,application/json" style="margin:8px 0;color:#c9ced8;font-size:12px;">' +
+    '<div id="import-pick"></div>' +
+    '</div>';
+
   content.innerHTML = html;
 
   function repair(groupIndex, ownerId) {
@@ -314,9 +325,89 @@
     if (btn) btn.onclick = function () { downloadBackup(backup); };
   }
 
+  function pickBackupChar(key, mapObj) {
+    var named = entries.filter(function (e) { return e.id === key; })[0];
+    if (named) return named.name;
+    try {
+      var chars = JSON.parse(localStorage.getItem('momo_characters') || '[]');
+      var hit = (Array.isArray(chars) ? chars : []).filter(function (c) { return c && c.id === key; })[0];
+      if (hit && hit.name) return hit.name;
+    } catch (e) {}
+    return key;
+  }
+
+  function loadImportFile(file) {
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      var obj = null;
+      try { obj = JSON.parse(String(reader.result || '')); } catch (e) { alert('这个文件不是有效的备份 JSON。'); return; }
+      var mapObj = (obj && obj.map && typeof obj.map === 'object') ? obj.map : null;
+      var picks = [];
+      if (mapObj) {
+        Object.keys(mapObj).forEach(function (k) {
+          var arr = mapObj[k];
+          if (Array.isArray(arr) && arr.length) picks.push({ id: k, name: pickBackupChar(k, mapObj), data: arr });
+        });
+      } else if (obj && Array.isArray(obj.globalMirror) && obj.globalMirror.length) {
+        picks = [{ id: '__mirror__', name: '备份里的全局记录', data: obj.globalMirror }];
+      } else if (obj && Array.isArray(obj.history) && obj.history.length) {
+        picks = [{ id: '__history__', name: '备份里的记录', data: obj.history }];
+      }
+      if (!picks.length) { alert('这个备份里没有可恢复的聊天记录。'); return; }
+      window.__importPicks = picks;
+      var pick = document.getElementById('import-pick');
+      if (!pick) return;
+      pick.innerHTML = '<div style="font-size:12px;color:#9aa0aa;">备份里的角色：</div>' +
+        '<select id="import-char">' + picks.map(function (p, i) {
+          return '<option value="' + i + '">' + esc(p.name) + '（' + p.data.length + ' 条）｜' + esc(previewOf(p.data)) + '</option>';
+        }).join('') + '</select>' +
+        '<button class="primary" id="btn-import-restore">恢复到上面选的角色</button>';
+    };
+    reader.readAsText(file);
+  }
+
+  function restoreFromImport(index, targetId) {
+    var picks = window.__importPicks || [];
+    var p = picks[index];
+    var target = entries.filter(function (e) { return e.id === targetId; })[0];
+    if (!p || !target) return;
+    if (!confirm('把备份里「' + p.name + '」的 ' + p.data.length + ' 条记录，恢复到「' + target.name + '」？\n\n会覆盖它现在的记录，先自动备份。')) return;
+    var backup = snapshot();
+    var mapNow = readJSON(MAP_KEY, {});
+    if (!mapNow || typeof mapNow !== 'object') mapNow = {};
+    mapNow[target.id] = clone(p.data);
+    try {
+      localStorage.setItem(MAP_KEY, JSON.stringify(mapNow));
+      localStorage.setItem(FLAG_KEY, '1');
+      localStorage.setItem(OWNER_KEY, target.id);
+      localStorage.setItem('momo_active_char', target.id);
+      localStorage.setItem('momo_chat_history', JSON.stringify(mapNow[target.id] || []));
+    } catch (e) {
+      content.innerHTML = '<div class="card err">写入失败：' + esc(e.message) + '</div>';
+      return;
+    }
+    content.innerHTML = '<div class="card done"><div class="name">恢复完成</div>' +
+      '<div class="preview" style="margin-top:6px;">已把 ' + p.data.length + ' 条记录恢复到「' + esc(target.name) + '」，并已打开这个角色。</div>' +
+      '<a class="home" style="margin-top:12px;" href="/phone">进入小手机 →</a></div>' +
+      '<div class="card"><button class="ghost" id="btn-download2">下载恢复前的备份</button></div>';
+    var btn = document.getElementById('btn-download2');
+    if (btn) btn.onclick = function () { downloadBackup(backup); };
+  }
+
+  content.addEventListener('change', function (ev) {
+    if (ev.target && ev.target.id === 'import-file') loadImportFile(ev.target.files && ev.target.files[0]);
+  });
+
   content.addEventListener('click', function (ev) {
     var t = ev.target;
     if (t && t.id === 'btn-download') { downloadBackup(snapshot()); return; }
+    if (t && t.id === 'btn-import-restore') {
+      var ic = document.getElementById('import-char');
+      var it = document.getElementById('import-target');
+      restoreFromImport(ic ? parseInt(ic.value, 10) : 0, it ? it.value : '');
+      return;
+    }
     if (t && t.id === 'btn-snap-restore') {
       var si = document.getElementById('snap-index');
       var st = document.getElementById('snap-target');
