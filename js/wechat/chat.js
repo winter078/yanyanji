@@ -2787,7 +2787,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
     }
 
     // ===== 工具调用胶囊：搜索 / 天气 / 小红书 =====
-    const TOOL_LABELS = { search: '搜索', weather: '天气', xhs: '小红书', douyin: '抖音', github: 'GitHub', docx: '文档', xlsx: '表格', pptx: 'PPT', md: '文档' };
+    const TOOL_LABELS = { search: '搜索', weather: '天气', xhs: '小红书', douyin: '抖音', twitter: '推特', github: 'GitHub', docx: '文档', xlsx: '表格', pptx: 'PPT', md: '文档' };
     let pendingArtifactMeta = null;
     let pendingShareCard = null;
     let toolSelMode = false;
@@ -3635,7 +3635,8 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       // 即使小红书读取失败后回退成普通搜索，也不要把无关搜索卡追加到回复末尾。
       const isXhsQuery = /(?:xiaohongshu\.com|xhslink\.com|小红书|小某书|红书)/i.test(String(state.query || '')) || !!window.__momXhsQueryTurn;
       const isDouyinQuery = /(?:douyin\.com|v\.douyin\.com|iesdouyin|抖音)/i.test(String(state.query || '')) || !!window.__momDouyinQueryTurn;
-      if (state.kind === 'xhs' || isXhsQuery || state.kind === 'douyin' || isDouyinQuery) {
+      const isTwitterQuery = /(?:x\.com|twitter\.com|推特)/i.test(String(state.query || '')) || !!window.__momTwitterQueryTurn;
+      if (state.kind === 'xhs' || isXhsQuery || state.kind === 'douyin' || isDouyinQuery || state.kind === 'twitter' || isTwitterQuery) {
         try { window.__momoLastWebSearch = null; } catch (e) {}
         return { text: replyText, cards: [], inline: false };
       }
@@ -4493,6 +4494,26 @@ window.syncNarrationModeUI = syncNarrationModeUI;
                   setTimeout(function () {
                     if (document.hidden) return;
                     dyFallback();
+                  }, 1600);
+                  return;
+                }
+                // 推特/X：先试 App 深链，拉不起来再退回网页。
+                const tweetId = String(cardData.tweetId || '').trim() || (function () {
+                  const m = String(cardData.url).match(/(?:x\.com|twitter\.com)\/(?:[^/?#]+)\/status(?:es)?\/(\d{10,25})/i);
+                  return m ? m[1] : '';
+                })();
+                if (tweetId) {
+                  let twFellBack = false;
+                  const twFallback = function () {
+                    if (twFellBack) return;
+                    twFellBack = true;
+                    if (typeof window.openLinkViewer === 'function') window.openLinkViewer(cardData.url, cardData.title);
+                    else window.location.href = cardData.url;
+                  };
+                  try { window.location.href = 'twitter://status?id=' + encodeURIComponent(tweetId); } catch (e) {}
+                  setTimeout(function () {
+                    if (document.hidden) return;
+                    twFallback();
                   }, 1600);
                   return;
                 }
@@ -6502,8 +6523,12 @@ ${catalog}
         window.__momXhsQueryTurn = false;
         window.__momXhsLastTopic = '';
         window.__momDouyinQueryTurn = false;
+        window.__momTwitterQueryTurn = false;
         window.__momGithubQueryTurn = false;
         window.__momoGithubLastRead = null;
+        window.__momoTwitterLastRead = null;
+        window.__momoTwitterLastCard = null;
+        window.__momoTwitterPendingCard = null;
         try { localStorage.removeItem('momo_pending_share_card_v1'); } catch (e) {}
         try {
           const recentUserLines = (function () {
@@ -6514,6 +6539,26 @@ ${catalog}
             }
             return lines;
           })();
+          const twitterLink = (typeof window.__momFirstTwitterUrl === 'function')
+            ? window.__momFirstTwitterUrl(recentUserLines[0] || '') : '';
+          if (twitterLink && typeof window.__momRunTwitterRead === 'function') {
+            window.__momTwitterQueryTurn = true;
+            try {
+              const twitterCtx = await window.__momRunTwitterRead(twitterLink);
+              if (twitterCtx) {
+                recentMessages.push({ role: 'system', content: twitterCtx });
+                recentMessages.push({ role: 'system', content: '【她刚把这条推特/X 帖子发给你，你已经读过原帖和一部分回复】回复里用你自己的话接一句这条在说什么，再说评论区里大概是什么反应；卡片会自动跟在后面。不要把几条回复说成“所有人都这么说”，也不要说接口、后台、抓取、技术限制。' });
+                if (window.__momoTwitterLastCard) {
+                  pendingShareCard = window.__momoTwitterLastCard;
+                  try { localStorage.setItem('momo_pending_share_card_v1', JSON.stringify({ card: pendingShareCard, charId: activeChatCharId(), at: Date.now() })); } catch (e) {}
+                }
+              } else {
+                recentMessages.push({ role: 'system', content: '【这条推特/X 链接这次没读到正文】别编内容，也别提接口、后台、抓取、技术限制。就说“这条我这边打不开，你截个图给我”，不要发假卡片。' });
+              }
+            } catch (eTwitterRead) {
+              console.warn('[Twitter] 链接读取异常：', eTwitterRead && eTwitterRead.message ? eTwitterRead.message : eTwitterRead);
+            }
+          }
           const douyinLink = (typeof window.__momFirstDouyinUrl === 'function')
             ? window.__momFirstDouyinUrl(recentUserLines[0] || '') : '';
           if (douyinLink && typeof window.__momRunDouyinRead === 'function') {
@@ -6787,6 +6832,54 @@ ${catalog}
               recentMessages.push({ role: 'system', content: '【这次在 GitHub 没找到合适的开源项目：' + githubTopic + '】如实说没找到合适的，不要编仓库名或链接，也不要把“awesome 列表/模板仓库”当成能直接用的插件。不要提接口、搜索、抓取、后台、技术限制。' });
             }
           }
+
+          // 推特/X：她明确说“去推特看看/别人怎么说”时，搜真实高赞帖子，读完原帖和回复再发卡。
+          const twitterLine = recentUserLines.filter(function (t) {
+            return /(推特|twitter|x\.com)/i.test(t) && !window.__momFirstTwitterUrl(t || '');
+          })[0] || '';
+          const wantsTwitter = !!twitterLine &&
+            /(搜|找|查|看看|看一下|发|分享|给我|来一条|来一篇|高赞|热门|别人|怎么说|类似|有没有|推荐)/.test(twitterLine) &&
+            !/(注册|账号|登录|密码|打不开|为什么|怎么用|怎么下|怎么注册)/.test(twitterLine);
+          if (wantsTwitter && !twitterLink && typeof window.__momFindTwitterPost === 'function') {
+            window.__momTwitterQueryTurn = true;
+            const twitterTopic = (function () {
+              const raw = String(twitterLine || '').trim();
+              const quoted = raw.match(/[「“]([^」”]{2,80})[」”]/);
+              let base = quoted ? quoted[1] : raw;
+              if (!quoted && /(类似|这种|这条|这个)/.test(raw)) {
+                const prev = recentUserLines.filter(function (t, idx) {
+                  return idx > 0 && !/(推特|twitter|x\.com)/i.test(t || '');
+                })[0];
+                if (prev) base = prev;
+              }
+              base = base.replace(/https?:\/\/[^\s]+/g, ' ');
+              base = base.replace(/(推特|twitter|x\.com|你去|去|看看|看一下|看|搜|找|查|发|分享|给我|一条|一篇|一些|关于|别人|都|怎么说|高赞|热门|类似的|类似|这种|那种|有没有|推荐|吗|呢|吧|啊)/gi, ' ');
+              base = base.replace(/[，。！？、；：,.!?]/g, ' ').replace(/\s+/g, ' ').trim();
+              if (base.length < 2) {
+                const prev2 = recentUserLines.filter(function (t, idx) {
+                  return idx > 0 && !/(推特|twitter|x\.com)/i.test(t || '');
+                })[0];
+                base = String(prev2 || '').replace(/[，。！？、；：,.!?]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80);
+              }
+              return base.slice(0, 120);
+            })();
+            let twitterCard = null;
+            try {
+              if (twitterTopic) twitterCard = await window.__momFindTwitterPost(twitterTopic);
+            } catch (eTwitter) {
+              twitterCard = null;
+              console.warn('[Twitter] 搜索失败：', eTwitter && eTwitter.message ? eTwitter.message : eTwitter);
+            }
+            const twitterRead = window.__momoTwitterLastRead || null;
+            if (twitterCard) {
+              pendingShareCard = twitterCard;
+              try { localStorage.setItem('momo_pending_share_card_v1', JSON.stringify({ card: twitterCard, charId: activeChatCharId(), at: Date.now() })); } catch (e) {}
+              if (twitterRead && twitterRead.context) recentMessages.push({ role: 'system', content: twitterRead.context });
+              recentMessages.push({ role: 'system', content: '【你刚替她翻了推特/X：' + (twitterTopic || '这个话题') + '】原帖正文和一部分回复已经读过了。回复里用你自己的话讲这条在说什么、评论区大概是什么反应；如果是拿来反驳/举例，可以说“这条下面不少人这么说”，但不要把几条回复说成“所有人都这么想”。别大段复述正文，别编点赞数，也不要说接口、搜索、抓取、后台、技术限制。卡片会自动跟在回复后面，不要把方括号标记写出来。' });
+            } else {
+              recentMessages.push({ role: 'system', content: '【这次在推特/X 没搜到能确认的高赞帖子：' + (twitterTopic || '这个话题') + '】如实说没找到合适的，不要编帖子、作者或链接；也不要说“你把链接发来”。不要提接口、搜索、抓取、后台、技术限制。' });
+            }
+          }
         } catch (eShare) {
           console.warn('[Share] 分享卡片失败：', eShare && eShare.message ? eShare.message : eShare);
         }
@@ -6842,6 +6935,12 @@ ${catalog}
               if (text) recentMessages.push({ role: 'system', content: text });
             });
             toolText = toolOutputs.filter(Boolean).join('\n\n');
+            if (window.__momoTwitterPendingCard && !pendingShareCard) {
+              pendingShareCard = window.__momoTwitterPendingCard;
+              try { localStorage.setItem('momo_pending_share_card_v1', JSON.stringify({ card: pendingShareCard, charId: activeChatCharId(), at: Date.now() })); } catch (e) {}
+              const twRead = window.__momoTwitterLastRead || null;
+              recentMessages.push({ role: 'system', content: '【你刚在推特/X 搜过' + ((twRead && twRead.query) || '这个话题') + '，找到一条高赞公开帖子并读过原帖和回复】回复里用自己的话讲这条在说什么、评论区大概什么反应；可以说“这条下面不少人这么说”，但不要把几条回复说成“所有人都这么想”。别编点赞数，也不要说接口、搜索、抓取、后台、技术限制。卡片会自动跟在回复后面，不要把方括号标记写出来。' });
+            }
           } else {
             // 规划器失败：退回旧的自动检索
             if (typeof window.buildWebSearchContext === 'function') {
