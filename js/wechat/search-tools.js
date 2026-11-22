@@ -391,11 +391,12 @@
     var p = profile || latestXhsProfile();
     if (!p) return null;
     var label = String(p.name || '').trim();
+    if (!label && String(p.xhsId || '').trim()) label = '小红书号 ' + String(p.xhsId).trim();
     if (keyword && String(keyword).trim() && !label && /[^\d\s]/.test(String(keyword).trim())) label = String(keyword).trim().slice(0, 12);
     return {
       kind: 'xhs',
       profileOnly: true,
-      title: label ? label + ' 的小红书主页' : '她的 小红书主页',
+      title: label ? (label + (String(p.name || '').trim() ? ' 的小红书主页' : ' 的主页')) : '她的 小红书主页',
       desc: '点一下直接打开小红书主页，里面能翻到她全部笔记',
       url: p.url,
       brandName: '小红书',

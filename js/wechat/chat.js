@@ -1098,7 +1098,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
         row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:12px;background:var(--bg-elevated);border:1px solid var(--border-default);';
         const info = document.createElement('div');
         info.style.cssText = 'flex:1;min-width:0;';
-        const nm = String(p.name || '').trim() || '未命名博主';
+        const nm = String(p.name || '').trim() || (String(p.xhsId || '').trim() ? ('小红书号 ' + String(p.xhsId).trim()) : '未命名博主');
         const id = String(p.xhsId || '').trim();
         info.innerHTML = '<div style="font-size:13.5px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + nm.replace(/[<>&]/g, '') + '</div>' +
           '<div style="font-size:11px;color:var(--color-text-secondary);margin-top:2px;">' + (id ? ('小红书号 ' + id) : '已存主页链接') + '</div>';
