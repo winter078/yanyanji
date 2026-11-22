@@ -963,9 +963,8 @@
     // 角色侧头像/名字/页头按钮跟着“一起听的人”走
     refreshMusicCompanionUI();
 
-    if (allSongs.length > 0) {
-      playSong(allSongs[0], false, allSongs);
-    }
+    // 恢复上次的歌单、红心和歌单夹；不要替用户选中或播放任何歌
+    // （本文件是启动器异步加载的，DOMContentLoaded 可能已经错过，见文件末尾）
   };
 
   // ================= 一起听：我这一侧的头像与称谓 =================
@@ -1396,7 +1395,11 @@
     play: (song, ctx) => playSong(song, true, ctx || null, true)
   };
 
-  document.addEventListener('DOMContentLoaded', () => {
+  // 启动器是异步插入本文件的，DOMContentLoaded 往往已经过去；
+  // 直接判断 readyState，错过就立刻初始化，否则刷新后曲库/红心/歌单夹都是空的。
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => { initMusicPlayer(); }, { once: true });
+  } else {
     initMusicPlayer();
-  });
+  }
 })();
