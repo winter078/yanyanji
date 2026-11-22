@@ -870,21 +870,7 @@
       renderPlaylistDrawer();
       inputEl.value = '';
 
-      if (badgeEl) badgeEl.innerText = '搜到 ' + list.length + ' 首，已放进曲库（' + addedCount + ' 首新增）';
-
-      // 自动挑一首现在就能播的（免费歌免登录即可；版权歌要登录态）
-      const candidates = list.map(it => allSongs.find(s => s.id === 'ne-' + it.id)).filter(Boolean);
-      let started = null;
-      for (const c of candidates.slice(0, 5)) {
-        const okPlay = await playSong(c, true, allSongs, true);
-        if (okPlay) { started = c; break; }
-      }
-      if (started) {
-        const bubbleEl = document.getElementById('music-live-bubble-text');
-        if (bubbleEl) bubbleEl.innerText = '“《' + started.title + '》……这首我想和你一起听。”';
-      } else if (badgeEl) {
-        badgeEl.innerText = '这几首都要登录态，配好网易云 cookie 就能播';
-      }
+      if (badgeEl) badgeEl.innerText = '搜到 ' + list.length + ' 首，已放进曲库（' + addedCount + ' 首新增），点一首才播放';
     } catch (err) {
       alert('搜索失败：' + ((err && err.message) ? err.message : err));
       if (badgeEl) badgeEl.innerText = '共同佩戴一副耳机';
