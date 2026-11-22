@@ -1457,6 +1457,39 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       }
     };
 
+    // 通用快照入口：把任意一段记录存进紧急快照（不改动当前 appData），用于「即将被覆盖」的旧记录。
+    function pushEmergencySnapshot(reason, list, charId) {
+      try {
+        if (!Array.isArray(list) || list.length === 0) return;
+        let snapshots = [];
+        try { snapshots = JSON.parse(localStorage.getItem('momo_chat_emergency_snapshots') || '[]'); }
+        catch (e) { snapshots = []; }
+        if (!Array.isArray(snapshots)) snapshots = [];
+        const now = new Date();
+        const timeStr = `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+        snapshots.unshift({
+          id: 'snap_' + Date.now(),
+          time: timeStr,
+          reason: reason,
+          charId: charId || '',
+          count: list.length,
+          preview: (list[list.length - 1]?.content || '').slice(0, 40),
+          data: list.map(m => ({ ...m }))
+        });
+        if (snapshots.length > 5) snapshots = snapshots.slice(0, 5);
+        localStorage.setItem('momo_chat_emergency_snapshots', JSON.stringify(snapshots));
+        console.warn('🛡️ 已保留即将被覆盖的旧记录:', reason, list.length, '条');
+      } catch (err) { console.warn('保留旧记录快照失败:', err); }
+    }
+
+    function historyLooksDifferent(a, b) {
+      if (!Array.isArray(a) || !Array.isArray(b) || !a.length || !b.length) return false;
+      const fa = a[0] || {}, fb = b[0] || {};
+      const ka = (fa.id || '') + '|' + (fa.time || '') + '|' + String(fa.content || '').slice(0, 30);
+      const kb = (fb.id || '') + '|' + (fb.time || '') + '|' + String(fb.content || '').slice(0, 30);
+      return ka !== kb;
+    }
+
     window.restoreLastChatSnapshot = function() {
       try {
         const raw = localStorage.getItem('momo_chat_emergency_snapshots');
@@ -1595,6 +1628,11 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       if (!charId) return;
       ensureChatHistoryScoped();
       const map = readChatHistoryMap();
+      const oldList = map[charId];
+      if (Array.isArray(oldList) && oldList.length > 0 &&
+          historyLooksDifferent(oldList, list) && oldList.length > (Array.isArray(list) ? list.length : 0)) {
+        pushEmergencySnapshot('覆盖前保留原记录', oldList, charId);
+      }
       map[charId] = cloneChatMessages(list);
       writeChatHistoryMap(map);
       if (chatHistoryOwnerId === charId) {
@@ -1642,6 +1680,14 @@ window.syncNarrationModeUI = syncNarrationModeUI;
         // 每个角色一份，同时保留全局镜像给旧模块/同步服务兜底。
         if (ownerId) {
           const map = readChatHistoryMap();
+          const oldList = map[ownerId];
+          // 防串号兜底：如果这个槽位已有的记录和本次要写的完全不是同一段，且旧记录更多，
+          // 先把旧记录存进紧急快照，绝不静默覆盖。
+          if (Array.isArray(oldList) && oldList.length > 0 &&
+              historyLooksDifferent(oldList, cleanHistoryForStorage) &&
+              oldList.length > cleanHistoryForStorage.length) {
+            pushEmergencySnapshot('覆盖前保留原记录', oldList, ownerId);
+          }
           map[ownerId] = cleanHistoryForStorage;
           writeChatHistoryMap(map);
           chatHistoryOwnerId = ownerId;
