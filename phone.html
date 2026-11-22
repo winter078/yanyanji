@@ -19,7 +19,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <!-- 发布时务必与 js/build.js 的 __LIVE_BUILD__ 保持一致，否则 version-watch 会一直提示“新版已经好了” -->
-  <script>window.__BUILD__="20261122-2861";</script>
+  <script>window.__BUILD__="20261122-2862";</script>
   <script>
     (function () {
       var root = document.documentElement;
@@ -227,7 +227,7 @@
 <link rel="stylesheet" href="css/motion.css?v=20261122-2858" />
 <link rel="stylesheet" href="css/drawer-fix.css?v=20261122-2858" />
   
-<link rel="preload" as="image" href="assets/splash-yanyan.jpg?v=20261122-2861" />
+<link rel="preload" as="image" href="assets/splash-yanyan.jpg?v=20261122-2862" />
 <style id="mom-splash-style">
   html, body { background:#0a0b0f; }
   #mom-splash{
@@ -274,21 +274,15 @@
     filter:drop-shadow(0 0 6px var(--g,rgba(185,166,255,.65)));
   }
   .mf-heart .heart-shape{
-    position:relative; display:block; width:14px; height:14px;
-    background:#c3adff; border-radius:2px; transform:rotate(-45deg);
-    box-shadow:0 0 12px rgba(178,150,255,.55);
+    display:block; width:18px; height:18px;
+    filter:drop-shadow(0 0 9px rgba(178,150,255,.75));
   }
-  .mf-heart .heart-shape:before,.mf-heart .heart-shape:after{
-    content:""; position:absolute; width:14px; height:14px; border-radius:50%; background:inherit;
-  }
-  .mf-heart .heart-shape:before{top:-7px; left:0}
-  .mf-heart .heart-shape:after{top:0; left:-7px}
   .mf-dot{width:6px; height:6px; border-radius:50%; background:#fff; box-shadow:0 0 9px rgba(201,182,255,.9)}
   .mf1{left:18px; top:28px; --s:13px; --c:#ffd79a; --g:rgba(255,207,135,.7); --dx:-4px; animation-duration:3.6s; animation-delay:-.5s}
   .mf2{right:14px; top:20px; --s:17px; --c:#c8b6ff; --g:rgba(185,166,255,.8); --dx:5px; animation-duration:4.1s; animation-delay:-1.2s}
   .mf3{left:10px; bottom:34px; --s:10px; --c:#dce3ff; --dx:-3px; animation-duration:3.4s; animation-delay:-2s}
   .mf4{right:4px; bottom:26px; --s:8px; --c:#ffd79a; --g:rgba(255,207,135,.65); --dx:3px; animation-duration:3.9s; animation-delay:-1.7s}
-  .mf5{right:22px; top:68px; width:14px; height:14px; animation-duration:4.4s; animation-delay:-.9s}
+  .mf5{right:20px; top:66px; width:18px; height:18px; animation-duration:4.4s; animation-delay:-.9s}
   .mf6{left:36px; bottom:12px; animation-duration:3.5s; animation-delay:-2.4s}
   .mf7{right:42px; top:14px; width:5px; height:5px; animation-duration:3.2s; animation-delay:-1.5s}
   .mom-splash-title{margin-top:8px; font-size:20px; font-weight:600; letter-spacing:.08em; color:#f5f1ff}
@@ -312,12 +306,12 @@
     <div class="mom-splash-stack">
       <div class="mom-splash-stage" aria-hidden="true">
         <div class="mom-splash-halo"></div>
-        <img class="mom-splash-icon" src="assets/splash-yanyan.jpg?v=20261122-2861" alt="" draggable="false" />
+        <img class="mom-splash-icon" src="assets/splash-yanyan.jpg?v=20261122-2862" alt="" draggable="false" />
         <span class="mom-float mf-star mf1"><i></i></span>
         <span class="mom-float mf-star mf2"><i></i></span>
         <span class="mom-float mf-star mf3"><i></i></span>
         <span class="mom-float mf-star mf4"><i></i></span>
-        <span class="mom-float mf-heart mf5"><i class="heart-shape"></i></span>
+        <span class="mom-float mf-heart mf5"><svg class="heart-shape" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="#cbb7ff"/></svg></span>
         <span class="mom-float mf-dot mf6"></span>
         <span class="mom-float mf-dot mf7"></span>
       </div>
