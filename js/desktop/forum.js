@@ -669,6 +669,8 @@
     fm.openId = '';
     var det = document.getElementById('fm-detail');
     if (det) { det.style.display = 'none'; }
+    var page = document.getElementById('page-forum');
+    if (page) page.classList.toggle('fm-on-mine', fm.tab === 'mine');
     renderChips();
     var listEl = document.getElementById('fm-list');
     var meEl = document.getElementById('fm-me');

@@ -979,12 +979,44 @@
   border-top: 1px solid var(--fm-line);
   background: rgba(13, 17, 13, .96);
   height: 58px;
-  padding: 0 30px env(safe-area-inset-bottom, 0px);
+  padding: 0 34px env(safe-area-inset-bottom, 0px);
   box-sizing: border-box;
 }
-.fm-tab { color: #7B8377; letter-spacing: .4px; }
-.fm-tab.on { color: var(--fm-amber); }
+.fm-tab {
+  color: #7B8377;
+  letter-spacing: .4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  margin: 0 2px;
+  border-radius: 999px;
+}
+.fm-tab.on {
+  color: var(--fm-amber);
+  background: rgba(232, 176, 75, .10);
+  box-shadow: inset 0 0 0 1px rgba(232, 176, 75, .16);
+}
 #fm-tab-dot { background: var(--fm-amber); color: #171B15; }
+
+/* 「我」页：封面从屏幕最上面开始，标题浮在图上 */
+#page-forum.fm-on-mine .fm-head {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  z-index: 6;
+  padding: 16px 16px 22px;
+  background: linear-gradient(180deg, rgba(6, 9, 6, .74) 0%, rgba(6, 9, 6, .40) 58%, rgba(6, 9, 6, 0) 100%);
+  pointer-events: none;
+}
+#page-forum.fm-on-mine .fm-head button { pointer-events: auto; }
+#page-forum.fm-on-mine .fm-head-title { text-shadow: 0 2px 14px rgba(0, 0, 0, .8); }
+#page-forum.fm-on-mine #fm-sub { color: rgba(237, 230, 214, .80); text-shadow: 0 1px 8px rgba(0, 0, 0, .85); }
+#page-forum.fm-on-mine .fm-body { padding-top: 0; }
+#page-forum.fm-on-mine .fmp-cover { height: 252px; background-position: center 48%; }
+#page-forum.fm-on-mine .fmp-cover-fade { height: 112px; }
+#page-forum.fm-on-mine .fmp-cover-label { top: 80px; right: 18px; }
+#page-forum.fm-on-mine .fmp-id { margin-top: -34px; }
+
 
 /* ---------- 详情 ---------- */
 #fm-detail {
