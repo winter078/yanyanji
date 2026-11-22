@@ -131,7 +131,11 @@ async function detailFor(id, apiKey) {
       const note = normalizeDetail(data, { id });
       if (note.title || note.desc || note.images.length) return { note };
     }
-    last = { status: resp.status, data };
+    if (data && data.code && Number(data.code) !== 200) {
+      last = { status: 502, data: { message: String(data.message_zh || data.message || ('code_' + data.code)) } };
+    } else {
+      last = { status: resp.status, data };
+    }
   }
   return { error: 'note_unreadable', status: 502, detail: String((last && last.data && (last.data.detail || last.data.message)) || '').slice(0, 160) };
 }
@@ -151,6 +155,10 @@ async function searchNotes(query, apiKey) {
   if (resp.status === 402) return { error: 'insufficient_balance', status: 402, data };
   if (resp.status === 429) return { error: 'rate_limited', status: 429 };
   if (!resp.ok) return { error: 'provider_error', status: 502, detail: String(data.message || data.detail || ('http_' + resp.status)).slice(0, 160) };
+  // TikHub 有时 HTTP 200 但业务 code 不是 200（小红书后端预热、参数问题），不能当成“没搜到”
+  if (data && data.code && Number(data.code) !== 200) {
+    return { error: 'provider_error', status: 502, detail: String(data.message_zh || data.message || ('code_' + data.code)).slice(0, 200) };
+  }
   return { candidates: collectNotes(data) };
 }
 
@@ -164,6 +172,9 @@ async function userLatest(params, apiKey) {
   if (resp.status === 401 || resp.status === 403) return { error: 'invalid_key', status: 401 };
   if (resp.status === 402) return { error: 'insufficient_balance', status: 402, data };
   if (!resp.ok) return { error: 'provider_error', status: 502, detail: String(data.message || data.detail || ('http_' + resp.status)).slice(0, 160) };
+  if (data && data.code && Number(data.code) !== 200) {
+    return { error: 'provider_error', status: 502, detail: String(data.message_zh || data.message || ('code_' + data.code)).slice(0, 200) };
+  }
   const candidates = collectNotes(data);
   if (!candidates.length) return { error: 'no_notes', status: 404 };
   return { candidates };
@@ -177,6 +188,19 @@ export async function onRequestPost(context) {
   if (apiKey.length < 12) return json(400, { error: 'bad_key', provider: 'tikhub' });
 
   const action = String(body.action || 'search');
+  if (action === 'check') {
+    const result = await fetchJson('/api/v1/tikhub/user/get_user_info', {}, apiKey);
+    const { resp, data } = result;
+    if (resp.status === 401 || resp.status === 403) return json(401, { error: 'invalid_key', provider: 'tikhub' });
+    if (!resp.ok) return json(502, { error: 'provider_error', provider: 'tikhub', detail: String(data.detail || data.message || ('http_' + resp.status)).slice(0, 160) });
+    const flat = {};
+    walk(data, function (node) {
+      ['email', 'username', 'balance', 'credits', 'remaining_credits', 'daily_usage', 'api_key_name', 'plan'].forEach(function (k) {
+        if (flat[k] === undefined && node && node[k] !== undefined) flat[k] = node[k];
+      });
+    });
+    return json(200, { ok: true, provider: 'tikhub', account: flat });
+  }
   let searched;
   if (action === 'user_latest') {
     searched = await userLatest(body, apiKey);
@@ -184,6 +208,14 @@ export async function onRequestPost(context) {
     const query = String(body.query || '').trim().slice(0, 200);
     if (!query) return json(400, { error: 'missing_query', provider: 'tikhub' });
     searched = await searchNotes(query, apiKey);
+  }
+  if (searched.error) {
+    // TikHub 的小红书后端有时预热中，第一次会回业务错误；再试一次通常就正常。
+    if (searched.error === 'provider_error' && !body._retried) {
+      await new Promise(function (resolve) { setTimeout(resolve, 1200); });
+      if (action === 'user_latest') searched = await userLatest(body, apiKey);
+      else searched = await searchNotes(String(body.query || '').trim().slice(0, 200), apiKey);
+    }
   }
   if (searched.error) {
     return json(searched.status, {

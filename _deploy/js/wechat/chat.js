@@ -6479,6 +6479,7 @@ ${catalog}
         // 注意要看最近几条用户消息，而不是只看最后一条（用户常说“给我发一篇…”后面再补一句“快点”）
         pendingShareCard = null;
         window.__momXhsQueryTurn = false;
+        window.__momXhsLastTopic = '';
         try { localStorage.removeItem('momo_pending_share_card_v1'); } catch (e) {}
         try {
           const recentUserLines = (function () {
@@ -6635,6 +6636,7 @@ ${catalog}
             const xhsNoticeTool = (window.__momToolNotice && window.__momToolNotice.start)
               ? window.__momToolNotice.start('xhs', '小红书') : null;
             let found = null;
+            window.__momXhsLastTopic = topic || '推荐';
             try {
               found = await window.__momFindXhsNote(topic || '推荐');
               if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(xhsNoticeTool, !!(found && !found.searchOnly));
@@ -6949,8 +6951,12 @@ ${catalog}
         // 模型偶尔会自己编一个卡片标记（如 [RED_NOTE_SHARE:标题]）：转成小红书搜索卡，别把标记原文露在气泡里
         const inventedShare = botReply.match(/\[(?:RED_NOTE_SHARE|NOTE_SHARE|XHS_NOTE|XHS_SHARE|SHARE_NOTE|NOTE_CARD)\s*[:：]\s*([^\]]{1,80})\]/i);
         if (inventedShare) {
-          const q = inventedShare[1].trim();
-          if (q && typeof window.__momXhsSearchCard === 'function') pendingShareCard = window.__momXhsSearchCard(q);
+          // 小红书轮次里模型爱把上一轮的词写进标记（比如这轮问 NCT，它写 aespa）。
+          // 有真实找到的卡片就不动；没找到也只用这一轮用户说的主题，绝不沿用旧词。
+          const writQ = inventedShare[1].trim();
+          const turnQ = window.__momXhsQueryTurn ? String(window.__momXhsLastTopic || '') : '';
+          const q = turnQ || (!window.__momXhsQueryTurn ? writQ : '');
+          if (q && !pendingShareCard && typeof window.__momXhsSearchCard === 'function') pendingShareCard = window.__momXhsSearchCard(q);
           botReply = botReply.replace(inventedShare[0], '').trim();
         }
         // 其余没被界面识别的方括号标记一律清掉，避免“[”“]”被拆成两三个丑气泡

@@ -832,6 +832,22 @@
     setTikhubStatus('已清除。');
   }
 
+  async function testTikhubKey() {
+    if (!readTikhubKey()) { setTikhubStatus('先粘贴 TikHub Key 并保存。', 'error'); return; }
+    setTikhubStatus('正在验证 Key…');
+    try {
+      var data = await requestTikhubNote({ action: 'check' });
+      var acc = (data && data.account) || {};
+      var left = acc.remaining_credits !== undefined ? acc.remaining_credits : (acc.credits !== undefined ? acc.credits : (acc.balance !== undefined ? acc.balance : ''));
+      var who = acc.email || acc.username || '';
+      setTikhubStatus('Key 可用' + (who ? (' · ' + who) : '') + (left !== '' ? (' · 余额 ' + left) : '') + '。', 'ok');
+    } catch (err) {
+      var msg = String(err && err.message || err || '');
+      var readable = msg === 'invalid_key' ? 'Key 无效或复制不完整' : (msg === 'insufficient_balance' ? 'TikHub 余额不足' : (msg === 'provider_error' ? 'TikHub 暂时返回错误' : msg));
+      setTikhubStatus('验证失败：' + readable, 'error');
+    }
+  }
+
   function refreshWebSearchStatus() {
     syncToggle();
     syncKeyInput();
@@ -948,6 +964,7 @@
   window.saveTikhubKey = saveTikhubKey;
   window.clearTikhubKey = clearTikhubKey;
   window.refreshTikhubStatus = refreshTikhubStatus;
+  window.testTikhubKey = testTikhubKey;
   window.isWebSearchEnabled = isEnabled;
   window.buildWebSearchContext = buildWebSearchContext;
   // ========== 让角色主动分享一篇真实的小红书笔记 ==========
