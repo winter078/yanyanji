@@ -4341,6 +4341,27 @@ window.syncNarrationModeUI = syncNarrationModeUI;
               if (kind === 'watch') { if (typeof window.playSharedVideo === 'function') window.playSharedVideo(cardData); return; }
               if (kind === 'read') { if (typeof window.playSharedBook === 'function') window.playSharedBook(cardData); return; }
               if (cardData.url) {
+                // 小红书笔记在网页端常被限制成“因权限或已被删除”，但 App 里能看：
+                // 先尝试用深链拉起小红书，拉不起来再退回内嵌网页。
+                const xhsId = (function () {
+                  const m = String(cardData.url).match(/xiaohongshu\.com\/(?:explore|discovery\/item)\/([0-9a-zA-Z]+)/);
+                  return m ? m[1] : '';
+                })();
+                if (xhsId) {
+                  let fellBack = false;
+                  const fallback = function () {
+                    if (fellBack) return;
+                    fellBack = true;
+                    if (typeof window.openLinkViewer === 'function') window.openLinkViewer(cardData.url, cardData.title);
+                    else window.location.href = cardData.url;
+                  };
+                  try { window.location.href = 'xhsdiscover://item/' + xhsId; } catch (e) {}
+                  setTimeout(function () {
+                    if (document.hidden) return;
+                    fallback();
+                  }, 1600);
+                  return;
+                }
                 if (typeof window.openLinkViewer === 'function') window.openLinkViewer(cardData.url, cardData.title);
                 else window.location.href = cardData.url;
               }
