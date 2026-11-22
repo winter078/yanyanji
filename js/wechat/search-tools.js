@@ -290,6 +290,70 @@
     return lines.join('\n');
   }
 
+  // ========== 记住她的主页：用户从小红书 App 复制一次主页长链接 ==========
+  // 网页端抓不到别人的作品列表（要登录 + 风控），但主页长链接里带 user_id + xsec_token，
+  // 存下来以后就能直接把「她的主页」卡片深链打开，她自己进去翻任意一篇。
+  var XHS_PROFILE_KEY = 'momo_xhs_profiles_v1';
+
+  function xhsProfileList() {
+    try {
+      var arr = JSON.parse(localStorage.getItem(XHS_PROFILE_KEY) || '[]');
+      return Array.isArray(arr) ? arr : [];
+    } catch (e) { return []; }
+  }
+
+  function parseXhsProfileUrl(text) {
+    var raw = String(text || '').replace(/\\\//g, '/').replace(/&amp;/g, '&').replace(/[，。！？、；：）)】]+$/g, '');
+    var matches = raw.match(/https?:\/\/[^\s<>"']+/g) || [];
+    for (var i = 0; i < matches.length; i++) {
+      var m = matches[i].match(/xiaohongshu\.com\/user\/profile\/([0-9a-f]{20,26})/i);
+      if (m) return { userId: m[1], url: matches[i] };
+    }
+    return null;
+  }
+
+  function bindXhsProfile(text) {
+    var found = parseXhsProfileUrl(text);
+    if (!found) return null;
+    var rest = String(text || '').replace(/https?:\/\/[^\s<>"']+/g, ' ');
+    var name = rest
+      .replace(/(小红书|小某书|红书|主页|个人主页|链接|这是|她|的|号|ID|id|帮我|记住|这个|存一下|一下|复制|来自)/g, ' ')
+      .replace(/[，。！？、,.!?：:；;【】\[\]（）()]/g, ' ')
+      .replace(/\s+/g, ' ').trim().slice(0, 16);
+    var item = { userId: found.userId, url: found.url, name: name, at: Date.now() };
+    try {
+      var list = xhsProfileList().filter(function (p) { return p && p.userId !== found.userId; });
+      list.unshift(item);
+      while (list.length > 5) list.pop();
+      localStorage.setItem(XHS_PROFILE_KEY, JSON.stringify(list));
+    } catch (e) {}
+    return item;
+  }
+
+  function latestXhsProfile() {
+    var list = xhsProfileList();
+    for (var i = 0; i < list.length; i++) {
+      if (list[i] && /[0-9a-f]{20,26}/i.test(String(list[i].userId || ''))) return list[i];
+    }
+    return null;
+  }
+
+  function xhsProfileCard(keyword, profile) {
+    var p = profile || latestXhsProfile();
+    if (!p) return null;
+    var label = String(p.name || '').trim();
+    if (keyword && String(keyword).trim() && !label && /[^\d\s]/.test(String(keyword).trim())) label = String(keyword).trim().slice(0, 12);
+    return {
+      kind: 'xhs',
+      profileOnly: true,
+      title: label ? label + ' 的小红书主页' : '她的 小红书主页',
+      desc: '点一下直接打开小红书主页，里面能翻到她全部笔记',
+      url: p.url,
+      brandName: '小红书',
+      brandIcon: '📕'
+    };
+  }
+
   // ========== 给「工具注册表」调用的原子能力：带胶囊、带去重 ==========
   async function runWebSearchRaw(query) {
     var q = String(query || '').trim().slice(0, 200);
@@ -822,6 +886,10 @@
   }
 
   window.__momFindXhsNote = findXhsNote;
+  window.__momBindXhsProfile = bindXhsProfile;
+  window.__momGetXhsProfile = latestXhsProfile;
+  window.__momXhsProfileCard = xhsProfileCard;
+  window.__momXhsProfileUrl = parseXhsProfileUrl;
   window.__momRunWebSearch = runWebSearchRaw;
   window.__momRunXhsRead = runXhsRaw;
   window.refreshWebSearchStatus = refreshWebSearchStatus;

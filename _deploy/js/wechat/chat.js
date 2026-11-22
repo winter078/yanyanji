@@ -4341,6 +4341,25 @@ window.syncNarrationModeUI = syncNarrationModeUI;
               if (kind === 'watch') { if (typeof window.playSharedVideo === 'function') window.playSharedVideo(cardData); return; }
               if (kind === 'read') { if (typeof window.playSharedBook === 'function') window.playSharedBook(cardData); return; }
               if (cardData.url) {
+                // 「她的小红书主页」卡片：深链直接进 App 的个人主页，失败再退回网页。
+                if (cardData.profileOnly || /xiaohongshu\.com\/user\/profile\//i.test(cardData.url)) {
+                  const profileId = (String(cardData.url).match(/\/user\/profile\/([0-9a-f]{20,26})/i) || [])[1] || '';
+                  if (profileId) {
+                    let profileFellBack = false;
+                    const profileFallback = function () {
+                      if (profileFellBack) return;
+                      profileFellBack = true;
+                      if (typeof window.openLinkViewer === 'function') window.openLinkViewer(cardData.url, cardData.title);
+                      else window.location.href = cardData.url;
+                    };
+                    try { window.location.href = 'xhsdiscover://user/' + profileId; } catch (e) {}
+                    setTimeout(function () {
+                      if (document.hidden) return;
+                      profileFallback();
+                    }, 1600);
+                    return;
+                  }
+                }
                 // 「在小红书搜…」入口卡：同样先拉 App 的搜索结果页，拉不起来再退回网页。
                 if (cardData.searchOnly || /xiaohongshu\.com\/search_result/i.test(cardData.url)) {
                   const kw = (function () {
@@ -6384,7 +6403,34 @@ ${catalog}
           const xhsLine = recentUserLines.filter(function (t) { return /(小红书|小某书|红书)/.test(t); })[0] || '';
           const wantsXhs = !!xhsLine && /(发|分享|给|来|推|甩|整|搜|找|查|主页|笔记|帖子|ID|id)/.test(xhsLine) &&
             !/(怎么|如何|为什么)/.test(xhsLine);
-          if (wantsXhs && !/(h?ttps?:\/\/|xiaohongshu\.com|xhslink\.com)/i.test(xhsLine) && typeof window.__momFindXhsNote === 'function') {
+          // 主页绑定：她从小红书 App 复制一次主页长链接，之后就能直接发「她的主页」卡片
+          const boundNow = (typeof window.__momBindXhsProfile === 'function')
+            ? window.__momBindXhsProfile(recentUserLines[0] || '') : null;
+          const savedProfile = (typeof window.__momGetXhsProfile === 'function') ? window.__momGetXhsProfile() : null;
+          const wantsProfile = !!xhsLine && /(主页|她的帖子|她的笔记|她发的帖子|她发的笔记|小红书号|\bID\b|\bid\b)/.test(xhsLine) &&
+            !/(怎么|如何|为什么)/.test(xhsLine);
+          const hasNamedNote = (function () {
+            for (let ni = 0; ni < recentUserLines.length; ni++) {
+              const s = String(recentUserLines[ni] || '');
+              if (/[《“"「][^》”"」]{2,40}[》”"」]/.test(s) || /帖子是/.test(s)) return true;
+              const plain = s.replace(/[，。！？、,.!?]/g, ' ').trim();
+              if (plain.length >= 6 && plain.length <= 40 && !/(xiaohongshu\.com|xhslink\.com|小红书|小某书|红书|帖子|主页|笔记|发我|发给|能不能|帮我|搜一下|找一下|快点|好了|可以吗)/.test(plain)) return true;
+            }
+            return false;
+          })();
+          if (boundNow && typeof window.__momXhsProfileCard === 'function') {
+            const boundCard = window.__momXhsProfileCard(boundNow.name || '', boundNow);
+            if (boundCard) {
+              pendingShareCard = boundCard;
+              recentMessages.push({ role: 'system', content: '【她已经把小红书主页长链接交给你了，你记住了】回复里自然说一句“记住了/存好了”，卡片会自动跟在后面；不要说“需要你每次发链接”，也不要提接口、抓取、技术限制。' });
+            }
+          } else if (wantsProfile && savedProfile && !hasNamedNote && typeof window.__momXhsProfileCard === 'function') {
+            const savedCard = window.__momXhsProfileCard('', savedProfile);
+            if (savedCard) {
+              pendingShareCard = savedCard;
+              recentMessages.push({ role: 'system', content: '【你已经记住了她的小红书主页】她问主页/帖子时，你直接给她一张「她的小红书主页」卡片，点开就能进去翻全部笔记。回复里用角色口吻叫她点开看，别编造具体笔记标题或内容，别说“只能搜入口”，也别提接口、后台、技术限制。' });
+            }
+          } else if (wantsXhs && !/(h?ttps?:\/\/|xiaohongshu\.com|xhslink\.com)/i.test(xhsLine) && typeof window.__momFindXhsNote === 'function') {
             // 关键词优先级：引号/书名号里的标题 > 「帖子是…」后面的标题 > 纯数字小红书号 > 整句清洗
             // 用户经常分几条发（先说“她小红书号”，再说“帖子是”，最后给标题），所以要跨最近几条找。
             const quoted = (function () {
