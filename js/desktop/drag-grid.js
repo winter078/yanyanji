@@ -358,8 +358,14 @@
         desktopData = { version: '5.2', pages: JSON.parse(JSON.stringify(DEFAULT_PAGES_LAYOUT)) };
       }
       // 先恢复小画/相片图库，再做任何会回写布局的清理，避免清理写回时用初始图库覆盖用户图片
-      const savedArt = localStorage.getItem(ART_STORAGE_KEY);
-      if (savedArt) artStorage = JSON.parse(savedArt);
+      // 图片数据已经迁到 IndexedDB；localStorage 里只留旧版数据用于一次性迁移
+      if (!artStorageLoaded) {
+        const savedArt = localStorage.getItem(ART_STORAGE_KEY);
+        if (savedArt) {
+          try { artStorage = JSON.parse(savedArt) || artStorage; } catch(e) {}
+        }
+        artStorageLoaded = true;
+      }
       // 小组件精简：旧布局里的言言伴生卡、拍立得、横幅画廊、手账等旧组件移除；保留资料卡、心声私签、相片、音乐与倒数日
       let widgetCleanupChanged = false;
       desktopData.pages.forEach(function(page) {
@@ -591,9 +597,149 @@
   function saveDesktopStorage() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(desktopData));
-      localStorage.setItem(ART_STORAGE_KEY, JSON.stringify(artStorage));
     } catch(e) {}
+    flushArtStorage();
   }
+
+  // ================= 组件图片仓库：localStorage -> IndexedDB =================
+  // localStorage 只有约 5MB，相片/头像多存几张就会写失败；失败后布局还在，
+  // 下次打开组件就只剩“添加照片”。图片改存 IndexedDB，localStorage 只保留布局。
+  const ART_DB_NAME = 'momo_widget_art_db_v1';
+  const ART_DB_STORE = 'art';
+  let artDbPromise = null;
+  let artStorageLoaded = false;
+  let artLoadStarted = false;
+  let artDirty = {};
+
+  function openArtDb() {
+    if (!window.indexedDB) return Promise.resolve(null);
+    if (artDbPromise) return artDbPromise;
+    artDbPromise = new Promise(function(resolve) {
+      try {
+        const req = window.indexedDB.open(ART_DB_NAME, 1);
+        req.onupgradeneeded = function() {
+          const db = req.result;
+          if (!db.objectStoreNames.contains(ART_DB_STORE)) db.createObjectStore(ART_DB_STORE);
+        };
+        req.onsuccess = function() { resolve(req.result); };
+        req.onerror = function() { resolve(null); };
+        req.onblocked = function() { resolve(null); };
+      } catch(e) { resolve(null); }
+    });
+    return artDbPromise;
+  }
+
+  function dbGetAllArt() {
+    return openArtDb().then(function(db) {
+      if (!db) return {};
+      return new Promise(function(resolve) {
+        const out = {};
+        try {
+          const tx = db.transaction(ART_DB_STORE, 'readonly');
+          const req = tx.objectStore(ART_DB_STORE).openCursor();
+          req.onsuccess = function() {
+            const cursor = req.result;
+            if (!cursor) { resolve(out); return; }
+            out[cursor.key] = cursor.value;
+            cursor.continue();
+          };
+          req.onerror = function() { resolve(out); };
+        } catch(e) { resolve(out); }
+      });
+    });
+  }
+
+  function dbPutArt(key, value) {
+    return openArtDb().then(function(db) {
+      if (!db) return false;
+      return new Promise(function(resolve) {
+        try {
+          const tx = db.transaction(ART_DB_STORE, 'readwrite');
+          tx.objectStore(ART_DB_STORE).put(value, key);
+          tx.oncomplete = function() { resolve(true); };
+          tx.onerror = function() { resolve(false); };
+          tx.onabort = function() { resolve(false); };
+        } catch(e) { resolve(false); }
+      });
+    });
+  }
+
+  function setArtStorage(key, value) {
+    artStorage[key] = value;
+    artDirty[key] = true;
+  }
+
+  function flushArtStorage() {
+    const keys = Object.keys(artDirty);
+    if (!keys.length) return;
+    const batch = {};
+    keys.forEach(function(key) { batch[key] = artStorage[key] || ''; });
+    artDirty = {};
+    openArtDb().then(function(db) {
+      if (!db) {
+        // 极老的浏览器没有 IndexedDB，只能退回旧方式；正常新机不会走到这里
+        try { localStorage.setItem(ART_STORAGE_KEY, JSON.stringify(artStorage)); } catch(e) {}
+        return;
+      }
+      try {
+        const tx = db.transaction(ART_DB_STORE, 'readwrite');
+        const store = tx.objectStore(ART_DB_STORE);
+        keys.forEach(function(key) {
+          if (batch[key]) store.put(batch[key], key);
+          else store.delete(key);
+        });
+      } catch(e) {}
+    });
+  }
+
+  function migrateLegacyArt() {
+    let legacy = '';
+    try { legacy = localStorage.getItem(ART_STORAGE_KEY) || ''; } catch(e) {}
+    if (!legacy) return Promise.resolve();
+    let parsed = {};
+    try { parsed = JSON.parse(legacy) || {}; } catch(e) { return Promise.resolve(); }
+    const keys = Object.keys(parsed);
+    if (!keys.length) {
+      try { localStorage.removeItem(ART_STORAGE_KEY); } catch(e) {}
+      return Promise.resolve();
+    }
+    return openArtDb().then(function(db) {
+      if (!db) return;
+      return new Promise(function(resolve) {
+        try {
+          const tx = db.transaction(ART_DB_STORE, 'readwrite');
+          const store = tx.objectStore(ART_DB_STORE);
+          keys.forEach(function(key) { if (parsed[key]) store.put(parsed[key], key); });
+          tx.oncomplete = function() {
+            try { localStorage.removeItem(ART_STORAGE_KEY); } catch(e) {}
+            resolve();
+          };
+          tx.onerror = function() { resolve(); };
+          tx.onabort = function() { resolve(); };
+        } catch(e) { resolve(); }
+      });
+    });
+  }
+
+  function loadArtFromDatabase() {
+    if (artLoadStarted) return;
+    artLoadStarted = true;
+    migrateLegacyArt().then(function() {
+      return dbGetAllArt();
+    }).then(function(map) {
+      if (map) {
+        Object.keys(map).forEach(function(key) {
+          if (map[key]) artStorage[key] = map[key];
+        });
+      }
+      artStorageLoaded = true;
+      try { if (typeof window.renderDynamicPages === 'function') window.renderDynamicPages(); } catch(e) {}
+    }).catch(function() {
+      artStorageLoaded = true;
+    });
+  }
+
+  window.loadWidgetArtStorage = loadArtFromDatabase;
 
   // ================= Dock 数据层：固定 4 槽，可拖动、替换、与桌面互换 =================
   const DOCK_SPECIAL_ITEMS = {
@@ -1658,7 +1804,7 @@
       const photoIds = [];
       for (let i = 0; i < count; i++) {
         const key = 'photo-' + Date.now() + '-' + i + '-' + Math.random().toString(36).slice(2, 7);
-        artStorage[key] = '';
+        setArtStorage(key, '');
         photoIds.push(key);
       }
       page.widgets.push({
@@ -1678,7 +1824,7 @@
       const avatarPhotoIds = [];
       for (let i = 0; i < 2; i++) {
         const key = 'days-avatar-' + Date.now() + '-' + i + '-' + Math.random().toString(36).slice(2, 7);
-        artStorage[key] = '';
+        setArtStorage(key, '');
         avatarPhotoIds.push(key);
       }
       page.widgets.push({
@@ -1770,7 +1916,7 @@
           key = 'photo-' + Date.now() + '-' + target.photoIndex;
           keys[target.photoIndex] = key;
         }
-        artStorage[key] = compressed;
+        setArtStorage(key, compressed);
         saveDesktopStorage();
         renderDynamicPages();
       });
@@ -1849,7 +1995,7 @@
           key = 'days-avatar-' + Date.now() + '-' + target.avatarIndex;
           ids[target.avatarIndex] = key;
         }
-        artStorage[key] = compressed;
+        setArtStorage(key, compressed);
         saveDesktopStorage();
         renderDynamicPages();
       });
@@ -3443,9 +3589,11 @@
       if (window.momoOverflowReady) await window.momoOverflowReady;
     } catch (e) {}
     window.renderDynamicPages();
+    try { window.loadWidgetArtStorage && window.loadWidgetArtStorage(); } catch (e) {}
   });
   } else {
     window.renderDynamicPages();
+    try { window.loadWidgetArtStorage && window.loadWidgetArtStorage(); } catch (e) {}
   }
 })();
 

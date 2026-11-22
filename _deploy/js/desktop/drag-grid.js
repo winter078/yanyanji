@@ -119,6 +119,17 @@
       categoryName: '社交网络',
       desc: '双列瀑布流笔记、发布与本地相册，单机也能慢慢逛'
     },
+    'app-say': {
+      id: 'app-say',
+      type: 'app',
+      page: 'page-say',
+      icon: '📖',
+      name: '我说',
+      bg: 'rgba(214,196,160,0.18)',
+      category: 'life',
+      categoryName: '记录',
+      desc: '一个月一本本子，一页一张纸；写不动的时候，可以按住说'
+    },
     'app-palace': {
       id: 'app-palace',
       type: 'app',
@@ -174,6 +185,28 @@
       categoryName: '生活手账',
       desc: '温馨的生活日常开销收支流水手账本'
     },
+    'app-health': {
+      id: 'app-health',
+      type: 'app',
+      page: 'page-health',
+      icon: '💚',
+      name: '健康',
+      bg: 'linear-gradient(135deg, #4ECDC4, #2C8F86)',
+      category: 'life',
+      categoryName: '生活手账',
+      desc: '经期预测、睡眠与梦、体重步数，一天一眼看完'
+    },
+    'app-forum': {
+      id: 'app-forum',
+      type: 'app',
+      page: 'page-forum',
+      icon: '🪑',
+      name: '长椅',
+      bg: 'linear-gradient(135deg, #E8B04B, #B9832B)',
+      category: 'social',
+      categoryName: '公共广场',
+      desc: '谁都能坐下说两句：求助、问答、分享，还有一群不认识的邻居'
+    },
     'app-yanyan-cat': {
       id: 'app-yanyan-cat',
       type: 'app',
@@ -207,17 +240,6 @@
       categoryName: '角色伴侣',
       desc: '不接 API 的独立字卡 App，用自己的词库和角色对话，记忆只存里面'
     },
-    'app-pomodoro': {
-      id: 'app-pomodoro',
-      type: 'app',
-      action: 'openPomodoro',
-      icon: '☕',
-      name: '番茄钟',
-      bg: 'rgba(200,240,220,0.2)',
-      category: 'life',
-      categoryName: '专注工具',
-      desc: '沉浸专注番茄钟，陪伴你高效学习与工作'
-    },
     'app-gallery-photos': {
       id: 'app-gallery-photos',
       type: 'app',
@@ -244,15 +266,17 @@
     'app-reader': '<path d="M12 6.6c-2.5-1.7-5.4-1.9-7.3-1v13.2c1.9-.9 4.8-.7 7.3 1 2.5-1.7 5.4-1.9 7.3-1V5.6c-1.9-.9-5.2-.7-7.3 1z"/><path d="M12 6.8v13"/>',
     'app-watch': '<rect x="3.4" y="5.2" width="17.2" height="13.6" rx="2.6"/><path d="M8 5.2v13.6M16 5.2v13.6M3.4 9.4h4.6M3.4 14.6h4.6M16 9.4h4.6M16 14.6h4.6"/>',
     'app-xhs': '<rect x="4.2" y="4.8" width="15.6" height="14.4" rx="2.5"/><path d="M7 8.2h10M7 11.6h6.5M7 15h8.5"/>',
+    'app-say': '<path d="M6.2 4.2h10.4a1.8 1.8 0 0 1 1.8 1.8v12a1.8 1.8 0 0 1-1.8 1.8H6.2z"/><path d="M6.2 4.2v15.6"/><path d="M9.4 9h6.2M9.4 12.4h6.2M9.4 15.8h3.4"/>',
     'app-palace': '<rect x="3.4" y="6" width="17.2" height="12.6" rx="2.6"/><path d="M4 7.2l8 6 8-6"/>',
     'app-rp': '<path d="M12 4l1.8 5.4L19 11l-5.2 1.6L12 18l-1.8-5.4L5 11l5.2-1.6z"/><path d="M18.4 5l.6 1.6 1.6.6-1.6.6-.6 1.6-1.6-.6z"/>',
     'app-music': '<path d="M9.2 17.4V6.6l8.8-2v10.8"/><circle cx="6.9" cy="17.4" r="2.4"/><circle cx="15.7" cy="15.4" r="2.4"/>',
     'app-daysmatter': '<rect x="4.2" y="5.4" width="15.6" height="14.4" rx="2.5"/><path d="M4.2 10h15.6M8.6 3.6v3.4M15.4 3.6v3.4"/><circle cx="8.6" cy="14.2" r="1.4"/>',
     'app-ledger': '<rect x="4.6" y="4" width="14.8" height="16" rx="2.6"/><path d="M8.2 8.4h7.6M8.2 12h7.6M8.2 15.6h4.8"/>',
+    'app-health': '<path d="M19.2 13.6c1.4-1.4 2.6-3 2.6-5.1A5 5 0 0 0 16.8 3.5c-1.7 0-2.9.5-4.3 1.9-1.4-1.4-2.6-1.9-4.3-1.9A5 5 0 0 0 2.9 8.5c0 2.1 1.2 3.7 2.6 5.1l6.6 6.4z"/>',
+    'app-forum': '<path d="M5.2 6.4h13.6M5.2 8.8h13.6M3.8 12.6h16.4M6.4 8.8v3.8M17.6 8.8v3.8M6.4 12.6v4.6M17.6 12.6v4.6"/>',
     'app-yanyan-cat': '<circle cx="12" cy="13" r="6.2"/><path d="M6.8 9.4l-1-4.4 4.2 2.2M17.2 9.4l1-4.4-4.2 2.2"/><path d="M9.6 12.4h.01M14.4 12.4h.01M10.4 15.2c1 .9 2.2 .9 3.2 0"/>',
     'app-avatar-vault': '<circle cx="9" cy="8.6" r="3"/><path d="M3.4 19c.9-3 2.9-4.6 5.6-4.6s4.7 1.6 5.6 4.6"/><circle cx="16.6" cy="9.6" r="2.4"/><path d="M15.4 14.6c2.4 0 4.1 1.5 4.9 4"/>',
     'app-wordcards': '<rect x="4.2" y="5.2" width="7" height="13.6" rx="2"/><rect x="12.8" y="5.2" width="7" height="13.6" rx="2"/><path d="M7.7 9.2h.01M7.7 12h.01M7.7 14.8h.01M16.3 9.2h.01M16.3 12h.01M16.3 14.8h.01"/>',
-    'app-pomodoro': '<circle cx="12" cy="13" r="7"/><path d="M12 9.6v3.8l2.6 1.6M9.4 3.6h5.2M12 3.6v2.2"/>',
     'app-gallery-photos': '<rect x="3" y="6.5" width="18" height="13" rx="3"/><circle cx="12" cy="13" r="3.2"/><path d="M8 6.5l1-2h6l1 2"/>',
     'dock-wechat': '<path d="M4.4 7.4a3.4 3.4 0 0 1 3.4-3.4h8.4a3.4 3.4 0 0 1 3.4 3.4v3.4a3.4 3.4 0 0 1-3.4 3.4H11l-4.2 3.1v-3.1A3.4 3.4 0 0 1 4.4 10.8z"/><circle cx="9" cy="9" r=".9" fill="currentColor" stroke="none"/><circle cx="12.6" cy="9" r=".9" fill="currentColor" stroke="none"/><circle cx="16.2" cy="9" r=".9" fill="currentColor" stroke="none"/>',
   };
@@ -282,7 +306,8 @@
         APP_STORE_REGISTRY['app-theme'],
         APP_STORE_REGISTRY['app-plugins'],
         APP_STORE_REGISTRY['app-wordcards'],
-        APP_STORE_REGISTRY['app-xhs']
+        APP_STORE_REGISTRY['app-xhs'],
+        APP_STORE_REGISTRY['app-say']
       ]
     },
     {
@@ -333,8 +358,14 @@
         desktopData = { version: '5.2', pages: JSON.parse(JSON.stringify(DEFAULT_PAGES_LAYOUT)) };
       }
       // 先恢复小画/相片图库，再做任何会回写布局的清理，避免清理写回时用初始图库覆盖用户图片
-      const savedArt = localStorage.getItem(ART_STORAGE_KEY);
-      if (savedArt) artStorage = JSON.parse(savedArt);
+      // 图片数据已经迁到 IndexedDB；localStorage 里只留旧版数据用于一次性迁移
+      if (!artStorageLoaded) {
+        const savedArt = localStorage.getItem(ART_STORAGE_KEY);
+        if (savedArt) {
+          try { artStorage = JSON.parse(savedArt) || artStorage; } catch(e) {}
+        }
+        artStorageLoaded = true;
+      }
       // 小组件精简：旧布局里的言言伴生卡、拍立得、横幅画廊、手账等旧组件移除；保留资料卡、心声私签、相片、音乐与倒数日
       let widgetCleanupChanged = false;
       desktopData.pages.forEach(function(page) {
@@ -366,7 +397,7 @@
       if (widgetCleanupChanged) saveDesktopStorage();
 
       // 角色人设 App 已并入通讯录；个人名片已并入微信「我」；时间线、随笔日记 App 已下架：把旧桌面里残留的图标清掉
-      const REMOVED_DESK_APP_IDS = ['app-gallery', 'app-diary', 'app-weibo', 'app-me', 'app-css-editor'];
+      const REMOVED_DESK_APP_IDS = ['app-gallery', 'app-diary', 'app-weibo', 'app-me', 'app-css-editor', 'app-pomodoro'];
       let removedAppsChanged = false;
       const stripRemovedApps = function(slot) {
         if (!slot) return slot;
@@ -445,6 +476,28 @@
         }
         try { localStorage.setItem('momo_xhs_desktop_seeded', '1'); } catch (e) {}
       }
+      // 我说（日记）首次上线：旧桌面没有这个图标时补一个到主屏，只补一次
+      if (!localStorage.getItem('momo_say_desktop_seeded')) {
+        const hasSay = function(slot) {
+          if (!slot) return false;
+          if (slot.type === 'folder' && Array.isArray(slot.items)) {
+            return slot.items.some(hasSay);
+          }
+          return slot.id === 'app-say';
+        };
+        const exists = desktopData.pages.some(p => Array.isArray(p.slots) && p.slots.some(hasSay));
+        if (!exists && desktopData.pages[0] && Array.isArray(desktopData.pages[0].slots)) {
+          const slots = desktopData.pages[0].slots;
+          const emptyIndex = slots.findIndex(function(slot) { return !slot; });
+          if (emptyIndex >= 0) {
+            slots[emptyIndex] = APP_STORE_REGISTRY['app-say'];
+          } else {
+            slots.push(APP_STORE_REGISTRY['app-say']);
+          }
+          saveDesktopStorage();
+        }
+        try { localStorage.setItem('momo_say_desktop_seeded', '1'); } catch (e) {}
+      }
       // 聊天预设独立 App 首次上线：旧桌面没有这个图标时补一个到主屏，只补一次
       if (!localStorage.getItem('momo_prompt_presets_desktop_seeded')) {
         const hasPromptPresets = function(slot) {
@@ -489,6 +542,50 @@
         }
         try { localStorage.setItem('momo_album_desktop_seeded', '1'); } catch (e) {}
       }
+      // 健康 App 首次上线：旧桌面没有这个图标时补一个到主屏，只补一次
+      if (!localStorage.getItem('momo_health_desktop_seeded')) {
+        const hasHealth = function(slot) {
+          if (!slot) return false;
+          if (slot.type === 'folder' && Array.isArray(slot.items)) {
+            return slot.items.some(hasHealth);
+          }
+          return slot.id === 'app-health';
+        };
+        const exists = desktopData.pages.some(p => Array.isArray(p.slots) && p.slots.some(hasHealth));
+        if (!exists && desktopData.pages[0] && Array.isArray(desktopData.pages[0].slots)) {
+          const slots = desktopData.pages[0].slots;
+          const emptyIndex = slots.findIndex(function(slot) { return !slot; });
+          if (emptyIndex >= 0) {
+            slots[emptyIndex] = APP_STORE_REGISTRY['app-health'];
+          } else {
+            slots.push(APP_STORE_REGISTRY['app-health']);
+          }
+          saveDesktopStorage();
+        }
+        try { localStorage.setItem('momo_health_desktop_seeded', '1'); } catch (e) {}
+      }
+      // 长椅 App 首次上线：旧桌面没有这个图标时补一个到主屏，只补一次
+      if (!localStorage.getItem('momo_forum_desktop_seeded')) {
+        const hasForum = function(slot) {
+          if (!slot) return false;
+          if (slot.type === 'folder' && Array.isArray(slot.items)) {
+            return slot.items.some(hasForum);
+          }
+          return slot.id === 'app-forum';
+        };
+        const existsForum = desktopData.pages.some(p => Array.isArray(p.slots) && p.slots.some(hasForum));
+        if (!existsForum && desktopData.pages[0] && Array.isArray(desktopData.pages[0].slots)) {
+          const slotsF = desktopData.pages[0].slots;
+          const emptyF = slotsF.findIndex(function(slot) { return !slot; });
+          if (emptyF >= 0) {
+            slotsF[emptyF] = APP_STORE_REGISTRY['app-forum'];
+          } else {
+            slotsF.push(APP_STORE_REGISTRY['app-forum']);
+          }
+          saveDesktopStorage();
+        }
+        try { localStorage.setItem('momo_forum_desktop_seeded', '1'); } catch (e) {}
+      }
       // 只清理页面尾部无意义空槽，中间空位保留，用户可以把 App 单独拎出来放
       if (trimTrailingDesktopSlots()) saveDesktopStorage();
     } catch(e) {
@@ -500,9 +597,149 @@
   function saveDesktopStorage() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(desktopData));
-      localStorage.setItem(ART_STORAGE_KEY, JSON.stringify(artStorage));
     } catch(e) {}
+    flushArtStorage();
   }
+
+  // ================= 组件图片仓库：localStorage -> IndexedDB =================
+  // localStorage 只有约 5MB，相片/头像多存几张就会写失败；失败后布局还在，
+  // 下次打开组件就只剩“添加照片”。图片改存 IndexedDB，localStorage 只保留布局。
+  const ART_DB_NAME = 'momo_widget_art_db_v1';
+  const ART_DB_STORE = 'art';
+  let artDbPromise = null;
+  let artStorageLoaded = false;
+  let artLoadStarted = false;
+  let artDirty = {};
+
+  function openArtDb() {
+    if (!window.indexedDB) return Promise.resolve(null);
+    if (artDbPromise) return artDbPromise;
+    artDbPromise = new Promise(function(resolve) {
+      try {
+        const req = window.indexedDB.open(ART_DB_NAME, 1);
+        req.onupgradeneeded = function() {
+          const db = req.result;
+          if (!db.objectStoreNames.contains(ART_DB_STORE)) db.createObjectStore(ART_DB_STORE);
+        };
+        req.onsuccess = function() { resolve(req.result); };
+        req.onerror = function() { resolve(null); };
+        req.onblocked = function() { resolve(null); };
+      } catch(e) { resolve(null); }
+    });
+    return artDbPromise;
+  }
+
+  function dbGetAllArt() {
+    return openArtDb().then(function(db) {
+      if (!db) return {};
+      return new Promise(function(resolve) {
+        const out = {};
+        try {
+          const tx = db.transaction(ART_DB_STORE, 'readonly');
+          const req = tx.objectStore(ART_DB_STORE).openCursor();
+          req.onsuccess = function() {
+            const cursor = req.result;
+            if (!cursor) { resolve(out); return; }
+            out[cursor.key] = cursor.value;
+            cursor.continue();
+          };
+          req.onerror = function() { resolve(out); };
+        } catch(e) { resolve(out); }
+      });
+    });
+  }
+
+  function dbPutArt(key, value) {
+    return openArtDb().then(function(db) {
+      if (!db) return false;
+      return new Promise(function(resolve) {
+        try {
+          const tx = db.transaction(ART_DB_STORE, 'readwrite');
+          tx.objectStore(ART_DB_STORE).put(value, key);
+          tx.oncomplete = function() { resolve(true); };
+          tx.onerror = function() { resolve(false); };
+          tx.onabort = function() { resolve(false); };
+        } catch(e) { resolve(false); }
+      });
+    });
+  }
+
+  function setArtStorage(key, value) {
+    artStorage[key] = value;
+    artDirty[key] = true;
+  }
+
+  function flushArtStorage() {
+    const keys = Object.keys(artDirty);
+    if (!keys.length) return;
+    const batch = {};
+    keys.forEach(function(key) { batch[key] = artStorage[key] || ''; });
+    artDirty = {};
+    openArtDb().then(function(db) {
+      if (!db) {
+        // 极老的浏览器没有 IndexedDB，只能退回旧方式；正常新机不会走到这里
+        try { localStorage.setItem(ART_STORAGE_KEY, JSON.stringify(artStorage)); } catch(e) {}
+        return;
+      }
+      try {
+        const tx = db.transaction(ART_DB_STORE, 'readwrite');
+        const store = tx.objectStore(ART_DB_STORE);
+        keys.forEach(function(key) {
+          if (batch[key]) store.put(batch[key], key);
+          else store.delete(key);
+        });
+      } catch(e) {}
+    });
+  }
+
+  function migrateLegacyArt() {
+    let legacy = '';
+    try { legacy = localStorage.getItem(ART_STORAGE_KEY) || ''; } catch(e) {}
+    if (!legacy) return Promise.resolve();
+    let parsed = {};
+    try { parsed = JSON.parse(legacy) || {}; } catch(e) { return Promise.resolve(); }
+    const keys = Object.keys(parsed);
+    if (!keys.length) {
+      try { localStorage.removeItem(ART_STORAGE_KEY); } catch(e) {}
+      return Promise.resolve();
+    }
+    return openArtDb().then(function(db) {
+      if (!db) return;
+      return new Promise(function(resolve) {
+        try {
+          const tx = db.transaction(ART_DB_STORE, 'readwrite');
+          const store = tx.objectStore(ART_DB_STORE);
+          keys.forEach(function(key) { if (parsed[key]) store.put(parsed[key], key); });
+          tx.oncomplete = function() {
+            try { localStorage.removeItem(ART_STORAGE_KEY); } catch(e) {}
+            resolve();
+          };
+          tx.onerror = function() { resolve(); };
+          tx.onabort = function() { resolve(); };
+        } catch(e) { resolve(); }
+      });
+    });
+  }
+
+  function loadArtFromDatabase() {
+    if (artLoadStarted) return;
+    artLoadStarted = true;
+    migrateLegacyArt().then(function() {
+      return dbGetAllArt();
+    }).then(function(map) {
+      if (map) {
+        Object.keys(map).forEach(function(key) {
+          if (map[key]) artStorage[key] = map[key];
+        });
+      }
+      artStorageLoaded = true;
+      try { if (typeof window.renderDynamicPages === 'function') window.renderDynamicPages(); } catch(e) {}
+    }).catch(function() {
+      artStorageLoaded = true;
+    });
+  }
+
+  window.loadWidgetArtStorage = loadArtFromDatabase;
 
   // ================= Dock 数据层：固定 4 槽，可拖动、替换、与桌面互换 =================
   const DOCK_SPECIAL_ITEMS = {
@@ -743,12 +980,19 @@
     card.className = 'widget-card widget-hero-profile';
     card.style.cssText = 'position: relative; border-radius: 28px; overflow: hidden;';
     const h = (window.appData && window.appData.hero) ? window.appData.hero : { userName: 'user', userHandle: '@测试人员', userTag: '用户', locationText: '生活在真实世界中' };
+    // 名片背景必须写进模板里：桌面组件是刷新后重新生成的，
+    // 只靠 applyThemeAndImages 在启动时给 #hero-card-banner 上色会落空（那时元素还没建出来）
+    let banner = (window.appData && window.appData.heroBanner) || '';
+    if (!banner) { try { banner = localStorage.getItem('momo_hero_banner') || ''; } catch (e) { banner = ''; } }
+    const bannerStyle = banner
+      ? "background-image:url('" + banner.replace(/'/g, "\\'") + "'); background-size:cover; background-position:center;"
+      : '';
     card.innerHTML = `
       <div class="ios-delete-badge" onclick="event.stopPropagation(); removeDesktopWidget(${pageIndex}, ${wIndex})" title="移除组件">✕</div>
       <div class="hero-profile-card" style="margin: 0; box-shadow: none; border: none; height: 260px;">
-        <div class="hero-card-banner" id="hero-card-banner" onclick="triggerPick('heroBanner')" title="更换背景"></div>
+        <div class="hero-card-banner" id="hero-card-banner" style="${bannerStyle}" onclick="triggerPick('heroBanner')" title="更换背景"></div>
         <div class="hero-avatar-wrap" onclick="triggerPick('heroAvatar')" title="更换头像">
-          <img id="hero-avatar-img" src="" alt="头像" />
+          <img id="hero-avatar-img" src="${(window.appData && window.appData.heroAvatar) || localStorage.getItem('momo_hero_avatar') || ''}" alt="头像" />
         </div>
         <div class="hero-info-plate">
           <div class="editable-text-name" onclick="openHeroEditModal('userName')">
@@ -866,6 +1110,16 @@
   }
 
   // ================= 音乐 / 倒数日组件 =================
+  function musicWidgetLyrics() {
+    try {
+      if (window.MzLyrics) {
+        const p = window.MzLyrics.pair();
+        if (p && (p[0] || p[1])) return [p[0] || '', p[1] || ''];
+      }
+    } catch (e) {}
+    return null;
+  }
+
   function musicWidgetState() {
     const audio = window._momoAudio;
     const titleEl = document.getElementById('music-current-title');
@@ -875,8 +1129,9 @@
     return {
       hasTrack: hasTrack,
       title: hasTrack && titleEl ? (titleEl.textContent || '').trim() : '',
-      cover: hasTrack && /^(https?:|data:|blob:)/.test(coverAttr) ? coverAttr : '',
-      playing: hasTrack && audio ? !audio.paused : false
+      cover: hasTrack && coverAttr && coverAttr !== 'undefined' ? coverAttr : '',
+      playing: hasTrack && audio ? !audio.paused : false,
+      lyrics: hasTrack ? musicWidgetLyrics() : null
     };
   }
 
@@ -913,7 +1168,9 @@
     applyPhotoWidgetGridPlacement(card, item, 'single');
     const state = musicWidgetState();
     const title = item.title || state.title || '晚风轻轻吹过';
-    const lyrics = Array.isArray(item.lyrics) && item.lyrics.length === 2 ? item.lyrics : ['让晚风替我拥抱你', '在每一个安静的夜里'];
+    const fallbackLyrics = Array.isArray(item.lyrics) && item.lyrics.length === 2 ? item.lyrics : ['让晚风替我拥抱你', '在每一个安静的夜里'];
+    // 正在放歌且拿到真歌词就用真歌词；拿不到（纯音乐/没登录）保留原来的两行留白文案
+    const lyrics = state.lyrics || fallbackLyrics;
     const visualPlaying = state.hasTrack ? state.playing : true;
     const coverHtml = state.cover
       ? '<img class="mw-cover-img" src="' + photoWidgetEscape(state.cover) + '" alt="专辑封面" draggable="false" onerror="this.style.display=\'none\'" />'
@@ -1071,6 +1328,18 @@
           if (cover) cover.appendChild(img);
         }
         if (img.getAttribute('src') !== state.cover) img.src = state.cover;
+      }
+      if (state.lyrics) {
+        const lyrEl = card.querySelector('.mw-lyrics');
+        if (lyrEl) {
+          const spans = lyrEl.querySelectorAll('span');
+          if (spans.length >= 2) {
+            const a = state.lyrics[0] || '';
+            const b = state.lyrics[1] || '';
+            if (spans[0].textContent !== a) spans[0].textContent = a;
+            if (spans[1].textContent !== b) spans[1].textContent = b;
+          }
+        }
       }
     });
   }
@@ -1535,7 +1804,7 @@
       const photoIds = [];
       for (let i = 0; i < count; i++) {
         const key = 'photo-' + Date.now() + '-' + i + '-' + Math.random().toString(36).slice(2, 7);
-        artStorage[key] = '';
+        setArtStorage(key, '');
         photoIds.push(key);
       }
       page.widgets.push({
@@ -1555,7 +1824,7 @@
       const avatarPhotoIds = [];
       for (let i = 0; i < 2; i++) {
         const key = 'days-avatar-' + Date.now() + '-' + i + '-' + Math.random().toString(36).slice(2, 7);
-        artStorage[key] = '';
+        setArtStorage(key, '');
         avatarPhotoIds.push(key);
       }
       page.widgets.push({
@@ -1647,7 +1916,7 @@
           key = 'photo-' + Date.now() + '-' + target.photoIndex;
           keys[target.photoIndex] = key;
         }
-        artStorage[key] = compressed;
+        setArtStorage(key, compressed);
         saveDesktopStorage();
         renderDynamicPages();
       });
@@ -1726,7 +1995,7 @@
           key = 'days-avatar-' + Date.now() + '-' + target.avatarIndex;
           ids[target.avatarIndex] = key;
         }
-        artStorage[key] = compressed;
+        setArtStorage(key, compressed);
         saveDesktopStorage();
         renderDynamicPages();
       });
@@ -3320,8 +3589,29 @@
       if (window.momoOverflowReady) await window.momoOverflowReady;
     } catch (e) {}
     window.renderDynamicPages();
+    try { window.loadWidgetArtStorage && window.loadWidgetArtStorage(); } catch (e) {}
   });
   } else {
     window.renderDynamicPages();
+    try { window.loadWidgetArtStorage && window.loadWidgetArtStorage(); } catch (e) {}
   }
+})();
+
+/* ===== 修复（2026-11-19）：桌面卡片头像靠别处代码填 src，执行顺序一变就空白。
+   这里在卡片生成时直接取存档值，并在回到前台/重新载入后再兜底补一次。 ===== */
+(function () {
+  function refillHeroAvatar() {
+    try {
+      var el = document.getElementById('hero-avatar-img');
+      if (!el) return;
+      var cur = el.getAttribute('src') || '';
+      if (cur) return;
+      var av = (window.appData && window.appData.heroAvatar) || localStorage.getItem('momo_hero_avatar') || '';
+      if (av) el.setAttribute('src', av);
+    } catch (e) {}
+  }
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') setTimeout(refillHeroAvatar, 80);
+  });
+  window.addEventListener('pageshow', function () { setTimeout(refillHeroAvatar, 80); });
 })();
