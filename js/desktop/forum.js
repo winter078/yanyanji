@@ -583,29 +583,28 @@
   }
 
   // ---------- 修改资料 ----------
-  function fmOpenProfileEdit() {
-    var p = loadProfile();
-    var s = document.getElementById('fm-sheet');
-    if (!s) return;
-    s.style.display = 'flex';
-    var head = p.avatar
+  function fmProfilePreviewHTML(p) {
+    var ava = p.avatar
       ? '<img src="' + esc(p.avatar) + '" alt="">'
-      : '<span>' + esc(String(p.name).slice(0, 1)) + '</span>';
-    var html = '<div class="fm-sheet-title">修改资料</div>';
-    html += '<div class="fmp-edit-ava-row">';
-    html += '<div class="fmp-edit-ava" onclick="var f=document.getElementById(\'fmp-ava-file\');if(f)f.click()">' + head + '</div>';
-    html += '<div class="fmp-edit-hint">点头像换一张<br><span>存在本地，不会传出去</span></div>';
-    html += '</div>';
-    html += '<input type="file" id="fmp-ava-file" accept="image/*" style="display:none" onchange="fmPickProfileAvatar(event)">';
-    html += '<div class="fm-hint">封面</div>';
-    html += '<div class="fmp-edit-cover" style="background-image:url(&quot;' + (p.cover || 'assets/forum-cover.jpg') + '&quot;)" onclick="var f=document.getElementById(\'fmp-cover-file\');if(f)f.click()"><span>换一张封面</span></div>';
-    html += '<input type="file" id="fmp-cover-file" accept="image/*" style="display:none" onchange="fmPickProfileCover(event)">';
-    html += '<div class="fm-hint">名字</div><input class="fm-input" id="fmp-name" maxlength="16" value="' + esc(p.name) + '">';
-    html += '<div class="fm-hint">ID（挂在名字下面）</div><input class="fm-input" id="fmp-handle" maxlength="16" value="' + esc(p.handle) + '">';
-    html += '<div class="fm-hint">一句签名，最多 30 字</div><input class="fm-input" id="fmp-bio" maxlength="30" value="' + esc(p.bio) + '" placeholder="想写就写">';
-    html += '<button class="fm-main-btn" onclick="fmSaveProfile()">存下来</button>';
-    html += '<button class="fm-ghost-btn" onclick="fmCloseCompose()">算了</button>';
-    s.innerHTML = '<div class="fm-sheet-mask" onclick="if(event.target===this)fmCloseCompose()"></div><div class="fm-sheet-body">' + html + '</div>';
+      : '<span>' + esc(String(p.name || '我').slice(0, 1)) + '</span>';
+    var cover = p.cover || 'assets/forum-cover.jpg';
+    var html = '<div class="fmp-pv">';
+    html += '<div class="fmp-pv-cover" id="fmp-pv-cover" style="background-image:url(&quot;' + esc(cover) + '&quot;)">';
+    html += '<span class="fmp-pv-label">长椅 · 夜灯下</span>';
+    html += '<div class="fmp-pv-id">';
+    html += '<div class="fmp-pv-ava">' + ava + '</div>';
+    html += '<div class="fmp-pv-txt"><b id="fmp-pv-name">' + esc(p.name) + '</b><i id="fmp-pv-handle">@' + esc(p.handle) + '</i></div>';
+    html += '</div></div></div>';
+    return html;
+  }
+
+  function fmUpdatePreviewText() {
+    var nm = document.getElementById('fmp-name');
+    var hd = document.getElementById('fmp-handle');
+    var pvName = document.getElementById('fmp-pv-name');
+    var pvHandle = document.getElementById('fmp-pv-handle');
+    if (pvName && nm) pvName.textContent = nm.value.trim() || '没写名字';
+    if (pvHandle && hd) pvHandle.textContent = '@' + (hd.value.trim().replace(/^@/, '') || 'me');
   }
 
   function fmReadEditInputs() {
@@ -620,13 +619,59 @@
     return p;
   }
 
+  function fmOpenProfileEdit() {
+    var p = loadProfile();
+    var s = document.getElementById('fm-sheet');
+    if (!s) return;
+    s.style.display = 'flex';
+    var html = '<div class="fm-sheet-title">修改资料</div>';
+    html += fmProfilePreviewHTML(p);
+    html += '<div class="fmp-pv-caption"><span>预览就是名片最后的样子</span><em>封面 390×252 · 头像圆角</em></div>';
+    html += '<div class="fmp-pv-actions">';
+    html += '<button class="fmp-pv-btn" onclick="fmPickCoverFile()">换封面</button>';
+    html += '<button class="fmp-pv-btn" onclick="fmPickAvatarFile()">换头像</button>';
+    html += '</div>';
+    html += '<input type="file" id="fmp-ava-file" accept="image/*" style="display:none" onchange="fmPickProfileAvatar(event)">';
+    html += '<input type="file" id="fmp-cover-file" accept="image/*" style="display:none" onchange="fmPickProfileCover(event)">';
+    html += '<div class="fm-hint">名字</div><input class="fm-input" id="fmp-name" maxlength="16" value="' + esc(p.name) + '" oninput="fmUpdatePreviewText()">';
+    html += '<div class="fm-hint">ID（挂在名字下面）</div><input class="fm-input" id="fmp-handle" maxlength="16" value="' + esc(p.handle) + '" oninput="fmUpdatePreviewText()">';
+    html += '<div class="fm-hint">一句签名，最多 30 字</div><input class="fm-input" id="fmp-bio" maxlength="30" value="' + esc(p.bio) + '" placeholder="想写就写">';
+    html += '<button class="fm-main-btn" onclick="fmSaveProfile()">存下来</button>';
+    html += '<button class="fm-ghost-btn" onclick="fmCloseCompose()">算了</button>';
+    s.innerHTML = '<div class="fm-sheet-mask" onclick="if(event.target===this)fmCloseCompose()"></div><div class="fm-sheet-body">' + html + '</div>';
+  }
+
+  function fmPickCoverFile() {
+    fmReadEditInputs();
+    var f = document.getElementById('fmp-cover-file');
+    if (f) { f.value = ''; f.click(); }
+  }
+
+  function fmPickAvatarFile() {
+    fmReadEditInputs();
+    var f = document.getElementById('fmp-ava-file');
+    if (f) { f.value = ''; f.click(); }
+  }
+
   async function fmPickProfileAvatar(e) {
     var f = e.target.files && e.target.files[0];
     if (!f) return;
     fmReadEditInputs();
     try {
       var url = '';
-      if (typeof window.compressImageBase64 === 'function') url = await window.compressImageBase64(f, 400, 0.85);
+      if (typeof window.momoCropImage === 'function') {
+        url = await window.momoCropImage(f, {
+          aspect: 1,
+          shape: 'rounded',
+          radiusRatio: 18 / 82,
+          outWidth: 480,
+          quality: 0.87,
+          title: '调整头像',
+          hint: '拖动头像调整位置，预览就是最终圆角形状'
+        });
+      } else if (typeof window.compressImageBase64 === 'function') {
+        url = await window.compressImageBase64(f, 400, 0.85);
+      }
       if (url) {
         var p = loadProfile();
         p.avatar = url;
@@ -635,7 +680,7 @@
     } catch (err) {
       console.warn('[forum] 头像处理失败', err);
     }
-    fmOpenProfileEdit();
+    if (url) fmOpenProfileEdit();
   }
 
   async function fmPickProfileCover(e) {
@@ -644,7 +689,18 @@
     fmReadEditInputs();
     try {
       var url = '';
-      if (typeof window.compressImageBase64 === 'function') url = await window.compressImageBase64(f, 1000, 0.82);
+      if (typeof window.momoCropImage === 'function') {
+        url = await window.momoCropImage(f, {
+          aspect: 390 / 252,
+          shape: 'rect',
+          outWidth: 1000,
+          quality: 0.86,
+          title: '调整封面',
+          hint: '拖动封面调整位置，比例就是名片顶部那条'
+        });
+      } else if (typeof window.compressImageBase64 === 'function') {
+        url = await window.compressImageBase64(f, 1000, 0.82);
+      }
       if (url) {
         var p = loadProfile();
         p.cover = url;
@@ -653,7 +709,7 @@
     } catch (err) {
       console.warn('[forum] 封面处理失败', err);
     }
-    fmOpenProfileEdit();
+    if (url) fmOpenProfileEdit();
   }
 
   function fmSaveProfile() {
@@ -1529,6 +1585,9 @@
   window.fmOpenProfileEdit = fmOpenProfileEdit;
   window.fmPickProfileAvatar = fmPickProfileAvatar;
   window.fmPickProfileCover = fmPickProfileCover;
+  window.fmPickCoverFile = fmPickCoverFile;
+  window.fmPickAvatarFile = fmPickAvatarFile;
+  window.fmUpdatePreviewText = fmUpdatePreviewText;
   window.fmSaveProfile = fmSaveProfile;
   window.fmSetAutoLevel = fmSetAutoLevel;
   window.fmToggleAuto = fmToggleAuto;
