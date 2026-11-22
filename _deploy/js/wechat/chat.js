@@ -2716,6 +2716,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
     // ===== 工具调用胶囊：搜索 / 天气 / 小红书 =====
     const TOOL_LABELS = { search: '搜索', weather: '天气', xhs: '小红书', docx: '文档', xlsx: '表格', pptx: 'PPT', md: '文档' };
     let pendingArtifactMeta = null;
+    let pendingShareCard = null;
     let toolSelMode = false;
     let toolSelSet = new Set();
 
@@ -6312,6 +6313,30 @@ ${catalog}
           }
           return '';
         })();
+        // 用户这轮明确要角色“发/分享”一篇小红书：先找真实笔记，回复说完再补一张卡片
+        pendingShareCard = null;
+        try {
+          const wantsXhs = /(小红书|小某书|红书)/.test(lastUserForTools) &&
+            /(发|分享|给|来|推|甩|整)/.test(lastUserForTools) &&
+            !/(链接|下面这篇|刚发|读一下|看看这篇|怎么|如何|为什么)/.test(lastUserForTools);
+          if (wantsXhs && typeof window.__momFindXhsNote === 'function') {
+            const topic = String(lastUserForTools || '')
+              .replace(/(小红书|小某书|红书)/g, ' ')
+              .replace(/(帮我|给我|替我|麻烦|请|能不能|可以|发我|发给我|发|分享|来|推|甩|整|一篇|一条|一个|笔记|帖子|看看|看|呗|吧|呀|啊)/g, ' ')
+              .replace(/[，。！？、,.!?：:；;]/g, ' ')
+              .replace(/\s+/g, ' ').trim().slice(0, 40);
+            const found = await window.__momFindXhsNote(topic || '推荐');
+            if (found) {
+              pendingShareCard = found;
+              recentMessages.push({ role: 'system', content: '【已找到一篇真实的小红书笔记：《' + found.title + '》】回复里自然提一句“给你找了一篇”，不要自己写链接、不要编造笔记内容；卡片会自动出现在你的回复后面。' });
+            } else {
+              recentMessages.push({ role: 'system', content: '【没搜到能分享的小红书笔记】如实说这次没找到可分享的具体笔记，不要编造链接或标题。' });
+            }
+          }
+        } catch (eShare) {
+          console.warn('[XHS] 分享笔记失败：', eShare && eShare.message ? eShare.message : eShare);
+        }
+
         const toolSnippet = recentMessages
           .filter(function (m) { return m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string'; })
           .slice(-4)
@@ -7098,6 +7123,27 @@ ${catalog}
                 scrollChatToBottom();
               } catch (artErr) {
                 console.warn('[Artifact] 文件卡片落库失败：', artErr && artErr.message ? artErr.message : artErr);
+              }
+            }
+            // 这一轮找到的小红书笔记：在角色说完之后补一张可点开的卡片
+            if (pendingShareCard) {
+              const share = pendingShareCard;
+              pendingShareCard = null;
+              try {
+                const shareIdx = appData.chatHistory.length;
+                const sharePayload = '[SHARECARD:' + JSON.stringify(share) + ']';
+                appData.chatHistory.push({
+                  role: 'assistant',
+                  content: sharePayload,
+                  time: getNowStr(),
+                  isShareCard: true,
+                  hiddenFromAI: true
+                });
+                renderMessageBubble('assistant', sharePayload, getNowStr(), '', shareIdx);
+                safeSaveChatHistory();
+                scrollChatToBottom();
+              } catch (shareErr) {
+                console.warn('[XHS] 分享卡片落库失败：', shareErr && shareErr.message ? shareErr.message : shareErr);
               }
             }
             const genReq = pendingGeneratedImage;

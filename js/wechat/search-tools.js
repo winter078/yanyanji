@@ -702,6 +702,48 @@
   window.refreshXhsStatus = refreshXhsStatus;
   window.isWebSearchEnabled = isEnabled;
   window.buildWebSearchContext = buildWebSearchContext;
+  // ========== 让角色主动分享一篇真实的小红书笔记 ==========
+  // 先搜站内真实链接（编的链接一定 404），拿到链接后再解析标题/封面；解析失败也照样发卡片。
+  function isXhsHost(u) {
+    return /xiaohongshu\.com|xhslink\.com/i.test(String(u || ''));
+  }
+
+  async function findXhsNote(keyword) {
+    var q = String(keyword || '').trim().slice(0, 60);
+    if (!q || !isEnabled() || !readApiKey()) return null;
+    var tries = ['site:xiaohongshu.com ' + q, '小红书 ' + q];
+    var hit = null;
+    for (var i = 0; i < tries.length && !hit; i++) {
+      try {
+        var data = await requestSearch(tries[i]);
+        var list = (data && Array.isArray(data.results)) ? data.results : [];
+        for (var j = 0; j < list.length; j++) {
+          if (list[j] && isXhsHost(list[j].url)) { hit = list[j]; break; }
+        }
+      } catch (eSearch) {
+        console.warn('[XHS] 搜索失败：', eSearch && eSearch.message ? eSearch.message : eSearch);
+      }
+    }
+    if (!hit) return null;
+    var note = null;
+    if (readXhsKey()) {
+      try { note = await requestXhs(hit.url); } catch (eNote) {} 
+    }
+    var title = (note && note.title) ? String(note.title) : String(hit.title || '小红书笔记');
+    var desc = (note && note.desc) ? String(note.desc) : String(hit.snippet || '');
+    var cover = (note && Array.isArray(note.images) && note.images[0]) ? note.images[0] : '';
+    return {
+      kind: 'xhs',
+      title: title.slice(0, 120),
+      desc: desc.replace(/\s+/g, ' ').slice(0, 80),
+      cover: cover,
+      url: hit.url,
+      brandName: '小红书',
+      brandIcon: '📕'
+    };
+  }
+
+  window.__momFindXhsNote = findXhsNote;
   window.__momRunWebSearch = runWebSearchRaw;
   window.__momRunXhsRead = runXhsRaw;
   window.refreshWebSearchStatus = refreshWebSearchStatus;

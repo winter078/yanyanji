@@ -48,6 +48,35 @@
     return readEnabled();
   }
 
+  var XHS_SEEN_KEY = 'momo_xhs_seen_v1';
+  var XHS_CACHE_KEY = 'momo_xhs_cache_v1';
+
+  function xhsSeenList() {
+    try {
+      var arr = JSON.parse(localStorage.getItem(XHS_SEEN_KEY) || '[]');
+      return Array.isArray(arr) ? arr : [];
+    } catch (e) { return []; }
+  }
+
+  function xhsCachedText(url) {
+    try {
+      var box = JSON.parse(localStorage.getItem(XHS_CACHE_KEY) || 'null');
+      if (!box || box.url !== url) return '';
+      if (!box.at || Date.now() - box.at > 12 * 60 * 60 * 1000) return '';
+      return String(box.text || '');
+    } catch (e) { return ''; }
+  }
+
+  function rememberXhsRead(url, text) {
+    try {
+      var list = xhsSeenList().filter(function (u) { return u !== url; });
+      list.push(url);
+      while (list.length > 40) list.shift();
+      localStorage.setItem(XHS_SEEN_KEY, JSON.stringify(list));
+      localStorage.setItem(XHS_CACHE_KEY, JSON.stringify({ url: url, text: String(text || ''), at: Date.now() }));
+    } catch (e) {}
+  }
+
   var lastSearchKey = '';
 
   function messageTextForSearch(msg) {
@@ -261,6 +290,54 @@
     return lines.join('\n');
   }
 
+  // ========== 给「工具注册表」调用的原子能力：带胶囊、带去重 ==========
+  async function runWebSearchRaw(query) {
+    var q = String(query || '').trim().slice(0, 200);
+    if (!q) return '';
+    if (!isEnabled() || !readApiKey()) return '';
+    var tool = (window.__momToolNotice && window.__momToolNotice.start) ? window.__momToolNotice.start('search', '搜索') : null;
+    try {
+      var data = await requestSearch(q);
+      try {
+        window.__momoLastWebSearch = { query: q, results: (data && Array.isArray(data.results)) ? data.results : [], at: Date.now() };
+      } catch (e) {}
+      if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(tool, true);
+      return buildContext(data);
+    } catch (err) {
+      if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(tool, false);
+      return ['【联网搜索不可用】', '这次搜索没有成功，原因：' + searchErrorText(err) + '。',
+        '请如实告诉user现在没法联网查资料，不要假装搜到了内容，也不要编造链接。'].join('\n');
+    }
+  }
+
+  async function runXhsRaw(url) {
+    var credit = String(url || '').trim();
+    if (!/xiaohongshu\.com|xhslink\.com/i.test(credit)) return '';
+    if (!readXhsKey()) return '';
+    if (xhsSeenList().indexOf(credit) >= 0) {
+      var cached = xhsCachedText(credit);
+      if (cached) return cached;
+      return '';
+    }
+    var tool = (window.__momToolNotice && window.__momToolNotice.start) ? window.__momToolNotice.start('xhs', '小红书') : null;
+    try {
+      var note = await requestXhs(credit);
+      if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(tool, true);
+      if (note && (note.title || note.desc || (note.imageTexts && note.imageTexts.length) || (note.comments && note.comments.length))) {
+        var text = buildXhsContext(note);
+        rememberXhsRead(credit, text);
+        return text;
+      }
+      var fallbackText = buildXhsLimitedContext(extractShareCard(credit), credit);
+      rememberXhsRead(credit, fallbackText);
+      return fallbackText;
+    } catch (err) {
+      if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(tool, false);
+      try { window.__momoXhsLastError = String(err && err.message ? err.message : err); } catch (e) {}
+      return '';
+    }
+  }
+
   async function requestStatus() {
     return await requestWithFallback(STATUS_PATH, { method: 'GET', cache: 'no-store' }, STATUS_TIMEOUT);
   }
@@ -330,6 +407,8 @@
     var info = latestUserInfo();
     var text = info.text;
     var xhsUrl = firstXhsUrl(text);
+    // 只有这条消息里真的带了小红书链接，才在聊天里回显"调用了小红书"。
+    var xhsInCurrentMessage = !!xhsUrl;
     // 用户可能先发链接、再发一句“看到了吗”，最后一条里没有 URL。
     // 这时回看最近 12 条用户消息，找到最近一条小红书链接继续读。
     if (!xhsUrl) {
@@ -362,12 +441,20 @@
     }
     lastSearchKey = searchKey;
     if (xhsUrl) {
+      // 同一条笔记只真读一次：读过的链接不再请求，也不再弹胶囊。
+      if (xhsSeenList().indexOf(xhsUrl) >= 0) {
+        console.log('[XHS] 这条笔记已读过，直接用缓存，不再请求');
+        return xhsCachedText(xhsUrl) || null;
+      }
       console.log('[XHS] 检测到链接，开始读取');
-      var shareCard = (info && info.card) || extractShareCard(text);
+      var xhsShareCard = (info && info.card) || extractShareCard(text);
       if (!readXhsKey()) {
         console.log('[XHS] 未填写深度解析 Key，只返回标题和作者');
-        return buildXhsLimitedContext(shareCard, xhsUrl);
+        var limitedOnly = buildXhsLimitedContext(xhsShareCard, xhsUrl);
+        rememberXhsRead(xhsUrl, limitedOnly);
+        return limitedOnly;
       }
+      var xhsTool = (xhsInCurrentMessage && window.__momToolNotice && window.__momToolNotice.start) ? window.__momToolNotice.start('xhs', '小红书') : null;
       try {
         var note = await requestXhs(xhsUrl);
         console.log('[XHS] 读取完成', note && note.title, note && note.imageTexts ? note.imageTexts.length : 0, note && note.comments ? note.comments.length : 0);
@@ -384,15 +471,25 @@
               at: Date.now()
             };
           } catch(e){}
-          return buildXhsContext(note);
+          if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(xhsTool, true);
+          var xhsCtxText = buildXhsContext(note);
+          rememberXhsRead(xhsUrl, xhsCtxText);
+          return xhsCtxText;
         }
-        return buildXhsLimitedContext(shareCard, xhsUrl);
+        if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(xhsTool, true);
+        var xhsFallbackText = buildXhsLimitedContext(xhsShareCard, xhsUrl);
+        rememberXhsRead(xhsUrl, xhsFallbackText);
+        return xhsFallbackText;
       } catch (xhsErr) {
         console.warn('[XHS] 笔记读取失败，回退到标题和作者：', xhsErr && xhsErr.message ? xhsErr.message : xhsErr);
+        if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(xhsTool, false);
         try { window.__momoXhsLastError = String(xhsErr && xhsErr.message ? xhsErr.message : xhsErr); } catch(e){}
-        return buildXhsLimitedContext(shareCard, xhsUrl);
+        var xhsErrFallback = buildXhsLimitedContext(xhsShareCard, xhsUrl);
+        rememberXhsRead(xhsUrl, xhsErrFallback);
+        return xhsErrFallback;
       }
     }
+    var searchTool = (window.__momToolNotice && window.__momToolNotice.start) ? window.__momToolNotice.start('search', '搜索') : null;
     try {
       var data = await requestSearch(text);
       try {
@@ -402,8 +499,10 @@
           at: Date.now()
         };
       } catch(e){}
+      if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(searchTool, true);
       return buildContext(data);
     } catch (err) {
+      if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(searchTool, false);
       try { window.__momoLastWebSearch = null; } catch(e){}
       return [
         '【联网搜索不可用】',
@@ -603,6 +702,50 @@
   window.refreshXhsStatus = refreshXhsStatus;
   window.isWebSearchEnabled = isEnabled;
   window.buildWebSearchContext = buildWebSearchContext;
+  // ========== 让角色主动分享一篇真实的小红书笔记 ==========
+  // 先搜站内真实链接（编的链接一定 404），拿到链接后再解析标题/封面；解析失败也照样发卡片。
+  function isXhsHost(u) {
+    return /xiaohongshu\.com|xhslink\.com/i.test(String(u || ''));
+  }
+
+  async function findXhsNote(keyword) {
+    var q = String(keyword || '').trim().slice(0, 60);
+    if (!q || !isEnabled() || !readApiKey()) return null;
+    var tries = ['site:xiaohongshu.com ' + q, '小红书 ' + q];
+    var hit = null;
+    for (var i = 0; i < tries.length && !hit; i++) {
+      try {
+        var data = await requestSearch(tries[i]);
+        var list = (data && Array.isArray(data.results)) ? data.results : [];
+        for (var j = 0; j < list.length; j++) {
+          if (list[j] && isXhsHost(list[j].url)) { hit = list[j]; break; }
+        }
+      } catch (eSearch) {
+        console.warn('[XHS] 搜索失败：', eSearch && eSearch.message ? eSearch.message : eSearch);
+      }
+    }
+    if (!hit) return null;
+    var note = null;
+    if (readXhsKey()) {
+      try { note = await requestXhs(hit.url); } catch (eNote) {} 
+    }
+    var title = (note && note.title) ? String(note.title) : String(hit.title || '小红书笔记');
+    var desc = (note && note.desc) ? String(note.desc) : String(hit.snippet || '');
+    var cover = (note && Array.isArray(note.images) && note.images[0]) ? note.images[0] : '';
+    return {
+      kind: 'xhs',
+      title: title.slice(0, 120),
+      desc: desc.replace(/\s+/g, ' ').slice(0, 80),
+      cover: cover,
+      url: hit.url,
+      brandName: '小红书',
+      brandIcon: '📕'
+    };
+  }
+
+  window.__momFindXhsNote = findXhsNote;
+  window.__momRunWebSearch = runWebSearchRaw;
+  window.__momRunXhsRead = runXhsRaw;
   window.refreshWebSearchStatus = refreshWebSearchStatus;
   window.toggleWebSearch = toggleWebSearch;
   window.testWebSearchConnection = testWebSearchConnection;
