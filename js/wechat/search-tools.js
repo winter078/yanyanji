@@ -987,6 +987,7 @@
     };
   }
 
+  window.__momXhsSearchCard = xhsSearchCard;
   window.__momFindXhsNote = findXhsNote;
   window.__momBindXhsProfile = bindXhsProfile;
   window.__momEnrichXhsProfileName = enrichXhsProfileName;

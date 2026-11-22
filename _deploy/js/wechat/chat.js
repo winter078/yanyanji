@@ -3633,7 +3633,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       }
       // 用户自己发的小红书链接已经是一张分享卡，角色读完只回文字，不再追加第二张卡。
       // 即使小红书读取失败后回退成普通搜索，也不要把无关搜索卡追加到回复末尾。
-      const isXhsQuery = /(?:xiaohongshu\.com|xhslink\.com|小红书|小某书|红书)/i.test(String(state.query || ''));
+      const isXhsQuery = /(?:xiaohongshu\.com|xhslink\.com|小红书|小某书|红书)/i.test(String(state.query || '')) || !!window.__momXhsQueryTurn;
       if (state.kind === 'xhs' || isXhsQuery) {
         try { window.__momoLastWebSearch = null; } catch (e) {}
         return { text: replyText, cards: [], inline: false };
@@ -5723,9 +5723,13 @@ ${(() => {
         cardLines.push('什么时候发：对方说想听歌/想看电影/想看书、想被陪，或你主动想陪对方的时候。日常闲聊不要发卡。');
         promptText += cardLines.join('\n');
       }
+      // 小红书/网页卡片由界面自动补，模型绝不能自己编卡片标记
+      promptText += '\n\n【卡片标记铁律（最高优先级）】你只能在回复里使用上面明确列出的轻标记（音乐/观影/共读）。绝对禁止自己书写 [SHARECARD:…]、[RED_NOTE_SHARE:…]、[NOTE_SHARE:…]、[XHS_NOTE:…] 或任何其他方括号卡片标记；小红书卡片、文件卡片、网页卡片都由界面自动生成，你只写正常说的话。写了会被当成乱码露在聊天里。';
+      promptText += '\n【说话禁区】严禁出现“搜索接口、接口、后台、反爬、风控、抓不到、技术限制、链接发我才能查”这类词。找不到就自然说“这次没翻到合适的，我给你留个入口”，不要解释系统怎么工作。';
       if (window.__voiceCallMode && !window.__voiceCallMinimized) {
         promptText += '\n\n【语音通话模式（本轮最高优先级）】现在你们正在通电话。只写电话里真正说出口的台词：不要【心声】、不要 ---、不要动作/旁白/镜头/括号描写，不要表情包、图片、引用格式或微信排版。像真人接电话一样自然、口语、短，通常 1 到 4 句；可以停顿、反问、没听清让对方再说一遍。不要复述用户刚说的话，也不要解释自己是 AI。';
       }
+
       if (!/周绪言|绪言/.test(charName)) {
         return promptText.replace(/绪言/g, () => charName);
       }
@@ -6474,6 +6478,7 @@ ${catalog}
         // 用户这轮明确要角色“发/分享”一篇小红书：先找真实笔记，回复说完再补一张卡片
         // 注意要看最近几条用户消息，而不是只看最后一条（用户常说“给我发一篇…”后面再补一句“快点”）
         pendingShareCard = null;
+        window.__momXhsQueryTurn = false;
         try { localStorage.removeItem('momo_pending_share_card_v1'); } catch (e) {}
         try {
           const recentUserLines = (function () {
@@ -6493,6 +6498,7 @@ ${catalog}
           const savedProfile = (typeof window.__momGetXhsProfile === 'function') ? window.__momGetXhsProfile() : null;
           const wantsProfile = !!xhsLine && /(主页|她的帖子|她的笔记|她发的帖子|她发的笔记|小红书号|\bID\b|\bid\b)/.test(xhsLine) &&
             !/(怎么|如何|为什么)/.test(xhsLine);
+          if (wantsXhs || wantsProfile || boundNow) window.__momXhsQueryTurn = true;
           // 她直接喊你记住的那个博主名字（比如“粉毛爱妻”），也当主页请求处理
           const matchedIdProfile = (function () {
             if (typeof window.__momFindXhsProfileById !== 'function') return null;
@@ -6904,6 +6910,15 @@ ${catalog}
           thought = thinkMatch[1].trim();
           botReply = botReply.replace(/<(?:thought|think|thinking)>[\s\S]*?<\/(?:thought|think|thinking)>/gi, '').trim();
         }
+        // 模型偶尔会自己编一个卡片标记（如 [RED_NOTE_SHARE:标题]）：转成小红书搜索卡，别把标记原文露在气泡里
+        const inventedShare = botReply.match(/\[(?:RED_NOTE_SHARE|NOTE_SHARE|XHS_NOTE|XHS_SHARE|SHARE_NOTE|NOTE_CARD)\s*[:：]\s*([^\]]{1,80})\]/i);
+        if (inventedShare) {
+          const q = inventedShare[1].trim();
+          if (q && typeof window.__momXhsSearchCard === 'function') pendingShareCard = window.__momXhsSearchCard(q);
+          botReply = botReply.replace(inventedShare[0], '').trim();
+        }
+        // 其余没被界面识别的方括号标记一律清掉，避免“[”“]”被拆成两三个丑气泡
+        botReply = botReply.replace(/\[(?!SHARECARD[:：]|IMAGE[:：]|STICKER[:：]|FILECARD[:：]|ARTIFACT[:：]|TEXTCARD[:：]|MUSIC_|WATCH_|READ_)[A-Z][A-Z0-9_]{2,}[^\]\n]{0,160}\]/g, '').trim();
         // 有些预设会把 Claude 的 thinking 闭合标签直接吐出来；不要让它进入聊天气泡。
         botReply = botReply.replace(/<(?:think|thinking|thought)>[\s\S]*$/gi, '').trim();
         botReply = botReply.replace(/<\/?(?:think|thinking|thought)>/gi, '').trim();
