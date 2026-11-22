@@ -68,6 +68,7 @@
 
   var XHS_SEEN_KEY = 'momo_xhs_seen_v2';
   var XHS_CACHE_KEY = 'momo_xhs_cache_v2';
+  var SUPPORTED_CONTENT_PLATFORMS = ['小红书', '抖音'];
 
   function xhsSeenList() {
     try {
@@ -1097,17 +1098,20 @@
     syncEveryKeyInput();
     var everyKey = readEveryKey();
     var xhsKey = readXhsKey();
+    var platformText = SUPPORTED_CONTENT_PLATFORMS.join('、');
+    var platformEl = document.getElementById('everyinfra-platforms');
+    if (platformEl) platformEl.textContent = platformText;
     if (everyKey) {
-      setXhsState('已开启', 'ok');
-      setEveryStatus('Key 已填写 · 搜一篇约 $0.0056，读正文再约 $0.0056。', 'ok');
+      setXhsState('已开启 · ' + SUPPORTED_CONTENT_PLATFORMS.length + ' 个平台', 'ok');
+      setEveryStatus('Key 已填写 · ' + platformText + ' 的搜索、正文和评论都能用。', 'ok');
     } else {
-      setXhsState(xhsKey ? '备用解析' : '未开启');
-      setEveryStatus('未填写 · 角色没法按主题搜站内笔记。');
+      setXhsState(xhsKey ? '仅备用解析' : '未开启');
+      setEveryStatus('未填写 · 角色暂时搜不了' + platformText + '。');
     }
     if (xhsKey) {
-      setXhsStatus('备用解析 Key 已填写 · EveryInfra 读不到时才会用到它。', 'ok');
+      setXhsStatus('备用解析 Key 已填写 · 只在小红书读不到时用到它。', 'ok');
     } else {
-      setXhsStatus('未填写 · 不影响 EveryInfra 搜索。');
+      setXhsStatus('未填写 · 只影响小红书的备用解析。');
     }
   }
 
@@ -1124,13 +1128,13 @@
     }
     writeEveryKey(key);
     refreshXhsStatus();
-    setEveryStatus('已保存。现在可以按主题搜小红书笔记了。', 'ok');
+    setEveryStatus('已保存。' + SUPPORTED_CONTENT_PLATFORMS.join('、') + '现在都能用了。', 'ok');
   }
 
   function clearEveryInfraKey() {
     writeEveryKey('');
     refreshXhsStatus();
-    setEveryStatus('已清除 · 角色没法按主题搜站内笔记。');
+    setEveryStatus('已清除 · 角色暂时搜不了' + SUPPORTED_CONTENT_PLATFORMS.join('、') + '。');
   }
 
   async function testEveryInfraKey() {
@@ -1138,14 +1142,27 @@
       setEveryStatus('先保存 Key，再测。', 'error');
       return;
     }
-    setEveryStatus('正在试搜「aespa」…');
+    setEveryStatus('正在试搜「aespa」（小红书 + 抖音）…');
+    var okParts = [];
+    var failParts = [];
     try {
-      var data = await requestEverySearch('aespa');
-      var rows = (data && Array.isArray(data.results)) ? data.results : [];
-      if (rows.length) setEveryStatus('试搜成功：找到 ' + rows.length + ' 篇笔记。', 'ok');
-      else setEveryStatus('Key 能用，但这次没搜到笔记。', 'error');
-    } catch (err) {
-      setEveryStatus(everyErrorText(err), 'error');
+      var xhsData = await requestEverySearch('aespa');
+      var xhsRows = (xhsData && Array.isArray(xhsData.results)) ? xhsData.results : [];
+      okParts.push('小红书 ' + xhsRows.length + ' 篇');
+    } catch (xhsErr) {
+      failParts.push('小红书：' + everyErrorText(xhsErr));
+    }
+    try {
+      var douyinData = await requestDouyin('search', { keyword: 'aespa' });
+      var douyinRows = (douyinData && Array.isArray(douyinData.results)) ? douyinData.results : [];
+      okParts.push('抖音 ' + douyinRows.length + ' 条');
+    } catch (douyinErr) {
+      failParts.push('抖音：' + everyErrorText(douyinErr));
+    }
+    if (okParts.length) {
+      setEveryStatus('测试通过：' + okParts.join('，') + (failParts.length ? '；' + failParts.join('；') : ''), failParts.length ? 'error' : 'ok');
+    } else {
+      setEveryStatus(failParts.join('；') || '这次没测成功，稍后再试。', 'error');
     }
   }
 
