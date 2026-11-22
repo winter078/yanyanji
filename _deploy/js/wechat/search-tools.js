@@ -305,7 +305,11 @@
       var arr = JSON.parse(localStorage.getItem(XHS_PROFILE_KEY) || '[]');
       if (Array.isArray(arr)) list = arr;
     } catch (e) { list = []; }
-    return list.filter(function (p) { return p && /[0-9a-f]{20,26}/i.test(String(p.userId || '')); });
+    return list.filter(function (p) { return p && /[0-9a-f]{20,26}/i.test(String(p.userId || '')); }).map(function (p) {
+      // 旧数据把链接里的 apptime 时间戳当成号了；只要这个数字出现在链接里，就清掉
+      if (p.xhsId && p.url && String(p.url).indexOf(String(p.xhsId)) >= 0) p.xhsId = '';
+      return p;
+    });
   }
 
   function saveXhsProfileList(list) {
@@ -365,6 +369,20 @@
     var key = String(userId || '');
     if (!key) return;
     saveXhsProfileList(xhsProfileList().filter(function (p) { return p.userId !== key; }));
+  }
+
+  function updateXhsProfile(userId, value) {
+    var key = String(userId || '');
+    var v = String(value || '').trim();
+    if (!key || !v) return null;
+    var list = xhsProfileList();
+    var hit = null;
+    for (var i = 0; i < list.length; i++) if (list[i].userId === key) { hit = list[i]; break; }
+    if (!hit) return null;
+    if (/^\d{6,20}$/.test(v)) hit.xhsId = v;
+    else { hit.name = v.slice(0, 20); hit.xhsId = ''; }
+    saveXhsProfileList(list);
+    return hit;
   }
 
   // 只粘了链接、没带名字时，去主页抓一下昵称补上（最多等 3.5 秒，抓不到不影响用）
@@ -976,6 +994,7 @@
   window.__momGetXhsProfiles = xhsProfilesForChar;
   window.__momFindXhsProfileById = findXhsProfileById;
   window.__momRemoveXhsProfile = removeXhsProfile;
+  window.__momUpdateXhsProfile = updateXhsProfile;
   window.__momXhsProfileCard = xhsProfileCard;
   window.__momXhsProfileUrl = parseXhsProfileUrl;
   window.__momRunWebSearch = runWebSearchRaw;

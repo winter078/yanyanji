@@ -1102,6 +1102,17 @@ window.syncNarrationModeUI = syncNarrationModeUI;
         const id = String(p.xhsId || '').trim();
         info.innerHTML = '<div style="font-size:13.5px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + nm.replace(/[<>&]/g, '') + '</div>' +
           '<div style="font-size:11px;color:var(--color-text-secondary);margin-top:2px;">' + (id ? ('小红书号 ' + id) : '已存主页链接') + '</div>';
+        const edit = document.createElement('button');
+        edit.type = 'button';
+        edit.innerText = '备注';
+        edit.style.cssText = 'flex-shrink:0;padding:6px 10px;border-radius:9px;border:1px solid var(--border-default);background:var(--bg-secondary);color:var(--text-primary);font-size:12px;cursor:pointer;';
+        edit.onclick = function () {
+          const current = String(p.name || '').trim() || String(p.xhsId || '').trim();
+          const val = window.prompt('给她起个备注名，或直接填她的小红书号（纯数字）：', current);
+          if (val == null) return;
+          if (typeof window.__momUpdateXhsProfile === 'function') window.__momUpdateXhsProfile(p.userId, val);
+          renderXhsProfileSettings();
+        };
         const del = document.createElement('button');
         del.type = 'button';
         del.innerText = '删除';
@@ -1112,6 +1123,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
           renderXhsProfileSettings();
         };
         row.appendChild(info);
+        row.appendChild(edit);
         row.appendChild(del);
         box.appendChild(row);
       });
