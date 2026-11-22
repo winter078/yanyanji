@@ -19,7 +19,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <!-- 发布时务必与 js/build.js 的 __LIVE_BUILD__ 保持一致，否则 version-watch 会一直提示“新版已经好了” -->
-  <script>window.__BUILD__="20261122-2860";</script>
+  <script>window.__BUILD__="20261122-2861";</script>
   <script>
     (function () {
       var root = document.documentElement;
@@ -227,6 +227,7 @@
 <link rel="stylesheet" href="css/motion.css?v=20261122-2858" />
 <link rel="stylesheet" href="css/drawer-fix.css?v=20261122-2858" />
   
+<link rel="preload" as="image" href="assets/splash-yanyan.jpg?v=20261122-2861" />
 <style id="mom-splash-style">
   html, body { background:#0a0b0f; }
   #mom-splash{
@@ -246,26 +247,61 @@
     filter:blur(16px); animation:momSplashGlow 2.8s ease-in-out infinite alternate;
   }
   #mom-splash.off{opacity:0; visibility:hidden}
-  .mom-splash-stack{position:relative; display:flex; flex-direction:column; align-items:center; transform:translateY(-2vh)}
-  .mom-splash-mark{
-    width:96px; height:96px; border-radius:30px;
-    display:flex; align-items:center; justify-content:center;
-    font-size:38px; font-weight:600; letter-spacing:.08em;
-    color:#fff; text-shadow:0 2px 18px rgba(160,130,255,.45);
-    background:linear-gradient(145deg, rgba(160,130,255,.35), rgba(255,255,255,.06) 55%, rgba(255,176,120,.18));
-    border:1px solid rgba(255,255,255,.22);
-    box-shadow:0 18px 50px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.28), 0 0 40px rgba(140,110,255,.18);
-    animation:momSplashMark 2.2s ease-in-out infinite alternate;
+  .mom-splash-stack{position:relative; display:flex; flex-direction:column; align-items:center; transform:translateY(-1vh)}
+  .mom-splash-stage{position:relative; width:212px; height:212px; display:flex; align-items:center; justify-content:center}
+  .mom-splash-halo{
+    position:absolute; width:168px; height:168px; border-radius:50%;
+    background:radial-gradient(circle, rgba(151,119,255,.26), rgba(118,88,210,.08) 52%, transparent 72%);
+    filter:blur(14px); animation:momSplashGlow 2.8s ease-in-out infinite alternate;
   }
-  .mom-splash-title{margin-top:22px; font-size:20px; font-weight:600; letter-spacing:.08em; color:#f5f1ff}
+  .mom-splash-icon{
+    position:relative; z-index:2; width:132px; height:132px; border-radius:31px;
+    object-fit:cover; display:block; background:#191627;
+    border:1px solid rgba(224,214,255,.22);
+    box-shadow:0 22px 54px rgba(0,0,0,.5), 0 0 36px rgba(133,101,235,.2), inset 0 1px 0 rgba(255,255,255,.18);
+    animation:momIconFloat 4.2s ease-in-out infinite alternate;
+    will-change:transform;
+  }
+  .mom-float{
+    position:absolute; z-index:3; display:block; pointer-events:none;
+    animation:momFloat 3.8s ease-in-out infinite alternate;
+    will-change:transform,opacity;
+  }
+  .mf-star i{
+    display:block; width:var(--s,12px); height:var(--s,12px);
+    background:linear-gradient(135deg,#fff 0%,var(--c,#c9b6ff) 64%,rgba(255,255,255,.65) 100%);
+    clip-path:polygon(50% 0,61% 38%,100% 50%,61% 62%,50% 100%,39% 62%,0 50%,39% 38%);
+    filter:drop-shadow(0 0 6px var(--g,rgba(185,166,255,.65)));
+  }
+  .mf-heart .heart-shape{
+    position:relative; display:block; width:14px; height:14px;
+    background:#c3adff; border-radius:2px; transform:rotate(-45deg);
+    box-shadow:0 0 12px rgba(178,150,255,.55);
+  }
+  .mf-heart .heart-shape:before,.mf-heart .heart-shape:after{
+    content:""; position:absolute; width:14px; height:14px; border-radius:50%; background:inherit;
+  }
+  .mf-heart .heart-shape:before{top:-7px; left:0}
+  .mf-heart .heart-shape:after{top:0; left:-7px}
+  .mf-dot{width:6px; height:6px; border-radius:50%; background:#fff; box-shadow:0 0 9px rgba(201,182,255,.9)}
+  .mf1{left:18px; top:28px; --s:13px; --c:#ffd79a; --g:rgba(255,207,135,.7); --dx:-4px; animation-duration:3.6s; animation-delay:-.5s}
+  .mf2{right:14px; top:20px; --s:17px; --c:#c8b6ff; --g:rgba(185,166,255,.8); --dx:5px; animation-duration:4.1s; animation-delay:-1.2s}
+  .mf3{left:10px; bottom:34px; --s:10px; --c:#dce3ff; --dx:-3px; animation-duration:3.4s; animation-delay:-2s}
+  .mf4{right:4px; bottom:26px; --s:8px; --c:#ffd79a; --g:rgba(255,207,135,.65); --dx:3px; animation-duration:3.9s; animation-delay:-1.7s}
+  .mf5{right:22px; top:68px; width:14px; height:14px; animation-duration:4.4s; animation-delay:-.9s}
+  .mf6{left:36px; bottom:12px; animation-duration:3.5s; animation-delay:-2.4s}
+  .mf7{right:42px; top:14px; width:5px; height:5px; animation-duration:3.2s; animation-delay:-1.5s}
+  .mom-splash-title{margin-top:8px; font-size:20px; font-weight:600; letter-spacing:.08em; color:#f5f1ff}
   .mom-splash-sub{margin-top:7px; font-size:11px; letter-spacing:.2em; color:rgba(235,228,255,.52)}
-  .mom-splash-track{margin-top:26px; width:104px; height:2px; border-radius:2px; overflow:hidden; background:rgba(255,255,255,.12)}
+  .mom-splash-track{margin-top:24px; width:104px; height:2px; border-radius:2px; overflow:hidden; background:rgba(255,255,255,.12)}
   .mom-splash-track i{display:block; width:44%; height:100%; border-radius:2px; background:linear-gradient(90deg, rgba(160,130,255,.3), #b9a6ff, rgba(255,180,140,.9)); animation:momSplashTrack 1.25s ease-in-out infinite}
-  @keyframes momSplashMark{from{transform:translateY(2px) scale(.985)}to{transform:translateY(-3px) scale(1.015)}}
+  @keyframes momIconFloat{0%{transform:translateY(5px) rotate(-1.2deg) scale(.985)}100%{transform:translateY(-6px) rotate(1.2deg) scale(1.01)}}
+  @keyframes momFloat{0%{transform:translate3d(0,5px,0) scale(.94); opacity:.55}100%{transform:translate3d(var(--dx,0),-7px,0) scale(1.06); opacity:1}}
   @keyframes momSplashGlow{from{opacity:.55; transform:scale(.95)}to{opacity:1; transform:scale(1.05)}}
   @keyframes momSplashTrack{0%{transform:translateX(-120%)}100%{transform:translateX(260%)}}
   @media (prefers-reduced-motion: reduce){
-    .mom-splash-mark,.mom-splash-track i,#mom-splash:before{animation:none}
+    .mom-splash-icon,.mom-float,.mom-splash-track i,.mom-splash-halo,#mom-splash:before{animation:none}
+    .mom-float{opacity:1}
     .mom-splash-track i{width:100%; opacity:.6}
   }
 </style>
@@ -274,7 +310,17 @@
 
   <div id="mom-splash" role="status" aria-live="polite" aria-label="正在启动末末的小手机">
     <div class="mom-splash-stack">
-      <div class="mom-splash-mark" aria-hidden="true">末</div>
+      <div class="mom-splash-stage" aria-hidden="true">
+        <div class="mom-splash-halo"></div>
+        <img class="mom-splash-icon" src="assets/splash-yanyan.jpg?v=20261122-2861" alt="" draggable="false" />
+        <span class="mom-float mf-star mf1"><i></i></span>
+        <span class="mom-float mf-star mf2"><i></i></span>
+        <span class="mom-float mf-star mf3"><i></i></span>
+        <span class="mom-float mf-star mf4"><i></i></span>
+        <span class="mom-float mf-heart mf5"><i class="heart-shape"></i></span>
+        <span class="mom-float mf-dot mf6"></span>
+        <span class="mom-float mf-dot mf7"></span>
+      </div>
       <div class="mom-splash-title">末末的小手机</div>
       <div class="mom-splash-sub">言言机 · 正在启动</div>
       <div class="mom-splash-track" aria-hidden="true"><i></i></div>
