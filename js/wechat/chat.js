@@ -6755,7 +6755,7 @@ ${catalog}
           })[0] || '';
           const wantsGithub = !!githubLine &&
             /(要是|如果|有没有|有.*就好|找|搜|查|推荐|帮我|能不能|可以|插件|轮子|开源|现成)/.test(githubLine) &&
-            !/(小红书|小某书|红书|抖音|douyin|推特|twitter|discord|微博|B站|bilibili)/i.test(githubLine) &&
+            (!/(小红书|小某书|红书|抖音|douyin|推特|twitter|discord|微博|B站|bilibili)/i.test(githubLine) || /github/i.test(githubLine)) &&
             !/(怎么装|怎么安装|安装教程|报错|为什么用不了)/.test(githubLine);
           if (wantsGithub && typeof window.__momFindGithubRepo === 'function') {
             window.__momGithubQueryTurn = true;
