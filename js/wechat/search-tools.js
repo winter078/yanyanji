@@ -888,6 +888,7 @@
   window.__momFindXhsNote = findXhsNote;
   window.__momBindXhsProfile = bindXhsProfile;
   window.__momGetXhsProfile = latestXhsProfile;
+  window.__momGetXhsProfiles = xhsProfileList;
   window.__momXhsProfileCard = xhsProfileCard;
   window.__momXhsProfileUrl = parseXhsProfileUrl;
   window.__momRunWebSearch = runWebSearchRaw;

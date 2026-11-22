@@ -5321,6 +5321,16 @@ ${(() => {
 - 习惯与喜好：${myHabits}
 ${maskIdentityContext}${maskTransitionContext}
 
+【你记住的她的社交主页（长期记忆，存在这台设备上）】：
+${(() => {
+  try {
+    const list = (typeof window.__momGetXhsProfiles === 'function') ? (window.__momGetXhsProfiles() || []) : [];
+    const items = list.filter(p => p && p.userId).slice(0, 5)
+      .map(p => '- ' + (String(p.name || '').trim() || '她分享过的博主') + ' · 小红书主页（链接已经存好了，她要时直接给她主页卡片，不用再问链接）');
+    return items.length ? items.join('\n') : '暂无（还没存过别人主页）。';
+  } catch (e) { return '暂无（还没存过别人主页）。'; }
+})()}
+
 
 【${userRemark}分享给你的图文链接动态（最高优先级·按当前角色卡自然回应）】：
 ${(() => {
@@ -6409,6 +6419,19 @@ ${catalog}
           const savedProfile = (typeof window.__momGetXhsProfile === 'function') ? window.__momGetXhsProfile() : null;
           const wantsProfile = !!xhsLine && /(主页|她的帖子|她的笔记|她发的帖子|她发的笔记|小红书号|\bID\b|\bid\b)/.test(xhsLine) &&
             !/(怎么|如何|为什么)/.test(xhsLine);
+          // 她直接喊你记住的那个博主名字（比如“粉毛爱妻”），也当主页请求处理
+          const mentionsSavedProfile = (function () {
+            let list = [];
+            try { list = (typeof window.__momGetXhsProfiles === 'function' ? window.__momGetXhsProfiles() : []) || []; } catch (e) { list = []; }
+            for (let pi = 0; pi < list.length; pi++) {
+              const nm = String((list[pi] && list[pi].name) || '').trim();
+              if (nm.length < 2) continue;
+              for (let li = 0; li < recentUserLines.length; li++) {
+                if (String(recentUserLines[li] || '').indexOf(nm) >= 0) return true;
+              }
+            }
+            return false;
+          })();
           const hasNamedNote = (function () {
             for (let ni = 0; ni < recentUserLines.length; ni++) {
               const s = String(recentUserLines[ni] || '');
@@ -6424,7 +6447,7 @@ ${catalog}
               pendingShareCard = boundCard;
               recentMessages.push({ role: 'system', content: '【她已经把小红书主页长链接交给你了，你记住了】回复里自然说一句“记住了/存好了”，卡片会自动跟在后面；不要说“需要你每次发链接”，也不要提接口、抓取、技术限制。' });
             }
-          } else if (wantsProfile && savedProfile && !hasNamedNote && typeof window.__momXhsProfileCard === 'function') {
+          } else if ((wantsProfile || mentionsSavedProfile) && savedProfile && !hasNamedNote && typeof window.__momXhsProfileCard === 'function') {
             const savedCard = window.__momXhsProfileCard('', savedProfile);
             if (savedCard) {
               pendingShareCard = savedCard;
