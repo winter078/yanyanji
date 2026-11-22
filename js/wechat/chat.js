@@ -2787,7 +2787,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
     }
 
     // ===== 工具调用胶囊：搜索 / 天气 / 小红书 =====
-    const TOOL_LABELS = { search: '搜索', weather: '天气', xhs: '小红书', douyin: '抖音', docx: '文档', xlsx: '表格', pptx: 'PPT', md: '文档' };
+    const TOOL_LABELS = { search: '搜索', weather: '天气', xhs: '小红书', douyin: '抖音', github: 'GitHub', docx: '文档', xlsx: '表格', pptx: 'PPT', md: '文档' };
     let pendingArtifactMeta = null;
     let pendingShareCard = null;
     let toolSelMode = false;
@@ -6502,6 +6502,8 @@ ${catalog}
         window.__momXhsQueryTurn = false;
         window.__momXhsLastTopic = '';
         window.__momDouyinQueryTurn = false;
+        window.__momGithubQueryTurn = false;
+        window.__momoGithubLastRead = null;
         try { localStorage.removeItem('momo_pending_share_card_v1'); } catch (e) {}
         try {
           const recentUserLines = (function () {
@@ -6744,6 +6746,45 @@ ${catalog}
               } else {
                 recentMessages.push({ role: 'system', content: '【这次没找到能分享的抖音视频】如实说没找到，不要编造链接或标题，也不要说“你把链接发来”。' });
               }
+            }
+          }
+
+          // GitHub：她随口说“要是 xxx 有插件/开源项目就好了”时，去找真实仓库、读 README 和 Issue，再发卡。
+          const githubLine = recentUserLines.filter(function (t) {
+            return /(github|GitHub|开源|插件|轮子|现成)/i.test(t);
+          })[0] || '';
+          const wantsGithub = !!githubLine &&
+            /(要是|如果|有没有|有.*就好|找|搜|查|推荐|帮我|能不能|可以|插件|轮子|开源|现成)/.test(githubLine) &&
+            !/(小红书|小某书|红书|抖音|douyin|推特|twitter|discord|微博|B站|bilibili)/i.test(githubLine) &&
+            !/(怎么装|怎么安装|安装教程|报错|为什么用不了)/.test(githubLine);
+          if (wantsGithub && typeof window.__momFindGithubRepo === 'function') {
+            window.__momGithubQueryTurn = true;
+            const githubTool = (window.__momToolNotice && window.__momToolNotice.start)
+              ? window.__momToolNotice.start('github', 'GitHub') : null;
+            let githubCard = null;
+            try {
+              githubCard = await window.__momFindGithubRepo(githubLine);
+            } catch (eGithub) {
+              githubCard = null;
+              console.warn('[GitHub] 搜索失败：', eGithub && eGithub.message ? eGithub.message : eGithub);
+            }
+            if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(githubTool, !!githubCard);
+            const githubRead = window.__momoGithubLastRead || null;
+            const githubTopic = (githubRead && githubRead.topic) || '这个需求';
+            if (githubCard) {
+              pendingShareCard = githubCard;
+              try { localStorage.setItem('momo_pending_share_card_v1', JSON.stringify({ card: githubCard, charId: activeChatCharId(), at: Date.now() })); } catch (e) {}
+              if (githubRead && githubRead.context) recentMessages.push({ role: 'system', content: githubRead.context });
+              if (githubRead && Array.isArray(githubRead.alternatives) && githubRead.alternatives.length) {
+                const alts = githubRead.alternatives.map(function (r) { return r.full_name + (r.stars ? '（⭐' + r.stars + '）' : ''); }).join('、');
+                recentMessages.push({ role: 'system', content: '【另外还看到这几个候选仓库：' + alts + '】只在合适时顺口提一句，不要一次塞一堆链接；主卡只发上面那个。' });
+              }
+              recentMessages.push({ role: 'system', content: '【你刚替她翻完 GitHub：' + githubTopic + '】仓库资料、README 和 Issue 已经读过了。回复里用你自己的话讲：有没有合适的、它是干什么的、适合她什么场景、有没有明显要注意的（维护状态/许可证/Issue 里反复提到的问题）。别大段复述 README，别编 README 没写的安装步骤，也不要说接口、搜索、抓取、后台、技术限制这些词。卡片会自动跟在回复后面，不要把方括号标记写出来。' });
+            } else if (githubRead && Array.isArray(githubRead.repos) && githubRead.repos.length) {
+              const names = githubRead.repos.slice(0, 3).map(function (r) { return r.full_name; }).join('、');
+              recentMessages.push({ role: 'system', content: '【GitHub 上翻到几个仓库：' + names + '，但这次没读到能确认的 README/Issue】只当线索提一句，别把没读过的项目说成“能用”，也别编安装步骤和许可证；不要提接口、搜索、抓取、技术限制。' });
+            } else {
+              recentMessages.push({ role: 'system', content: '【这次在 GitHub 没找到合适的开源项目：' + githubTopic + '】如实说没找到合适的，不要编仓库名或链接，也不要把“awesome 列表/模板仓库”当成能直接用的插件。不要提接口、搜索、抓取、后台、技术限制。' });
             }
           }
         } catch (eShare) {
