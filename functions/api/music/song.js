@@ -22,7 +22,7 @@ export async function onRequestGet(context) {
   const ids = raw.split(',')
     .map(s => s.trim())
     .filter(s => /^\d+$/.test(s))
-    .slice(0, 50);
+    .slice(0, 100);
   if (!ids.length) return json({ error: 'bad_ids', songs: [] }, 400);
 
   const upstream = 'https://music.163.com/api/song/detail?ids=[' + ids.join(',') + ']';

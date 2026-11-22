@@ -270,19 +270,22 @@
     if (!neIds.length) return;
 
     try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 6000);
-      let resp;
-      try {
-        resp = await fetch('/api/music/song?ids=' + encodeURIComponent(neIds.join(',')), {
-          cache: 'no-store',
-          signal: controller.signal
-        });
-      } finally {
-        clearTimeout(timer);
+      const rows = [];
+      for (let i = 0; i < neIds.length; i += 100) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 6000);
+        let resp;
+        try {
+          resp = await fetch('/api/music/song?ids=' + encodeURIComponent(neIds.slice(i, i + 100).join(',')), {
+            cache: 'no-store',
+            signal: controller.signal
+          });
+        } finally {
+          clearTimeout(timer);
+        }
+        const data = await resp.json().catch(() => ({}));
+        if (data && data.songs) rows.push.apply(rows, data.songs);
       }
-      const data = await resp.json().catch(() => ({}));
-      const rows = (data && data.songs) || [];
       if (!rows.length) return;
 
       const seen = new Set(allSongs.map(s => s.id));
