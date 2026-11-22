@@ -11,9 +11,11 @@ const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 const BILI_HEADERS = {
   'User-Agent': UA,
   'Referer': 'https://www.bilibili.com/',
-  'Origin': 'https://www.bilibili.com',
   'Accept': 'application/json, text/plain, */*'
 };
+
+// Cloudflare 的出口 IP 会被 B站判 -412；直连失败时走一次公共中转。
+const PROXY = 'https://api.cors.lol/?url=';
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -49,6 +51,15 @@ async function biliApi(url, cookie) {
   if (cookie) headers['Cookie'] = cookie;
   try {
     const r = await fetch(url, { headers });
+    const text = await r.text();
+    let data = null;
+    try { data = JSON.parse(text); } catch (e) {}
+    if (r.ok && data && data.code === 0) return { ok: true, status: r.status, data };
+  } catch (e) {}
+
+  // 直连被风控时，换公共中转再要一次。
+  try {
+    const r = await fetch(PROXY + encodeURIComponent(url));
     const text = await r.text();
     let data = null;
     try { data = JSON.parse(text); } catch (e) {}

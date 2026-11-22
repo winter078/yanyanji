@@ -6,9 +6,29 @@ const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 const BILI_HEADERS = {
   'User-Agent': UA,
   'Referer': 'https://www.bilibili.com/',
-  'Origin': 'https://www.bilibili.com',
   'Accept': 'application/json, text/plain, */*'
 };
+
+// Cloudflare 的出口 IP 会被 B站判 -412；直连失败时走一次公共中转。
+const PROXY = 'https://api.cors.lol/?url=';
+
+async function biliJson(url) {
+  try {
+    const r = await fetch(url, { headers: BILI_HEADERS });
+    const text = await r.text();
+    let data = null;
+    try { data = JSON.parse(text); } catch (e) {}
+    if (r.status === 200 && data && data.code === 0) return data;
+  } catch (e) {}
+
+  try {
+    const r = await fetch(PROXY + encodeURIComponent(url));
+    const text = await r.text();
+    return JSON.parse(text);
+  } catch (e) {
+    return null;
+  }
+}
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -18,23 +38,6 @@ function json(data, status = 200) {
       'cache-control': 'no-store'
     }
   });
-}
-
-let cachedCookie = '';
-let cookieExpireAt = 0;
-
-async function ensureCookie() {
-  if (cachedCookie && Date.now() < cookieExpireAt) return cachedCookie;
-  try {
-    const r = await fetch('https://api.bilibili.com/x/frontend/finger/spi', { headers: BILI_HEADERS });
-    const j = await r.json();
-    if (j && j.code === 0 && j.data && j.data.b_3) {
-      cachedCookie = 'buvid3=' + j.data.b_3 + '; buvid4=' + (j.data.b_4 || '');
-      cookieExpireAt = Date.now() + 30 * 60 * 1000;
-      return cachedCookie;
-    }
-  } catch (e) {}
-  return '';
 }
 
 function cleanText(s) {
@@ -59,16 +62,11 @@ export async function onRequestGet(context) {
   const kw = (url.searchParams.get('kw') || '').trim();
   if (!kw) return json({ songs: [], error: 'empty_kw' }, 400);
 
-  const fp = await ensureCookie();
-  const headers = Object.assign({}, BILI_HEADERS);
-  if (fp) headers['Cookie'] = fp;
-
   const api = 'https://api.bilibili.com/x/web-interface/search/type?search_type=video&page=1&keyword=' + encodeURIComponent(kw);
 
   let data = null;
   try {
-    const r = await fetch(api, { headers });
-    data = await r.json();
+    data = await biliJson(api);
   } catch (e) {
     return json({ songs: [], error: 'bili_unreachable', message: e.message });
   }
