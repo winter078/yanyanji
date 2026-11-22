@@ -197,6 +197,7 @@
     try { data = await resp.json(); } catch (e) { data = null; }
     if (!resp.ok) {
       var message = data && data.error ? data.error : ('http_' + resp.status);
+      if (data && data.detail) message += '：' + String(data.detail).slice(0, 160);
       throw new Error(message);
     }
     return data || {};
@@ -840,11 +841,28 @@
       var acc = (data && data.account) || {};
       var left = acc.remaining_credits !== undefined ? acc.remaining_credits : (acc.credits !== undefined ? acc.credits : (acc.balance !== undefined ? acc.balance : ''));
       var who = acc.email || acc.username || '';
-      setTikhubStatus('Key 可用' + (who ? (' · ' + who) : '') + (left !== '' ? (' · 余额 ' + left) : '') + '。', 'ok');
+      setTikhubStatus('Key 可用' + (who ? (' · ' + who) : '') + (left !== '' ? (' · 充值余额 ' + left) : '') + '。免费额度在官网仪表盘看。', 'ok');
     } catch (err) {
       var msg = String(err && err.message || err || '');
-      var readable = msg === 'invalid_key' ? 'Key 无效或复制不完整' : (msg === 'insufficient_balance' ? 'TikHub 余额不足' : (msg === 'provider_error' ? 'TikHub 暂时返回错误' : msg));
+      var readable = msg.indexOf('invalid_key') === 0 ? 'Key 无效或复制不完整' : (msg.indexOf('insufficient_balance') === 0 ? 'TikHub 余额不足' : msg);
       setTikhubStatus('验证失败：' + readable, 'error');
+    }
+  }
+
+  async function testTikhubSearch() {
+    if (!readTikhubKey()) { setTikhubStatus('先粘贴 TikHub Key 并保存。', 'error'); return; }
+    setTikhubStatus('正在试搜「aespa」…');
+    try {
+      var data = await requestTikhubNote({ action: 'search', query: 'aespa', limit: 3 });
+      if (data && data.note && data.note.title) {
+        setTikhubStatus('搜到了：《' + String(data.note.title).slice(0, 40) + '》 · 作者 ' + String(data.note.author || '未知'), 'ok');
+      } else {
+        setTikhubStatus('搜不到结果，返回内容为空。', 'error');
+      }
+    } catch (err) {
+      var msg = String(err && err.message || err || '');
+      var readable = msg.indexOf('invalid_key') === 0 ? 'Key 无效' : (msg.indexOf('insufficient_balance') === 0 ? '余额不足' : msg);
+      setTikhubStatus('试搜失败：' + readable, 'error');
     }
   }
 
@@ -965,6 +983,7 @@
   window.clearTikhubKey = clearTikhubKey;
   window.refreshTikhubStatus = refreshTikhubStatus;
   window.testTikhubKey = testTikhubKey;
+  window.testTikhubSearch = testTikhubSearch;
   window.isWebSearchEnabled = isEnabled;
   window.buildWebSearchContext = buildWebSearchContext;
   // ========== 让角色主动分享一篇真实的小红书笔记 ==========
