@@ -122,19 +122,35 @@
           children.push(new d.Paragraph({ text: String(b || ''), bullet: { level: 0 }, spacing: { after: 60 } }));
         });
         if (sec.table && sec.table.headers && sec.table.rows) {
+          // docx 库的 PERCENTAGE 会被写成 w:pct 的千分之一百，百分号数值直接当 pct 用会挤成一条。
+          // 这里按 A4 版心宽度换算成绝对 twips，并固定表格布局，列宽才真的分得开。
+          var colCount = Math.max(1, sec.table.headers.length);
+          var totalTwips = 9020;
+          var colW = Math.floor(totalTwips / colCount);
+          var cellPara = function (txt, bold) {
+            return new d.Paragraph({ text: String(txt == null ? '' : txt), bold: !!bold, spacing: { before: 40, after: 40 } });
+          };
           var rows = [new d.TableRow({
             children: sec.table.headers.map(function (h) {
-              return new d.TableCell({ children: [new d.Paragraph({ text: String(h || ''), bold: true })], width: { size: 100 / sec.table.headers.length, type: d.WidthType.PERCENTAGE } });
+              return new d.TableCell({
+                children: [cellPara(h, true)],
+                width: { size: colW, type: d.WidthType.DXA },
+                shading: { fill: 'F2F3F5' }
+              });
             })
           })];
           sec.table.rows.forEach(function (r) {
+            var cells = (Array.isArray(r) ? r : []).slice(0, colCount);
+            while (cells.length < colCount) cells.push('');
             rows.push(new d.TableRow({
-              children: (r || []).map(function (c) {
-                return new d.TableCell({ children: [new d.Paragraph({ text: String(c == null ? '' : c) })], width: { size: 100 / sec.table.headers.length, type: d.WidthType.PERCENTAGE } });
+              children: cells.map(function (c) {
+                return new d.TableCell({ children: [cellPara(c, false)], width: { size: colW, type: d.WidthType.DXA } });
               })
             }));
           });
-          children.push(new d.Table({ rows: rows, width: { size: 100, type: d.WidthType.PERCENTAGE }, margin: { top: 120, bottom: 120 } }));
+          var tableOpts = { rows: rows, width: { size: totalTwips, type: d.WidthType.DXA }, margin: { top: 120, bottom: 120 } };
+          if (d.TableLayoutType && d.TableLayoutType.FIXED) tableOpts.layout = d.TableLayoutType.FIXED;
+          children.push(new d.Table(tableOpts));
         }
       });
       var doc = new d.Document({ sections: [{ properties: {}, children: children }] });
@@ -323,6 +339,7 @@
 
   window.MomArtifacts = {
     maybeCreate: maybeCreate,
+    wantsFile: function (text) { return shouldMake(text); },
     download: download,
     get: getArtifact,
     buildBlob: buildBlob,

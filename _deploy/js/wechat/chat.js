@@ -6387,6 +6387,31 @@ ${catalog}
           }
         }
 
+        // 要做文件、这轮又没触发任何工具：话题像“要外部事实/数据”时自动补一次联网搜索，
+        // 不依赖用户说“查一下”，保证文件里有网上来的内容而不是硬编。
+        const wantsFileNow = !!(window.MomArtifacts && typeof window.MomArtifacts.wantsFile === 'function' && window.MomArtifacts.wantsFile(lastUserForTools));
+        if (!toolText && wantsFileNow && typeof window.__momRunWebSearch === 'function') {
+          const needsWeb = /(查|搜|最新|今年|去年|2025|2026|政策|价格|销量|数据|市场|新闻|行情|研究|报告|统计)/.test(lastUserForTools) &&
+            !/(刚才|刚刚|这段|这个话题|聊天记录|我们聊|上面的对话)/.test(lastUserForTools);
+          if (needsWeb) {
+            const autoQuery = String(lastUserForTools || '')
+              .replace(/(帮我|给我|替我|麻烦|请|能不能|可以|查一下|搜一下|搜索|整理成|汇总成|总结成|做成|生成|做一份|写一份|列一份|一份|一个|文档|表格|报告|Word|word|Excel|excel|PPT|ppt|幻灯片|演示文稿)/g, ' ')
+              .replace(/[，。！？、,.!?：:；;]/g, ' ')
+              .replace(/\s+/g, ' ').trim().slice(0, 60);
+            if (autoQuery) {
+              try {
+                const searched = await window.__momRunWebSearch(autoQuery);
+                if (searched) {
+                  toolText = searched;
+                  recentMessages.push({ role: 'system', content: searched });
+                }
+              } catch (eWeb) {
+                console.warn('[Tools] 文件前置搜索失败：', eWeb && eWeb.message ? eWeb.message : eWeb);
+              }
+            }
+          }
+        }
+
         // ========== 文件生成：角色真的给你做 Word / Excel / PPT ==========
         // 这一步在工具之后，把刚刚搜到的资料一起交给文件生成，才能做到“先搜再出文档”。
         pendingArtifactMeta = null;
