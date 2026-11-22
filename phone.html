@@ -19,7 +19,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <!-- 发布时务必与 js/build.js 的 __LIVE_BUILD__ 保持一致，否则 version-watch 会一直提示“新版已经好了” -->
-  <script>window.__BUILD__="20261123-0035";</script>
+  <script>window.__BUILD__="20261123-0045";</script>
   <script>
     (function () {
       var root = document.documentElement;
@@ -7519,6 +7519,7 @@
     window.addEventListener('load', window.__momStripColor);
     try { new MutationObserver(window.__momStripColor).observe(ph, { attributes: true, attributeFilter: ['style', 'class'] }); } catch (e) {}
   })();
+</script>
 
 <script>
   /* 屏幕最底下那条（版面和屏幕的差值：iPhone 上是 797 与 844 之间那 47）：
@@ -7856,17 +7857,155 @@ html.ios .watch-header {
 #mom-boot-note{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 92px);transform:translateX(-50%);z-index:99998;display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:rgba(20,20,26,.82);border:1px solid rgba(255,255,255,.12);box-shadow:0 8px 28px rgba(0,0,0,.35);color:#e8e8ee;font-size:12px;letter-spacing:.02em;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:opacity .25s ease,transform .25s ease;pointer-events:none}
 #mom-boot-note i{width:6px;height:6px;border-radius:50%;background:#8f8f9c;box-shadow:0 0 0 0 rgba(143,143,156,.6);animation:momBootPulse 1.2s ease-out infinite}
 #mom-boot-note.gone{opacity:0;transform:translateX(-50%) translateY(6px)}
-body.mom-booting #phone-screen-root{pointer-events:none}
+#mom-fault-note{position:fixed;left:14px;right:14px;bottom:calc(env(safe-area-inset-bottom,0px) + 92px);z-index:99999;display:none;align-items:center;gap:8px;padding:10px 12px;border-radius:14px;background:rgba(28,24,20,.95);border:1px solid rgba(255,190,120,.32);box-shadow:0 10px 30px rgba(0,0,0,.38);color:#f5ead8;font-size:12.5px;line-height:1.4;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+#mom-fault-note.show{display:flex}
+#mom-fault-note span{flex:1;min-width:0}
+#mom-fault-note button{flex:none;border:0;border-radius:999px;padding:7px 11px;font-size:12px;font-weight:600;background:rgba(255,190,120,.16);color:#ffd39b}
+#mom-fault-note button[data-act="close"]{padding:4px 7px;background:transparent;color:rgba(245,234,216,.55);font-size:15px}
+.mom-fb-wrap{padding:76px 18px 24px;display:flex;flex-direction:column;gap:16px;box-sizing:border-box;min-height:100%}
+.mom-fb-note{padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.72);font-size:12.5px;line-height:1.55}
+.mom-fb-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:22px 12px}
+.mom-fb-tile{display:flex;flex-direction:column;align-items:center;gap:7px;padding:0;border:0;background:none;color:#f2ebe0;font-size:11.5px;letter-spacing:.02em}
+.mom-fb-glyph{width:58px;height:58px;border-radius:15px;display:flex;align-items:center;justify-content:center;font-size:23px;font-weight:700;box-shadow:0 8px 18px rgba(0,0,0,.28)}
 @keyframes momBootPulse{0%{box-shadow:0 0 0 0 rgba(143,143,156,.55)}70%{box-shadow:0 0 0 8px rgba(143,143,156,0)}100%{box-shadow:0 0 0 0 rgba(143,143,156,0)}}
 </style><div id="mom-boot-note"><i></i><span>正在启动</span></div>
 <script>
 (function(){
-  var list = ["js/supabase_sync.js","js/config.js?v=2026111627","js/store.js?v=2026111670","js/token-monitor.js?v=2026111673","js/storage-center.js?v=2026111671","js/api-presets.js?v=2026111472","js/wechat/image-presets.js?v=2026111649","js/prompt-presets.js?v=20261121-2150","js/notify.js?v=20261122-2858","js/keepalive.js?v=20261120-1205","js/desktop/desktop.js?v=20261122-2858","js/motion.js?v=20261122-2858","js/layout-motion.js?v=20261122-2858","js/sheet-drag.js?v=20261122-2858","js/press.js?v=20261122-2858","js/touch.js?v=20261122-2858","js/desktop/days.js?v=1789904839051","js/desktop/yanyan-cat.js?v=1789925866085","js/desktop/drag-grid.js?v=20261122-2864","js/desktop/app-store.js?v=2026111002","js/wechat/stickers.js?v=20261121-2130","js/wechat/search-tools.js?v=20261122-2858","js/wechat/weather-tools.js?v=20261122-2858","js/wechat/tool-registry.js?v=20261122-2858","js/wechat/artifact-tools.js?v=20261122-2858","js/wechat/chat.js?v=20261122-2858","js/wechat/voice-input.js?v=2026111591","js/wechat/call.js?v=2026111649","js/wechat/image-gen.js?v=2026111649","js/wechat/moments.js?v=2026111660","js/wechat/characters.js?v=2026111655","js/wechat/group-chat.js?v=2026111652","js/media/music.js?v=20261121-0415","js/media/music-ui.js?v=20261121-0415","js/media/music-lyrics.js?v=20261121-0430","js/qrcode.js?v=2026112010","js/media/netease-login.js?v=2026112011","js/media/companion.js?v=20261120-2235","js/media/watch.js?v=20261120-2235","js/theater/theater.js?v=20261120-1352","js/theater/palace.js?v=2026111121","js/theater/memory-engine.js?v=2026111122","js/theater/worldbooks.js?v=2026111571","js/xhs/xhs.js?v=20261121-0415","js/say/say.js?v=20261122-2858","js/keyboard.js?v=20261122-2858","js/media/reader.js?v=20261120-2235","js/desktop/ledger.js?v=20261121-0300","js/desktop/ledger-app.js?v=20261121-0300","js/desktop/health.js?v=20261121-2245","js/desktop/forum.js?v=20261123-0035","js/desktop/avatar-vault.js?v=2026111145","js/wechat/chat-appearance.js?v=2026111652","js/wechat/masks.js?v=2026111654","js/wechat/wordcards.js?v=2026111183","js/desktop/album-store.js?v=2026111433","js/desktop/photos.js?v=2026111457","js/version-watch.js?v=20261121-0150","js/app.js?v=2026111342"];
+  var list = ["js/supabase_sync.js","js/config.js?v=2026111627","js/store.js?v=2026111670","js/token-monitor.js?v=2026111673","js/storage-center.js?v=2026111671","js/api-presets.js?v=2026111472","js/wechat/image-presets.js?v=2026111649","js/prompt-presets.js?v=20261121-2150","js/notify.js?v=20261122-2858","js/keepalive.js?v=20261120-1205","js/desktop/desktop.js?v=20261122-2858","js/motion.js?v=20261122-2858","js/layout-motion.js?v=20261122-2858","js/sheet-drag.js?v=20261122-2858","js/press.js?v=20261122-2858","js/touch.js?v=20261122-2858","js/desktop/days.js?v=1789904839051","js/desktop/yanyan-cat.js?v=1789925866085","js/desktop/drag-grid.js?v=20261122-2864","js/desktop/app-store.js?v=2026111002","js/wechat/stickers.js?v=20261121-2130","js/wechat/search-tools.js?v=20261122-2858","js/wechat/weather-tools.js?v=20261122-2858","js/wechat/tool-registry.js?v=20261122-2858","js/wechat/artifact-tools.js?v=20261122-2858","js/wechat/chat.js?v=20261122-2858","js/wechat/voice-input.js?v=2026111591","js/wechat/call.js?v=2026111649","js/wechat/image-gen.js?v=2026111649","js/wechat/moments.js?v=2026111660","js/wechat/characters.js?v=2026111655","js/wechat/group-chat.js?v=2026111652","js/media/music.js?v=20261121-0415","js/media/music-ui.js?v=20261121-0415","js/media/music-lyrics.js?v=20261121-0430","js/qrcode.js?v=2026112010","js/media/netease-login.js?v=2026112011","js/media/companion.js?v=20261120-2235","js/media/watch.js?v=20261120-2235","js/theater/theater.js?v=20261120-1352","js/theater/palace.js?v=2026111121","js/theater/memory-engine.js?v=2026111122","js/theater/worldbooks.js?v=2026111571","js/xhs/xhs.js?v=20261121-0415","js/say/say.js?v=20261122-2858","js/keyboard.js?v=20261122-2858","js/media/reader.js?v=20261120-2235","js/desktop/ledger.js?v=20261121-0300","js/desktop/ledger-app.js?v=20261121-0300","js/desktop/health.js?v=20261121-2245","js/desktop/forum.js?v=20261123-0035","js/desktop/avatar-vault.js?v=2026111145","js/wechat/chat-appearance.js?v=2026111652","js/wechat/masks.js?v=2026111654","js/wechat/wordcards.js?v=2026111183","js/desktop/album-store.js?v=2026111433","js/desktop/photos.js?v=2026111457","js/version-watch.js?v=20261121-0150","js/app.js?v=20261123-0045"];
   var note = document.getElementById('mom-boot-note');
   var splash = document.getElementById('mom-splash');
   var splashAt = (window.performance && performance.now) ? performance.now() : Date.now();
-  var started = false, finished = false, done = 0;
+  var started = false, finished = false, done = 0, fallbackShown = false;
   try { document.body.classList.add('mom-booting'); } catch (e) {}
+
+  function resetHome(){
+    try { document.body.classList.remove('view-active-subpage'); } catch (e) {}
+    var pages = document.querySelectorAll('.view-page');
+    for (var i = 0; i < pages.length; i++) {
+      var p = pages[i];
+      p.classList.remove('active');
+      try {
+        p.style.display = 'none';
+        p.style.opacity = '';
+        p.style.transform = '';
+        p.style.zIndex = '';
+        p.style.animation = 'none';
+      } catch (e) {}
+    }
+    var home = document.getElementById('page-home');
+    if (home) {
+      home.classList.add('active');
+      try {
+        home.style.display = '';
+        home.style.opacity = '1';
+        home.style.transform = 'none';
+        home.style.zIndex = '';
+        home.style.animation = 'none';
+      } catch (e) {}
+    }
+  }
+
+  window.__momShowFault = function(msg){
+    try {
+      if (note) note.classList.add('gone');
+      var el = document.getElementById('mom-fault-note');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'mom-fault-note';
+        el.innerHTML = '<span></span><button type="button" data-act="home">回桌面</button><button type="button" data-act="reload">重试</button><button type="button" data-act="close" aria-label="关闭">×</button>';
+        el.addEventListener('click', function(ev){
+          var act = ev.target && ev.target.getAttribute ? ev.target.getAttribute('data-act') : '';
+          if (act === 'reload') { location.reload(); return; }
+          if (act === 'close') { el.classList.remove('show'); return; }
+          if (act === 'home') {
+            if (typeof window.openPage === 'function') {
+              try { window.openPage('page-home'); return; } catch (e) {}
+            }
+            resetHome();
+          }
+        });
+        document.body.appendChild(el);
+      }
+      var span = el.querySelector('span');
+      if (span) span.textContent = msg || '页面有点问题';
+      el.classList.add('show');
+    } catch (e) {}
+  };
+
+  function guardOpenPage(){
+    var orig = window.openPage;
+    if (typeof orig !== 'function' || orig.__momGuarded) return;
+    var safe = function(pageId){
+      try {
+        return orig.apply(this, arguments);
+      } catch (err) {
+        try { console.error('[mom] openPage failed:', pageId, err); } catch (e) {}
+        try { orig.call(window, 'page-home'); } catch (e) { resetHome(); }
+        window.__momShowFault('这个 App 没打开，先回桌面');
+      }
+    };
+    safe.__momGuarded = true;
+    window.openPage = safe;
+  }
+
+  function showDesktopFallback(){
+    if (fallbackShown) return;
+    var viewport = document.getElementById('ios-viewport');
+    if (!viewport) return;
+    if (viewport.querySelector('.ios-page-slide') || viewport.querySelector('.ios-app-card') || viewport.querySelector('.mom-fb-wrap')) return;
+    fallbackShown = true;
+    viewport.innerHTML = '';
+    var wrap = document.createElement('div');
+    wrap.className = 'mom-fb-wrap';
+    var hint = document.createElement('div');
+    hint.className = 'mom-fb-note';
+    hint.textContent = '桌面没完全加载出来，先用备用入口；点“重试”再试一次。';
+    var grid = document.createElement('div');
+    grid.className = 'mom-fb-grid';
+    function add(label, glyph, bg, page) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'mom-fb-tile';
+      var g = document.createElement('span');
+      g.className = 'mom-fb-glyph';
+      g.style.background = bg;
+      g.textContent = glyph;
+      var t = document.createElement('span');
+      t.textContent = label;
+      b.appendChild(g);
+      b.appendChild(t);
+      b.onclick = function(){
+        if (page && typeof window.openPage === 'function') {
+          try { window.openPage(page); return; } catch (e) {}
+        }
+        location.reload();
+      };
+      grid.appendChild(b);
+    }
+    add('微信', '微', 'linear-gradient(135deg,#34c759,#0f9f4a)', 'page-wechat-main');
+    add('长椅', '椅', 'linear-gradient(135deg,#c08a4e,#7a5228)', 'page-forum');
+    add('音乐', '乐', 'linear-gradient(135deg,#8b5cf6,#5b21b6)', 'page-music');
+    add('我', '我', 'linear-gradient(135deg,#f4a6b2,#c85b73)', 'page-me');
+    add('健康', '健', 'linear-gradient(135deg,#4ade80,#15803d)', 'page-health');
+    add('重试', '↻', 'linear-gradient(135deg,#9ca3af,#4b5563)', null);
+    wrap.appendChild(hint);
+    wrap.appendChild(grid);
+    viewport.appendChild(wrap);
+    try { document.body.classList.remove('mom-booting'); } catch (e) {}
+  }
+
+  window.addEventListener('error', function(e){
+    try {
+      if (e && e.target && e.target.tagName === 'SCRIPT') {
+        window.__momShowFault('有个模块没加载出来，部分功能可能打不开');
+        return;
+      }
+      if (e && e.error && e.error.name === 'SyntaxError') {
+        window.__momShowFault('页面脚本有语法错误，部分功能可能打不开');
+      }
+    } catch (err) {}
+  }, true);
+
   function finish(){
     if (finished) return; finished = true;
     try { document.body.classList.remove('mom-booting'); } catch (e) {}
@@ -7890,7 +8029,14 @@ body.mom-booting #phone-screen-root{pointer-events:none}
       frag.appendChild(s);
     }
     document.body.appendChild(frag);
-    setTimeout(finish, 12000);
+    setTimeout(finish, 5000);
+    setTimeout(showDesktopFallback, 5200);
+    var guardTries = 0;
+    var guardTimer = setInterval(function(){
+      guardOpenPage();
+      guardTries++;
+      if (guardTries > 90) clearInterval(guardTimer);
+    }, 150);
   }
   function paintThenLoad(){
     /* 先让静态桌面壳完成一帧绘制，再开始拉模块；不用 rAF，避免后台/失焦窗口被浏览器暂停后永远不启动 */

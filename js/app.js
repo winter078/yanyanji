@@ -44,10 +44,11 @@
       }
     }
 
-    bindLongPressHandlers();
-    openPage("page-home");
-    init();
+    try { bindLongPressHandlers(); } catch (e) { console.error('[mom] bindLongPressHandlers failed:', e); }
+    try { openPage("page-home"); } catch (e) { console.error('[mom] openPage home failed:', e); }
+    try { init(); } catch (e) { console.error('[mom] init failed:', e); }
   
+
 
 
 window.addEventListener('DOMContentLoaded', () => {
