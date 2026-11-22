@@ -6533,7 +6533,7 @@ ${catalog}
             }
             return false;
           })();
-          const wantsLatest = !!xhsLine && /(最新一条|最新笔记|最新帖子|最新那篇|最新一篇|最近一条|她最新|主页最新)/.test(xhsLine) && !hasNamedNote;
+          const wantsLatest = (!!xhsLine || mentionsSavedProfile || !!matchedIdProfile) && /(最新一条|最新笔记|最新帖子|最新那篇|最新一篇|最近一条|她最新|主页最新)/.test(recentUserLines.join(' ')) && !hasNamedNote;
           const latestProfile = (function () {
             if (!wantsLatest) return null;
             if (matchedIdProfile) return matchedIdProfile;
@@ -6549,6 +6549,7 @@ ${catalog}
             return savedProfile || list[0] || null;
           })();
           if (wantsLatest && latestProfile && typeof window.__momFindXhsLatest === 'function') {
+            window.__momXhsQueryTurn = true;
             const latestTool = (window.__momToolNotice && window.__momToolNotice.start)
               ? window.__momToolNotice.start('xhs', '小红书') : null;
             let latestCard = null;
