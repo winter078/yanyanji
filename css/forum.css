@@ -808,7 +808,7 @@
   --fm-muted: #92998C;
   --fm-amber: #E8B04B;
   --fm-wood: #8A5D38;
-  --fm-paper: #F1E8D8;
+  --fm-paper: #2E271D;
   background:
     radial-gradient(115% 70% at 82% -4%, rgba(232, 176, 75, .10), transparent 56%),
     radial-gradient(90% 55% at 8% 100%, rgba(86, 116, 92, .08), transparent 60%),
@@ -979,6 +979,8 @@
   border-top: 1px solid var(--fm-line);
   background: rgba(13, 17, 13, .96);
   height: 58px;
+  padding: 0 30px env(safe-area-inset-bottom, 0px);
+  box-sizing: border-box;
 }
 .fm-tab { color: #7B8377; letter-spacing: .4px; }
 .fm-tab.on { color: var(--fm-amber); }
@@ -994,19 +996,21 @@
 .fm-det-crumb { color: #8A9184; letter-spacing: .5px; font-size: 12.5px; }
 .fm-det-body { padding: 0 16px 22px; }
 
-/* 帖子本体：一张米色纸条，用胶带贴在长椅上 */
+/* 帖子本体：一张旧牛皮纸，用胶带贴在长椅上 */
 .fm-det-post {
   position: relative;
   background-color: var(--fm-paper);
-  background-image: linear-gradient(105deg, rgba(255, 255, 255, .2), transparent 42%);
-  color: #2D2820;
-  border: 1px solid rgba(255, 255, 255, .32);
+  background-image:
+    linear-gradient(105deg, rgba(255, 255, 255, .035), transparent 42%),
+    repeating-linear-gradient(0deg, transparent 0 27px, rgba(232, 176, 75, .025) 27px 28px);
+  color: #F0E6D5;
+  border: 1px solid rgba(232, 176, 75, .16);
   border-radius: 3px 3px 10px 10px;
   padding: 20px 16px 14px;
   margin: 12px 2px 20px;
   box-shadow:
-    0 20px 40px rgba(0, 0, 0, .44),
-    0 1px 0 rgba(255, 255, 255, .18) inset;
+    0 18px 40px rgba(0, 0, 0, .42),
+    0 0 0 1px rgba(232, 176, 75, .045) inset;
 }
 .fm-det-post::before {
   content: '';
@@ -1016,9 +1020,9 @@
   width: 74px;
   height: 15px;
   transform: translateX(-50%) rotate(-1.2deg);
-  background: rgba(232, 176, 75, .46);
-  border-left: 1px dashed rgba(255, 255, 255, .32);
-  border-right: 1px dashed rgba(255, 255, 255, .32);
+  background: rgba(188, 140, 74, .26);
+  border-left: 1px dashed rgba(232, 176, 75, .18);
+  border-right: 1px dashed rgba(232, 176, 75, .18);
   box-shadow: 0 2px 4px rgba(0, 0, 0, .12);
 }
 .fm-det-trash {
@@ -1031,69 +1035,69 @@
   border: 0;
   border-radius: 50%;
   background: transparent;
-  color: rgba(120, 90, 55, .48);
+  color: rgba(214, 190, 151, .45);
   font-size: 17px;
   line-height: 28px;
   cursor: pointer;
 }
-.fm-det-trash:active { background: rgba(120, 90, 55, .08); color: #A0565A; }
-.fm-det-name { color: #2D2820; }
-.fm-det-post .fm-post-sig { color: #8B7B64; }
+.fm-det-trash:active { background: rgba(232, 176, 75, .08); color: #E09AA2; }
+.fm-det-name { color: #F0E6D5; }
+.fm-det-post .fm-post-sig { color: #A8977F; }
 .fm-det-post .fm-mini {
-  border-color: rgba(120, 90, 55, .20);
-  color: #6F5C44;
-  background: rgba(120, 90, 55, .045);
+  border-color: rgba(232, 176, 75, .16);
+  color: #D2C2A5;
+  background: rgba(232, 176, 75, .06);
 }
-.fm-det-post .fm-mini.on { color: #9A6B1F; border-color: rgba(154, 107, 31, .34); }
+.fm-det-post .fm-mini.on { color: #E8B04B; border-color: rgba(232, 176, 75, .34); }
 .fm-det-title {
   font-family: "Songti SC", "SimSun", "Noto Serif SC", serif;
   font-size: 20px;
   line-height: 1.5;
   letter-spacing: .3px;
-  color: #28231C;
+  color: #F2E8D7;
   margin-top: 14px;
 }
 .fm-det-copy {
-  color: #4B4235;
+  color: #D8CCB8;
   font-size: 14px;
   line-height: 1.95;
   margin-top: 11px;
 }
 .fm-det-post .fm-tags { margin-top: 12px; }
 .fm-det-post .fm-tag {
-  color: #7B6242;
-  background: rgba(120, 90, 55, .07);
-  border-color: rgba(120, 90, 55, .13);
+  color: #C0A985;
+  background: rgba(232, 176, 75, .07);
+  border-color: rgba(232, 176, 75, .14);
 }
 .fm-det-ops {
-  border-top: 1px dashed rgba(120, 90, 55, .24);
+  border-top: 1px dashed rgba(232, 176, 75, .14);
   padding-top: 11px;
   margin-top: 14px;
   gap: 5px;
 }
 .fm-det-ops .fm-act {
-  color: #6D5B44;
-  background: rgba(120, 90, 55, .055);
-  border: 1px solid rgba(120, 90, 55, .13);
+  color: #D5C5A9;
+  background: rgba(255, 255, 255, .035);
+  border: 1px solid rgba(232, 176, 75, .16);
   padding: 4.5px 9px;
 }
 .fm-det-ops .fm-act.like.on {
-  color: #A94E58;
-  background: rgba(169, 78, 88, .08);
-  border-color: rgba(169, 78, 88, .2);
+  color: #E8A1A8;
+  background: rgba(229, 138, 150, .14);
+  border-color: rgba(229, 138, 150, .28);
 }
 .fm-det-ops .fm-act.save.on {
-  color: #926517;
-  background: rgba(146, 101, 23, .09);
-  border-color: rgba(146, 101, 23, .2);
+  color: #E8B04B;
+  background: rgba(232, 176, 75, .12);
+  border-color: rgba(232, 176, 75, .3);
 }
 .fm-op {
-  background: rgba(120, 90, 55, .06);
-  border: 1px solid rgba(120, 90, 55, .15);
-  color: #6D5B44;
+  background: rgba(255, 255, 255, .045);
+  border: 1px solid rgba(232, 176, 75, .16);
+  color: #D5C5A9;
 }
-.fm-op.done { color: #3F725D; border-color: rgba(63, 114, 93, .28); background: rgba(63, 114, 93, .07); }
-.fm-op.danger { color: #A0565A; border-color: rgba(160, 86, 90, .18); }
+.fm-op.done { color: #8FD0B4; border-color: rgba(143, 208, 180, .28); background: rgba(143, 208, 180, .07); }
+.fm-op.danger { color: #E09AA2; border-color: rgba(224, 154, 162, .18); }
 
 /* 回应：你一句我一句的对话气泡 */
 .fm-rep-head {
