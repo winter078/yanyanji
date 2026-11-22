@@ -11,6 +11,7 @@
   var STATUS_TIMEOUT = 12000;
   var SEARCH_TIMEOUT = 30000;
   var XHS_TIMEOUT = 90000;
+  var XHS_SEARCH_TIMEOUT = 55000;
 
   function readEnabled() {
     try { return localStorage.getItem(ENABLED_KEY) === 'true'; } catch (e) { return false; }
@@ -230,7 +231,7 @@
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query: String(query || '').slice(0, 200), limit: limit || 5, api_key: xhsKey })
-    }, SEARCH_TIMEOUT);
+    }, XHS_SEARCH_TIMEOUT);
     return await readJson(resp);
   }
 
