@@ -50,10 +50,14 @@ export async function onRequestGet(context) {
     const songs = rawSongs.map(it => ({
       id: String(it.id),
       name: it.name || '',
-      artist: ((it.ar || []).map(a => a.name).join('/')) || '',
-      album: (it.al && it.al.name) || '',
-      cover: String((it.al && (it.al.picUrl || it.al.img1v1Url)) || '').replace(/^http:/, 'https:'),
-      duration: it.dt || 0,
+      artist: ((it.ar || it.artists || []).map(a => a.name).filter(Boolean).join('/')) || '',
+      album: ((it.al && it.al.name) || (it.album && it.album.name) || ''),
+      cover: String(
+        (it.al && (it.al.picUrl || it.al.img1v1Url))
+        || (it.album && (it.album.picUrl || it.album.blurPicUrl))
+        || ''
+      ).replace(/^http:/, 'https:'),
+      duration: it.dt || it.duration || 0,
       fee: it.fee
     }));
 
