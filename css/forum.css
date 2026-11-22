@@ -978,8 +978,9 @@
 .fm-tabbar {
   border-top: 1px solid var(--fm-line);
   background: rgba(13, 17, 13, .96);
-  height: 58px;
-  padding: 0 34px env(safe-area-inset-bottom, 0px);
+  height: auto;
+  min-height: 72px;
+  padding: 10px 34px calc(12px + env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
 }
 .fm-tab {
@@ -988,7 +989,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 34px;
+  height: 38px;
   margin: 0 2px;
   border-radius: 999px;
 }
