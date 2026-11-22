@@ -6325,23 +6325,32 @@ ${catalog}
           return '';
         })();
         // 用户这轮明确要角色“发/分享”一篇小红书：先找真实笔记，回复说完再补一张卡片
+        // 注意要看最近几条用户消息，而不是只看最后一条（用户常说“给我发一篇…”后面再补一句“快点”）
         pendingShareCard = null;
         try {
-          const wantsXhs = /(小红书|小某书|红书)/.test(lastUserForTools) &&
-            /(发|分享|给|来|推|甩|整)/.test(lastUserForTools) &&
-            !/(链接|下面这篇|刚发|读一下|看看这篇|怎么|如何|为什么)/.test(lastUserForTools);
-          if (wantsXhs && typeof window.__momFindXhsNote === 'function') {
-            const topic = String(lastUserForTools || '')
+          const recentUserLines = (function () {
+            const lines = [];
+            for (let i = recentMessages.length - 1; i >= 0 && lines.length < 4; i--) {
+              const mm = recentMessages[i];
+              if (mm && mm.role === 'user' && typeof mm.content === 'string' && mm.content.trim()) lines.push(mm.content);
+            }
+            return lines;
+          })();
+          const xhsLine = recentUserLines.filter(function (t) { return /(小红书|小某书|红书)/.test(t); })[0] || '';
+          const wantsXhs = !!xhsLine && /(发|分享|给|来|推|甩|整)/.test(xhsLine) &&
+            !/(怎么|如何|为什么)/.test(xhsLine);
+          if (wantsXhs && !/(h?ttps?:\/\/|xiaohongshu\.com|xhslink\.com)/i.test(xhsLine) && typeof window.__momFindXhsNote === 'function') {
+            const topic = String(xhsLine || '')
               .replace(/(小红书|小某书|红书)/g, ' ')
-              .replace(/(帮我|给我|替我|麻烦|请|能不能|可以|发我|发给我|发|分享|来|推|甩|整|一篇|一条|一个|笔记|帖子|看看|看|呗|吧|呀|啊)/g, ' ')
+              .replace(/(帮我|给我|替我|麻烦|请|能不能|可以|发我|发给我|发|分享|来|推|甩|整|一篇|一条|一个|笔记|帖子|看看|看|呗|吧|呀|啊|快点|快)/g, ' ')
               .replace(/[，。！？、,.!?：:；;]/g, ' ')
               .replace(/\s+/g, ' ').trim().slice(0, 40);
             const found = await window.__momFindXhsNote(topic || '推荐');
             if (found) {
               pendingShareCard = found;
-              recentMessages.push({ role: 'system', content: '【已找到一篇真实的小红书笔记：《' + found.title + '》】回复里自然提一句“给你找了一篇”，不要自己写链接、不要编造笔记内容；卡片会自动出现在你的回复后面。' });
+              recentMessages.push({ role: 'system', content: '【已找到一篇真实的小红书笔记：《' + found.title + '》】回复里自然提一句“给你找了一篇”，不要自己写链接、不要编造笔记内容；卡片会自动出现在你的回复后面。绝对不要说“需要你给链接才能查”。' });
             } else {
-              recentMessages.push({ role: 'system', content: '【没搜到能分享的小红书笔记】如实说这次没找到可分享的具体笔记，不要编造链接或标题。' });
+              recentMessages.push({ role: 'system', content: '【没搜到能分享的小红书笔记】如实说这次没找到可分享的具体笔记，不要编造链接或标题，也不要说“你把链接发来”。' });
             }
           }
         } catch (eShare) {
