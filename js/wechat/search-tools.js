@@ -66,8 +66,8 @@
     return readEnabled();
   }
 
-  var XHS_SEEN_KEY = 'momo_xhs_seen_v1';
-  var XHS_CACHE_KEY = 'momo_xhs_cache_v1';
+  var XHS_SEEN_KEY = 'momo_xhs_seen_v2';
+  var XHS_CACHE_KEY = 'momo_xhs_cache_v2';
 
   function xhsSeenList() {
     try {
@@ -271,7 +271,71 @@
   async function requestEveryNote(note) {
     var params = { url: String(note && note.url || '') };
     if (note && note.id) params.id = String(note.id);
-    return await requestEveryInfra('note', params);
+    var data = await requestEveryInfra('note', params);
+    if (data && data.note) {
+      data.note.desc = String(data.note.desc || data.note.text || '');
+      data.note = await attachXhsComments(data.note);
+    }
+    return data;
+  }
+
+  function normalizeCommentRows(data) {
+    var rows = (data && Array.isArray(data.comments)) ? data.comments : [];
+    return rows.map(function (row) {
+      if (!row || !String(row.text || row.content || '').trim()) return null;
+      var replies = Array.isArray(row.sub_comments) ? row.sub_comments : [];
+      return {
+        id: String(row.id || ''),
+        author: String(row.author_name || row.author || '匿名用户').trim().slice(0, 30),
+        content: String(row.text || row.content || '').replace(/\s+/g, ' ').trim().slice(0, 220),
+        likes: row.like_count == null ? 0 : Number(row.like_count),
+        replyCount: row.sub_comment_count == null ? Number(row.reply_count || 0) : Number(row.sub_comment_count),
+        isAuthor: row.is_author === true,
+        isHot: row.is_hot === true,
+        replies: replies.map(function (sub) {
+          return sub && sub.text ? {
+            author: String(sub.author_name || '匿名用户').trim().slice(0, 24),
+            content: String(sub.text).replace(/\s+/g, ' ').trim().slice(0, 160)
+          } : null;
+        }).filter(Boolean).slice(0, 3)
+      };
+    }).filter(Boolean);
+  }
+
+  async function attachXhsComments(note) {
+    if (!note || !note.url) return note;
+    try {
+      var data = await requestEveryInfra('comments', { url: String(note.url), sort: 'most_liked' });
+      var list = normalizeCommentRows(data);
+      if (list.length) {
+        note.comments = list;
+        note.commentCount = Number(note.comment_count || note.commentCount || list.length);
+      }
+    } catch (e) {
+      console.warn('[XHS] 评论读取失败，先只读正文：', e && e.message ? e.message : e);
+    }
+    return note;
+  }
+
+  async function attachDouyinComments(video) {
+    if (!video || !video.url) return video;
+    try {
+      var data = await requestDouyin('comments', { url: String(video.url), limit: 20 });
+      var list = normalizeCommentRows(data);
+      if (list.length) {
+        video.comments = list;
+        video.commentCount = Number(video.comment_count || video.commentCount || list.length);
+      }
+    } catch (e) {
+      console.warn('[Douyin] 评论读取失败，先只读文案：', e && e.message ? e.message : e);
+    }
+    return video;
+  }
+
+  async function requestDouyinVideo(params) {
+    var data = await requestDouyin('video', params || {});
+    if (data && data.video) data.video = await attachDouyinComments(data.video);
+    return data;
   }
 
   function everyNoteCard(note) {
@@ -342,6 +406,14 @@
     var id = douyinVideoId(video.id || video.url);
     var url = String(video.url || (id ? ('https://www.douyin.com/video/' + id) : ''));
     if (!url) return null;
+    var readDesc = String(video.text || '').replace(/[\[\]]/g, '').replace(/\s+/g, ' ').slice(0, 240);
+    var comments = Array.isArray(video.comments) ? video.comments : [];
+    if (comments.length) {
+      var hot = comments.slice(0, 3).map(function (c) {
+        return String(c.content || '').replace(/[\[\]]/g, '').replace(/\s+/g, ' ').slice(0, 60);
+      }).filter(Boolean);
+      if (hot.length) readDesc += ' 高赞评论：' + hot.join(' / ');
+    }
     return {
       kind: 'douyin',
       title: title,
@@ -353,7 +425,7 @@
       brandIcon: '🎵',
       readNote: {
         author: String(video.author || '').slice(0, 60),
-        desc: String(video.text || '').replace(/[\[\]]/g, '').replace(/\s+/g, ' ').slice(0, 320)
+        desc: readDesc
       }
     };
   }
@@ -374,7 +446,7 @@
     if (!pick) return douyinSearchCard(q);
     var full = pick;
     try {
-      var detail = await requestDouyin('video', { url: pick.url, id: pick.id });
+      var detail = await requestDouyinVideo({ url: pick.url, id: pick.id });
       if (detail && detail.video) full = detail.video;
     } catch (e) {
       console.warn('[Douyin] 读视频详情失败，先用搜索摘要：', e && e.message ? e.message : e);
@@ -433,8 +505,22 @@
     if (video.like_count != null) lines.push('点赞：' + video.like_count);
     if (video.comment_count != null) lines.push('评论数：' + video.comment_count);
     if (video.duration_sec != null) lines.push('时长：' + video.duration_sec + ' 秒');
+    var comments = Array.isArray(video.comments) ? video.comments : [];
+    if (comments.length) {
+      lines.push('高赞评论（读了 ' + comments.length + ' 条）：');
+      for (var i = 0; i < comments.length && i < 10; i++) {
+        var c = comments[i] || {};
+        var cText = String(c.content || '').trim();
+        if (!cText) continue;
+        lines.push((i + 1) + '. ' + String(c.author || '匿名用户').trim() + '：' + cText + (c.likes ? '（赞 ' + c.likes + '）' : ''));
+        var replies = Array.isArray(c.replies) ? c.replies : [];
+        for (var k = 0; k < replies.length && k < 2; k++) {
+          if (replies[k] && replies[k].content) lines.push('   - 回复 ' + String(replies[k].author || '匿名用户').trim() + '：' + String(replies[k].content).trim());
+        }
+      }
+    }
     lines.push('');
-    lines.push('【使用规则】只根据上面的标题、作者和文案回答她；不要编造文案里没有的画面、台词或评论。这次没有读取评论正文，她问评论就如实说没看到。不要把接口、后台、抓取、技术限制这些词说出来。');
+    lines.push('【使用规则】只根据上面的标题、作者、文案和评论回答她；评论只是网友说法，不要当成事实。不要编造你没读到的评论、画面或台词。不要把接口、后台、抓取、技术限制这些词说出来。');
     return lines.join('\n');
   }
 
@@ -486,6 +572,18 @@
     lines.push('');
     lines.push('【使用规则】只根据上面这篇笔记的标题、作者、正文、配图 OCR 文字和评论回答用户；不要编造笔记里没有的内容。如果配图 OCR 为空，就如实说明图里的文字没读到，不要假装看过图片。');
     return lines.join('\n');
+  }
+
+  function xhsReadDesc(note) {
+    var desc = String(note && (note.desc || note.text) || '').replace(/[\[\]]/g, '').replace(/\s+/g, ' ').trim().slice(0, 300);
+    var comments = note && Array.isArray(note.comments) ? note.comments : [];
+    if (comments.length) {
+      var hot = comments.slice(0, 3).map(function (c) {
+        return String(c.content || '').replace(/[\[\]]/g, '').replace(/\s+/g, ' ').slice(0, 60);
+      }).filter(Boolean);
+      if (hot.length) desc += ' 高赞评论：' + hot.join(' / ');
+    }
+    return desc;
   }
 
   // ========== 记住她的主页：用户从小红书 App 复制一次主页长链接 ==========
@@ -677,7 +775,7 @@
   async function runXhsRaw(url) {
     var credit = String(url || '').trim();
     if (!/xiaohongshu\.com|xhslink\.com/i.test(credit)) return '';
-    if (!readXhsKey()) return '';
+    if (!readXhsKey() && !readEveryKey()) return '';
     if (xhsSeenList().indexOf(credit) >= 0) {
       var cached = xhsCachedText(credit);
       if (cached) return cached;
@@ -685,7 +783,16 @@
     }
     var tool = (window.__momToolNotice && window.__momToolNotice.start) ? window.__momToolNotice.start('xhs', '小红书') : null;
     try {
-      var note = await requestXhs(credit);
+      var note = null;
+      if (readEveryKey()) {
+        try {
+          var everyData = await requestEveryNote({ url: credit });
+          note = everyData && everyData.note ? everyData.note : null;
+        } catch (eEvery) {
+          console.warn('[XHS] EveryInfra 读链接失败，走备用解析：', eEvery && eEvery.message ? eEvery.message : eEvery);
+        }
+      }
+      if (!note) note = await requestXhs(credit);
       if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(tool, true);
       if (note && (note.title || note.desc || (note.imageTexts && note.imageTexts.length) || (note.comments && note.comments.length))) {
         var text = buildXhsContext(note);
@@ -706,14 +813,14 @@
     var target = String(url || '').trim();
     if (!/douyin\.com|iesdouyin\.com/i.test(target)) return '';
     if (!readEveryKey()) return '';
-    var cacheKey = 'momo_douyin_read_cache_v1';
+    var cacheKey = 'momo_douyin_read_cache_v2';
     try {
       var box = JSON.parse(localStorage.getItem(cacheKey) || 'null');
       if (box && box[target] && Date.now() - box[target].at < 12 * 60 * 60 * 1000) return String(box[target].text || '');
     } catch (e) {}
     var tool = (window.__momToolNotice && window.__momToolNotice.start) ? window.__momToolNotice.start('douyin', '抖音') : null;
     try {
-      var data = await requestDouyin('video', { url: target });
+      var data = await requestDouyinVideo({ url: target });
       var video = data && data.video ? data.video : null;
       if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(tool, !!video);
       if (video && (video.title || video.text)) {
@@ -1249,7 +1356,7 @@
       brandIcon: '📕',
       readNote: {
         author: String(note.author || '').slice(0, 60),
-        desc: String(note.desc || '').replace(/[\[\]]/g, '').replace(/\s+/g, ' ').slice(0, 320)
+        desc: xhsReadDesc(note)
       }
     };
   }
@@ -1371,7 +1478,7 @@
       // 给角色看的“已读过”正文，不显示在卡片上
       readNote: note ? {
         author: String(note.author || '').slice(0, 60),
-        desc: String(note.desc || '').replace(/[\[\]]/g, '').replace(/\s+/g, ' ').slice(0, 320)
+        desc: xhsReadDesc(note)
       } : null
     };
   }

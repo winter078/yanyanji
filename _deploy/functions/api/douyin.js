@@ -105,6 +105,23 @@ function normalizeVideo(row) {
   };
 }
 
+function normalizeComment(row) {
+  if (!row || typeof row !== 'object') return null;
+  const text = String(row.text || row.content || '').trim();
+  if (!text) return null;
+  return {
+    id: String(row.id || '').trim(),
+    text: text,
+    like_count: row.like_count == null ? null : Number(row.like_count),
+    author_name: String(row.author_name || row.nickname || '').trim(),
+    reply_count: row.reply_count == null ? null : Number(row.reply_count),
+    is_hot: row.is_hot === true,
+    is_reply: row.is_reply === true,
+    ip_location: String(row.ip_location || '').trim(),
+    posted_at: String(row.posted_at || '').trim()
+  };
+}
+
 export async function onRequestPost(context) {
   let body = {};
   try { body = await context.request.json(); } catch (e) { return json(400, { error: 'bad_json' }); }
@@ -114,7 +131,7 @@ export async function onRequestPost(context) {
   if (apiKey.length < 8) return json(400, { error: 'bad_key', provider: 'everyinfra' });
 
   const action = String(body.action || 'search').trim();
-  if (action !== 'search' && action !== 'video') return json(400, { error: 'bad_action', provider: 'everyinfra' });
+  if (action !== 'search' && action !== 'video' && action !== 'comments') return json(400, { error: 'bad_action', provider: 'everyinfra' });
 
   let params = body.params && typeof body.params === 'object' ? body.params : {};
   if (action === 'search') {
@@ -126,6 +143,13 @@ export async function onRequestPost(context) {
     const id = videoIdOf(params.id || params.url || '');
     if (!params.url && !id) return json(400, { error: 'missing_video', provider: 'everyinfra' });
     params = { url: String(params.url || '').trim() || ('https://www.douyin.com/video/' + id) };
+  }
+
+  if (action === 'comments') {
+    const id = videoIdOf(params.id || params.url || '');
+    if (!params.url && !id) return json(400, { error: 'missing_video', provider: 'everyinfra' });
+    const limit = Math.min(150, Math.max(1, Number(params.limit) || 20));
+    params = { url: String(params.url || '').trim() || ('https://www.douyin.com/video/' + id), limit: limit };
   }
 
   let result;
@@ -173,6 +197,18 @@ export async function onRequestPost(context) {
       results: results,
       count: results.length,
       next_page_token: String((rows[0] && rows[0].next_page_token) || (data && data.next_page_token) || '')
+    });
+  }
+
+  if (action === 'comments') {
+    const comments = listFrom(data).map(normalizeComment).filter(Boolean).slice(0, 20);
+    return json(200, {
+      ok: true,
+      provider: 'everyinfra',
+      action: 'comments',
+      comments: comments,
+      count: comments.length,
+      next_page_token: String((listFrom(data)[0] && listFrom(data)[0].next_page_token) || (data && data.next_page_token) || '')
     });
   }
 

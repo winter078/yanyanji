@@ -2,7 +2,7 @@
 // 只代理小红书（xiaohongshu），避免这把 Key 被拿去调别的平台。
 const API_URL = 'https://api.everyinfra.com/api/v1/social';
 const TIMEOUT_MS = 45000;
-const ACTIONS = new Set(['search', 'note', 'user_posts', 'profile', 'search_users']);
+const ACTIONS = new Set(['search', 'note', 'user_posts', 'profile', 'search_users', 'comments']);
 
 function json(status, payload) {
   return new Response(JSON.stringify(payload), {
@@ -84,7 +84,27 @@ function normalizeNote(row) {
     author_id: String(row.author_id || '').trim(),
     author_url: String(row.author_url || '').trim(),
     like_count: row.like_count == null ? null : Number(row.like_count),
-    collect_count: row.collect_count == null ? null : Number(row.collect_count)
+    collect_count: row.collect_count == null ? null : Number(row.collect_count),
+    comment_count: row.comment_count == null ? null : Number(row.comment_count)
+  };
+}
+
+function normalizeComment(row) {
+  if (!row || typeof row !== 'object') return null;
+  const text = String(row.text || row.content || '').trim();
+  if (!text) return null;
+  return {
+    id: String(row.id || '').trim(),
+    text: text,
+    like_count: row.like_count == null ? null : Number(row.like_count),
+    author_name: String(row.author_name || row.nickname || '').trim(),
+    sub_comment_count: row.sub_comment_count == null ? null : Number(row.sub_comment_count),
+    is_author: row.is_author === true,
+    ip_location: String(row.ip_location || '').trim(),
+    posted_at: String(row.posted_at || '').trim(),
+    sub_comments: Array.isArray(row.sub_comments) ? row.sub_comments.map(function (sub) {
+      return sub && sub.text ? { text: String(sub.text).trim(), author_name: String(sub.author_name || '').trim() } : null;
+    }).filter(Boolean).slice(0, 3) : []
   };
 }
 
@@ -110,6 +130,16 @@ export async function onRequestPost(context) {
     if (!params.url && !noteId) return json(400, { error: 'missing_note', provider: 'everyinfra' });
     const url = String(params.url || '').trim() || ('https://www.xiaohongshu.com/explore/' + noteId);
     params = { url: url };
+  }
+  if (action === 'comments') {
+    const url = String(params.url || '').trim();
+    const noteId = noteIdOf(url || params.id || '');
+    if (!url && !noteId) return json(400, { error: 'missing_note', provider: 'everyinfra' });
+    const sort = String(params.sort || '').trim();
+    params = {
+      url: url || ('https://www.xiaohongshu.com/explore/' + noteId),
+      sort: /^(most_liked|newest|default)$/.test(sort) ? sort : 'most_liked'
+    };
   }
   if (action === 'user_posts' || action === 'profile') {
     const userId = String(params.user_id || '').trim();
@@ -176,6 +206,18 @@ export async function onRequestPost(context) {
     const normalized = normalizeNote(note);
     if (!normalized) return json(200, { ok: true, provider: 'everyinfra', action: 'note', note: null });
     return json(200, { ok: true, provider: 'everyinfra', action: 'note', note: normalized });
+  }
+
+  if (action === 'comments') {
+    const comments = rows.map(normalizeComment).filter(Boolean).slice(0, 15);
+    return json(200, {
+      ok: true,
+      provider: 'everyinfra',
+      action: 'comments',
+      comments: comments,
+      count: comments.length,
+      next_page_token: String((rows[0] && rows[0].next_page_token) || (data && data.next_page_token) || '')
+    });
   }
 
   if (action === 'profile') {
