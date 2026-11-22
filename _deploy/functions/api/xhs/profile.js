@@ -45,7 +45,9 @@ export async function onRequestGet(context) {
       const m = html.match(/"nickname"\s*:\s*"([^"]{1,40})"/);
       if (m) nickname = m[1].replace(/\\u[0-9a-f]{4}/gi, '').trim();
     }
-    return json(200, { ok: !!nickname, reachable: resp.ok, status: resp.status, nickname });
+    const redIdMatch = html.match(/"redId"\s*:\s*"(\d{6,20})"/);
+    const xhsId = redIdMatch ? redIdMatch[1] : '';
+    return json(200, { ok: !!(nickname || xhsId), reachable: resp.ok, status: resp.status, nickname, xhsId });
   } catch (e) {
     return json(200, { ok: false, reachable: false, status: 0, nickname: '' });
   } finally {

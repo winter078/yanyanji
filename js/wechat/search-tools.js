@@ -333,13 +333,16 @@
       .replace(/(小红书|小某书|红书|主页|个人主页|链接|这是|她|的|号|ID|id|帮我|记住|这个|存一下|一下|复制|来自|博主|网友)/g, ' ')
       .replace(/[，。！？、,.!?：:；;【】\[\]（）()]/g, ' ')
       .replace(/\s+/g, ' ').trim().slice(0, 16);
-    var xhsId = (String(text || '').match(/\b(\d{8,20})\b/) || [])[1] || '';
+    var xhsId = (rest.match(/\b(\d{8,20})\b/) || [])[1] || '';
     var exists = null;
     var list = xhsProfileList();
     for (var i = 0; i < list.length; i++) {
       if (list[i].userId === found.userId || (xhsId && list[i].xhsId === xhsId)) { exists = list[i]; break; }
     }
     if (!exists) exists = { userId: found.userId, url: found.url, charId: charId, name: '', xhsId: '', at: Date.now() };
+    // 旧数据里可能把链接参数里的时间戳（如 1795339404）当成了小红书号，链接里出现过的数字一律不算号
+    var urlText = (String(text || '').match(/https?:\/\/[^\s<>"']+/g) || []).join(' ');
+    if (exists.xhsId && urlText.indexOf(String(exists.xhsId)) >= 0) exists.xhsId = '';
     // 只补空字段，不覆盖已有的昵称/小红书号
     if (!exists.name && name) exists.name = name;
     if (!exists.xhsId && xhsId) exists.xhsId = xhsId;
@@ -374,12 +377,17 @@
       if (!res || !res.ok) return profile;
       var data = await res.json();
       var name = data && data.nickname ? String(data.nickname).trim().slice(0, 20) : '';
-      if (!name) return profile;
-      profile.name = name;
+      var realId = data && data.xhsId ? String(data.xhsId).trim() : '';
+      if (!name && !realId) return profile;
       var list = xhsProfileList();
       for (var i = 0; i < list.length; i++) {
-        if (list[i].userId === profile.userId) list[i].name = name;
+        if (list[i].userId === profile.userId) {
+          if (name) list[i].name = name;
+          if (realId) list[i].xhsId = realId;
+        }
       }
+      if (name) profile.name = name;
+      if (realId) profile.xhsId = realId;
       saveXhsProfileList(list);
       return profile;
     } catch (e) {
@@ -417,6 +425,7 @@
     if (!p) return null;
     var label = String(p.name || '').trim();
     if (!label && String(p.xhsId || '').trim()) label = '小红书号 ' + String(p.xhsId).trim();
+    if (!label && String(p.userId || '').trim()) label = '小红书主页 ' + String(p.userId).slice(-6);
     if (keyword && String(keyword).trim() && !label && /[^\d\s]/.test(String(keyword).trim())) label = String(keyword).trim().slice(0, 12);
     return {
       kind: 'xhs',
