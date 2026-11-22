@@ -1476,7 +1476,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
           preview: (list[list.length - 1]?.content || '').slice(0, 40),
           data: list.map(m => ({ ...m }))
         });
-        if (snapshots.length > 5) snapshots = snapshots.slice(0, 5);
+        if (snapshots.length > 2) snapshots = snapshots.slice(0, 2);
         localStorage.setItem('momo_chat_emergency_snapshots', JSON.stringify(snapshots));
         console.warn('🛡️ 已保留即将被覆盖的旧记录:', reason, list.length, '条');
       } catch (err) { console.warn('保留旧记录快照失败:', err); }
