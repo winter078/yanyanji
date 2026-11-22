@@ -4,14 +4,17 @@
   var ENABLED_KEY = 'momo_web_search_enabled_v1';
   var API_KEY_STORAGE = 'momo_tavily_api_key_v1';
   var XHS_KEY_STORAGE = 'momo_xhs_api_key_v1';
+  var EVERY_KEY_STORAGE = 'momo_everyinfra_api_key_v1';
   var API_PORT = 3010;
   var ENDPOINT_PATH = '/api/search';
   var STATUS_PATH = '/api/search/status';
   var XHS_PATH = '/api/xhs';
+  var EVERY_PATH = '/api/xhs/everyinfra';
   var STATUS_TIMEOUT = 12000;
   var SEARCH_TIMEOUT = 30000;
   var XHS_TIMEOUT = 90000;
   var XHS_SEARCH_TIMEOUT = 55000;
+  var EVERY_TIMEOUT = 55000;
 
   function readEnabled() {
     try { return localStorage.getItem(ENABLED_KEY) === 'true'; } catch (e) { return false; }
@@ -42,6 +45,18 @@
       var key = String(value || '').trim();
       if (key) localStorage.setItem(XHS_KEY_STORAGE, key);
       else localStorage.removeItem(XHS_KEY_STORAGE);
+    } catch (e) {}
+  }
+
+  function readEveryKey() {
+    try { return String(localStorage.getItem(EVERY_KEY_STORAGE) || '').trim(); } catch (e) { return ''; }
+  }
+
+  function writeEveryKey(value) {
+    try {
+      var key = String(value || '').trim();
+      if (key) localStorage.setItem(EVERY_KEY_STORAGE, key);
+      else localStorage.removeItem(EVERY_KEY_STORAGE);
     } catch (e) {}
   }
 
@@ -234,6 +249,57 @@
       body: JSON.stringify({ query: String(query || '').slice(0, 200), limit: limit || 5, api_key: xhsKey })
     }, XHS_SEARCH_TIMEOUT);
     return await readJson(resp);
+  }
+
+  async function requestEveryInfra(action, params) {
+    var key = readEveryKey();
+    if (!key) throw new Error('missing_everyinfra_key');
+    var resp = await timeoutFetch(EVERY_PATH, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: action, params: params || {}, api_key: key })
+    }, EVERY_TIMEOUT);
+    return await readJson(resp);
+  }
+
+  async function requestEverySearch(query) {
+    return await requestEveryInfra('search', { keyword: String(query || '').slice(0, 120) });
+  }
+
+  async function requestEveryNote(note) {
+    var params = { url: String(note && note.url || '') };
+    if (note && note.id) params.id = String(note.id);
+    return await requestEveryInfra('note', params);
+  }
+
+  function everyNoteCard(note) {
+    if (!note) return null;
+    return xhsReadCard({
+      note_id: String(note.id || ''),
+      title: String(note.title || '小红书笔记'),
+      desc: String(note.text || ''),
+      cover: String(note.cover || ''),
+      images: Array.isArray(note.images) ? note.images : [],
+      url: String(note.url || ''),
+      author: String(note.author || '')
+    });
+  }
+
+  // 她问“她主页最新一条”时，直接翻这个号最新发布的笔记，读一下正文再发卡。
+  async function findXhsLatest(profile) {
+    if (!profile || !readEveryKey()) return null;
+    var userId = String(profile.userId || profile.user_id || '').trim();
+    if (!/^[0-9a-f]{20,26}$/i.test(userId)) return null;
+    var data = await requestEveryInfra('user_posts', { user_id: userId });
+    var rows = (data && Array.isArray(data.results)) ? data.results : [];
+    var latest = rows[0];
+    if (!latest) return null;
+    var full = latest;
+    try {
+      var detail = await requestEveryNote(latest);
+      if (detail && detail.note) full = detail.note;
+    } catch (e) {}
+    return everyNoteCard(full);
   }
 
   function firstXhsUrl(text) {
@@ -724,6 +790,29 @@
     if (input) input.value = readXhsKey();
   }
 
+  function syncEveryKeyInput() {
+    var input = document.getElementById('everyinfra-api-key');
+    if (input) input.value = readEveryKey();
+  }
+
+  function setEveryStatus(text, tone) {
+    var el = document.getElementById('everyinfra-key-status');
+    if (!el) return;
+    el.textContent = text;
+    el.style.color = tone === 'error' ? 'var(--danger-primary, #ff4d4f)' : (tone === 'ok' ? 'var(--success-primary, #07c160)' : 'var(--color-text-secondary)');
+  }
+
+  function everyErrorText(err) {
+    var message = String(err && err.message ? err.message : '连接失败');
+    if (/missing_everyinfra_key/.test(message)) return '还没有填 EveryInfra Key。';
+    if (/invalid_key/.test(message)) return '这个 Key 没被接受，回官网确认一下是不是复制全了。';
+    if (/insufficient_balance/.test(message)) return '额度用完了，回 EveryInfra 控制台看一下余额。';
+    if (/provider_timeout/.test(message)) return '服务这次超时了，稍后再试。';
+    if (/rate_limited/.test(message)) return '请求太频繁，等一会儿再试。';
+    if (/bad_user_id/.test(message)) return '这个主页 ID 格式不对。';
+    return message;
+  }
+
   function setXhsStatus(text, tone) {
     var el = document.getElementById('xhs-key-status');
     if (!el) return;
@@ -740,12 +829,58 @@
 
   function refreshXhsStatus() {
     syncXhsKeyInput();
-    if (readXhsKey()) {
+    syncEveryKeyInput();
+    var everyKey = readEveryKey();
+    var xhsKey = readXhsKey();
+    if (everyKey) {
       setXhsState('已开启', 'ok');
-      setXhsStatus('Key 已填写 · 读一条会从 LinkDigest 积分里扣 1 次。', 'ok');
+      setEveryStatus('Key 已填写 · 搜一篇约 $0.0056，读正文再约 $0.0056。', 'ok');
     } else {
-      setXhsState('未开启');
-      setXhsStatus('未开启 · 只能读标题和作者。');
+      setXhsState(xhsKey ? '备用解析' : '未开启');
+      setEveryStatus('未填写 · 角色没法按主题搜站内笔记。');
+    }
+    if (xhsKey) {
+      setXhsStatus('备用解析 Key 已填写 · EveryInfra 读不到时才会用到它。', 'ok');
+    } else {
+      setXhsStatus('未填写 · 不影响 EveryInfra 搜索。');
+    }
+  }
+
+  function saveEveryInfraKey() {
+    var input = document.getElementById('everyinfra-api-key');
+    var key = String(input && input.value || '').trim();
+    if (!key) {
+      setEveryStatus('Key 不能为空。', 'error');
+      return;
+    }
+    if (key.length < 8) {
+      setEveryStatus('这个 Key 看起来不完整，请重新复制。', 'error');
+      return;
+    }
+    writeEveryKey(key);
+    refreshXhsStatus();
+    setEveryStatus('已保存。现在可以按主题搜小红书笔记了。', 'ok');
+  }
+
+  function clearEveryInfraKey() {
+    writeEveryKey('');
+    refreshXhsStatus();
+    setEveryStatus('已清除 · 角色没法按主题搜站内笔记。');
+  }
+
+  async function testEveryInfraKey() {
+    if (!readEveryKey()) {
+      setEveryStatus('先保存 Key，再测。', 'error');
+      return;
+    }
+    setEveryStatus('正在试搜「aespa」…');
+    try {
+      var data = await requestEverySearch('aespa');
+      var rows = (data && Array.isArray(data.results)) ? data.results : [];
+      if (rows.length) setEveryStatus('试搜成功：找到 ' + rows.length + ' 篇笔记。', 'ok');
+      else setEveryStatus('Key 能用，但这次没搜到笔记。', 'error');
+    } catch (err) {
+      setEveryStatus(everyErrorText(err), 'error');
     }
   }
 
@@ -762,13 +897,13 @@
     }
     writeXhsKey(key);
     refreshXhsStatus();
-    setXhsStatus('已保存。读小红书时会用你的 Key，从你的积分里扣。', 'ok');
+    setXhsStatus('已保存。EveryInfra 读不到时会用它兜底。', 'ok');
   }
 
   function clearXhsKey() {
     writeXhsKey('');
     refreshXhsStatus();
-    setXhsStatus('已清除 · 现在只能读标题和作者。');
+    setXhsStatus('已清除 · EveryInfra 读不到时不会再用 LinkDigest 兜底。');
   }
 
   function refreshWebSearchStatus() {
@@ -848,10 +983,13 @@
     syncToggle();
     syncKeyInput();
     syncXhsKeyInput();
+    syncEveryKeyInput();
     var toggle = document.getElementById('web-search-toggle');
     if (toggle) toggle.addEventListener('change', function () { toggleWebSearch(toggle.checked); });
     var keyInput = document.getElementById('web-search-key');
     if (keyInput) keyInput.addEventListener('keydown', function (event) { if (event.key === 'Enter') { event.preventDefault(); saveWebSearchKey(); } });
+    var everyKeyInput = document.getElementById('everyinfra-api-key');
+    if (everyKeyInput) everyKeyInput.addEventListener('keydown', function (event) { if (event.key === 'Enter') { event.preventDefault(); saveEveryInfraKey(); } });
     var xhsKeyInput = document.getElementById('xhs-api-key');
     if (xhsKeyInput) xhsKeyInput.addEventListener('keydown', function (event) { if (event.key === 'Enter') { event.preventDefault(); saveXhsKey(); } });
     refreshWebSearchStatus();
@@ -879,6 +1017,9 @@
   window.clearWebSearchKey = clearWebSearchKey;
   window.saveXhsKey = saveXhsKey;
   window.clearXhsKey = clearXhsKey;
+  window.saveEveryInfraKey = saveEveryInfraKey;
+  window.clearEveryInfraKey = clearEveryInfraKey;
+  window.testEveryInfraKey = testEveryInfraKey;
   window.refreshXhsStatus = refreshXhsStatus;
   window.isWebSearchEnabled = isEnabled;
   window.buildWebSearchContext = buildWebSearchContext;
@@ -958,9 +1099,41 @@
   async function findXhsNote(keyword) {
     var q = String(keyword || '').trim().replace(/[\[\]]/g, ' ').slice(0, 60);
     if (!q) return null;
-    if ((!isEnabled() || !readApiKey()) && !readXhsKey()) return xhsSearchCard(q, '点一下直接跳到小红书的搜索结果');
+    if ((!isEnabled() || !readApiKey()) && !readEveryKey() && !readXhsKey()) return xhsSearchCard(q, '点一下直接跳到小红书的搜索结果');
     var candidates = [];
-    // 有解析 Key 时，先用 LinkDigest 的站内搜索（能返回可打开的小红书笔记链接）
+
+    // 有 EveryInfra Key 时优先走它：站内关键词搜索 + 笔记详情，搜到哪篇就直接读哪篇正文。
+    if (readEveryKey()) {
+      try {
+        var everyData = await requestEverySearch(q);
+        var everyRows = (everyData && Array.isArray(everyData.results)) ? everyData.results : [];
+        var everyPick = null;
+        for (var ei = 0; ei < everyRows.length; ei++) {
+          var er = everyRows[ei];
+          if (!er || !isXhsHost(er.url) || !isXhsNoteUrl(er.url)) continue;
+          if (looksLikeXhsAd(er.title, er.url)) continue;
+          everyPick = er;
+          break;
+        }
+        if (everyPick) {
+          var everyFull = everyPick;
+          try {
+            var everyDetail = await requestEveryNote(everyPick);
+            if (everyDetail && everyDetail.note) everyFull = everyDetail.note;
+          } catch (eNote) {
+            console.warn('[XHS] 读正文失败，先用搜索摘要：', eNote && eNote.message ? eNote.message : eNote);
+          }
+          var everyCard = everyNoteCard(everyFull);
+          if (everyCard && looksLikeXhsAd(everyCard.title, everyCard.url)) everyCard = null;
+          if (everyCard) return everyCard;
+        }
+      } catch (eEvery) {
+        window.__momoXhsLastError = String(eEvery && eEvery.message || '').slice(0, 160);
+        console.warn('[XHS] EveryInfra 搜索失败：', eEvery && eEvery.message ? eEvery.message : eEvery);
+      }
+    }
+
+    // 有解析 Key 时，再用 LinkDigest 的站内搜索（能返回可打开的小红书笔记链接）
     if (readXhsKey()) {
       try {
         var xhsData = await requestXhsTopicSearch(q, 5);
@@ -1047,6 +1220,7 @@
 
   window.__momXhsSearchCard = xhsSearchCard;
   window.__momFindXhsNote = findXhsNote;
+  window.__momFindXhsLatest = findXhsLatest;
   window.__momBindXhsProfile = bindXhsProfile;
   window.__momEnrichXhsProfileName = enrichXhsProfileName;
   window.__momGetXhsProfile = latestXhsProfile;
