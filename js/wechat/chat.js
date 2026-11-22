@@ -3505,6 +3505,9 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       // 山寨/仿冒站点（xiaohongshu-pc.org 这类）打开就是空白或钓鱼页，直接不发卡片
       if (/xiaohongshu|xhs/.test(host) && !/(^|\.)xiaohongshu\.com$|(^|\.)xhslink\.com$/.test(host)) return null;
       if (/^(xiaohongshu-pc|xiaohongshu-pc-|xhs-pc)/.test(host)) return null;
+      // 小红书广告后台/帮助中心/官网首页不是笔记，别当笔记卡片发出去
+      if (/^(ad|business|school)\.xiaohongshu\.com$/.test(host)) return null;
+      if (host === 'xiaohongshu.com' && !/^\/explore\/|\/discovery\/item\//.test((function () { try { return new URL(url).pathname; } catch (e) { return ''; } })())) return null;
       const site = searchCardSite(url);
       const title = searchCardText(item.title || site.name, 150);
       const desc = searchCardText(item.content || '', 120) || site.host || site.name;

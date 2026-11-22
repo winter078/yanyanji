@@ -708,17 +708,39 @@
     return /xiaohongshu\.com|xhslink\.com/i.test(String(u || ''));
   }
 
+  // 只要“笔记页”，不要广告后台、帮助中心、官网首页这些
+  function isXhsNoteUrl(u) {
+    var raw = String(u || '');
+    try {
+      var p = new URL(raw);
+      var h = p.hostname.toLowerCase().replace(/^www\./, '');
+      if (h === 'xhslink.com') return true;
+      if (h !== 'xiaohongshu.com') return false;
+      return /^\/explore\/|\/discovery\/item\//.test(p.pathname || '');
+    } catch (e) { return false; }
+  }
+
+  function looksLikeXhsAd(title, url) {
+    var t = String(title || '');
+    if (/(聚光|广告投放|广告平台|登录|入驻|帮助中心|官网)/.test(t)) return true;
+    if (/ad\.xiaohongshu\.com|business\.xiaohongshu\.com|school\.xiaohongshu\.com/i.test(String(url || ''))) return true;
+    return false;
+  }
+
   async function findXhsNote(keyword) {
     var q = String(keyword || '').trim().slice(0, 60);
     if (!q || !isEnabled() || !readApiKey()) return null;
-    var tries = ['site:xiaohongshu.com ' + q, '小红书 ' + q];
+    var tries = ['site:xiaohongshu.com/explore ' + q, 'site:xiaohongshu.com ' + q, '小红书 ' + q];
     var hit = null;
     for (var i = 0; i < tries.length && !hit; i++) {
       try {
         var data = await requestSearch(tries[i]);
         var list = (data && Array.isArray(data.results)) ? data.results : [];
         for (var j = 0; j < list.length; j++) {
-          if (list[j] && isXhsHost(list[j].url)) { hit = list[j]; break; }
+          var cand = list[j];
+          if (!cand || !isXhsHost(cand.url) || !isXhsNoteUrl(cand.url)) continue;
+          if (looksLikeXhsAd(cand.title, cand.url)) continue;
+          hit = cand; break;
         }
       } catch (eSearch) {
         console.warn('[XHS] 搜索失败：', eSearch && eSearch.message ? eSearch.message : eSearch);
@@ -730,6 +752,7 @@
       try { note = await requestXhs(hit.url); } catch (eNote) {} 
     }
     var title = (note && note.title) ? String(note.title) : String(hit.title || '小红书笔记');
+    if (looksLikeXhsAd(title, hit.url)) return null;
     var desc = (note && note.desc) ? String(note.desc) : String(hit.snippet || '');
     var cover = (note && Array.isArray(note.images) && note.images[0]) ? note.images[0] : '';
     return {
