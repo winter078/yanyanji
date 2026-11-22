@@ -1,5 +1,17 @@
 // 核心主入口：协调各模块初始化与启动
-    function init() {
+    let bootInitStarted = false;
+    async function init() {
+      if (bootInitStarted) return;
+      bootInitStarted = true;
+      // localStorage 满时，聊天记录会转存到 IndexedDB；启动必须先等它读完，
+      // 否则新标签页会把“溢出里的最新记录”当成空记录。
+      try { if (window.momoOverflowReady) await window.momoOverflowReady; } catch (e) {}
+      // appData 在 store.js 里是同步初始化的，溢出键可能当时还没读回来；
+      // 这里补读一次记忆宫殿，避免刷新后把已有记忆卡当成空列表。
+      try {
+        const savedPalace = localStorage.getItem('momo_palace_memories');
+        if (savedPalace) appData.palaceMemories = JSON.parse(savedPalace);
+      } catch (e) {}
       // CSS 装修功能已移除；清掉旧版本可能遗留的自定义样式，避免继续影响界面。
       try { localStorage.removeItem('momo_custom_css'); } catch (e) {}
       try {
@@ -46,7 +58,7 @@
 
     try { bindLongPressHandlers(); } catch (e) { console.error('[mom] bindLongPressHandlers failed:', e); }
     try { openPage("page-home"); } catch (e) { console.error('[mom] openPage home failed:', e); }
-    try { init(); } catch (e) { console.error('[mom] init failed:', e); }
+    try { init().catch(e => console.error('[mom] init failed:', e)); } catch (e) { console.error('[mom] init failed:', e); }
   
 
 

@@ -20,11 +20,12 @@ let appData = null;
       }
 
       Storage.prototype.getItem = function(key) {
+        // 溢出值才是最近一次成功写入的内容；原生 localStorage 里可能还留着更早的旧值。
+        if (isLocalStorage(this) && Object.prototype.hasOwnProperty.call(window.momoOverflowCache, key)) {
+          return window.momoOverflowCache[key];
+        }
         const value = nativeGetItem.call(this, key);
         if (value === null && isLocalStorage(this)) {
-          if (Object.prototype.hasOwnProperty.call(window.momoOverflowCache, key)) {
-            return window.momoOverflowCache[key];
-          }
           try { return window.sessionStorage.getItem(PREFIX + key); } catch (e) { return null; }
         }
         return value;
@@ -32,7 +33,14 @@ let appData = null;
 
       Storage.prototype.setItem = function(key, value) {
         try {
-          return nativeSetItem.call(this, key, value);
+          const result = nativeSetItem.call(this, key, value);
+          // 这次原生写入成功了，清掉同名的旧溢出副本，避免下次读到旧内容。
+          if (isLocalStorage(this) && Object.prototype.hasOwnProperty.call(window.momoOverflowCache, key)) {
+            delete window.momoOverflowCache[key];
+            try { window.sessionStorage.removeItem(PREFIX + String(key)); } catch (e) {}
+            try { momoDeleteOverflowValue(key); } catch (e) {}
+          }
+          return result;
         } catch (err) {
           if (isLocalStorage(this)) {
             const text = String(value);
@@ -149,7 +157,10 @@ let appData = null;
       rows.forEach(function(row) {
         if (row && typeof row.key === 'string') window.momoOverflowCache[row.key] = String(row.value);
       });
-    }).catch(function() {});
+      window.__momoOverflowHydrated = true;
+    }).catch(function() {
+      window.__momoOverflowHydrated = true;
+    });
 
     // 智能无缝合并新版人机恋世界书（若用户本地缺失则自动增量补全，绝不冲刷用户自定义内容）
     (function syncAdaptedWorldBooks() {

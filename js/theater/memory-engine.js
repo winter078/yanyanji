@@ -330,8 +330,9 @@
     var lastAt = lastAutoFor('single', charId);
     if (!opts.force && lastAt && Date.now() - lastAt < AUTO_COOLDOWN) return null;
 
-    var start = Math.max(pointer, hist.length - MAX_SLICE);
-    var slice = hist.slice(start);
+    var start = pointer;
+    var end = Math.min(hist.length, start + MAX_SLICE);
+    var slice = hist.slice(start, end);
     if (!slice.length) return null;
     var me = meName();
     var cname = charName(charId);
@@ -370,15 +371,15 @@
       importance: result.importance,
       source: 'auto-single',
       ownerCharId: '',
-      msgRangeStr: '消息 ' + (start + 1) + '-' + hist.length + ' · 共' + slice.length + '条',
+      msgRangeStr: '消息 ' + (start + 1) + '-' + end + ' · 共' + slice.length + '条',
       startIdx: start,
-      endIdx: hist.length,
+      endIdx: end,
       msgIds: slice.map(function (m) { return m.id; }).filter(Boolean),
       createdAt: Date.now()
     };
     cards.unshift(card);
     saveStore();
-    setTargetState('single', charId, { pointer: hist.length, lastAutoAt: Date.now() });
+    setTargetState('single', charId, { pointer: end, lastAutoAt: Date.now() });
     try { if (window.renderPalaceMemories) window.renderPalaceMemories(); } catch (e) {}
     return card;
   }

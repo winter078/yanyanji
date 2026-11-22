@@ -1653,9 +1653,15 @@ window.syncNarrationModeUI = syncNarrationModeUI;
 
     // 第一次升级时，把原来的全局单聊历史归档；归档对象优先用镜像记录的归属角色，
     // 不能盲信“当前打开的角色”，否则会把上一个角色的记录整段扣到新角色头上。
+    function chatStorageHydrated() {
+      return !window.momoOverflowReady || window.__momoOverflowHydrated === true;
+    }
+
     function ensureChatHistoryScoped() {
       const activeId = activeChatCharId();
       if (!activeId) return '';
+      // 溢出存储还没读完时绝不能建空表/写空值，否则会把 IndexedDB 里的最新记录盖掉。
+      if (!chatStorageHydrated()) return activeId;
       const map = readChatHistoryMap();
       const migrated = localStorage.getItem(CHAT_HISTORY_SCOPED_FLAG) === '1';
       if (!migrated) {
@@ -1690,7 +1696,8 @@ window.syncNarrationModeUI = syncNarrationModeUI;
     window.getChatHistoryForChar = function (charId) {
       ensureChatHistoryScoped();
       if (!charId) return [];
-      if (chatHistoryOwnerId && chatHistoryOwnerId === charId) {
+      if (!chatStorageHydrated()) return [];
+      if (chatHistoryOwnerId && chatHistoryOwnerId === charId && Array.isArray(appData.chatHistory) && appData.chatHistory.length) {
         return cloneChatMessages(appData.chatHistory || []);
       }
       const map = readChatHistoryMap();
@@ -1700,6 +1707,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
     window.setChatHistoryForChar = function (charId, list) {
       if (!charId) return;
       ensureChatHistoryScoped();
+      if (!chatStorageHydrated()) return;
       const map = readChatHistoryMap();
       const oldList = map[charId];
       if (Array.isArray(oldList) && oldList.length > 0 &&
@@ -1720,6 +1728,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       const id = targetId || activeChatCharId();
       if (!id) return;
       ensureChatHistoryScoped();
+      if (!chatStorageHydrated()) return;
       if (chatHistoryOwnerId && chatHistoryOwnerId !== id) {
         safeSaveChatHistory();
       }
@@ -1746,6 +1755,15 @@ window.syncNarrationModeUI = syncNarrationModeUI;
     function safeSaveChatHistory() {
       try {
         if (!Array.isArray(appData.chatHistory)) appData.chatHistory = [];
+        // 溢出存储还没读完时先不写；等读完再补一次，避免用空记录覆盖旧记录。
+        if (!chatStorageHydrated()) {
+          try {
+            if (window.momoOverflowReady) window.momoOverflowReady.then(function () {
+              try { safeSaveChatHistory(); } catch (e) {}
+            });
+          } catch (e) {}
+          return;
+        }
         const activeId = ensureChatHistoryScoped();
         const ownerId = chatHistoryOwnerId || activeId;
         const cleanHistoryForStorage = buildStorageHistory(appData.chatHistory);
