@@ -610,7 +610,6 @@
   }
 
   function renderMine() {
-    const list = songs();
     const avatar = $('mz-mine-avatar');
     const nameEl = $('mz-mine-name');
     const statEl = $('mz-mine-stat');
@@ -630,7 +629,12 @@
       try { n = (window.appData && window.appData.userName) || ''; } catch (e) {}
       if (n) nameEl.textContent = n;
     }
-    if (statEl) statEl.textContent = '一起听过 ' + list.length + ' 首';
+    if (statEl) {
+      const mins = (window.mzBridge && typeof window.mzBridge.minutes === 'function')
+        ? window.mzBridge.minutes()
+        : 0;
+      statEl.textContent = '一起听了 ' + mins + ' 分钟';
+    }
 
     renderWall('user');
     renderWall('bot');

@@ -145,6 +145,13 @@
   let activeQueue = []; // 当前实际正在循环播放的歌曲队列
   let currentSong = null; // 当前正在播放的歌曲对象
   let isPlaying = false;
+  let playMode = 'order'; // order | shuffle | repeatOne | repeatAll
+
+  // 累计收听时长：给“我的”页显示分钟数，也给以后做年度报告留底
+  const LISTEN_STATS_KEY = 'momo_music_stats';
+  let listenStats = { totalSec: 0, byDay: {}, bySong: {} };
+  let lastListenTick = 0;
+  let lastStatsSave = 0;
 
   const audio = new Audio();
   audio.preload = 'auto';
@@ -177,26 +184,68 @@
         { id: 'pl-default-1', name: '我的私享歌单', songIds: ['default-1', 'default-2'] }
       ];
     }
+
+    try {
+      const savedMode = localStorage.getItem('momo_music_play_mode');
+      if (savedMode === 'shuffle' || savedMode === 'repeatOne' || savedMode === 'repeatAll' || savedMode === 'order') {
+        playMode = savedMode;
+      }
+    } catch(e) {}
+
+    try {
+      const rawStats = localStorage.getItem(LISTEN_STATS_KEY);
+      if (rawStats) {
+        const parsed = JSON.parse(rawStats);
+        listenStats = {
+          totalSec: Math.max(0, Number(parsed.totalSec) || 0),
+          byDay: (parsed.byDay && typeof parsed.byDay === 'object') ? parsed.byDay : {},
+          bySong: (parsed.bySong && typeof parsed.bySong === 'object') ? parsed.bySong : {}
+        };
+      }
+    } catch(e) {}
   }
 
   function saveSongs() {
     try {
-      // 避免存储超大 Base64 到 localStorage
-      const safeList = allSongs.slice(0, 100).map(s => ({
-        id: s.id,
-        title: s.title,
-        artist: s.artist,
-        cover: s.cover,
-        url: (s.isLocalFav || s.source === 'netease' || s.source === 'bili') ? '' : s.url,
-        isLocalFav: !!s.isLocalFav,
-        source: s.source || '',
-        neId: s.neId || '',
-        bvid: s.bvid || '',
-        aid: s.aid || 0,
-        duration: s.duration || 0
-      }));
+      // 曲库不再按 100 首截断：截断会让第 101 首以后的红心在刷新后找不到歌。
+      // 只把体积大的内嵌封面/音频地址收紧，避免 localStorage 超额。
+      const safeList = allSongs.map(s => {
+        let cover = s.cover || '';
+        if (cover && /^data:/i.test(cover) && cover.length > 8192) cover = '';
+        return {
+          id: s.id,
+          title: s.title,
+          artist: s.artist,
+          cover: cover,
+          url: (s.isLocalFav || s.source === 'netease' || s.source === 'bili') ? '' : s.url,
+          isLocalFav: !!s.isLocalFav,
+          source: s.source || '',
+          neId: s.neId || '',
+          bvid: s.bvid || '',
+          aid: s.aid || 0,
+          duration: s.duration || 0
+        };
+      });
       localStorage.setItem('momo_music_playlist', JSON.stringify(safeList));
-    } catch(e) {}
+    } catch(e) {
+      // 还是超额时，先把所有封面降级成空，至少保住曲库和红心
+      try {
+        const slim = allSongs.map(s => ({
+          id: s.id,
+          title: s.title,
+          artist: s.artist,
+          cover: '',
+          url: (s.isLocalFav || s.source === 'netease' || s.source === 'bili') ? '' : s.url,
+          isLocalFav: !!s.isLocalFav,
+          source: s.source || '',
+          neId: s.neId || '',
+          bvid: s.bvid || '',
+          aid: s.aid || 0,
+          duration: s.duration || 0
+        }));
+        localStorage.setItem('momo_music_playlist', JSON.stringify(slim));
+      } catch(e2) {}
+    }
   }
 
   function saveFavorites() {
@@ -211,13 +260,67 @@
     } catch(e) {}
   }
 
+  function todayKey() {
+    const d = new Date();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return d.getFullYear() + '-' + m + '-' + day;
+  }
+
+  function saveListenStats(force) {
+    const now = Date.now();
+    if (!force && now - lastStatsSave < 15000) return;
+    lastStatsSave = now;
+    try {
+      localStorage.setItem(LISTEN_STATS_KEY, JSON.stringify(listenStats));
+    } catch(e) {}
+  }
+
+  function addListeningSeconds(sec) {
+    sec = Math.max(0, Math.min(Number(sec) || 0, 2));
+    if (!sec) return;
+    listenStats.totalSec += sec;
+    const day = todayKey();
+    listenStats.byDay[day] = (Number(listenStats.byDay[day]) || 0) + sec;
+    if (currentSong && currentSong.id) {
+      const id = String(currentSong.id);
+      listenStats.bySong[id] = (Number(listenStats.bySong[id]) || 0) + sec;
+    }
+    saveListenStats(false);
+  }
+
+  // 只在真正出声时累计；暂停、缓冲、切歌都不会虚增
+  function tickListening() {
+    if (audio.paused || !currentSong || !audio.src) {
+      lastListenTick = 0;
+      return;
+    }
+    const now = Date.now();
+    if (lastListenTick) {
+      addListeningSeconds((now - lastListenTick) / 1000);
+    }
+    lastListenTick = now;
+  }
+  setInterval(tickListening, 1000);
+  window.addEventListener('pagehide', function () { saveListenStats(true); });
+  window.addEventListener('beforeunload', function () { saveListenStats(true); });
+
+  function musicListeningMinutes() {
+    return Math.floor((listenStats.totalSec || 0) / 60);
+  }
+
   // 绑定音频事件
   audio.addEventListener('timeupdate', () => {
     updateProgressUI();
   });
 
   audio.addEventListener('ended', () => {
-    nextMusicSong();
+    if (playMode === 'repeatOne' && currentSong) {
+      audio.currentTime = 0;
+      playMusic();
+      return;
+    }
+    advanceMusic(true);
   });
 
   audio.addEventListener('error', (e) => {
@@ -340,7 +443,8 @@
     }
     if (queueContext && Array.isArray(queueContext) && queueContext.length > 0) {
       activeQueue = queueContext;
-    } else if (activeQueue.length === 0) {
+    } else {
+      // 直接点一首歌时，下一首跟着当前曲库走，不沿用上一次的旧队列
       activeQueue = allSongs;
     }
 
@@ -433,17 +537,84 @@
     }
   };
 
-  window.nextMusicSong = function() {
+  // ================= 播放顺序：顺序 / 随机 / 单曲 / 列表循环 =================
+  const PLAY_MODE_META = {
+    order: { label: '顺序', title: '顺序播放：这一轮放完就停' },
+    shuffle: { label: '随机', title: '随机播放：每次从队列里挑一首' },
+    repeatOne: { label: '单曲', title: '单曲循环：这首放完再从头来' },
+    repeatAll: { label: '循环', title: '列表循环：放完最后一首回到第一首' }
+  };
+
+  function updatePlayModeUI() {
+    const btn = document.getElementById('music-play-mode-btn');
+    const meta = PLAY_MODE_META[playMode] || PLAY_MODE_META.order;
+    if (btn) {
+      btn.innerText = meta.label;
+      btn.title = meta.title;
+      btn.classList.toggle('on', playMode !== 'order');
+    }
+  }
+
+  window.cycleMusicPlayMode = function() {
+    const order = ['order', 'shuffle', 'repeatAll', 'repeatOne'];
+    const idx = order.indexOf(playMode);
+    playMode = order[(idx + 1) % order.length];
+    try { localStorage.setItem('momo_music_play_mode', playMode); } catch(e) {}
+    updatePlayModeUI();
+    const meta = PLAY_MODE_META[playMode];
+    if (typeof musicToast === 'function') musicToast(meta.title);
+  };
+
+  function advanceMusic(fromEnded) {
     const queue = activeQueue.length > 0 ? activeQueue : allSongs;
     if (!queue || queue.length === 0) return;
+
+    if (playMode === 'shuffle') {
+      if (queue.length === 1) {
+        playSong(queue[0], true, queue);
+        return;
+      }
+      let idx = queue.findIndex(s => s.id === (currentSong && currentSong.id));
+      let nextIdx = idx;
+      while (nextIdx === idx) nextIdx = Math.floor(Math.random() * queue.length);
+      playSong(queue[nextIdx], true, queue);
+      return;
+    }
+
     let idx = queue.findIndex(s => s.id === (currentSong && currentSong.id));
-    let nextIdx = (idx + 1) % queue.length;
-    playSong(queue[nextIdx], true, queue);
+    if (idx < 0) idx = -1;
+    const nextIdx = idx + 1;
+
+    if (nextIdx < queue.length) {
+      playSong(queue[nextIdx], true, queue);
+      return;
+    }
+
+    if (playMode === 'repeatAll' || !fromEnded) {
+      playSong(queue[0], true, queue);
+      return;
+    }
+
+    // 顺序播放：放到最后一首就停，不替用户从头再来
+    pauseMusic();
+    const badgeEl = document.getElementById('music-status-badge');
+    if (badgeEl) badgeEl.innerText = '这一轮听完了 · 想继续就自己点一首';
+  }
+
+  window.nextMusicSong = function() {
+    advanceMusic(false);
   };
 
   window.prevMusicSong = function() {
     const queue = activeQueue.length > 0 ? activeQueue : allSongs;
     if (!queue || queue.length === 0) return;
+    if (playMode === 'shuffle' && queue.length > 1) {
+      let idx = queue.findIndex(s => s.id === (currentSong && currentSong.id));
+      let prevIdx = idx;
+      while (prevIdx === idx) prevIdx = Math.floor(Math.random() * queue.length);
+      playSong(queue[prevIdx], true, queue);
+      return;
+    }
     let idx = queue.findIndex(s => s.id === (currentSong && currentSong.id));
     let prevIdx = (idx - 1 + queue.length) % queue.length;
     playSong(queue[prevIdx], true, queue);
@@ -1030,6 +1201,7 @@
 
     // 恢复上次的歌单、红心和歌单夹；不要替用户选中或播放任何歌
     // （本文件是启动器异步加载的，DOMContentLoaded 可能已经错过，见文件末尾）
+    updatePlayModeUI();
   };
 
   // ================= 一起听：我这一侧的头像与称谓 =================
@@ -1457,6 +1629,8 @@
     favoriteIds: () => favoriteSongIds,
     current: () => currentSong,
     playing: () => isPlaying,
+    minutes: () => musicListeningMinutes(),
+    playMode: () => playMode,
     play: (song, ctx) => playSong(song, true, ctx || null, true)
   };
 
