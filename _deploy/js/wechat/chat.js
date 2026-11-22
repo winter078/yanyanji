@@ -3500,6 +3500,11 @@ window.syncNarrationModeUI = syncNarrationModeUI;
     function makeSearchCard(item) {
       const url = String((item && item.url) || '').trim();
       if (!url) return null;
+      let host = '';
+      try { host = new URL(url).hostname.replace(/^www\./, '').toLowerCase(); } catch (e) { host = ''; }
+      // 山寨/仿冒站点（xiaohongshu-pc.org 这类）打开就是空白或钓鱼页，直接不发卡片
+      if (/xiaohongshu|xhs/.test(host) && !/(^|\.)xiaohongshu\.com$|(^|\.)xhslink\.com$/.test(host)) return null;
+      if (/^(xiaohongshu-pc|xiaohongshu-pc-|xhs-pc)/.test(host)) return null;
       const site = searchCardSite(url);
       const title = searchCardText(item.title || site.name, 150);
       const desc = searchCardText(item.content || '', 120) || site.host || site.name;
@@ -4283,7 +4288,13 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       }
       // 如果是微信 1:1 原生图文分享卡片 (支持前缀附加文字 + 独立卡片渲染)
       else if (cleanText.includes('[SHARECARD:') && cleanText.includes(']')) {
-        const cardMatch = cleanText.match(/\[SHARECARD:([\s\S]*?)\]/);
+        const cardMatch = (function () {
+          const start = cleanText.indexOf('[SHARECARD:');
+          if (start < 0) return null;
+          const end = cleanText.lastIndexOf(']');
+          if (end <= start) return null;
+          return [cleanText.slice(start, end + 1), cleanText.slice(start + 11, end)];
+        })();
         let cardData = null;
         if (cardMatch) {
           try {

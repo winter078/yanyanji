@@ -734,8 +734,9 @@
     var cover = (note && Array.isArray(note.images) && note.images[0]) ? note.images[0] : '';
     return {
       kind: 'xhs',
-      title: title.slice(0, 120),
-      desc: desc.replace(/\s+/g, ' ').slice(0, 80),
+      // 卡片标记用 [SHARECARD:...] 包裹，标题/摘要里不能再出现方括号，否则标记会被提前截断
+      title: title.replace(/[\[\]]/g, '').slice(0, 120),
+      desc: desc.replace(/[\[\]]/g, '').replace(/\s+/g, ' ').slice(0, 80),
       cover: cover,
       url: hit.url,
       brandName: '小红书',
