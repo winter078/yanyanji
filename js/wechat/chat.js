@@ -6512,6 +6512,20 @@ ${catalog}
             }
             return lines;
           })();
+          const douyinLink = (typeof window.__momFirstDouyinUrl === 'function')
+            ? window.__momFirstDouyinUrl(recentUserLines[0] || '') : '';
+          if (douyinLink && typeof window.__momRunDouyinRead === 'function') {
+            window.__momDouyinQueryTurn = true;
+            try {
+              const douyinCtx = await window.__momRunDouyinRead(douyinLink);
+              if (douyinCtx) {
+                recentMessages.push({ role: 'system', content: douyinCtx });
+                recentMessages.push({ role: 'system', content: '【她刚把这条抖音视频发给你，你已经读过视频详情】回复里用你自己的话接一句它讲了什么，别复述整段文案，也不要提接口、后台、抓取、技术限制。' });
+              }
+            } catch (eDouyinRead) {
+              console.warn('[Douyin] 链接读取异常：', eDouyinRead && eDouyinRead.message ? eDouyinRead.message : eDouyinRead);
+            }
+          }
           const latestLine = recentUserLines[0] || '';
           const latestIsDouyin = /(抖音|douyin)/i.test(latestLine) && !/(小红书|小某书|红书)/i.test(latestLine);
           const xhsLine = latestIsDouyin ? '' : (recentUserLines.filter(function (t) { return /(小红书|小某书|红书)/.test(t); })[0] || '');
@@ -6693,7 +6707,7 @@ ${catalog}
 
           // 抖音：用户点名要视频时，搜一条真实视频、读完文案再发卡。
           const douyinLine = recentUserLines.filter(function (t) { return /(抖音|douyin)/i.test(t); })[0] || '';
-          const wantsDouyin = !!douyinLine && !xhsLine &&
+          const wantsDouyin = !!douyinLine && !xhsLine && !douyinLink &&
             /(发|分享|给|来|推|甩|整|搜|找|查|看|刷|视频)/.test(douyinLine) &&
             !/(怎么|如何|为什么|教程|运营|账号怎么做)/.test(douyinLine) &&
             !/(douyin\.com|v\.douyin\.com|iesdouyin)/i.test(douyinLine);
