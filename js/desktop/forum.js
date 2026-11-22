@@ -10,7 +10,9 @@
     posts: 'momo_forum_posts_v1',
     state: 'momo_forum_state_v1',
     follow: 'momo_forum_follow_v1',
-    profile: 'momo_forum_profile_v1'
+    profile: 'momo_forum_profile_v1',
+    likes: 'momo_forum_likes_v1',
+    saved: 'momo_forum_saved_v1'
   };
 
   var TYPE_LABEL = { ask: '求助', qa: '问答', share: '分享' };
@@ -232,6 +234,39 @@
     return false;
   }
 
+  // ---------- 喜欢 / 收进本子（只存本地） ----------
+  function loadMarks(key) {
+    var v = loadJSON(key, {});
+    return (v && typeof v === 'object' && !Array.isArray(v)) ? v : {};
+  }
+  function isMarked(key, id) { return !!loadMarks(key)[id]; }
+  function toggleMark(key, id) {
+    var v = loadMarks(key);
+    if (v[id]) delete v[id];
+    else v[id] = true;
+    saveJSON(key, v);
+    return !!v[id];
+  }
+  function fmIsLiked(id) { return isMarked(K.likes, id); }
+  function fmIsSaved(id) { return isMarked(K.saved, id); }
+  function fmToggleLike(id, ev) {
+    if (ev && ev.stopPropagation) ev.stopPropagation();
+    var on = toggleMark(K.likes, id);
+    if (window.wxToast) window.wxToast(on ? '喜欢这条' : '不喜欢了');
+    fmRefreshMarks();
+  }
+  function fmToggleSave(id, ev) {
+    if (ev && ev.stopPropagation) ev.stopPropagation();
+    var on = toggleMark(K.saved, id);
+    if (window.wxToast) window.wxToast(on ? '收进本子了' : '从本子里拿出来了');
+    fmRefreshMarks();
+  }
+  function fmRefreshMarks() {
+    if (fm.openId) fmRenderDetail();
+    if (fm.tab === 'mine') renderMeCard();
+    else renderList();
+  }
+
   // ---------- 运行时状态 ----------
   var fm = {
     tab: 'square',          // square / follow / mine
@@ -370,6 +405,8 @@
       var isNew = p.createdAt > st.seenAt;
       var replyCount = (p.replies || []).length;
       var lastReply = replyCount ? p.replies[replyCount - 1] : null;
+      var liked = fmIsLiked(p.id);
+      var saved = fmIsSaved(p.id);
       html += '<div class="fm-post' + (isNew ? ' is-new' : '') + '" onclick="fmOpenPost(\'' + p.id + '\')">';
       html += '<div class="fm-post-head">';
       html += fmAvaHTML(p.authorKind, p.authorId, p.authorName, p.authorAvatar);
@@ -383,8 +420,10 @@
         html += '<div class="fm-tags">' + p.tags.map(function (t) { return '<span class="fm-tag">#' + esc(t) + '</span>'; }).join('') + '</div>';
       }
       html += '<div class="fm-post-foot">';
-      html += '<span>' + (replyCount ? ('💬 ' + replyCount + ' 回复') : '还没有人回') + '</span>';
-      if (p.bestReplyId) html += '<span class="fm-pill gold">有最佳回答</span>';
+      html += '<button class="fm-act like' + (liked ? ' on' : '') + '" onclick="fmToggleLike(\'' + p.id + '\', event)">' + (liked ? '♥' : '♡') + ' 喜欢</button>';
+      html += '<button class="fm-act" onclick="event.stopPropagation();fmOpenPost(\'' + p.id + '\')">◌ ' + (replyCount ? replyCount + ' 回应' : '回应') + '</button>';
+      html += '<button class="fm-act save' + (saved ? ' on' : '') + '" onclick="fmToggleSave(\'' + p.id + '\', event)">' + (saved ? '▣ 收着' : '▢ 收进本子') + '</button>';
+      if (p.bestReplyId) html += '<span class="fm-pill gold">最佳回答</span>';
       if (p.type === 'ask' && p.solved) html += '<span class="fm-pill green">已解决</span>';
       html += '</div>';
       if (lastReply) {
@@ -472,20 +511,29 @@
       (x.replies || []).forEach(function (r) { if (r.kind === 'me') myRep++; });
     });
 
+    var saved = loadMarks(K.saved);
+    var savedPosts = posts.filter(function (x) { return !!saved[x.id]; }).sort(function (a, b) { return b.createdAt - a.createdAt; });
+
     var html = '<div class="fmp-card">';
     html += '<div class="fmp-cover" style="background-image:url(&quot;' + (p.cover || 'assets/forum-cover.jpg') + '&quot;)">';
     html += '<div class="fmp-cover-fade"></div>';
+    html += '<div class="fmp-cover-label">长椅 · 夜灯下</div>';
     html += '</div>';
+    html += '<div class="fmp-id">';
     html += '<div class="fmp-ava-wrap">';
     if (p.avatar) html += '<img class="fmp-ava" src="' + esc(p.avatar) + '" alt="" onerror="this.style.display=\'none\'">';
     else html += '<div class="fmp-ava fmp-ava-txt">' + esc(String(p.name).slice(0, 1)) + '</div>';
     html += '</div>';
+    html += '<div class="fmp-id-main">';
     html += '<div class="fmp-name">' + esc(p.name) + '</div>';
     html += '<div class="fmp-handle">@' + esc(p.handle) + '</div>';
     html += '<div class="fmp-bio">' + (p.bio ? '“' + esc(p.bio) + '”' : '<span class="fmp-bio-empty">还没写签名</span>') + '</div>';
+    html += '</div>';
+    html += '</div>';
     html += '<div class="fmp-tags">';
     html += mine.length >= 5 ? '<span class="fmp-tag-on">在这儿坐了一段时间</span>' : '<span class="fmp-tag">刚坐下</span>';
     html += '<span class="fmp-tag">' + (loadFollow().length ? '关注了 ' + loadFollow().length + ' 个人' : '还没关注谁') + '</span>';
+    if (savedPosts.length) html += '<span class="fmp-tag">本子里收着 ' + savedPosts.length + ' 条</span>';
     html += '</div>';
     html += '<div class="fmp-actions">';
     html += '<button class="fmp-edit" onclick="fmOpenProfileEdit()">✎ 修改资料</button>';
@@ -510,8 +558,23 @@
         html += '<div class="fmp-row-foot">';
         html += '<span class="fmp-row-type ' + x.type + '">' + TYPE_LABEL[x.type] + '</span>';
         html += '<span>' + fmTimeAgo(x.createdAt) + '</span>';
-        html += '<span>💬 ' + rc + '</span>';
+        html += '<span>◌ ' + rc + ' 回应</span>';
         if (x.solved) html += '<span class="fm-pill green">已解决</span>';
+        html += '</div>';
+        html += '</div>';
+      });
+    }
+    if (savedPosts.length) {
+      html += '<div class="fmp-list-head">我收着的</div>';
+      savedPosts.slice(0, 12).forEach(function (x) {
+        var rc = (x.replies || []).length;
+        html += '<div class="fmp-row" onclick="fmOpenPost(\'' + x.id + '\')">';
+        html += '<div class="fmp-row-body">' + esc(String(x.title || x.body).slice(0, 110)) + '</div>';
+        html += '<div class="fmp-row-foot">';
+        html += '<span class="fmp-row-type ' + x.type + '">' + TYPE_LABEL[x.type] + '</span>';
+        html += '<span>' + esc(dispName(x.authorKind, x.authorName)) + '</span>';
+        html += '<span>' + fmTimeAgo(x.createdAt) + '</span>';
+        html += '<span>◌ ' + rc + ' 回应</span>';
         html += '</div>';
         html += '</div>';
       });
@@ -650,6 +713,14 @@
     renderForumApp();
   }
 
+  function fmFocusReply(ev) {
+    if (ev && ev.stopPropagation) ev.stopPropagation();
+    var input = document.getElementById('fm-reply-input');
+    if (!input) return;
+    input.focus();
+    try { input.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {}
+  }
+
   function fmRenderDetail() {
     var p = findPost(fm.openId);
     var box = document.getElementById('fm-det-body');
@@ -657,10 +728,13 @@
     if (!p) { box.innerHTML = '<div class="fm-empty">这条不见了。</div>'; return; }
 
     var head = document.getElementById('fm-det-head-title');
-    if (head) head.innerHTML = '<span class="fm-det-crumb">' + esc(dispName(p.authorKind, p.authorName)) + '</span>' + typeBadge(p.type);
+    if (head) head.innerHTML = '<span class="fm-det-crumb">长椅 / 帖子</span>' + typeBadge(p.type);
 
+    var liked = fmIsLiked(p.id);
+    var saved = fmIsSaved(p.id);
     var html = '';
     html += '<div class="fm-det-post">';
+    html += '<button class="fm-det-trash" onclick="fmDeletePost()" title="删掉这条">×</button>';
     html += '<div class="fm-post-head">';
     html += fmAvaHTML(p.authorKind, p.authorId, p.authorName, p.authorAvatar, 'lg');
     html += '<div class="fm-post-who"><div class="fm-det-name">' + esc(dispName(p.authorKind, p.authorName)) + '</div>';
@@ -676,36 +750,38 @@
       html += '<div class="fm-tags">' + p.tags.map(function (t) { return '<span class="fm-tag">#' + esc(t) + '</span>'; }).join('') + '</div>';
     }
     html += '<div class="fm-det-ops">';
+    html += '<button class="fm-act like' + (liked ? ' on' : '') + '" onclick="fmToggleLike(\'' + p.id + '\', event)">' + (liked ? '♥' : '♡') + ' 喜欢</button>';
+    html += '<button class="fm-act" onclick="fmFocusReply(event)">◌ 回应</button>';
+    html += '<button class="fm-act save' + (saved ? ' on' : '') + '" onclick="fmToggleSave(\'' + p.id + '\', event)">' + (saved ? '▣ 收着' : '▢ 收进本子') + '</button>';
     if (p.type === 'ask') {
-      html += '<button class="fm-op' + (p.solved ? ' done' : '') + '" onclick="fmToggleSolved()">' + (p.solved ? '已解决 ✓' : '这件事解决了') + '</button>';
+      html += '<button class="fm-op' + (p.solved ? ' done' : '') + '" onclick="fmToggleSolved()">' + (p.solved ? '这件事解决了 ✓' : '这件事解决了') + '</button>';
     }
-    html += '<button class="fm-op danger" onclick="fmDeletePost()">删掉这条</button>';
     html += '</div>';
     html += '</div>';
 
-    // 评论
+    // 回应：像在长椅上你一句我一句
     var reps = p.replies || [];
-    html += '<div class="fm-rep-head">' + (reps.length ? (reps.length + ' 条回应') : '还没有人回') + '</div>';
-    if (reps.length) {
-      reps.forEach(function (r) {
-        var isBest = p.bestReplyId && r.id === p.bestReplyId;
-        html += '<div class="fm-reply' + (isBest ? ' best' : '') + '">';
-        html += fmAvaHTML(r.kind, r.authorId, r.authorName, r.authorAvatar);
-        html += '<div class="fm-reply-main">';
-        html += '<div class="fm-reply-top"><b>' + esc(dispName(r.kind, r.authorName)) + '</b><span class="fm-reply-time">' + fmTimeAgo(r.createdAt) + '</span></div>';
-        html += '<div class="fm-reply-body">' + esc(r.body) + '</div>';
-        html += '<div class="fm-reply-ops">';
-        if (isBest) html += '<span class="fm-pill gold">最佳回答</span>';
-        else if (p.type === 'qa' || p.type === 'ask') html += '<button class="fm-mini" onclick="fmMarkBest(\'' + r.id + '\')">采纳</button>';
-        html += '</div>';
-        html += '</div></div>';
-      });
+    html += '<div class="fm-rep-head">长椅上的回应 <span>' + reps.length + '</span></div>';
+    if (!reps.length) {
+      html += '<div class="fm-bubble-empty">还没有人回。你可以先坐一会儿，或者叫个人过来。</div>';
     }
+    reps.forEach(function (r) {
+      var isBest = p.bestReplyId && r.id === p.bestReplyId;
+      var mine = r.kind === 'me';
+      html += '<div class="fm-bubble-row' + (mine ? ' me' : '') + '">';
+      html += fmAvaHTML(r.kind, r.authorId, r.authorName, r.authorAvatar);
+      html += '<div class="fm-bubble' + (isBest ? ' best' : '') + '">';
+      html += '<div class="fm-bubble-top"><b>' + esc(dispName(r.kind, r.authorName)) + '</b><span>' + fmTimeAgo(r.createdAt) + '</span></div>';
+      html += '<div class="fm-bubble-body">' + esc(r.body) + '</div>';
+      if (isBest) html += '<div class="fm-bubble-ops"><span class="fm-pill gold">最佳回答</span></div>';
+      else if (!mine && (p.type === 'qa' || p.type === 'ask')) html += '<div class="fm-bubble-ops"><button class="fm-mini" onclick="fmMarkBest(\'' + r.id + '\')">采纳</button></div>';
+      html += '</div></div>';
+    });
 
     // 叫谁来应
     html += '<div class="fm-call">';
-    html += '<div class="fm-call-title">叫谁来应</div>';
-    html += '<div class="fm-call-sub">选 1–3 个人。NPC 不花 token，角色要花。</div>';
+    html += '<div class="fm-call-title">叫谁过来坐坐</div>';
+    html += '<div class="fm-call-sub">选 1–3 个人。邻居不花 token，角色要花。</div>';
     html += '<div class="fm-call-row">';
     NPCS.forEach(function (n) {
       var key = 'npc:' + n.id;
@@ -801,6 +877,8 @@
     if (!confirm('删掉这条？删了就没法找回。')) return;
     var list = loadPosts().filter(function (p) { return p.id !== fm.openId; });
     savePosts(list);
+    var lk = loadMarks(K.likes); delete lk[fm.openId]; saveJSON(K.likes, lk);
+    var sv = loadMarks(K.saved); delete sv[fm.openId]; saveJSON(K.saved, sv);
     fmClosePost();
   }
 
@@ -1412,6 +1490,8 @@
   function fmClearAll() {
     if (!confirm('清空长椅上所有的帖子？')) return;
     savePosts([]);
+    saveJSON(K.likes, {});
+    saveJSON(K.saved, {});
     var st = loadState();
     st.lastSeededAt = 0; st.lastNpcAt = 0; st.lastCharSeedAt = 0; st.seenAt = 0;
     saveState(st);
@@ -1433,6 +1513,9 @@
   window.fmToggleSolved = fmToggleSolved;
   window.fmDeletePost = fmDeletePost;
   window.fmToggleFollow = fmToggleFollow;
+  window.fmToggleLike = fmToggleLike;
+  window.fmToggleSave = fmToggleSave;
+  window.fmFocusReply = fmFocusReply;
   window.fmOpenCompose = fmOpenCompose;
   window.fmCloseCompose = fmCloseCompose;
   window.fmSetComposeMode = fmSetComposeMode;
