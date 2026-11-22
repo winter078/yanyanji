@@ -45,6 +45,19 @@
     } catch (e) {}
   }
 
+  // TikHub：真正调小红书 App 的站内搜索（$0.01/次），有它时优先用它找帖子。
+  var TIKHUB_KEY_STORAGE = 'momo_tikhub_api_key_v1';
+  function readTikhubKey() {
+    try { return String(localStorage.getItem(TIKHUB_KEY_STORAGE) || '').trim(); } catch (e) { return ''; }
+  }
+  function writeTikhubKey(value) {
+    try {
+      var key = String(value || '').trim();
+      if (key) localStorage.setItem(TIKHUB_KEY_STORAGE, key);
+      else localStorage.removeItem(TIKHUB_KEY_STORAGE);
+    } catch (e) {}
+  }
+
   function isEnabled() {
     return readEnabled();
   }
@@ -232,6 +245,18 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query: String(query || '').slice(0, 200), limit: limit || 5, api_key: xhsKey })
     }, XHS_SEARCH_TIMEOUT);
+    return await readJson(resp);
+  }
+
+  // TikHub：按关键词搜小红书站内，并直接读回第一篇的正文（约 $0.02/次）
+  async function requestTikhubNote(payload) {
+    var key = readTikhubKey();
+    if (!key) throw new Error('missing_tikhub_key');
+    var resp = await timeoutFetch('/api/xhs/tikhub', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(Object.assign({ api_key: key }, payload || {}))
+    }, XHS_TIMEOUT);
     return await readJson(resp);
   }
 
@@ -770,6 +795,43 @@
     setXhsStatus('已清除 · 现在只能读标题和作者。');
   }
 
+  function syncTikhubKeyInput() {
+    var input = document.getElementById('tikhub-api-key');
+    if (input) input.value = readTikhubKey();
+  }
+
+  function setTikhubStatus(text, tone) {
+    var el = document.getElementById('tikhub-key-status');
+    if (!el) return;
+    el.textContent = text;
+    el.style.color = tone === 'error' ? 'var(--danger-primary, #ff4d4f)' : (tone === 'ok' ? 'var(--success-primary, #07c160)' : 'var(--color-text-secondary)');
+  }
+
+  function refreshTikhubStatus() {
+    syncTikhubKeyInput();
+    if (readTikhubKey()) {
+      setTikhubStatus('已填写 · 会先按小红书站内搜索找帖子，约 $0.02 一篇。', 'ok');
+    } else {
+      setTikhubStatus('未填写 · 现在只能靠网页收录，很多站内帖搜不到。', 'error');
+    }
+  }
+
+  function saveTikhubKey() {
+    var input = document.getElementById('tikhub-api-key');
+    var key = String(input && input.value || '').trim();
+    if (!key) { setTikhubStatus('Key 不能为空。', 'error'); return; }
+    if (key.length < 12) { setTikhubStatus('这个 Key 看起来不完整，请重新复制。', 'error'); return; }
+    writeTikhubKey(key);
+    refreshTikhubStatus();
+    setTikhubStatus('已保存。找帖子时会优先用小红书站内搜索。', 'ok');
+  }
+
+  function clearTikhubKey() {
+    writeTikhubKey('');
+    refreshTikhubStatus();
+    setTikhubStatus('已清除。');
+  }
+
   function refreshWebSearchStatus() {
     syncToggle();
     syncKeyInput();
@@ -847,14 +909,18 @@
     syncToggle();
     syncKeyInput();
     syncXhsKeyInput();
+    syncTikhubKeyInput();
     var toggle = document.getElementById('web-search-toggle');
     if (toggle) toggle.addEventListener('change', function () { toggleWebSearch(toggle.checked); });
     var keyInput = document.getElementById('web-search-key');
     if (keyInput) keyInput.addEventListener('keydown', function (event) { if (event.key === 'Enter') { event.preventDefault(); saveWebSearchKey(); } });
     var xhsKeyInput = document.getElementById('xhs-api-key');
     if (xhsKeyInput) xhsKeyInput.addEventListener('keydown', function (event) { if (event.key === 'Enter') { event.preventDefault(); saveXhsKey(); } });
+    var tikhubKeyInput = document.getElementById('tikhub-api-key');
+    if (tikhubKeyInput) tikhubKeyInput.addEventListener('keydown', function (event) { if (event.key === 'Enter') { event.preventDefault(); saveTikhubKey(); } });
     refreshWebSearchStatus();
     refreshXhsStatus();
+    refreshTikhubStatus();
   }
 
   window.__momoSearchToolsVersion = '2026111316';
@@ -879,6 +945,9 @@
   window.saveXhsKey = saveXhsKey;
   window.clearXhsKey = clearXhsKey;
   window.refreshXhsStatus = refreshXhsStatus;
+  window.saveTikhubKey = saveTikhubKey;
+  window.clearTikhubKey = clearTikhubKey;
+  window.refreshTikhubStatus = refreshTikhubStatus;
   window.isWebSearchEnabled = isEnabled;
   window.buildWebSearchContext = buildWebSearchContext;
   // ========== 让角色主动分享一篇真实的小红书笔记 ==========
@@ -932,9 +1001,51 @@
     };
   }
 
+  function xhsReadCard(note, fallbackQuery) {
+    if (!note) return null;
+    var title = String(note.title || '小红书笔记').replace(/[\[\]]/g, '').slice(0, 120);
+    var desc = String(note.desc || '').replace(/[\[\]]/g, '').replace(/\s+/g, ' ').slice(0, 80);
+    var cover = String(note.cover || (Array.isArray(note.images) && note.images[0]) || '');
+    var noteId = String(note.note_id || '');
+    return {
+      kind: 'xhs',
+      title: title,
+      desc: desc,
+      cover: cover,
+      url: String(note.url || ('https://www.xiaohongshu.com/explore/' + noteId)),
+      noteId: noteId,
+      brandName: '小红书',
+      brandIcon: '📕',
+      readNote: {
+        author: String(note.author || '').slice(0, 60),
+        desc: String(note.desc || '').replace(/[\[\]]/g, '').replace(/\s+/g, ' ').slice(0, 320)
+      }
+    };
+  }
+
+  async function findXhsLatest(profile) {
+    if (!profile || !readTikhubKey()) return null;
+    var payload = { action: 'user_latest', limit: 3 };
+    if (profile.userId) payload.user_id = String(profile.userId);
+    else if (profile.url) payload.share_text = String(profile.url);
+    else return null;
+    var data = await requestTikhubNote(payload);
+    return xhsReadCard(data && data.note, '');
+  }
+
   async function findXhsNote(keyword) {
     var q = String(keyword || '').trim().replace(/[\[\]]/g, ' ').slice(0, 60);
     if (!q) return null;
+    // 有 TikHub 就用小红书 App 的站内搜索：搜到后直接读第一篇正文，再发卡。
+    if (readTikhubKey()) {
+      try {
+        var thData = await requestTikhubNote({ action: 'search', query: q, limit: 3 });
+        var thCard = xhsReadCard(thData && thData.note, q);
+        if (thCard) return thCard;
+      } catch (eTikhub) {
+        console.warn('[XHS] TikHub 搜索失败：', eTikhub && eTikhub.message ? eTikhub.message : eTikhub);
+      }
+    }
     if ((!isEnabled() || !readApiKey()) && !readXhsKey()) return xhsSearchCard(q, '点一下直接跳到小红书的搜索结果');
     var candidates = [];
     // 有解析 Key 时，先用 LinkDigest 的站内搜索（能返回可打开的小红书笔记链接）
@@ -1024,6 +1135,7 @@
 
   window.__momXhsSearchCard = xhsSearchCard;
   window.__momFindXhsNote = findXhsNote;
+  window.__momFindXhsLatest = findXhsLatest;
   window.__momBindXhsProfile = bindXhsProfile;
   window.__momEnrichXhsProfileName = enrichXhsProfileName;
   window.__momGetXhsProfile = latestXhsProfile;

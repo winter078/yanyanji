@@ -6533,7 +6533,41 @@ ${catalog}
             }
             return false;
           })();
-          if (boundNow && typeof window.__momXhsProfileCard === 'function') {
+          const wantsLatest = !!xhsLine && /(最新一条|最新笔记|最新帖子|最新那篇|最新一篇|最近一条|她最新|主页最新)/.test(xhsLine) && !hasNamedNote;
+          const latestProfile = (function () {
+            if (!wantsLatest) return null;
+            if (matchedIdProfile) return matchedIdProfile;
+            let list = [];
+            try { list = (typeof window.__momGetXhsProfiles === 'function' ? window.__momGetXhsProfiles() : []) || []; } catch (e) { list = []; }
+            for (let li = 0; li < list.length; li++) {
+              const nm = String((list[li] && list[li].name) || '').trim();
+              if (nm.length < 2) continue;
+              for (let mi = 0; mi < recentUserLines.length; mi++) {
+                if (String(recentUserLines[mi] || '').indexOf(nm) >= 0) return list[li];
+              }
+            }
+            return savedProfile || list[0] || null;
+          })();
+          if (wantsLatest && latestProfile && typeof window.__momFindXhsLatest === 'function') {
+            const latestTool = (window.__momToolNotice && window.__momToolNotice.start)
+              ? window.__momToolNotice.start('xhs', '小红书') : null;
+            let latestCard = null;
+            try {
+              latestCard = await window.__momFindXhsLatest(latestProfile);
+            } catch (eLatest) {
+              latestCard = null;
+            }
+            if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(latestTool, !!latestCard);
+            if (latestCard) {
+              pendingShareCard = latestCard;
+              const latestRead = latestCard.readNote && latestCard.readNote.desc ? ('你已经读过正文，开头是：' + latestCard.readNote.desc.slice(0, 220)) : '你已经看过这条的标题和封面。';
+              recentMessages.push({ role: 'system', content: '【你刚从她主页翻了最新一条：《' + latestCard.title + '》】' + latestRead + ' 回复里用你自己的话提一句这条讲了什么，再说“她最新发的是这篇”；卡片会自动跟在后面。不要编造正文没有的内容，也不要把方括号标记写出来。' });
+            } else {
+              recentMessages.push({ role: 'system', content: '【这次没翻到她的最新一条】别说接口、后台、抓取、技术限制。就说“我再去翻翻”，然后把主页卡给她，让她点进去看。' });
+              const fallbackProfileCard = (typeof window.__momXhsProfileCard === 'function') ? window.__momXhsProfileCard('', latestProfile) : null;
+              if (fallbackProfileCard) pendingShareCard = fallbackProfileCard;
+            }
+          } else if (boundNow && typeof window.__momXhsProfileCard === 'function') {
             if (typeof window.__momEnrichXhsProfileName === 'function') {
               try { await window.__momEnrichXhsProfileName(boundNow); } catch (e) {}
             }
@@ -6602,7 +6636,7 @@ ${catalog}
             let found = null;
             try {
               found = await window.__momFindXhsNote(topic || '推荐');
-              if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(xhsNoticeTool, !!found);
+              if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(xhsNoticeTool, !!(found && !found.searchOnly));
             } catch (findErr) {
               if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(xhsNoticeTool, false);
               throw findErr;
