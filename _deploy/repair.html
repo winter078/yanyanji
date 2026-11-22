@@ -172,6 +172,52 @@
   html += '<div class="card"><button class="ghost" id="btn-download">先下载一份完整备份</button>' +
     '<div class="mono" style="margin-top:8px;">备份只存在本机，修复前也会自动存一份。</div></div>';
 
+  // 自动快照 / 迁移前备份：如果当时留有更早的整段记录，可以指定给某个角色
+  var snapshots = [];
+  try { snapshots = JSON.parse(localStorage.getItem('momo_chat_emergency_snapshots') || '[]') || []; } catch (eS) { snapshots = []; }
+  var preScope = null;
+  try { preScope = JSON.parse(localStorage.getItem('momo_chat_pre_scope_backup') || 'null'); } catch (eP) { preScope = null; }
+  var restoreCandidates = [];
+  if (Array.isArray(snapshots)) {
+    snapshots.forEach(function (s, i) {
+      if (s && Array.isArray(s.data) && s.data.length) {
+        restoreCandidates.push({
+          label: (s.reason || '自动快照') + ' · ' + (s.time || '') + ' · ' + s.data.length + ' 条',
+          data: s.data,
+          at: s.time || ''
+        });
+      }
+    });
+  }
+  if (preScope && Array.isArray(preScope.history) && preScope.history.length) {
+    restoreCandidates.push({
+      label: '迁移前备份 · ' + (preScope.at ? new Date(preScope.at).toLocaleString() : '') + ' · ' + preScope.history.length + ' 条',
+      data: preScope.history,
+      at: ''
+    });
+  }
+
+  if (restoreCandidates.length) {
+    var zhou = entries.filter(function (e) { return /周绪言/.test(e.name); })[0] || entries[0];
+    html += '<div class="card">' +
+      '<div class="name">找到 ' + restoreCandidates.length + ' 份更早的自动记录</div>' +
+      '<div class="warn">这些是应用在清空/迁移前自动留的快照。如果其中一份是周绪言原来的聊天，选周绪言恢复（会覆盖该角色当前记录，先自动备份）。</div>' +
+      '<div style="font-size:12px;color:#9aa0aa;">恢复到：</div>' +
+      '<select id="snap-target">' +
+      entries.map(function (e) { return '<option value="' + esc(e.id) + '"' + (zhou && e.id === zhou.id ? ' selected' : '') + '>' + esc(e.name) + '（' + e.count + ' 条）</option>'; }).join('') +
+      '</select>' +
+      '<div style="font-size:12px;color:#9aa0aa;">选择快照：</div>' +
+      '<select id="snap-index">' +
+      restoreCandidates.map(function (c, i) {
+        return '<option value="' + i + '">' + esc(c.label) + '｜' + esc(previewOf(c.data)) + '</option>';
+      }).join('') +
+      '</select>' +
+      '<button class="primary" id="btn-snap-restore">用这份快照恢复</button>' +
+      '</div>';
+  } else {
+    html += '<div class="card"><div class="name">没有找到更早的自动快照</div><div class="preview">说明周绪言原来的记录在覆盖前没有被应用自动保存过。</div></div>';
+  }
+
   content.innerHTML = html;
 
   function repair(groupIndex, ownerId) {
@@ -241,9 +287,42 @@
     if (btn) btn.onclick = function () { downloadBackup(backup); };
   }
 
+  function restoreSnapshot(index, targetId) {
+    var cand = restoreCandidates[index];
+    var target = entries.filter(function (e) { return e.id === targetId; })[0];
+    if (!cand || !target) return;
+    if (!confirm('用这份「' + cand.label + '」覆盖「' + target.name + '」的当前记录？\n\n会先自动备份。')) return;
+    var backup = snapshot();
+    var mapNow = readJSON(MAP_KEY, {});
+    if (!mapNow || typeof mapNow !== 'object') mapNow = {};
+    mapNow[target.id] = clone(cand.data);
+    try {
+      localStorage.setItem(MAP_KEY, JSON.stringify(mapNow));
+      localStorage.setItem(FLAG_KEY, '1');
+      localStorage.setItem(OWNER_KEY, target.id);
+      localStorage.setItem('momo_active_char', target.id);
+      localStorage.setItem('momo_chat_history', JSON.stringify(mapNow[target.id] || []));
+    } catch (e) {
+      content.innerHTML = '<div class="card err">写入失败：' + esc(e.message) + '</div>';
+      return;
+    }
+    content.innerHTML = '<div class="card done"><div class="name">恢复完成</div>' +
+      '<div class="preview" style="margin-top:6px;">已把 ' + cand.data.length + ' 条记录恢复到「' + esc(target.name) + '」，并已打开这个角色。</div>' +
+      '<a class="home" style="margin-top:12px;" href="/phone">进入小手机 →</a></div>' +
+      '<div class="card"><button class="ghost" id="btn-download2">下载恢复前的备份</button></div>';
+    var btn = document.getElementById('btn-download2');
+    if (btn) btn.onclick = function () { downloadBackup(backup); };
+  }
+
   content.addEventListener('click', function (ev) {
     var t = ev.target;
     if (t && t.id === 'btn-download') { downloadBackup(snapshot()); return; }
+    if (t && t.id === 'btn-snap-restore') {
+      var si = document.getElementById('snap-index');
+      var st = document.getElementById('snap-target');
+      restoreSnapshot(si ? parseInt(si.value, 10) : 0, st ? st.value : '');
+      return;
+    }
     if (t && t.id === 'btn-transfer') {
       var s = document.getElementById('transfer-source');
       var to = document.getElementById('transfer-target');
