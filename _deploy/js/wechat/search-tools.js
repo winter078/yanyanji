@@ -727,25 +727,50 @@
     return false;
   }
 
+  async function probeNote(url) {
+    try {
+      var resp = await timeoutFetch('/api/xhs/probe?url=' + encodeURIComponent(url), { method: 'GET' }, 9000);
+      var data = await readJson(resp);
+      return (data && (data.ok === true || data.ok === false)) ? data : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   async function findXhsNote(keyword) {
     var q = String(keyword || '').trim().slice(0, 60);
     if (!q || !isEnabled() || !readApiKey()) return null;
     var tries = ['site:xiaohongshu.com/explore ' + q, 'site:xiaohongshu.com ' + q, '小红书 ' + q];
-    var hit = null;
-    for (var i = 0; i < tries.length && !hit; i++) {
+    var candidates = [];
+    for (var i = 0; i < tries.length && candidates.length < 6; i++) {
       try {
         var data = await requestSearch(tries[i]);
         var list = (data && Array.isArray(data.results)) ? data.results : [];
-        for (var j = 0; j < list.length; j++) {
+        for (var j = 0; j < list.length && candidates.length < 6; j++) {
           var cand = list[j];
           if (!cand || !isXhsHost(cand.url) || !isXhsNoteUrl(cand.url)) continue;
           if (looksLikeXhsAd(cand.title, cand.url)) continue;
-          hit = cand; break;
+          if (candidates.some(function (c) { return c.url === cand.url; })) continue;
+          candidates.push(cand);
         }
       } catch (eSearch) {
         console.warn('[XHS] 搜索失败：', eSearch && eSearch.message ? eSearch.message : eSearch);
       }
     }
+    if (!candidates.length) return null;
+    // 发之前先探一下：已删除/仅自己可见的笔记会被小红书显示成“无法查看”，直接换下一条
+    var hit = null;
+    var fallback = null;
+    var probed = 0;
+    for (var k = 0; k < candidates.length; k++) {
+      var probe = await probeNote(candidates[k].url);
+      probed++;
+      if (probe && probe.ok === false) { if (probed >= 4) break; continue; }
+      if (probe && probe.ok === true) { hit = candidates[k]; break; }
+      if (!fallback) fallback = candidates[k];
+      if (probed >= 3) break;
+    }
+    if (!hit) hit = fallback;
     if (!hit) return null;
     var note = null;
     if (readXhsKey()) {
