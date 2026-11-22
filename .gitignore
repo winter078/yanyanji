@@ -4,6 +4,7 @@
 ocr_vendor/
 node_modules/
 _deploy/.wrangler/
+_deploy/js/build.js
 _wrangler_tmp/
 .wrangler/
 *.zip
