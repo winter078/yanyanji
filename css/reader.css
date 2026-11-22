@@ -3761,3 +3761,133 @@ body[data-theme="dark"] #page-reader .xianguo-add-btn,
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* ============================================================
+   📖 纸质阅读模式：暖纸底 + 宋体正文（参考图）
+   ============================================================ */
+.xianguo-reading-container {
+  position: relative;
+  background:
+    radial-gradient(125% 80% at 50% -10%, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 62%),
+    radial-gradient(130% 110% at 50% 110%, rgba(122, 96, 60, 0.13), rgba(122, 96, 60, 0) 58%),
+    #EDE7DA !important;
+  color: #313131 !important;
+}
+
+.xianguo-reading-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.45;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='160' height='160' filter='url(%23p)' opacity='0.10'/></svg>");
+}
+
+.xianguo-read-top-header {
+  position: relative;
+  z-index: 1;
+  background: linear-gradient(180deg, #F1EBDF 0%, rgba(237, 231, 218, 0.86) 72%, rgba(237, 231, 218, 0)) !important;
+  border-bottom: 1px solid rgba(122, 96, 60, 0.12) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+.xianguo-read-top-header #xianguo-reading-book-badge {
+  font-family: "Songti SC", "STSong", "Noto Serif SC", Georgia, serif !important;
+  font-size: 12px !important;
+  font-weight: 400 !important;
+  letter-spacing: 1.8px !important;
+  color: #6d6355 !important;
+}
+
+.xianguo-reading-container .xianguo-back-btn {
+  color: #5f574b !important;
+}
+
+.xianguo-read-article-scroll {
+  position: relative;
+  z-index: 1;
+  background: transparent !important;
+  color: #313131 !important;
+  font-family: "Songti SC", "STSong", "Songti TC", "Noto Serif SC", "Source Han Serif SC", "SimSun", Georgia, serif !important;
+  font-size: 17.5px !important;
+  line-height: 2.02 !important;
+  letter-spacing: 0.25px !important;
+  padding: 34px 27px 150px 27px !important;
+}
+
+.xianguo-read-bookline {
+  text-align: center;
+  font-size: 11.5px;
+  letter-spacing: 1.8px;
+  color: #8d8373;
+  margin-bottom: 26px;
+}
+
+.xianguo-read-chapter-num {
+  text-align: center !important;
+  color: #8d8373 !important;
+  font-size: 11px !important;
+  letter-spacing: 3px !important;
+  margin-bottom: 12px !important;
+}
+
+.xianguo-read-chapter-title {
+  text-align: center !important;
+  color: #2f2b26 !important;
+  font-family: inherit !important;
+  font-size: 23px !important;
+  font-weight: 600 !important;
+  letter-spacing: 1.6px !important;
+  border-bottom: none !important;
+  padding: 0 0 20px 0 !important;
+  margin: 0 0 30px 0 !important;
+  position: relative;
+}
+
+.xianguo-read-chapter-title::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(90, 76, 56, 0) 0%, rgba(90, 76, 56, 0.42) 14%, rgba(90, 76, 56, 0.42) 86%, rgba(90, 76, 56, 0) 100%);
+}
+
+.xianguo-read-p {
+  color: #313131 !important;
+  font-size: 17.5px !important;
+  line-height: 2.02 !important;
+  letter-spacing: 0.25px !important;
+  margin: 0 0 1.08em 0 !important;
+  text-align: justify;
+}
+
+.xianguo-read-p::selection,
+.xianguo-read-p *::selection {
+  background: rgba(162, 100, 76, 0.22);
+}
+
+.xianguo-parchment-bottom-bar {
+  position: relative;
+  z-index: 2;
+  background: linear-gradient(180deg, #F4EEE3 0%, #EAE3D5 100%) !important;
+  border: 1px solid rgba(122, 96, 60, 0.20) !important;
+  box-shadow: 0 10px 26px rgba(60, 48, 30, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  color: #5b5348 !important;
+}
+
+.xianguo-parchment-action-icon,
+.xianguo-parchment-action-label,
+.xianguo-parchment-progress-row,
+.xianguo-progress-header-info {
+  color: #6b6154 !important;
+}
+
+.xianguo-progress-slider {
+  accent-color: #A2644C;
+}

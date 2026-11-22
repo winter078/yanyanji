@@ -2009,7 +2009,9 @@
       paragraphs: ['暂无内容']
     };
 
+    const totalChaps = currentActiveBook.chapters ? currentActiveBook.chapters.length : 1;
     bodyEl.innerHTML = `
+      <div class="xianguo-read-bookline">《${currentActiveBook.title || '未命名'}》 · 第 ${currentChapterIdx + 1} 章 / 共 ${totalChaps} 章</div>
       <div class="xianguo-read-chapter-num">第 ${currentChapterIdx + 1} 章</div>
       <div class="xianguo-read-chapter-title">${chap.title}</div>
       ${chap.paragraphs.map((p, idx) => `

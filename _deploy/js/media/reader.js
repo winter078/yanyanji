@@ -125,8 +125,25 @@
   let selectedQuoteText = '';
   let currentFontSize = 17;
 
-  // ★ 核心改进：每本书专属隔离的聊天记录字典 { [bookId]: [ ...messages ] }
+  // ★ 每本书专属隔离的聊天记录字典 { [bookId + '::' + 同伴id]: [ ...messages ] }
   let allBooksChatMap = {};
+
+  // ★ 同伴（陪读的人）：默认周绪言，可在阅读页切换
+  let readerCompanionId = '';
+  try { readerCompanionId = localStorage.getItem('momo_reader_companion') || ''; } catch(e) {}
+
+  function readerCompanion() {
+    if (!window.Companion || !readerCompanionId) return null;
+    return window.Companion.byId(readerCompanionId);
+  }
+
+  function readerCompanionName() {
+    return window.Companion ? window.Companion.displayName(readerCompanion()) : '周绪言';
+  }
+
+  function readerChatKey(bookId) {
+    return String(bookId) + '::' + (readerCompanionId || '');
+  }
 
   function loadBooksChatMap() {
     try {
@@ -145,16 +162,23 @@
 
   function getActiveBookChatHistory() {
     if (!currentActiveBook) return [];
-    if (!allBooksChatMap[currentActiveBook.id] || allBooksChatMap[currentActiveBook.id].length === 0) {
-      allBooksChatMap[currentActiveBook.id] = [
-        {
-          sender: 'bot',
-          text: 'user，有什么想和我说的吗？',
-          quote: ''
-        }
-      ];
+    const key = readerChatKey(currentActiveBook.id);
+    if (!allBooksChatMap[key] || allBooksChatMap[key].length === 0) {
+      // 老数据存在 bookId 键下：只有默认同伴才继承，避免串到别人名下
+      const legacy = allBooksChatMap[currentActiveBook.id];
+      if (!readerCompanionId && legacy && legacy.length) {
+        allBooksChatMap[key] = legacy.slice();
+      } else {
+        allBooksChatMap[key] = [
+          {
+            sender: 'bot',
+            text: 'user，有什么想和我说的吗？',
+            quote: ''
+          }
+        ];
+      }
     }
-    return allBooksChatMap[currentActiveBook.id];
+    return allBooksChatMap[key];
   }
 
   // 全局 API 配置读取 (优先伴读专属模型)
@@ -213,22 +237,20 @@
     } catch(e) {}
   }
 
-  // 选项卡切换 (我的书架 vs 书城)
+  // 选项卡切换（旧调用统一转发到新的底部三 Tab）
   window.switchXianguoTab = function(tab) {
-    const tabShelf = document.getElementById('tab-xianguo-shelf');
-    const tabStore = document.getElementById('tab-xianguo-store');
+    const t = tab === 'store' ? 'store' : (tab === 'mine' ? 'mine' : 'shelf');
+    if (typeof window.rdSwitchReaderTab === 'function') {
+      window.rdSwitchReaderTab(t);
+      return;
+    }
     const viewShelf = document.getElementById('xianguo-shelf-viewport');
     const viewStore = document.getElementById('xianguo-store-viewport');
-
-    if (tab === 'shelf') {
-      if (tabShelf) tabShelf.classList.add('active');
-      if (tabStore) tabStore.classList.remove('active');
+    if (t === 'shelf') {
       if (viewShelf) viewShelf.style.display = 'block';
       if (viewStore) viewStore.style.display = 'none';
       renderShelfUI();
     } else {
-      if (tabShelf) tabShelf.classList.remove('active');
-      if (tabStore) tabStore.classList.add('active');
       if (viewShelf) viewShelf.style.display = 'none';
       if (viewStore) viewStore.style.display = 'block';
       renderStoreUI();
@@ -452,10 +474,16 @@
 
     const catView = document.getElementById('xianguo-writer-catalog-view');
     const editorView = document.getElementById('xianguo-writer-editor-view');
-    if (catView) catView.style.display = 'flex';
-    if (editorView) editorView.style.display = 'none';
-
     if (modal) modal.style.display = 'flex';
+
+    // 单栏沉浸：进写作直接到正文，章节目录走左上角抽屉
+    if (writerChapters.length) {
+      if (catView) catView.style.display = 'none';
+      if (editorView) editorView.style.display = 'flex';
+    } else {
+      if (catView) catView.style.display = 'flex';
+      if (editorView) editorView.style.display = 'none';
+    }
   };
 
   window.closeXianguoWriterModal = function() {
@@ -523,7 +551,13 @@
     const cur = writerChapters[currentWriterChapIdx] || { title: '第1章', text: '' };
 
     if (chapNumTag) chapNumTag.innerText = '第 ' + (currentWriterChapIdx + 1) + ' 章';
-    if (inChapTitle) inChapTitle.value = cur.title || ('第 ' + (currentWriterChapIdx + 1) + ' 章');
+    if (inChapTitle) {
+      const t = cur.title || '';
+      const plainNum = /^第\s*\d+\s*章$/.test(t) || /^第1章$/.test(t);
+      // 章号已经单独显示在左边，标题若是“第 N 章”就留空，避免重复
+      inChapTitle.value = plainNum ? '' : t;
+      inChapTitle.placeholder = '给这一章起个名字';
+    }
     if (textarea) textarea.value = cur.text || '';
   }
 
@@ -864,57 +898,175 @@
   window.renderReaderShelf = window.renderShelfUI;
 
   // 渲染书城
-  window.renderStoreUI = function() {
-    const listEl = document.getElementById('xianguo-store-feed-list');
-    if (!listEl) return;
+  // ================= 📚 书城：在线公版书库（2026-11-20） =================
+  // 只收公版书（古典名著 / 话本 / 志怪 / 演义）。清单与正文都放在本仓库 data/books/ 下，
+  // 一次请求拿全书，导进 IndexedDB 之后就和本地书完全一样。
+  const ONLINE_CATALOG_PATH = 'data/books/index.json';
+  let onlineCatalogCache = null;
+  let onlineActiveTag = '';
 
-    listEl.innerHTML = storeFeedBooks.map(b => `
-      <div class="xianguo-feed-card" onclick="addStoreBookToShelf('${b.id}')">
-        <img class="xianguo-feed-cover" src="${b.cover}" alt="${b.title}" />
-        <div class="xianguo-feed-info">
-          <div>
-            <div class="xianguo-feed-name">${b.title}</div>
-            <div class="xianguo-feed-author-tag">${b.author} · ${b.genre}</div>
-            <div class="xianguo-feed-intro">${b.intro}</div>
-          </div>
-          <div class="xianguo-feed-update">${b.update}</div>
-        </div>
-      </div>
-    `).join('');
+  const ONLINE_TAG_MAP = {
+    all: '',
+    mod: '明清小说',
+    for: '译著',
+    det: '公案',
+    cla: '古典文学',
+    wux: '演义'
   };
 
-  window.addStoreBookToShelf = function(storeBookId) {
-    const sb = storeFeedBooks.find(b => b.id === storeBookId);
-    if (!sb) return;
+  function onlineEsc(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
 
-    if (currentBooks.some(b => b.title === sb.title)) {
-      alert('user，这本《' + sb.title + '》已经在你的书架里啦！');
+  async function loadOnlineCatalog(force) {
+    if (onlineCatalogCache && !force) return onlineCatalogCache;
+    const res = await fetch(ONLINE_CATALOG_PATH + '?v=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) throw new Error('书库清单读取失败 HTTP ' + res.status);
+    const data = await res.json();
+    onlineCatalogCache = Array.isArray(data) ? data : (data.books || []);
+    return onlineCatalogCache;
+  }
+
+  function onlineMatch(book, kw) {
+    if (!kw) return true;
+    const hay = [book.title, book.author].concat(book.alias || []).join(' ').toLowerCase();
+    return hay.indexOf(kw.toLowerCase()) >= 0;
+  }
+
+  function onlineCoverHtml(meta) {
+    const theme = rdPureTheme(meta.title || meta.id || 'x');
+    return '<div class="xianguo-feed-cover" style="background:linear-gradient(160deg,' + theme.bg2a + ' 0%,' + theme.bg2b +
+      ' 100%);color:' + theme.text2 + ';width:66px;height:90px;flex:0 0 66px;border-radius:4px;' +
+      ';display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:500;letter-spacing:2px;writing-mode:horizontal-tb;">' +
+      onlineEsc(String(meta.title || '').slice(0, 2)) + '</div>';
+  }
+
+  function paintStoreList(list, note) {
+    const box = document.getElementById('xianguo-store-feed-list');
+    if (!box) return;
+    const tagEl = document.querySelector('.xianguo-feed-tag');
+    const titleEl = document.getElementById('xianguo-feed-category-title');
+    const countEl = document.getElementById('xianguo-feed-count');
+    if (tagEl) tagEl.textContent = '在线公版书库';
+    if (titleEl) titleEl.textContent = note || '现在就能读的';
+    if (countEl) countEl.textContent = list.length + ' 本';
+    if (!list.length) {
+      box.innerHTML = '<div class="xianguo-store-empty">没找到。<br>在线库只收公版书：古典名著、话本、志怪、演义。换本书名再试。</div>';
+      return;
+    }
+    box.innerHTML = list.map(function (b) {
+      const inShelf = currentBooks.some(function (x) { return x && x.onlineId === b.id; });
+      return '<div class="xianguo-feed-card" onclick="addStoreBookToShelf(\'' + b.id + '\')">' +
+        onlineCoverHtml(b) +
+        '<div class="xianguo-feed-info">' +
+          '<div>' +
+            '<div class="xianguo-feed-name">' + onlineEsc(b.title) +
+              (inShelf ? '<span class="xianguo-feed-own">已在书架</span>' : '') + '</div>' +
+            '<div class="xianguo-feed-author-tag">' + onlineEsc(b.author || '佚名') +
+              (b.chapterCount ? ' · ' + b.chapterCount + ' 章' : '') + '</div>' +
+            '<div class="xianguo-feed-intro">' + onlineEsc(b.desc || '') + '</div>' +
+          '</div>' +
+          '<div class="xianguo-feed-update">' + (inShelf ? '点一下回到上次那一页' : '点一下搬到小手机，直接读') + '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  window.searchStoreNovels = function () {
+    const kwEl = document.getElementById('xianguo-search-kw');
+    const kw = kwEl ? kwEl.value.trim() : '';
+    loadOnlineCatalog().then(function (all) {
+      loadLocalShelf();
+      let list = all;
+      if (kw) list = list.filter(function (b) { return onlineMatch(b, kw); });
+      if (onlineActiveTag) list = list.filter(function (b) { return (b.tags || []).indexOf(onlineActiveTag) >= 0; });
+      const label = [kw ? '搜「' + kw + '」' : '', onlineActiveTag].filter(Boolean).join(' · ');
+      paintStoreList(list, label);
+    }).catch(function (e) {
+      const box = document.getElementById('xianguo-store-feed-list');
+      if (box) {
+        box.innerHTML = '<div class="xianguo-store-empty">书库没连上：' + onlineEsc(e.message) +
+          '<br>大概是网络断了，再点一次「搜索」。</div>';
+      }
+    });
+  };
+
+  window.quickSearchStore = function (kw) {
+    const el = document.getElementById('xianguo-search-kw');
+    if (el) el.value = kw;
+    window.searchStoreNovels();
+  };
+
+  window.switchGenreTag = function (el, key) {
+    document.querySelectorAll('.xianguo-genre-chip').forEach(function (c) { c.classList.remove('active'); });
+    if (el) el.classList.add('active');
+    onlineActiveTag = ONLINE_TAG_MAP[key] || '';
+    window.searchStoreNovels();
+  };
+
+  window.renderStoreUI = function () {
+    window.searchStoreNovels();
+  };
+
+  window.addStoreBookToShelf = async function (storeBookId) {
+    loadLocalShelf();
+    const existed = currentBooks.find(function (b) { return b && b.onlineId === storeBookId; });
+    if (existed) { openXianguoReading(existed.id); return; }
+
+    let meta = null;
+    try {
+      const all = await loadOnlineCatalog();
+      meta = all.find(function (b) { return b.id === storeBookId; }) || null;
+    } catch (e) {
+      alert('书库没连上：' + e.message);
+      return;
+    }
+    if (!meta) { alert('书库里没有这本。'); return; }
+
+    showXianguoToast('正在搬《' + meta.title + '》…', 8000);
+    let data = null;
+    try {
+      const res = await fetch(meta.file, { cache: 'no-store' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      data = await res.json();
+    } catch (e) {
+      alert('《' + meta.title + '》没搬成：' + e.message + '\n换个网络再点一次。');
       return;
     }
 
-    const newB = {
-      id: 'store-' + Date.now(),
-      title: sb.title,
-      author: sb.author,
-      cover: sb.cover,
-      lastReadChapTitle: '第一章 序章',
-      progress: 0,
-      lastReadTime: '刚刚添加',
-      chapters: [
-        {
-          title: '第一章 序章',
-          paragraphs: [
-            sb.intro,
-            '天光微敛，风声鹤唳。随着第一道惊雷划过天幕，整个故事徐徐铺展开来……'
-          ]
-        }
-      ]
-    };
+    const chapters = (data.chapters || [])
+      .filter(function (c) { return c && c.title && Array.isArray(c.paragraphs) && c.paragraphs.length; })
+      .map(function (c) { return { title: String(c.title), paragraphs: c.paragraphs.map(function (p) { return String(p); }) }; });
+    if (!chapters.length) { alert('这本抽不出正文，先别导。'); return; }
 
-    currentBooks.unshift(newB);
+    const bookId = 'ol-' + Date.now().toString(36) + '-' + Math.floor(Math.random() * 1000);
+    const book = {
+      id: bookId,
+      onlineId: meta.id,
+      title: meta.title,
+      author: meta.author || '佚名',
+      cover: '',
+      lastReadChapTitle: chapters[0].title,
+      lastReadTime: '刚刚搬进来',
+      progress: 0,
+      chapterCount: chapters.length,
+      hasIndexedDB: true,
+      isOriginal: false,
+      origin: 'online',
+      source: meta.source || ''
+    };
+    loadLocalShelf();
+    currentBooks.unshift(book);
     saveLocalShelf();
-    alert('已成功将《' + sb.title + '》加入书架！');
+    const ok = await saveBookChaptersToDB(bookId, chapters);
+    if (!ok) console.warn('在线书正文写 IndexedDB 失败，书单条目保留');
+    renderShelfUI();
+    showXianguoToast('📖 《' + meta.title + '》已进书架 · ' + chapters.length + ' 回', 3000);
+    if (onlineCatalogCache) paintStoreList(onlineCatalogCache, '');
     switchXianguoTab('shelf');
+    openXianguoReading(bookId);
   };
 
   window.resumeLastReading = function() {
@@ -1073,6 +1225,160 @@
     return { title, author };
   }
 
+  // ================= 🧩 轻量 ZIP 读取（EPUB 用，纯前端无依赖） =================
+  async function openEpubZip(arrayBuffer) {
+    const u8 = new Uint8Array(arrayBuffer);
+    const dv = new DataView(arrayBuffer);
+    const u16 = (o) => dv.getUint16(o, true);
+    const u32 = (o) => dv.getUint32(o, true);
+
+    let eocd = -1;
+    const minStart = Math.max(0, u8.length - 65558);
+    for (let i = u8.length - 22; i >= minStart; i--) {
+      if (u32(i) === 0x06054b50) { eocd = i; break; }
+    }
+    if (eocd < 0) throw new Error('这不是有效的 EPUB（找不到压缩包目录）');
+
+    const count = u16(eocd + 10);
+    const cdOff = u32(eocd + 16);
+    const entries = {};
+    let p = cdOff;
+    for (let i = 0; i < count; i++) {
+      if (u32(p) !== 0x02014b50) break;
+      const method = u16(p + 10);
+      const csize = u32(p + 20);
+      const nameLen = u16(p + 28);
+      const extraLen = u16(p + 30);
+      const commentLen = u16(p + 32);
+      const lho = u32(p + 42);
+      const name = new TextDecoder('utf-8').decode(u8.subarray(p + 46, p + 46 + nameLen)).replace(/\\/g, '/');
+      const lnLen = u16(lho + 26), leLen = u16(lho + 28);
+      const dataOff = lho + 30 + lnLen + leLen;
+      entries[name] = { method, csize, dataOff };
+      p += 46 + nameLen + extraLen + commentLen;
+    }
+
+    const names = Object.keys(entries);
+    const findName = (n) => {
+      if (entries[n]) return n;
+      const lower = String(n).toLowerCase();
+      return names.find((k) => k.toLowerCase() === lower) || null;
+    };
+
+    async function get(n) {
+      const key = findName(n);
+      if (!key) return null;
+      const e = entries[key];
+      const raw = u8.subarray(e.dataOff, e.dataOff + e.csize);
+      if (e.method === 0) return raw;
+      if (e.method === 8) {
+        if (typeof DecompressionStream !== 'function') {
+          throw new Error('这个系统版本解不开 EPUB 压缩，请改用 TXT 导入（或升级到 iOS 16.4 以上）');
+        }
+        const stream = new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+        const ab = await new Response(stream).arrayBuffer();
+        return new Uint8Array(ab);
+      }
+      throw new Error('EPUB 使用了不支持的压缩方式（' + e.method + '）');
+    }
+
+    return { names, get };
+  }
+
+  function htmlToParagraphs(html) {
+    const div = document.createElement('div');
+    div.innerHTML = String(html)
+      .replace(/<\?xml[^>]*\?>/gi, '')
+      .replace(/<head[\s\S]*?<\/head>/gi, '');
+    div.querySelectorAll('script,style,img,svg,figure,table,footnote').forEach((e) => e.remove());
+    const ps = Array.from(div.querySelectorAll('p')).map((p) => p.textContent.replace(/[\s\u3000]+/g, ' ').trim()).filter(Boolean);
+    if (ps.length >= 2) return ps;
+    const text = div.innerHTML
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/(p|div|h[1-6]|li|blockquote|section)>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+    return text.split('\n').map((s) => s.replace(/[\s\u3000]+/g, ' ').trim()).filter(Boolean);
+  }
+
+  function htmlChapterTitle(html) {
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    const h = div.querySelector('h1,h2,h3,h4');
+    if (h) {
+      const t = h.textContent.replace(/[\s\u3000]+/g, ' ').trim();
+      if (t && t.length <= 60) return t;
+    }
+    const t2 = div.querySelector('title');
+    if (t2) {
+      const t = t2.textContent.trim();
+      if (t && t.length <= 60) return t;
+    }
+    return '';
+  }
+
+  async function parseEpubToChapters(file) {
+    const zip = await openEpubZip(await file.arrayBuffer());
+    const dec = (b) => new TextDecoder('utf-8').decode(b);
+
+    let opfPath = null;
+    const container = await zip.get('META-INF/container.xml');
+    if (container) {
+      const m = dec(container).match(/full-path="([^"]+)"/i);
+      if (m) opfPath = m[1];
+    }
+    if (!opfPath) opfPath = zip.names.find((n) => n.toLowerCase().endsWith('.opf')) || null;
+    if (!opfPath) throw new Error('EPUB 缺少 opf 描述文件');
+
+    const opfText = dec(await zip.get(opfPath));
+    const manifest = {};
+    opfText.replace(/<item\b[^>]*>/gi, (tag) => {
+      const id = (tag.match(/\bid="([^"]*)"/i) || [])[1];
+      const href = (tag.match(/\bhref="([^"]*)"/i) || [])[1];
+      if (id && href) manifest[id] = href;
+      return tag;
+    });
+    const spineIds = [];
+    const spineBlock = (opfText.match(/<spine\b[\s\S]*?<\/spine>/i) || [''])[0];
+    spineBlock.replace(/<itemref\b[^>]*>/gi, (tag) => {
+      const id = (tag.match(/idref="([^"]*)"/i) || [])[1];
+      if (id) spineIds.push(id);
+      return tag;
+    });
+
+    const order = spineIds.length ? spineIds : Object.keys(manifest);
+    const chapters = [];
+    for (let i = 0; i < order.length; i++) {
+      const id = order[i];
+      const href = manifest[id];
+      if (!href) continue;
+      let full;
+      try {
+        full = decodeURIComponent(new URL(href, 'http://epub.local/' + opfPath).pathname.replace(/^\//, ''));
+      } catch (e) {
+        full = (opfPath.includes('/') ? opfPath.slice(0, opfPath.lastIndexOf('/') + 1) : '') + href;
+      }
+      const bytes = await zip.get(full);
+      if (!bytes) continue;
+      const html = dec(bytes);
+      const paras = htmlToParagraphs(html);
+      const textLen = paras.reduce((s, x) => s + x.length, 0);
+      if (textLen < 30) continue; // 封面、版权页这类跳过
+      const title = htmlChapterTitle(html) || ('第 ' + (chapters.length + 1) + ' 章');
+      // 有些 epub 会把标题在正文里再写一遍，去掉开头重复的那一段
+      while (paras.length && paras[0].replace(/[\s\u3000]+/g, '') === title.replace(/[\s\u3000]+/g, '')) {
+        paras.shift();
+      }
+      if (!paras.length) continue;
+      chapters.push({ title, paragraphs: paras });
+    }
+
+    if (!chapters.length) throw new Error('EPUB 里没抽到正文');
+    return chapters;
+  }
+
   // ================= 📖 智能编码自适应与正则分章解析器 =================
   async function parseNovelFileToChapters(file) {
     return new Promise((resolve) => {
@@ -1094,60 +1400,85 @@
           }
         }
 
+        text = text.replace(/^\uFEFF/, '');
         text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-        const chapterRegex = /^[ \t　]*(?:(Part\s*[0-9]+|第[0-9一二三四五六七八九十百千万零]+[章回卷节集幕篇部折]|Chapter\s+[0-9]+|番外[0-9一二三四五六七八九十]*|引子|序言|楔子|尾声|后记)[\s:：、._-]*[^\n\r]{0,45})$/gmi;
+        text = text.replace(/[\u200b-\u200f\u2028\u2029]/g, '');
 
-        const matches = [];
-        let match;
-        while ((match = chapterRegex.exec(text)) !== null) {
-          const rawTitle = match[0].trim();
-          if (!/^["'“‘「]/.test(rawTitle)) {
-            matches.push({ index: match.index, title: rawTitle });
+        // 盗版站常见水印 / 广告行，进正文前先剔掉
+        const NOISE_RE = /^(?:本书由|本书首发|首发|最新章节|请记住|手机版|电脑版|手机阅读|手机用户|访问|欢迎收藏|全文阅读|无弹窗|下载|笔趣阁|顶点|铅笔|书包|掌阅|书友|感谢|求收藏|求订阅|求月票|投推荐票|打赏|本章完|本章未完|www\.|http|https|m\.|wap\.)/i;
+        const rawLines = text.split('\n');
+        const lines = [];
+        for (let li = 0; li < rawLines.length; li++) {
+          const l = rawLines[li].replace(/[\u3000\t]+/g, ' ').trim();
+          if (!l) continue;
+          if (l.length <= 60 && NOISE_RE.test(l)) continue;
+          if (l.length <= 40 && /^[（(【\[]?(本章完|未完待续|全文完|全文终)[）)】\]]?/.test(l)) continue;
+          // 一行字数过长（某些 txt 全篇不断行），按句号先劈开
+          if (l.length > 3000) {
+            const pieces = l.split(/(?<=[。！？…”』」])/).map((s) => s.trim()).filter(Boolean);
+            for (const pc of pieces) if (pc) lines.push(pc);
+            continue;
           }
+          lines.push(l);
         }
 
-        const chapters = [];
-        if (matches.length > 0) {
-          if (matches[0].index > 0) {
-            const intro = text.substring(0, matches[0].index).trim();
-            if (intro.length > 15) {
-              chapters.push({
-                title: '序言 / 引子',
-                paragraphs: intro.split('\n').map(p => p.trim()).filter(Boolean)
-              });
-            }
-          }
+        const TITLE_RES = [
+          /^(?:Part\s*\d+|Chapter\s*\d+|CHAPTER\s+[IVXLC]+)/i,
+          /^第[〇零一二三四五六七八九十百千万两0-9]+[章回卷节集幕篇部折話话]/,
+          /^(?:卷|回|章|节|篇)[〇零一二三四五六七八九十百0-9]+/,
+          /^(?:序章|序言|序幕|序|引子|楔子|前言|后记|尾声|终章|结局|番外|外传|附录|小引|凡例)/,
+          /^\d{1,4}[、.．]\s*\S/
+        ];
+        const isTitle = (l) => {
+          if (l.length > 42) return false;
+          if (TITLE_RES.some((re) => re.test(l))) return true;
+          return false;
+        };
 
-          for (let i = 0; i < matches.length; i++) {
-            const cur = matches[i];
-            const nxt = matches[i + 1];
-            const rawChunk = text.substring(cur.index, nxt ? nxt.index : text.length);
-            const lines = rawChunk.split('\n');
-            const title = lines[0].trim();
-            const paragraphs = lines.slice(1).map(p => p.trim()).filter(Boolean);
-            chapters.push({
-              title: title || ('第 ' + (i + 1) + ' 章'),
-              paragraphs: paragraphs.length > 0 ? paragraphs : ['（本章无段落内容）']
-            });
-          }
-        } else {
-          const allParagraphs = text.split('\n').map(p => p.trim()).filter(Boolean);
-          const chunkSize = 80;
-          if (allParagraphs.length > chunkSize) {
-            let chapCounter = 1;
-            for (let i = 0; i < allParagraphs.length; i += chunkSize) {
-              chapters.push({
-                title: '第 ' + chapCounter + ' 部分',
-                paragraphs: allParagraphs.slice(i, i + chunkSize)
-              });
-              chapCounter++;
+        const marks = [];
+        for (let li = 0; li < lines.length; li++) {
+          const l = lines[li];
+          if (/^["'“‘「『]/.test(l)) continue;
+          if (isTitle(l)) marks.push({ i: li, title: l });
+        }
+
+        // 标题太密（正文里误命中的情况）就视为没标题
+        const marksUsable = marks.length > 0 && marks.length <= Math.max(4, Math.floor(lines.length / 6));
+
+        let chapters = [];
+        if (marksUsable) {
+          const firstMarks = marks[0].i;
+          if (firstMarks > 0) {
+            const intro = lines.slice(0, firstMarks).join('\n').trim();
+            if (intro.length > 10) {
+              chapters.push({ title: '序言 / 引子', paragraphs: lines.slice(0, firstMarks) });
             }
-          } else {
+          }
+          for (let k = 0; k < marks.length; k++) {
+            const cur = marks[k];
+            const nxt = marks[k + 1];
+            const body = lines.slice(cur.i + 1, nxt ? nxt.i : lines.length);
             chapters.push({
-              title: '全本阅读',
-              paragraphs: allParagraphs.length > 0 ? allParagraphs : ['（空书籍文件）']
+              title: cur.title || ('第 ' + (k + 1) + ' 章'),
+              paragraphs: body.length ? body : ['（本章无段落内容）']
             });
           }
+        } else if (lines.length > 0) {
+          // 没有章节标记：按字数切，约 2000 字一节，读起来不至于一屏几千字
+          const CHUNK_CHARS = 2000;
+          let buf = [], n = 0;
+          for (const l of lines) {
+            buf.push(l);
+            n += l.length;
+            if (n >= CHUNK_CHARS) {
+              chapters.push({ title: '第 ' + (chapters.length + 1) + ' 节', paragraphs: buf });
+              buf = []; n = 0;
+            }
+          }
+          if (buf.length) chapters.push({ title: '第 ' + (chapters.length + 1) + ' 节', paragraphs: buf });
+          if (chapters.length <= 1) chapters = [{ title: '全本阅读', paragraphs: lines }];
+        } else {
+          chapters = [{ title: '空书籍文件', paragraphs: ['这个文件里没有文字。'] }];
         }
 
         resolve(chapters);
@@ -1215,6 +1546,7 @@
 
     let successCount = 0;
     const addedBooks = [];
+    const failures = [];
 
     for (let i = 0; i < fileList.length; i++) {
       const file = fileList[i];
@@ -1225,7 +1557,20 @@
       showXianguoToast('📖 (' + (i + 1) + '/' + fileList.length + ') 正在智能分章《' + file.name + '》...', 8000);
 
       const meta = parseBookMetaFromFileName(file.name);
-      const chapters = await parseNovelFileToChapters(file);
+      let chapters = [];
+      try {
+        chapters = /\.epub$/i.test(file.name)
+          ? await parseEpubToChapters(file)
+          : await parseNovelFileToChapters(file);
+      } catch (err) {
+        console.warn('导入失败', file.name, err);
+        failures.push(file.name + '：' + (err && err.message ? err.message : '读取失败'));
+        continue;
+      }
+      if (!chapters || !chapters.length) {
+        failures.push(file.name + '：抽不出正文');
+        continue;
+      }
       const bookId = 'book-local-' + Date.now() + '-' + Math.floor(Math.random() * 10000);
 
       // 1. 大文本正文异步写入 IndexedDB (永不占用 localStorage 宝贵配额)
@@ -1253,10 +1598,13 @@
     if (successCount > 0) {
       saveLocalShelf();
       renderShelfUI();
-      showXianguoToast('✨ 成功将 ' + successCount + ' 本小说收纳进书架！', 3000);
+      showXianguoToast('✨ 成功将 ' + successCount + ' 本收纳进书架' + (failures.length ? '，' + failures.length + ' 本失败' : '') + '！', failures.length ? 5000 : 3000);
       closeXianguoAddSheet();
+      if (failures.length) setTimeout(function () { alert('这些没导进去：\n· ' + failures.join('\n· ')); }, 600);
+    } else if (failures.length) {
+      alert('一本都没导进去：\n· ' + failures.join('\n· '));
     } else {
-      showXianguoToast('⚠️ 未检测到有效的 txt 或小说文本文件', 2500);
+      showXianguoToast('⚠️ 没找到能读的 txt / epub 文件', 2500);
     }
   };
 
@@ -1400,7 +1748,12 @@
     const idToDelete = editingBookId;
 
     // 清理该书专属聊天记录
-    delete allBooksChatMap[idToDelete];
+    // 这本书在所有同伴名下的对话一起删掉，别留孤儿
+    Object.keys(allBooksChatMap).forEach(function (k) {
+      if (k === idToDelete || k.indexOf(String(idToDelete) + '::') === 0) {
+        delete allBooksChatMap[k];
+      }
+    });
     saveBooksChatMap();
 
     // 清理 IndexedDB 大容量正文
@@ -1413,6 +1766,187 @@
   };
 
   // ================= 正文沉浸阅读器 =================
+  // 2026-11-20 图书联动第一步：把当前在读的这一章交给「此时此刻」剧场开演
+  window.startTheaterWithBook = function () {
+    if (!currentActiveBook) { alert('先打开一本书，再点开演。'); return; }
+    const chapters = currentActiveBook.chapters || [];
+    const idx = Math.min(Math.max(currentChapterIdx || 0, 0), Math.max(chapters.length - 1, 0));
+    const chap = chapters[idx] || { title: '第1章', paragraphs: [] };
+    const bodyText = (chap.paragraphs || []).join('\n');
+    const excerpt = bodyText.length > 1200 ? bodyText.slice(0, 1200) + '……' : bodyText;
+    if (typeof window.setTheaterBookStage !== 'function') {
+      alert('剧场还没准备好，等一下再试。');
+      return;
+    }
+    window.setTheaterBookStage({
+      bookId: currentActiveBook.id,
+      title: currentActiveBook.title || '',
+      author: currentActiveBook.author || '',
+      chapterIndex: idx,
+      chapterTitle: chap.title || ('第' + (idx + 1) + '章'),
+      chapterCount: chapters.length,
+      excerpt: excerpt,
+      updatedAt: Date.now()
+    });
+    try {
+      if (typeof window.closeReaderModal === 'function') window.closeReaderModal('reader-catalog-drawer-modal');
+    } catch (e) {}
+    if (typeof window.openPage === 'function') window.openPage('page-rp');
+  };
+
+  // 2026-11-20 图书联动：把「此时此刻」演过的剧情导入成书架里的一本书
+  // 这类书带 origin:'rp' 标记 —— 只有它们才显示「🎭 用这本书开剧场」。
+  window.importRpStoryAsBook = function (payload) {
+    const data = payload || {};
+    const chapters = (Array.isArray(data.chapters) ? data.chapters : [])
+      .filter(c => c && c.title && Array.isArray(c.paragraphs) && c.paragraphs.length)
+      .map(c => ({ title: String(c.title), paragraphs: c.paragraphs.map(p => String(p)) }));
+    if (!chapters.length) return { ok: false, error: '没有可导入的正文' };
+
+    loadLocalShelf();
+    const id = 'rp-' + Date.now().toString(36) + '-' + Math.floor(Math.random() * 1000);
+    const book = {
+      id: id,
+      title: data.title || '剧场',
+      author: data.author || '言言机 · 此时此刻',
+      cover: '',
+      lastReadChapTitle: chapters[0].title,
+      lastReadTime: '刚刚',
+      progress: 0,
+      chapterCount: chapters.length,
+      hasIndexedDB: true,
+      isOriginal: true,
+      origin: 'rp',
+      rpMeta: {
+        charName: data.charName || '',
+        savedAt: data.savedAt || Date.now(),
+        preamble: data.preamble || ''
+      }
+    };
+    currentBooks.unshift(book);
+    saveLocalShelf();
+    saveBookChaptersToDB(id, chapters).then(function (ok) {
+      if (!ok) console.warn('剧场剧情写入 IndexedDB 失败，书单条目仍然保留');
+      renderShelfUI();
+    });
+    renderShelfUI();
+    try { showXianguoToast('📖 《' + book.title + '》已放进书架', 3000); } catch (e) {}
+    return { ok: true, bookId: id, chapters: chapters.length };
+  };
+
+  // ====== 聊天里的共读卡片（用户发 / 角色发共用） ======
+  window.readerCatalogForAi = function(limit) {
+    const list = (typeof currentBooks !== 'undefined' && currentBooks) || [];
+    const n = limit || 6;
+    const parts = [];
+    const cur = (typeof currentActiveBook !== 'undefined' && currentActiveBook) || null;
+    if (cur && cur.title) {
+      const chap = (cur.chapters && cur.chapters[currentChapterIdx] && cur.chapters[currentChapterIdx].title) || '';
+      const pct = Number(cur.progress);
+      const tail = (chap ? ('正在读：' + chap) : '正在读')
+        + (pct > 0 ? ('，进度 ' + pct + '%') : '');
+      parts.push(cur.title + '（' + tail + '）');
+    }
+    list.forEach(function(b) {
+      if (cur && b.id === cur.id) return;
+      if (parts.length >= n) return;
+      parts.push(b.title + (b.author ? (' - ' + b.author) : ''));
+    });
+    return parts.join('；');
+  };
+
+  function findBookByTitle(want) {
+    if (!want) return null;
+    const w = String(want).replace(/[《》"“”']/g, '').trim();
+    if (!w) return null;
+    const list = (typeof currentBooks !== 'undefined' && currentBooks) || [];
+    for (let i = 0; i < list.length; i++) {
+      const t = String(list[i].title || '').replace(/[《》"“”']/g, '');
+      if (t === w || t.indexOf(w) >= 0 || w.indexOf(t) >= 0) return list[i];
+    }
+    return null;
+  }
+
+  window.readerCardMarkerToShareCard = function(text) {
+    if (!text || text.indexOf('[READ_') < 0) return text;
+    function build(titleRaw, invite) {
+      const book = findBookByTitle(titleRaw);
+      const card = {
+        kind: invite ? 'read_invite' : 'read',
+        bookId: book ? book.id : '',
+        title: book ? book.title : String(titleRaw || '').trim(),
+        desc: (book && book.author ? book.author : '书架上的一本') + (invite ? ' · 邀你一起读' : ' · 分享给你'),
+        cover: (book && book.cover) || '',
+        brand: invite ? '一起读邀请' : '共读分享',
+        brandIcon: '📖'
+      };
+      return '[SHARECARD:' + JSON.stringify(card) + ']';
+    }
+    return String(text)
+      .replace(/\[READ_INVITE\s*[:：]\s*([^\]\n]+)\]/g, function(m, t) { return build(t, true); })
+      .replace(/\[READ_SHARE\s*[:：]\s*([^\]\n]+)\]/g, function(m, t) { return build(t, false); });
+  };
+
+  window.playSharedBook = function(card) {
+    const book = card ? (findBookByTitle(card.title) || (card.bookId ? (currentBooks || []).filter(function(b) { return b.id === card.bookId; })[0] : null)) : null;
+    if (!book) {
+      if (typeof showToast === 'function') showToast('这本书不在书架上');
+      return false;
+    }
+    if (typeof openPage === 'function') openPage('page-reader');
+    try { window.openXianguoReading(book.id); } catch (e) {}
+    return true;
+  };
+
+  window.acceptReadInvite = function(card) {
+    const already = !!(window.Companion && window.Companion.isAccepted && window.Companion.isAccepted(card));
+    let ownerId = '';
+    try { ownerId = localStorage.getItem('momo_active_char') || ''; } catch (e) {}
+    if (window.switchReaderCompanion) window.switchReaderCompanion(ownerId);
+    const ok = window.playSharedBook(card);
+    if (window.Companion && window.Companion.markAccepted) window.Companion.markAccepted(card);
+    if (!already && typeof window.renderSystemNotice === 'function') {
+      window.renderSystemNotice('已和' + readerChatOwnerName() + '一起读《' + ((card && card.title) || '这本书') + '》');
+    }
+    if (typeof window.refreshChatCardStates === 'function') window.refreshChatCardStates();
+    return ok;
+  };
+
+  function readerChatOwnerName() {
+    return String((window.appData && window.appData.botRemark) || '周绪言').trim().split(/\s+/)[0] || '周绪言';
+  }
+
+  // 用户把正在读的这本发给角色：mode 'share' 只分享 / 'invite' 邀一起读
+  window.sendReaderCardToChar = function(mode) {
+    const book = (typeof currentActiveBook !== 'undefined' && currentActiveBook) || null;
+    if (!book) {
+      if (typeof showToast === 'function') showToast('先打开一本书再发');
+      return;
+    }
+    const hub = window.appData;
+    if (!hub) return;
+    if (!Array.isArray(hub.chatHistory)) hub.chatHistory = [];
+    const invite = mode === 'invite';
+    const card = {
+      kind: invite ? 'read_invite' : 'read',
+      bookId: book.id || '',
+      title: book.title || '这本书',
+      desc: (book.author || '书架上的一本') + (invite ? ' · 邀你一起读' : ' · 分享给你'),
+      cover: book.cover || '',
+      brand: invite ? '一起读邀请' : '共读分享',
+      brandIcon: '📖'
+    };
+    const content = (invite ? '「邀你一起读」' : '') + '[SHARECARD:' + JSON.stringify(card) + ']';
+    const t = (typeof getNowStr === 'function') ? getNowStr() : '刚刚';
+    hub.chatHistory.push({ role: 'user', content: content, time: t });
+    try {
+      if (typeof window.saveChatHistoryNow === 'function') window.saveChatHistoryNow();
+    } catch (e) {}
+    if (typeof showToast === 'function') {
+      showToast(invite ? ('已邀' + readerChatOwnerName() + '一起读') : ('已把这本书发给' + readerChatOwnerName()));
+    }
+  };
+
   window.openXianguoReading = async function(bookId) {
     const book = currentBooks.find(b => b.id === bookId) || defaultBooks[0];
     currentActiveBook = book;
@@ -1443,9 +1977,13 @@
 
     const avatarEl = document.getElementById('xianguo-together-avatar');
     const nameEl = document.getElementById('xianguo-together-name');
-    const botAvatar = localStorage.getItem('momo_bot_avatar') || (window.appData && window.appData.botAvatar) || '';
-    if (avatarEl && botAvatar) avatarEl.src = botAvatar;
-    if (nameEl) nameEl.innerText = (window.appData && window.appData.botRemark) || '周绪言';
+    // 头像与名字跟着当前伴读的人走，换角色就换脸
+    const compCharNow = readerCompanion();
+    const compAvatar = (window.Companion ? window.Companion.avatarOf(compCharNow) : '')
+      || localStorage.getItem('momo_bot_avatar')
+      || (window.appData && window.appData.botAvatar) || '';
+    if (avatarEl && compAvatar) avatarEl.src = compAvatar;
+    if (nameEl) nameEl.innerText = readerCompanionName();
 
     if (container) container.style.display = 'flex';
     const editPenEl = document.getElementById('xianguo-read-edit-pen');
@@ -1471,7 +2009,9 @@
       paragraphs: ['暂无内容']
     };
 
+    const totalChaps = currentActiveBook.chapters ? currentActiveBook.chapters.length : 1;
     bodyEl.innerHTML = `
+      <div class="xianguo-read-bookline">《${currentActiveBook.title || '未命名'}》 · 第 ${currentChapterIdx + 1} 章 / 共 ${totalChaps} 章</div>
       <div class="xianguo-read-chapter-num">第 ${currentChapterIdx + 1} 章</div>
       <div class="xianguo-read-chapter-title">${chap.title}</div>
       ${chap.paragraphs.map((p, idx) => `
@@ -2000,16 +2540,25 @@
         }
       }
 
+      const compChar = readerCompanion();
+      const compName = readerCompanionName();
+      const compPersona = (window.Companion && compChar && compChar.id !== 'c-xuyan')
+        ? window.Companion.persona(compChar) : '';
+      const isXuyan = !compPersona;
+      const u = (window.Companion && window.Companion.userName()) || 'user';
+
       let promptContext = '【当前小说】：《' + bookTitle + '》\n' +
         '【当前章节】：《' + chap.title + '》\n' +
-        '【小说当前正文片段（user亲笔写的内容）】：\n"""\n' + chapSnippet + '\n"""\n\n' +
-        (lastQuote ? '【user划线选中的正文情节】：“' + lastQuote + '”\n' : '') +
-        (lastUserMsg ? '【user刚对你说的话】：“' + lastUserMsg + '”\n' : '【情境】：user正拿着手机看你，等待你主动对她说话。\n') +
+        '【小说当前正文片段（' + u + '亲笔写的内容）】：\n"""\n' + chapSnippet + '\n"""\n\n' +
+        (lastQuote ? '【' + u + '划线选中的正文情节】：“' + lastQuote + '”\n' : '') +
+        (lastUserMsg ? '【' + u + '刚对你说的话】：“' + lastUserMsg + '”\n' : '【情境】：' + u + '正拿着手机看你，等待你主动对ta说话。\n') +
         '【你的身份认知】：\n' +
-        '1. 你是周绪言（19岁、复旦大学高级教授、user的合法丈夫兼青梅竹马）。\n' +
-        '2. 这本小说《' + bookTitle + '》是user亲笔写的故事，里面写的就是你和user！\n' +
-        '3. 仔细看user划线和写下的具体内容（例如她给你买的恶作剧水溶性短裤等具体情节），敏锐抓住她的恶作剧小心思或剧情走向，以真实活人人夫感回应她，带着爹系纵容、宠溺、被她撩拨/捉弄时的无奈与深情。\n' +
-        '4. 严禁AI官腔安全词（绝不说“你想怎样就怎样”、“我在这里”），直接输出你对user说的话，字数 40-100 字，语气亲密自然。';
+        (isXuyan
+          ? '1. 你是周绪言（19岁、复旦大学高级教授、' + u + '的合法丈夫兼青梅竹马）。\n'
+          : '1. 你是' + compName + '，身份、性格与说话方式严格按人设来，别用别人的口吻。\n') +
+        '2. 这本小说《' + bookTitle + '》是' + u + '亲笔写的故事，里面写的就是你和' + u + '！\n' +
+        '3. 仔细看' + u + '划线和写下的具体内容，敏锐抓住ta的恶作剧小心思或剧情走向，以真实活人感回应ta。\n' +
+        '4. 严禁AI官腔安全词（绝不说“你想怎样就怎样”、“我在这里”），直接输出你对' + u + '说的话，字数 40-100 字，语气亲密自然。';
 
       if (customInstruction) {
         promptContext += '\n【特殊指令】：' + customInstruction;
@@ -2019,12 +2568,15 @@
       const timeoutId = setTimeout(() => controller.abort(), 90000);
 
       let baseSystem = '';
-      if (typeof window.getFullSystemPrompt === 'function') {
+      if (compPersona) {
+        // 换了同伴：用角色卡人设，不再套周绪言的全局设定
+        baseSystem = '你是' + compName + '。\n' + compPersona;
+      } else if (typeof window.getFullSystemPrompt === 'function') {
         baseSystem = window.getFullSystemPrompt({ skipWorld: true, skipPreset: true });
       } else if (window.appData && window.appData.charPrompt) {
         baseSystem = window.appData.charPrompt;
       } else {
-        baseSystem = '你是周绪言（19岁、复旦高级教授、user的合法丈夫兼青梅竹马）。';
+        baseSystem = '你是周绪言（19岁、复旦高级教授、' + u + '的合法丈夫兼青梅竹马）。';
       }
 
       // 按当前角色 / 当前正文关键词筛选世界书，不再整本全量拼接
@@ -2050,19 +2602,27 @@
         memoryCardsContext = readerMemoryCards.map(c => '【伴读记忆卡片 · ' + c.title + '】：' + c.content).join('\n');
       }
 
-      let toneInstruction = '爹系纵容人夫感，极度宠溺与无奈';
+      let toneInstruction = isXuyan ? '爹系纵容人夫感，极度宠溺与无奈' : '按角色卡的性格说话，自然亲近';
       if (readerTonePreference === 'jealous') toneInstruction = '占有欲与克制吃醋，声音低沉';
       else if (readerTonePreference === 'sweet') toneInstruction = '极度温柔，温存耳语轻哄';
 
+      const rulesBlock = isXuyan
+        ? '【最高语气铁律 · 彻底破除机械人机感】：\n' +
+          '1. 【绝对严禁书面演讲式排比套话】：严禁说“不过' + u + '，我身上哪一寸你没见过？只要能哄你高兴，别说是一条泳裤，哪怕毫无保留任你欺负我也心甘情愿”这种死板空洞的AI作文！\n' +
+          '2. 【极致活人感与真实男友反应】：被她写的水溶性短裤算计了，你要有真人的直接反应！无奈、被当场气笑、心跳加速、咬牙抓她现行（如：“' + u + '，长本事了是吧？”、“合着早在这给我挖坑呢？”、“去哪买的水溶性布料？亏你想得出来……”）。\n' +
+          '3. 【结构规范】：开头先写一段【心声】：写下周绪言被' + u + '的小心思撩拨得心跳失衡的第一人称私密心理碎碎念，然后用 --- 分隔，下面再对' + u + '开口说话！\n' +
+          '4. 允许出现单字、极短词与短促反问，像一个坐在她身边看着她恶作剧得逞的真实年轻丈夫！'
+        : '【最高语气铁律 · 彻底破除机械人机感】：\n' +
+          '1. 【绝对严禁书面演讲式排比套话】：不要空泛抒情、不要排比作文，说人话。\n' +
+          '2. 【极致活人感】：按' + compName + '自己的性格给出真实反应，情绪要具体，别只讲道理。\n' +
+          '3. 【结构规范】：开头先写一段【心声】：' + compName + '此刻的第一人称私密心理碎碎念，然后用 --- 分隔，下面再对' + u + '开口说话！\n' +
+          '4. 允许出现单字、极短词与短促反问，像一个坐在ta身边的真人。';
+
       const readerFullSystemPrompt = baseSystem + '\n\n' +
         '【伴读专属世界书与核心羁绊注入】：\n' + worldBookContext + '\n\n' +
-        (memoryCardsContext ? '【user特别建立的专属伴读记忆卡片】：\n' + memoryCardsContext + '\n\n' : '') +
+        (memoryCardsContext ? '【' + u + '特别建立的专属伴读记忆卡片】：\n' + memoryCardsContext + '\n\n' : '') +
         '【当前性格倾向】：' + toneInstruction + '\n\n' +
-        '【最高语气铁律 · 彻底破除机械人机感】：\n' +
-        '1. 【绝对严禁书面演讲式排比套话】：严禁说“不过user，我身上哪一寸你没见过？只要能哄你高兴，别说是一条泳裤，哪怕毫无保留任你欺负我也心甘情愿”这种死板空洞的AI作文！\n' +
-        '2. 【极致活人感与真实男友反应】：被她写的水溶性短裤算计了，你要有真人的直接反应！无奈、被当场气笑、心跳加速、咬牙抓她现行（如：“user，长本事了是吧？”、“合着早在这给我挖坑呢？”、“去哪买的水溶性布料？亏你想得出来……”）。\n' +
-        '3. 【结构规范】：开头先写一段【心声】：写下周绪言被user的小心思撩拨得心跳失衡的第一人称私密心理碎碎念，然后用 --- 分隔，下面再对user开口说话！\n' +
-        '4. 允许出现单字、极短词与短促反问，像一个坐在她身边看着她恶作剧得逞的真实年轻丈夫！';
+        rulesBlock;
 
       const requestMessages = [
         { role: 'system', content: readerFullSystemPrompt },
@@ -2233,11 +2793,50 @@
     window.triggerAiThoughtGeneration('【user要求重新生成】：请换一个更深入、更温存或更细腻的角度重新对user回应。');
   };
 
+  // ===== 伴读同伴切换 =====
+  function refreshReaderCompanionUI() {
+    const btn = document.getElementById('reader-companion-btn');
+    if (!btn) return;
+    const c = readerCompanion();
+    const name = readerCompanionName();
+    const av = window.Companion ? window.Companion.avatarOf(c) : '';
+    btn.title = '陪你读的人：' + name;
+    btn.innerHTML = av
+      ? '<img src="' + av + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">'
+      : '伴';
+  }
+
+  window.openReaderCompanionPicker = function() {
+    if (!window.Companion || !window.Companion.openPicker) return;
+    window.Companion.openPicker(readerCompanionId, function(id) {
+      window.switchReaderCompanion(id);
+    }, {
+      title: '和谁一起读',
+      defaultName: (window.appData && window.appData.botRemark) || '周绪言',
+      defaultTag: '默认同伴',
+      defaultAvatar: (window.appData && window.appData.botAvatar) || ''
+    });
+  };
+
+  window.switchReaderCompanion = function(id) {
+    id = String(id == null ? '' : id);
+    if (id === (readerCompanionId || '')) return;
+    readerCompanionId = id;
+    try { localStorage.setItem('momo_reader_companion', readerCompanionId); } catch(e) {}
+    refreshReaderCompanionUI();
+    if (currentActiveBook) {
+      // 换人就把对话流切到这位的记录上（各自独立，不串台）
+      renderTogetherChatMessages();
+    }
+  };
+
+  window.refreshReaderCompanionUI = refreshReaderCompanionUI;
+
   // ★ 5. 【加号内：清空本篇对话】
   window.clearCurrentBookChatHistory = function() {
     if (!currentActiveBook) return;
     if (!confirm('确定要清空《' + currentActiveBook.title + '》里的伴读对话记录吗？')) return;
-    allBooksChatMap[currentActiveBook.id] = [
+    allBooksChatMap[readerChatKey(currentActiveBook.id)] = [
       {
         sender: 'bot',
         text: 'user，有什么想和我说的吗？',
@@ -2307,6 +2906,11 @@
       `).join('');
     }
 
+    // 只有「从此时此刻导入的书」才给"开剧场"入口：外部 txt/epub 拿过去只有当前一段，
+    // 而且会串掉剧场自己的角色卡与文风预设。
+    const theaterBtn = document.getElementById('reader-catalog-theater-btn');
+    if (theaterBtn) theaterBtn.style.display = (currentActiveBook.origin === 'rp') ? 'flex' : 'none';
+
     openReaderModal('reader-catalog-drawer-modal');
   };
 
@@ -2336,6 +2940,7 @@
     loadBooksChatMap();
     renderShelfUI();
     initXianguoDragDropListeners();
+    refreshReaderCompanionUI();
   };
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -2575,8 +3180,836 @@
     if (displayTitle) displayTitle.innerText = newTitle;
     if (displayBody) displayBody.innerText = newBody;
 
-    window.cancelEditReaderSummary();
+  window.cancelEditReaderSummary();
+
     alert('✨ 已成功保存修改，并实时同步更新记忆宫殿！');
   };
+
+  // ============================================================
+  // 🗂 蓝灰书架 v1（2026-11-20）
+  // 自定义分类 + 阅读记录（只记录，不做目标、不做连续天数）
+  // ============================================================
+  const RD_CAT_KEY = 'momo_reader_cats_v1';
+  const RD_STAT_KEY = 'momo_reader_stats_v1';
+  const RD_FINISH_KEY = 'momo_reader_finished_v1';
+
+  const RD_DEFAULT_CATS = [
+    { id: 'c-reading', name: '在读',  color: '#8FA8C8' },
+    { id: 'c-orig',    name: '我写的', color: '#A79FC2' },
+    { id: 'c-audio',   name: '有声',  color: '#8FB6AE' },
+    { id: 'c-wait',    name: '待读',  color: '#B2A78F' }
+  ];
+
+  const RD_PALETTE = ['#8FA8C8', '#A79FC2', '#8FB6AE', '#B2A78F', '#B08F92', '#8C9DAE', '#9AA6B4', '#B9C0C9'];
+
+  let rdCats = [];
+  let rdActiveCat = 'all';
+  let rdStats = {};
+  let rdFinished = {};
+  let rdClockStart = 0;
+  let rdNewCatColor = RD_PALETTE[0];
+
+  function rdDayKey(d) {
+    const x = d || new Date();
+    const p = n => String(n).padStart(2, '0');
+    return x.getFullYear() + '-' + p(x.getMonth() + 1) + '-' + p(x.getDate());
+  }
+
+  function rdLoadCats() {
+    try {
+      const raw = localStorage.getItem(RD_CAT_KEY);
+      rdCats = raw ? JSON.parse(raw) : null;
+    } catch (e) { rdCats = null; }
+    if (!Array.isArray(rdCats) || !rdCats.length) {
+      rdCats = RD_DEFAULT_CATS.map(c => ({ ...c }));
+      rdSaveCats();
+    }
+  }
+
+  function rdSaveCats() {
+    try { localStorage.setItem(RD_CAT_KEY, JSON.stringify(rdCats)); } catch (e) {}
+  }
+
+  function rdLoadStats() {
+    try {
+      const raw = localStorage.getItem(RD_STAT_KEY);
+      rdStats = raw ? JSON.parse(raw) : {};
+    } catch (e) { rdStats = {}; }
+    if (!rdStats || typeof rdStats !== 'object') rdStats = {};
+  }
+
+  function rdSaveStats() {
+    try { localStorage.setItem(RD_STAT_KEY, JSON.stringify(rdStats)); } catch (e) {}
+  }
+
+  function rdLoadFinished() {
+    try {
+      const raw = localStorage.getItem(RD_FINISH_KEY);
+      rdFinished = raw ? JSON.parse(raw) : {};
+    } catch (e) { rdFinished = {}; }
+    if (!rdFinished || typeof rdFinished !== 'object') rdFinished = {};
+  }
+
+  function rdSaveFinished() {
+    try { localStorage.setItem(RD_FINISH_KEY, JSON.stringify(rdFinished)); } catch (e) {}
+  }
+
+  // ---------- 计时：进阅读页开始，离开时结算 ----------
+  function rdClockStartAt() {
+    rdClockStart = Date.now();
+  }
+
+  function rdClockSettle() {
+    if (!rdClockStart) return;
+    const mins = (Date.now() - rdClockStart) / 60000;
+    rdClockStart = 0;
+    if (mins < 0.2) return;
+    const k = rdDayKey();
+    rdStats[k] = Math.round(((rdStats[k] || 0) + mins) * 10) / 10;
+    rdSaveStats();
+
+    const b = currentActiveBook;
+    if (b && b.chapters && b.chapters.length) {
+      const pct = Math.round(((currentChapterIdx + 1) / b.chapters.length) * 100);
+      if (pct > (b.progress || 0)) b.progress = pct;
+      const chap = b.chapters[currentChapterIdx];
+      if (chap && chap.title) b.lastReadChapTitle = chap.title;
+      b.lastReadTime = '今天';
+      if (pct >= 100 && !rdFinished[b.id]) {
+        rdFinished[b.id] = rdDayKey();
+        rdSaveFinished();
+      }
+      saveLocalShelf();
+    }
+    rdRenderRecordStrip();
+  }
+
+  // ---------- 分类归属 ----------
+  function rdBookCat(book) {
+    if (book && book.catId && rdCats.some(c => c.id === book.catId)) return book.catId;
+    if (book && book.isOriginal) return 'c-orig';
+    if (book && book.hasAudio) return 'c-audio';
+    return 'c-reading';
+  }
+
+  function rdMigrateCats() {
+    let changed = false;
+    currentBooks.forEach(b => {
+      if (!b.catId) { b.catId = rdBookCat(b); changed = true; }
+    });
+    if (changed) saveLocalShelf();
+  }
+
+  // ---------- 封面 ----------
+  function rdCoverInnerHtml(book) {
+    if (book && book.cover) {
+      return `<img src="${book.cover}" alt="${book.title || ''}" />`;
+    }
+    const theme = rdPureTheme((book && (book.title || book.id)) || 'x');
+    return `
+      <div class="rd-pure-cover" style="background: linear-gradient(160deg, ${theme.bg2a} 0%, ${theme.bg2b} 100%);">
+        <div class="rd-pure-cover-title" style="color: ${theme.text2};">${(book && book.title) || '未命名'}</div>
+        <div class="rd-pure-cover-foot" style="color: ${theme.text2};">${(book && book.author) || '未署名'}</div>
+      </div>
+    `;
+  }
+
+  // 自造素封专用低饱和蓝灰配色（不跟旧的马卡龙色走）
+  const RD_PURE_THEMES = [
+    { bg2a: '#3A4557', bg2b: '#28313D', text2: '#C7D0DC' },
+    { bg2a: '#3D4458', bg2b: '#2A303C', text2: '#C6CBD8' },
+    { bg2a: '#37484A', bg2b: '#26332F', text2: '#C3CFCB' },
+    { bg2a: '#43424F', bg2b: '#2E2D38', text2: '#CFCBD8' },
+    { bg2a: '#45433B', bg2b: '#2F2E28', text2: '#D2CCBF' },
+    { bg2a: '#394352', bg2b: '#272F3A', text2: '#C2CBDA' }
+  ];
+
+  function rdPureTheme(seed) {
+    let h = 0;
+    const s = String(seed || 'x');
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) & 0xffffffff;
+    return RD_PURE_THEMES[Math.abs(h) % RD_PURE_THEMES.length];
+  }
+
+  // ---------- 记录文案 ----------
+  function rdFmtMinutes(m) {
+    m = Math.round(m || 0);
+    if (m < 1) return '0 分钟';
+    if (m < 60) return m + ' 分钟';
+    const h = Math.floor(m / 60);
+    const rest = m % 60;
+    return rest ? (h + ' 小时 ' + rest + ' 分') : (h + ' 小时');
+  }
+
+  function rdSumRange(fromKey, toKey) {
+    if (fromKey == null) fromKey = '0000-00-00';
+    if (toKey == null) toKey = '9999-99-99';
+    let total = 0;
+    Object.keys(rdStats).forEach(k => {
+      if (k >= fromKey && k <= toKey) total += rdStats[k] || 0;
+    });
+    return total;
+  }
+
+  function rdCountDays(fromKey, toKey) {
+    if (fromKey == null) fromKey = '0000-00-00';
+    if (toKey == null) toKey = '9999-99-99';
+    let n = 0;
+    Object.keys(rdStats).forEach(k => {
+      if (k >= fromKey && k <= toKey && (rdStats[k] || 0) >= 1) n++;
+    });
+    return n;
+  }
+
+  function rdCountFinished(fromKey, toKey) {
+    if (fromKey == null) fromKey = '0000-00-00';
+    if (toKey == null) toKey = '9999-99-99';
+    let n = 0;
+    Object.keys(rdFinished).forEach(id => {
+      const d = rdFinished[id];
+      if (d >= fromKey && d <= toKey) n++;
+    });
+    return n;
+  }
+
+  function rdWeekStart(d) {
+    const x = new Date((d || new Date()).getTime());
+    const dow = (x.getDay() + 6) % 7; // 周一=0
+    x.setDate(x.getDate() - dow);
+    x.setHours(0, 0, 0, 0);
+    return x;
+  }
+
+  function rdRenderRecordStrip() {
+    const el = document.getElementById('rd-week-text');
+    if (!el) return;
+    const ws = rdWeekStart();
+    const from = rdDayKey(ws);
+    const to = rdDayKey(new Date());
+    const mins = rdSumRange(from, to);
+    const days = rdCountDays(from, to);
+    el.innerText = mins >= 1
+      ? (rdFmtMinutes(mins) + ' · 读了 ' + days + ' 天')
+      : '还没有记录';
+  }
+
+  // ---------- 长按/更多：把书挪进某个分类 ----------
+  window.rdPickBookCat = function (ev, bookId) {
+    if (ev) ev.stopPropagation();
+    const old = document.getElementById('rd-pick-cat');
+    if (old) old.remove();
+
+    const book = currentBooks.find(b => b.id === bookId);
+    if (!book) return;
+    const cur = rdBookCat(book);
+
+    const mask = document.createElement('div');
+    mask.id = 'rd-pick-cat';
+    mask.className = 'rd-layer';
+    mask.style.background = 'rgba(12,16,22,0.62)';
+    mask.style.zIndex = 60;
+    mask.innerHTML = `
+      <div style="margin:auto 18px;border-radius:16px;background:#242B36;border:1px solid rgba(255,255,255,.1);overflow:hidden;">
+        <div style="padding:16px 16px 10px 16px;font-size:11px;letter-spacing:1.5px;color:#6E7885;">把这本书放进</div>
+        ${rdCats.map(c => `
+          <div onclick="rdSetBookCat('${bookId}','${c.id}')" style="display:flex;align-items:center;gap:10px;padding:13px 16px;border-top:1px solid rgba(255,255,255,.05);cursor:pointer;">
+            <span style="width:7px;height:7px;border-radius:50%;background:${c.color};"></span>
+            <span style="flex:1;font-size:13px;color:#DCE3EC;">${c.name}</span>
+            <span style="font-size:12px;color:${cur === c.id ? '#8FA8C8' : 'transparent'};">✓</span>
+          </div>
+        `).join('')}
+        <div onclick="rdToggleLike('${bookId}')" style="display:flex;align-items:center;gap:10px;padding:13px 16px;border-top:1px solid rgba(255,255,255,.06);cursor:pointer;">
+          <span style="width:7px;height:7px;border-radius:50%;background:${book.liked ? '#B08F92' : 'transparent'};border:1px solid ${book.liked ? '#B08F92' : '#4A5462'};"></span>
+          <span style="flex:1;font-size:13px;color:${book.liked ? '#DCE3EC' : '#97A1AF'};">${book.liked ? '已放进「我喜欢」' : '放进「我喜欢」'}</span>
+        </div>
+        <div onclick="rdClosePickBookCat()" style="padding:14px 16px;border-top:1px solid rgba(255,255,255,.06);text-align:center;font-size:12px;color:#97A1AF;cursor:pointer;">取消</div>
+      </div>
+    `;
+    mask.onclick = e => { if (e.target === mask) rdClosePickBookCat(); };
+    document.getElementById('page-reader').appendChild(mask);
+  };
+
+  window.rdClosePickBookCat = function () {
+    const el = document.getElementById('rd-pick-cat');
+    if (el) el.remove();
+  };
+
+  window.rdSetBookCat = function (bookId, catId) {
+    const book = currentBooks.find(b => b.id === bookId);
+    if (book) {
+      book.catId = catId;
+      saveLocalShelf();
+    }
+    rdClosePickBookCat();
+    window.renderShelfUI();
+    showXianguoToast('已归入新分类', 1600);
+  };
+
+  // ---------- 书架主视图 ----------
+  function rdRenderShelf() {
+    loadLocalShelf();
+    rdLoadCats();
+    rdLoadStats();
+    rdLoadFinished();
+    rdMigrateCats();
+
+    const countEl = document.getElementById('xianguo-shelf-book-count');
+    if (countEl) countEl.innerText = currentBooks.length + ' 本书';
+
+    // ① 继续读
+    const topBook = currentBooks[0];
+    if (topBook) {
+      const wrapEl = document.getElementById('rd-now-cover-wrap');
+      const authorEl = document.getElementById('xianguo-last-author');
+      const titleEl = document.getElementById('xianguo-last-title');
+      const chapEl = document.getElementById('xianguo-last-chap');
+      const fillEl = document.getElementById('xianguo-last-fill');
+      const pctEl = document.getElementById('xianguo-last-percent');
+      const timeEl = document.getElementById('xianguo-last-time');
+
+      if (wrapEl) {
+        wrapEl.innerHTML = rdCoverInnerHtml(topBook);
+        wrapEl.classList.toggle('has-photo', !!topBook.cover);
+      }
+      if (authorEl) authorEl.innerText = topBook.author || '佚名';
+      if (titleEl) titleEl.innerText = topBook.title || '未命名';
+      if (chapEl) chapEl.innerText = topBook.lastReadChapTitle
+        || (topBook.chapters && topBook.chapters[0] && topBook.chapters[0].title)
+        || '还没开始';
+      const pct = topBook.progress || 0;
+      if (fillEl) fillEl.style.width = pct + '%';
+      if (pctEl) pctEl.innerText = pct ? (pct + '%') : '未开始';
+      if (timeEl) timeEl.innerText = topBook.lastReadTime ? ('上次 · ' + topBook.lastReadTime) : '还没翻开过';
+    }
+
+    // ② 记录条
+    rdRenderRecordStrip();
+
+    // ③ 分类胶囊
+    const catEl = document.getElementById('rd-cat-scroll');
+    if (catEl) {
+      const bookCount = cid => currentBooks.filter(b => rdBookCat(b) === cid).length;
+      catEl.innerHTML = `
+        <div class="rd-chip ${rdActiveCat === 'all' ? 'active' : ''}" onclick="rdSetActiveCat('all')">全部</div>
+        ${rdCats.map(c => `
+          <div class="rd-chip ${rdActiveCat === c.id ? 'active' : ''}" onclick="rdSetActiveCat('${c.id}')">
+            <span class="rd-chip-dot" style="background:${c.color};"></span>${c.name}
+            <span style="opacity:.55;font-size:10px;">${bookCount(c.id)}</span>
+          </div>
+        `).join('')}
+        <div class="rd-chip rd-chip-add" onclick="openReaderCatManager()">＋</div>
+      `;
+    }
+
+    // ④ 分组网格
+    const groupsEl = document.getElementById('rd-shelf-groups');
+    if (!groupsEl) return;
+
+    // 顶栏同伴头像跟着当前角色走
+    try { if (typeof refreshReaderCompanionUI === 'function') refreshReaderCompanionUI(); } catch (e) {}
+
+    if (!currentBooks.length) {
+      groupsEl.innerHTML = `<div class="rd-empty">书架是空的<br>点右上角 ＋ 导入一本 txt</div>`;
+      return;
+    }
+
+    const renderBook = book => {
+      const theme = rdPureTheme(book.title || book.id);
+      const inner = book.cover
+        ? `<img src="${book.cover}" alt="${book.title || ''}" />`
+        : `<div class="rd-pure-cover">
+             <div class="rd-pure-cover-title" style="color:${theme.text2};">${book.title || '未命名'}</div>
+             <div class="rd-pure-cover-foot" style="color:${theme.text2};">${book.author || '未署名'}</div>
+           </div>`;
+      return `
+        <div class="rd-book" onclick="openXianguoReading('${book.id}')">
+          <div class="rd-book-cover ${book.cover ? '' : 'is-pure'}">
+            ${inner}
+            <span class="rd-book-more" onclick="rdPickBookCat(event,'${book.id}')">···</span>
+          </div>
+          <div class="rd-book-title" title="${book.title || ''}">${book.title || '未命名'}</div>
+          <div class="rd-book-sub">
+            <span class="rd-book-txt">${book.author || (book.progress ? (book.progress + '%') : '未开始')}</span>
+          </div>
+        </div>
+      `;
+    };
+
+    const allGroups = rdCats.map(c => ({
+      cat: c,
+      books: currentBooks.filter(b => rdBookCat(b) === c.id)
+    })).filter(g => g.books.length);
+
+    const showGroups = rdActiveCat === 'all'
+      ? allGroups
+      : allGroups.filter(g => g.cat.id === rdActiveCat);
+
+    if (!showGroups.length) {
+      groupsEl.innerHTML = `<div class="rd-empty">这个分类还是空的<br>点封面下的 ··· 把书挪进来</div>`;
+      return;
+    }
+
+    groupsEl.innerHTML = showGroups.map(g => `
+      <div class="rd-group">
+        <div class="rd-group-head">
+          <span class="rd-group-dot" style="background:${g.cat.color};"></span>
+          <span class="rd-group-name">${g.cat.name}</span>
+          <span class="rd-group-count">${g.books.length}</span>
+        </div>
+        <div class="rd-grid">${g.books.map(renderBook).join('')}</div>
+      </div>
+    `).join('');
+  }
+
+  window.renderShelfUI = rdRenderShelf;
+  window.renderReaderShelf = rdRenderShelf;
+
+  window.rdSetActiveCat = function (catId) {
+    rdActiveCat = catId;
+    rdRenderShelf();
+  };
+
+  // ---------- 阅读记录页 ----------
+  let rdRecordMode = 'week';
+
+  window.openReaderRecord = function () {
+    rdLoadStats();
+    rdLoadFinished();
+    rdRecordMode = 'week';
+    rdRenderRecordBody();
+    const layer = document.getElementById('rd-record-layer');
+    if (layer) layer.style.display = 'flex';
+  };
+
+  window.closeReaderRecord = function () {
+    const layer = document.getElementById('rd-record-layer');
+    if (layer) layer.style.display = 'none';
+  };
+
+  window.rdSwitchRecordMode = function (mode) {
+    rdRecordMode = mode;
+    rdRenderRecordBody();
+  };
+
+  window.rdRenderRecordBody = function () {
+    const body = document.getElementById('rd-record-body');
+    if (!body) return;
+
+    const now = new Date();
+    const weekStart = rdWeekStart(now);
+    const weekFrom = rdDayKey(weekStart);
+    const todayKey = rdDayKey(now);
+
+    let fromKey, toKey, titleUnit = '';
+    if (rdRecordMode === 'week') {
+      fromKey = weekFrom;
+      toKey = todayKey;
+      titleUnit = '本周';
+    } else if (rdRecordMode === 'month') {
+      fromKey = rdDayKey(new Date(now.getFullYear(), now.getMonth(), 1));
+      toKey = todayKey;
+      titleUnit = '本月';
+    } else {
+      fromKey = rdDayKey(new Date(now.getFullYear(), 0, 1));
+      toKey = todayKey;
+      titleUnit = '今年';
+    }
+
+    const mins = rdSumRange(fromKey, toKey);
+    const days = rdCountDays(fromKey, toKey);
+    const finished = rdCountFinished(fromKey, toKey);
+
+    // 图表
+    let chartHtml = '';
+    if (rdRecordMode === 'week') {
+      const maxM = Math.max.apply(null, [1].concat(
+        Array.from({ length: 7 }).map((_, i) => {
+          const d = new Date(weekStart.getTime());
+          d.setDate(weekStart.getDate() + i);
+          return rdStats[rdDayKey(d)] || 0;
+        })
+      ));
+      const labels = ['一', '二', '三', '四', '五', '六', '日'];
+      const todayIdx = (now.getDay() + 6) % 7;
+      chartHtml = `<div class="rd-week-chart">` + Array.from({ length: 7 }).map((_, i) => {
+        const d = new Date(weekStart.getTime());
+        d.setDate(weekStart.getDate() + i);
+        const m = rdStats[rdDayKey(d)] || 0;
+        const h = m ? Math.max(8, Math.round((m / maxM) * 92)) : 9;
+        return `
+          <div class="rd-week-col">
+            <div class="rd-week-bar ${m ? '' : 'is-zero'} ${i === todayIdx ? 'is-today' : ''}" style="height:${h}px;"></div>
+            <span class="rd-week-label ${i === todayIdx ? 'is-today' : ''}">${labels[i]}</span>
+          </div>
+        `;
+      }).join('') + `</div>`;
+    } else if (rdRecordMode === 'month') {
+      const year = now.getFullYear(), month = now.getMonth();
+      const totalDays = new Date(year, month + 1, 0).getDate();
+      const firstDow = (new Date(year, month, 1).getDay() + 6) % 7;
+      const cells = [];
+      for (let i = 0; i < firstDow; i++) cells.push(`<div class="rd-heat-cell" style="opacity:0;background:transparent;"></div>`);
+      for (let d = 1; d <= totalDays; d++) {
+        const k = rdDayKey(new Date(year, month, d));
+        const m = rdStats[k] || 0;
+        let bg = 'rgba(255,255,255,0.05)';
+        if (m >= 1 && m < 15) bg = 'rgba(143,168,200,0.18)';
+        else if (m >= 15 && m < 45) bg = 'rgba(143,168,200,0.34)';
+        else if (m >= 45 && m < 90) bg = 'rgba(143,168,200,0.52)';
+        else if (m >= 90) bg = 'rgba(143,168,200,0.72)';
+        cells.push(`<div class="rd-heat-cell" style="background:${bg};"></div>`);
+      }
+      chartHtml = `<div class="rd-heat-grid">${cells.join('')}</div>
+        <div class="rd-heat-legend"><span>少</span>
+          <i style="background:rgba(255,255,255,0.05)"></i>
+          <i style="background:rgba(143,168,200,0.18)"></i>
+          <i style="background:rgba(143,168,200,0.34)"></i>
+          <i style="background:rgba(143,168,200,0.52)"></i>
+          <i style="background:rgba(143,168,200,0.72)"></i>
+          <span>多</span>
+        </div>`;
+    } else {
+      const monthMins = Array.from({ length: 12 }).map((_, mi) =>
+        rdSumRange(rdDayKey(new Date(now.getFullYear(), mi, 1)), rdDayKey(new Date(now.getFullYear(), mi + 1, 0))));
+      const maxM = Math.max.apply(null, [1].concat(monthMins));
+      chartHtml = `<div class="rd-year-chart">` + monthMins.map(m => `
+        <div class="rd-year-col">
+          <div class="rd-year-bar ${m ? '' : 'is-zero'}" style="height:${m ? Math.max(5, Math.round((m / maxM) * 96)) : 2}px;"></div>
+        </div>
+      `).join('') + `</div>
+      <div class="rd-year-labels">` + Array.from({ length: 12 }).map((_, i) =>
+        `<span class="rd-year-month">${i + 1}</span>`).join('') + `</div>`;
+    }
+
+    const recent = currentBooks.slice(0, 6).map(b => `
+      <div class="rd-recent-row">
+        <span class="rd-recent-date">${b.progress ? b.progress + '%' : '—'}</span>
+        <span class="rd-recent-title">${b.title || '未命名'}</span>
+        <span style="color:#6E7885;font-size:10px;">${b.lastReadChapTitle || ''}</span>
+      </div>
+    `).join('');
+
+    body.innerHTML = `
+      <div class="rd-rec-tabs">
+        <div class="rd-rec-tab ${rdRecordMode === 'week' ? 'active' : ''}" onclick="rdSwitchRecordMode('week')">本周</div>
+        <div class="rd-rec-tab ${rdRecordMode === 'month' ? 'active' : ''}" onclick="rdSwitchRecordMode('month')">本月</div>
+        <div class="rd-rec-tab ${rdRecordMode === 'year' ? 'active' : ''}" onclick="rdSwitchRecordMode('year')">今年</div>
+      </div>
+
+      <div class="rd-rec-hero">
+        <span class="rd-rec-hero-num">${mins >= 60 ? (Math.floor(mins / 60)) : Math.round(mins)}</span>
+        <span class="rd-rec-hero-unit">${mins >= 60 ? '小时' : '分钟'}${mins >= 60 && Math.round(mins % 60) ? (' ' + Math.round(mins % 60) + ' 分') : ''}</span>
+      </div>
+      <div class="rd-rec-note">${mins >= 1 ? (titleUnit + '你读了 ' + days + ' 天') : (titleUnit + '还没有记录')}</div>
+
+      ${chartHtml}
+
+      <div class="rd-rec-stats">
+        <div class="rd-rec-stat">
+          <div class="rd-rec-stat-num">${rdFmtMinutes(mins)}</div>
+          <div class="rd-rec-stat-label">累计时长</div>
+        </div>
+        <div class="rd-rec-stat">
+          <div class="rd-rec-stat-num">${days}</div>
+          <div class="rd-rec-stat-label">读过几天</div>
+        </div>
+        <div class="rd-rec-stat">
+          <div class="rd-rec-stat-num">${finished}</div>
+          <div class="rd-rec-stat-label">读完的书</div>
+        </div>
+      </div>
+
+      <div class="rd-recent-head">书架上的书</div>
+      ${recent || '<div class="rd-empty">还没有书</div>'}
+    `;
+  };
+
+  // ---------- 分类管理页 ----------
+  window.openReaderCatManager = function () {
+    rdLoadCats();
+    rdRenderCatBody();
+    const layer = document.getElementById('rd-cat-layer');
+    if (layer) layer.style.display = 'flex';
+  };
+
+  window.closeReaderCatManager = function () {
+    const layer = document.getElementById('rd-cat-layer');
+    if (layer) layer.style.display = 'none';
+  };
+
+  window.rdRenderCatBody = function () {
+    const body = document.getElementById('rd-cat-body');
+    if (!body) return;
+    const numOf = cid => currentBooks.filter(b => rdBookCat(b) === cid).length;
+
+    body.innerHTML = `
+      ${rdCats.map(c => `
+        <div class="rd-cat-row">
+          <span class="rd-cat-dot" style="background:${c.color};"></span>
+          <span class="rd-cat-name">${c.name}</span>
+          <span class="rd-cat-num">${numOf(c.id)}</span>
+          <span class="rd-cat-act" onclick="rdRenameCat('${c.id}')">✎</span>
+          <span class="rd-cat-act" onclick="rdDeleteCat('${c.id}')">✕</span>
+        </div>
+      `).join('')}
+
+      <div class="rd-cat-input-row">
+        <input class="rd-input" id="rd-new-cat-name" maxlength="8" placeholder="新分类名称" />
+        <button class="rd-btn" onclick="rdAddCat()">添加</button>
+      </div>
+      <div style="font-size:10px;color:#6E7885;padding:2px 2px 4px 2px;line-height:1.8;">
+        删除分类后，里面的书会回到第一个分类。
+      </div>
+
+      <div class="rd-color-head">分类颜色</div>
+      <div class="rd-color-row">
+        ${RD_PALETTE.map(col => `
+          <span class="rd-color-dot ${rdNewCatColor === col ? 'active' : ''}" style="background:${col};" onclick="rdPickCatColor('${col}')"></span>
+        `).join('')}
+      </div>
+    `;
+  };
+
+  window.rdPickCatColor = function (col) {
+    rdNewCatColor = col;
+    rdRenderCatBody();
+  };
+
+  window.rdAddCat = function () {
+    const input = document.getElementById('rd-new-cat-name');
+    const name = input ? input.value.trim() : '';
+    if (!name) { showXianguoToast('先起个名字', 1600); return; }
+    if (rdCats.some(c => c.name === name)) { showXianguoToast('这个分类已经有了', 1600); return; }
+    rdCats.push({ id: 'cat-' + Date.now(), name: name, color: rdNewCatColor });
+    rdSaveCats();
+    rdRenderCatBody();
+    rdRenderShelf();
+    showXianguoToast('分类已添加', 1600);
+  };
+
+  window.rdRenameCat = function (catId) {
+    const c = rdCats.find(x => x.id === catId);
+    if (!c) return;
+    const v = window.prompt('分类名称', c.name);
+    if (v === null) return;
+    const name = v.trim();
+    if (!name) return;
+    c.name = name;
+    rdSaveCats();
+    rdRenderCatBody();
+    rdRenderShelf();
+  };
+
+  window.rdDeleteCat = function (catId) {
+    if (rdCats.length <= 1) { showXianguoToast('至少留一个分类', 1600); return; }
+    const c = rdCats.find(x => x.id === catId);
+    if (!c) return;
+    const moving = currentBooks.filter(b => rdBookCat(b) === catId);
+    if (!window.confirm('删除「' + c.name + '」？' + (moving.length ? ('里面 ' + moving.length + ' 本书会回到第一个分类。') : ''))) return;
+
+    const fallback = rdCats.find(x => x.id !== catId);
+    const fallbackId = fallback ? fallback.id : '';
+    currentBooks.forEach(b => {
+      if (rdBookCat(b) === catId && fallbackId) b.catId = fallbackId;
+    });
+    saveLocalShelf();
+    rdCats = rdCats.filter(x => x.id !== catId);
+    if (rdActiveCat === catId) rdActiveCat = 'all';
+    rdSaveCats();
+    rdRenderCatBody();
+    rdRenderShelf();
+  };
+
+  // ============================================================
+  // ✍️ 写作工作台 · 单栏沉浸版（章节收进抽屉）
+  // ============================================================
+  window.rdOpenChapDrawer = function () {
+    try { syncCurrentChapterFromEditor(); } catch (e) {}
+    const list = document.getElementById('rd-chap-drawer-list');
+    if (list) {
+      const chapters = (typeof writerChapters !== 'undefined' && writerChapters) || [];
+      list.innerHTML = chapters.length ? chapters.map((c, i) => {
+        const words = String(c.text || '').replace(/\s/g, '').length;
+        return `<div class="rd-chap-row ${i === currentWriterChapIdx ? 'active' : ''}" onclick="rdJumpChapter(${i})">
+          <span class="rd-chap-row-num">${i + 1}</span>
+          <span class="rd-chap-row-title">${c.title || '无标题'}</span>
+          <span class="rd-chap-row-words">${words}字</span>
+        </div>`;
+      }).join('') : '<div class="rd-empty">还没有章节<br>点下面新建一章</div>';
+    }
+    const mask = document.getElementById('rd-chap-drawer');
+    if (mask) mask.style.display = 'flex';
+  };
+
+  window.rdCloseChapDrawer = function (e) {
+    if (e && e.target && e.target.id !== 'rd-chap-drawer') return;
+    const mask = document.getElementById('rd-chap-drawer');
+    if (mask) mask.style.display = 'none';
+  };
+
+  window.rdJumpChapter = function (idx) {
+    try { syncCurrentChapterFromEditor(); } catch (e) {}
+    window.selectChapterToEdit(idx);
+    window.rdCloseChapDrawer();
+  };
+
+  window.rdNewChapterFromDrawer = function () {
+    window.rdCloseChapDrawer();
+    window.promptAddNewWriterChapter();
+  };
+
+  window.rdExitWriting = function () {
+    try { syncCurrentChapterFromEditor(); } catch (e) {}
+    window.rdCloseChapDrawer();
+    // 存草稿再退出，回到书架
+    window.closeXianguoWriterModal();
+    window.renderShelfUI();
+    showXianguoToast('草稿已存，回书架了', 1600);
+  };
+
+  // ---------- 底部三 Tab ----------
+  window.rdActiveTab = 'shelf';
+
+  window.rdSwitchReaderTab = function (tab) {
+    window.rdActiveTab = tab;
+
+    // 二级页开着就先关掉
+    try { window.closeReaderRecord(); } catch (e) {}
+    try { window.closeReaderCatManager(); } catch (e) {}
+    try { window.rdClosePickBookCat(); } catch (e) {}
+
+    const shelf = document.getElementById('xianguo-shelf-viewport');
+    const store = document.getElementById('xianguo-store-viewport');
+    const mine = document.getElementById('rd-mine-viewport');
+    const title = document.getElementById('rd-page-title');
+    const actions = document.getElementById('rd-topbar-actions');
+
+    if (shelf) shelf.style.display = tab === 'shelf' ? 'block' : 'none';
+    if (store) store.style.display = tab === 'store' ? 'block' : 'none';
+    if (mine) mine.style.display = tab === 'mine' ? 'block' : 'none';
+    if (title) title.innerText = tab === 'store' ? '发现' : (tab === 'mine' ? '我的' : '书架');
+    if (actions) actions.style.display = tab === 'shelf' ? 'flex' : 'none';
+
+    ['shelf', 'store', 'mine'].forEach(k => {
+      const el = document.getElementById('rd-tab-' + k);
+      if (el) el.classList.toggle('active', k === tab);
+    });
+
+    const view = tab === 'shelf' ? shelf : (tab === 'store' ? store : mine);
+    if (view) view.scrollTop = 0;
+
+    if (tab === 'shelf') {
+      try { window.renderShelfUI(); } catch (e) {}
+    } else if (tab === 'store') {
+      try { if (typeof renderStoreUI === 'function') renderStoreUI(); } catch (e) {}
+    } else {
+      rdRenderMine();
+    }
+  };
+
+  // ---------- 我的：名片 + 最近在读 + 我喜欢 ----------
+  function rdMeAvatarHtml() {
+    const a = window.appData || {};
+    const av = (typeof localStorage !== 'undefined' && localStorage.getItem('momo_user_avatar')) ||
+      a.heroAvatar || a.userAvatar || (a.hero && a.hero.userAvatar) || '';
+    if (av) return '<img src="' + av + '" alt="">';
+    return '你';
+  }
+
+  function rdMeName() {
+    const a = window.appData || {};
+    return a.userNickname || (a.hero && a.hero.userName) ||
+      (typeof localStorage !== 'undefined' && (localStorage.getItem('momo_user_nick') || localStorage.getItem('momo_user_nickname'))) || 'user';
+  }
+
+  window.rdRenderMine = function () {
+    loadLocalShelf();
+    rdLoadStats();
+    rdLoadFinished();
+
+    // 名片
+    const avEl = document.getElementById('rd-me-avatar');
+    if (avEl) avEl.innerHTML = rdMeAvatarHtml();
+
+    const nameEl = document.getElementById('rd-me-name');
+    if (nameEl) nameEl.innerText = rdMeName();
+
+    const lineEl = document.getElementById('rd-me-line');
+    if (lineEl) {
+      const ln = (typeof localStorage !== 'undefined' && localStorage.getItem('momo_user_bio')) || '';
+      lineEl.innerText = ln || '生活在真实世界中';
+    }
+
+    // 三个数字：累计时长 / 读过几天 / 读完的书
+    const statEl = document.getElementById('rd-me-stats');
+    if (statEl) {
+      const total = rdSumRange(null, null);
+      const days = rdCountDays(null, null);
+      const done = rdCountFinished();
+      statEl.innerHTML =
+        '<div class="rd-me-stat"><div class="rd-me-stat-num">' + (total >= 60 ? Math.round(total / 60) + 'h' : total + 'm') + '</div><div class="rd-me-stat-label">累计时长</div></div>' +
+        '<div class="rd-me-stat"><div class="rd-me-stat-num">' + days + '</div><div class="rd-me-stat-label">读过几天</div></div>' +
+        '<div class="rd-me-stat"><div class="rd-me-stat-num">' + done + '</div><div class="rd-me-stat-label">读完的书</div></div>';
+    }
+
+    // 最近在读：按 lastReadAt 倒序取 6 本
+    const recentEl = document.getElementById('rd-me-recent');
+    if (recentEl) {
+      const list = currentBooks.slice().sort((a, b) => (b.lastReadAt || 0) - (a.lastReadAt || 0)).slice(0, 8);
+      recentEl.innerHTML = list.length ? list.map(rdRailBookHtml).join('')
+        : '<div style="font-size:11px;color:#6E7885;padding:4px 0;">还没有读过的书</div>';
+    }
+
+    // 我喜欢
+    const likedEl = document.getElementById('rd-me-liked');
+    if (likedEl) {
+      const list = currentBooks.filter(b => b.liked);
+      likedEl.innerHTML = list.length ? list.map(rdRailBookHtml).join('')
+        : '<div style="font-size:11px;color:#6E7885;padding:4px 0;">长按封面，可以放进这里</div>';
+    }
+  };
+
+  function rdRailBookHtml(book) {
+    const cover = book.cover
+      ? '<img src="' + book.cover + '" alt="">'
+      : '';
+    return '<div class="rd-rail-book" onclick="openXianguoReading(\'' + book.id + '\')">' +
+      '<div class="rd-rail-cover' + (book.cover ? '' : ' is-pure') + '">' +
+      (cover || rdCoverInnerHtml(book)) +
+      '</div>' +
+      '<div class="rd-rail-title">' + (book.title || '未命名') + '</div>' +
+      '</div>';
+  }
+
+  window.rdToggleLike = function (bookId) {
+    const book = currentBooks.find(b => b.id === bookId);
+    if (book) {
+      book.liked = !book.liked;
+      saveLocalShelf();
+    }
+    rdClosePickBookCat();
+    window.renderShelfUI();
+    if (window.rdActiveTab === 'mine') rdRenderMine();
+    showXianguoToast(book && book.liked ? '放进「我喜欢」了' : '已移出「我喜欢」', 1600);
+  };
+
+  // ---------- 计时挂钩：进出阅读页 ----------
+  (function hookReadingClock() {
+    const origOpen = window.openXianguoReading;
+    if (typeof origOpen === 'function') {
+      window.openXianguoReading = async function (bookId) {
+        await origOpen(bookId);
+        rdClockStartAt();
+      };
+    }
+    const origExit = window.exitXianguoReading;
+    if (typeof origExit === 'function') {
+      window.exitXianguoReading = function () {
+        rdClockSettle();
+        origExit();
+      };
+    }
+  })();
+
 
 })();
