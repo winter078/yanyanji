@@ -37,10 +37,11 @@
     {
       name: 'search_twitter',
       label: '推特',
-      description: '在推特/X 搜一个话题的高赞公开帖子，读完原帖和一部分回复。只在用户明确让你“去推特看看/找推特上别人怎么说/甩条高赞帖给我看”时调用；普通聊天、吵架但没提推特时不要用。',
+      description: '在推特/X 搜一个话题的高赞公开帖子，读完原帖和一部分回复。两种场景才用：用户明确让你“去推特看看/找推特上别人怎么说/甩条高赞帖给我看”；或她正和你争执、抛出一个具体观点，需要一个外部例子来支撑或反驳。单纯情绪、撒娇、日常拌嘴不要用。',
       params: '{"query": "要在推特/X 搜的话题，尽量短，像人搜索时输入的那样"}',
       available: function () {
-        return !!readLS('momo_everyinfra_api_key_v1') && !window.__momTwitterQueryTurn;
+        return !!readLS('momo_everyinfra_api_key_v1') && !window.__momTwitterQueryTurn &&
+          (!window.__momoTwitterEvidenceAt || Date.now() - window.__momoTwitterEvidenceAt > 5 * 60 * 1000);
       },
       run: function (args) {
         return window.__momTwitterEvidence ? window.__momTwitterEvidence(args && args.query) : Promise.resolve('');
@@ -81,7 +82,7 @@
     lines.push('调用是系统按你的判断自动完成的：需要时直接用结果说话，不要假装自己不会上网、也不要编造没查到的内容。');
     lines.push('关于小红书：用户要你「发/分享/推荐一篇小红书」时，不需要她给链接——系统会自动找一篇真实笔记并把卡片挂在你回复后面。你只管自然答应、递过去，绝对不要说“必须先有链接”“我调不了这个工具”。只有当用户自己贴了链接让你读内容时，才是读取单篇笔记的场景。');
     lines.push('关于抖音：用户要你「发/分享/找一个抖音视频」时，也不需要她给链接——系统会自动搜一条真实视频、读完文案再把卡片挂在你回复后面。你只管自然答应、递过去，不要说“必须先有链接”，也不要说“我调不了这个工具”。');
-    lines.push('关于推特/X：只有用户明确说「去推特看看 / 找推特上别人怎么说 / 甩条高赞的给我看」时，系统才会去搜真实高赞帖。你读完原帖和回复再用自己的话讲，不要把几条回复说成“所有人都这样想”，也不要说接口、抓取、技术限制。');
+    lines.push('关于推特/X：用户明确说「去推特看看 / 找推特上别人怎么说」时，系统会去搜真实高赞帖。你们吵起来、她抛出一个具体观点时，系统也可能找一条高赞帖当外部例子；但单纯情绪、撒娇、日常拌嘴不会。你读完原帖和回复再用自己的话讲，不要把几条回复说成“所有人都这样想”，也不要说接口、抓取、技术限制。');
     return lines.join('\n');
   }
 
@@ -92,9 +93,10 @@
     lines.push('1. 只在「没有外部实时信息就答不准」时才调用；纯闲聊、情绪、角色扮演、回忆对话一律不调用。');
     lines.push('2. 最多调用 2 个工具，能一个就够就只用一个。');
     lines.push('3. 用户明确说「搜一下 / 查一下 / 现在多少钱 / 今天天气 / 看看这条笔记」这类意图时优先调用对应工具。');
-    lines.push('4. 只输出严格 JSON，不要 markdown 代码块，不要解释。格式：');
+    lines.push('4. 例外：用户明确让你「去推特/X 看看/找别人怎么说」，或她正和你争执、抛出一个具体观点且需要一个外部例子时，可以调用 search_twitter；单纯情绪、撒娇、日常拌嘴不调用。');
+    lines.push('5. 只输出严格 JSON，不要 markdown 代码块，不要解释。格式：');
     lines.push('{"calls":[{"name":"工具名","args":{...}}]}');
-    lines.push('5. 不需要工具时输出：{"calls":[]}');
+    lines.push('6. 不需要工具时输出：{"calls":[]}');
     lines.push('可用工具：');
     tools.forEach(function (tool) {
       lines.push('- ' + tool.name + '（' + tool.label + '）：' + tool.description + ' 参数：' + tool.params);

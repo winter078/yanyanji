@@ -855,6 +855,7 @@
             alternatives: posts.slice(i + 1).map(function (p) { return p.text.slice(0, 80); })
           };
           window.__momoTwitterLastCard = card;
+          window.__momoTwitterEvidenceAt = Date.now();
         } catch (e) {}
         if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(tool, true);
         return card;
@@ -870,6 +871,7 @@
 
   async function searchTwitterEvidence(query) {
     window.__momTwitterQueryTurn = true;
+    window.__momoTwitterEvidenceAt = Date.now();
     window.__momoTwitterPendingCard = null;
     var card = await findTwitterPost(query);
     if (card) window.__momoTwitterPendingCard = card;
