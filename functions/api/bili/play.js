@@ -62,6 +62,7 @@ export async function onRequestGet(context) {
   const url = new URL(context.request.url);
   const bvid = (url.searchParams.get('bvid') || '').trim();
   let cid = (url.searchParams.get('cid') || '').trim();
+  const aid = (url.searchParams.get('aid') || '').trim();
 
   if (!/^BV[0-9A-Za-z]{10}$/.test(bvid)) {
     return json({ error: 'bad_bvid', message: 'BV 号格式不对' }, 400);
@@ -74,23 +75,32 @@ export async function onRequestGet(context) {
     ? (fp ? fp + '; ' + loginCookie : loginCookie)
     : fp;
 
-  // 1. 先取视频元信息（顺便补 cid、标题、UP 主）
-  const view = await biliApi('https://api.bilibili.com/x/web-interface/view?bvid=' + bvid, cookie);
-  const meta = view.data && view.data.code === 0 ? view.data.data : null;
-
-  if (!meta) {
-    const code = (view.data && view.data.code) || 0;
-    const message = (view.data && view.data.message) || 'B站接口没有返回可用信息';
-    return json({
-      error: 'bili_unavailable',
-      code,
-      message,
-      // 稿件被删/私密/限外链时，前端应该回退到官方内嵌播放器
-      unavailable: code === 62002 || code === -404 || code === 404
-    });
+  // 1. 有 cid 就直接要流；没有 cid 先试轻量的 pagelist（比 view 少风控），
+  //    最后才回退到 view 取完整元信息。
+  let meta = null;
+  if (!cid && aid) {
+    const pages = await biliApi('https://api.bilibili.com/x/player/pagelist?aid=' + encodeURIComponent(aid), cookie);
+    const first = pages.data && pages.data.code === 0 && pages.data.data && pages.data.data[0];
+    if (first && first.cid) cid = String(first.cid);
   }
+  if (!cid) {
+    const view = await biliApi('https://api.bilibili.com/x/web-interface/view?bvid=' + bvid, cookie);
+    meta = view.data && view.data.code === 0 ? view.data.data : null;
 
-  if (!cid) cid = String(meta.cid || '');
+    if (!meta) {
+      const code = (view.data && view.data.code) || 0;
+      const message = (view.data && view.data.message) || 'B站接口没有返回可用信息';
+      return json({
+        error: 'bili_unavailable',
+        code,
+        message,
+        // 稿件被删/私密/限外链时，前端应该回退到官方内嵌播放器
+        unavailable: code === 62002 || code === -404 || code === 404
+      });
+    }
+
+    cid = String(meta.cid || '');
+  }
   if (!cid) return json({ error: 'no_cid', message: '这个视频拿不到 cid' });
 
   // 2. 要播放地址。匿名最高一般 720P，登录态（环境变量 BILI_COOKIE）可以更高
@@ -132,8 +142,8 @@ export async function onRequestGet(context) {
     accept: picked.accept,
     durationSeconds: Math.round(picked.durationMs / 1000),
     sizeBytes: picked.size,
-    title: meta.title || '',
-    author: (meta.owner && meta.owner.name) || '',
+    title: (meta && meta.title) || '',
+    author: (meta && meta.owner && meta.owner.name) || '',
     cid: cid,
     login: !!cookie
   });

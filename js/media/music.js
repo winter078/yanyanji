@@ -187,10 +187,13 @@
         title: s.title,
         artist: s.artist,
         cover: s.cover,
-        url: (s.isLocalFav || s.source === 'netease') ? '' : s.url,
+        url: (s.isLocalFav || s.source === 'netease' || s.source === 'bili') ? '' : s.url,
         isLocalFav: !!s.isLocalFav,
         source: s.source || '',
-        neId: s.neId || ''
+        neId: s.neId || '',
+        bvid: s.bvid || '',
+        aid: s.aid || 0,
+        duration: s.duration || 0
       }));
       localStorage.setItem('momo_music_playlist', JSON.stringify(safeList));
     } catch(e) {}
@@ -294,11 +297,41 @@
     }
   }
 
+  // B站：每次播放去换一条同源中转流；B站直链有时效，不能长期缓存
+  async function ensureBiliUrl(song, silent) {
+    const statusEl = document.getElementById('music-status-badge');
+    if (!song.bvid) {
+      if (statusEl) statusEl.innerText = '这条 B站音源缺少 BV 号';
+      return false;
+    }
+    try {
+      const resp = await fetch('/api/bili/play?bvid=' + encodeURIComponent(song.bvid) + (song.aid ? '&aid=' + encodeURIComponent(song.aid) : ''), { cache: 'no-store' });
+      const data = await resp.json().catch(() => ({}));
+      if (data && data.url) {
+        song.url = data.url;
+        if (data.title && (!song.title || song.title === 'B站视频')) song.title = data.title;
+        if (data.author && (!song.artist || song.artist.indexOf('B站') >= 0)) song.artist = data.author + ' · B站';
+        return true;
+      }
+      const failMsg = (data && data.message) || '可能被删、私密或限制外链';
+      if (statusEl) statusEl.innerText = '这条 B站音源打不开';
+      if (!silent) alert('《' + (song.title || '这条 B站音源') + '》打不开：' + failMsg);
+      return false;
+    } catch (err) {
+      if (statusEl) statusEl.innerText = '取 B站音频失败';
+      if (!silent) alert('取 B站音频失败：' + ((err && err.message) ? err.message : err));
+      return false;
+    }
+  }
+
   // 加载并播放指定歌曲
   async function playSong(song, autoPlay = true, queueContext = null, silent = false) {
     if (!song) return false;
     if (song.source === 'netease' && song.neId) {
       const ok = await ensureNeteaseUrl(song, silent);
+      if (!ok) return false;
+    } else if (song.source === 'bili' && song.bvid) {
+      const ok = await ensureBiliUrl(song, silent);
       if (!ok) return false;
     }
     currentSong = song;
@@ -826,8 +859,7 @@
     }
   };
 
-  // ================= 搜索功能 (QQ 音乐官方原生 JSONP) =================
-  // ================= 搜索：走自家 Cloudflare 函数（服务端代理网易云，前端不跨域）=================
+  // ================= 搜索：网易云 + B站投稿（都走自家 Cloudflare 函数）=================
   window.searchMusicOnline = async function() {
     const inputEl = document.getElementById('music-search-input');
     if (!inputEl) return;
@@ -838,42 +870,75 @@
     }
 
     const badgeEl = document.getElementById('music-status-badge');
-    if (badgeEl) badgeEl.innerText = '正在网易云音乐里检索《' + kw + '》…';
+    if (badgeEl) badgeEl.innerText = '正在网易云和 B站里检索《' + kw + '》…';
 
-    try {
-      const resp = await fetch('/api/music/search?kw=' + encodeURIComponent(kw), { cache: 'no-store' });
-      const data = await resp.json().catch(() => ({}));
-      const list = (data && data.songs) || [];
-      if (list.length === 0) {
-        alert('没有搜到《' + kw + '》，换个关键词试试，或者直接导入本地歌曲。');
-        if (badgeEl) badgeEl.innerText = '共同佩戴一副耳机';
-        return;
-      }
+    let neoList = [];
+    let biliList = [];
 
-      let addedCount = 0;
-      list.forEach(item => {
-        const sid = 'ne-' + item.id;
-        if (allSongs.some(s => s.id === sid)) return;
-        allSongs.unshift({
-          id: sid,
-          neId: String(item.id),
-          source: 'netease',
-          title: item.name,
-          artist: (item.artist || '网易云音乐') + ' · 网易云',
-          cover: item.cover || '',
-          url: ''
-        });
-        addedCount++;
+    // 两边各搜各的：网易云挂了不影响 B站，B站挂了也不影响网易云
+    await Promise.all([
+      fetch('/api/music/search?kw=' + encodeURIComponent(kw), { cache: 'no-store' })
+        .then(r => r.json())
+        .then(d => { neoList = (d && d.songs) || []; })
+        .catch(() => {}),
+      fetch('/api/bili/search?kw=' + encodeURIComponent(kw), { cache: 'no-store' })
+        .then(r => r.json())
+        .then(d => { biliList = (d && d.songs) || []; })
+        .catch(() => {})
+    ]);
+
+    const fresh = [];
+    const seen = new Set(allSongs.map(s => s.id));
+
+    neoList.forEach(item => {
+      const sid = 'ne-' + item.id;
+      if (!sid || seen.has(sid)) return;
+      seen.add(sid);
+      fresh.push({
+        id: sid,
+        neId: String(item.id),
+        source: 'netease',
+        title: item.name,
+        artist: (item.artist || '网易云音乐') + ' · 网易云',
+        cover: item.cover || '',
+        url: ''
       });
+    });
 
+    biliList.forEach(item => {
+      if (!item || !item.bvid) return;
+      const sid = 'bili-' + item.bvid;
+      if (seen.has(sid)) return;
+      seen.add(sid);
+      fresh.push({
+        id: sid,
+        bvid: item.bvid,
+        aid: item.aid || 0,
+        source: 'bili',
+        title: item.title || 'B站视频',
+        artist: (item.author || 'B站') + ' · B站',
+        cover: item.cover || '',
+        url: '',
+        duration: item.duration || 0
+      });
+    });
+
+    if (fresh.length) {
+      allSongs = fresh.concat(allSongs);
       saveSongs();
       renderPlaylistDrawer();
-      inputEl.value = '';
+    }
+    inputEl.value = '';
 
-      if (badgeEl) badgeEl.innerText = '搜到 ' + list.length + ' 首，已放进曲库（' + addedCount + ' 首新增），点一首才播放';
-    } catch (err) {
-      alert('搜索失败：' + ((err && err.message) ? err.message : err));
+    if (neoList.length === 0 && biliList.length === 0) {
+      alert('网易云和 B站都没搜到《' + kw + '》，换个关键词试试，或者直接导入本地歌曲。');
       if (badgeEl) badgeEl.innerText = '共同佩戴一副耳机';
+      return;
+    }
+
+    if (badgeEl) {
+      badgeEl.innerText = '网易云 ' + neoList.length + ' 首 + B站 ' + biliList.length +
+        ' 首，点一首才播放' + (fresh.length ? '' : '（都已在曲库里）');
     }
   };
   // ================= 本地音频与 VIP 歌曲导入 (持久化至 IndexedDB) =================

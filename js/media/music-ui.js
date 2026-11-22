@@ -417,7 +417,7 @@
   function renderSearchResults() {
     const el = $('mz-search-results');
     if (!el) return;
-    const list = songs().filter(function (s) { return s.source === 'netease'; });
+    const list = songs().filter(function (s) { return s.source === 'netease' || s.source === 'bili'; });
     el.innerHTML = '';
     if (!list.length) {
       fillEmpty(el, '还没有搜索结果，输入歌名点搜索');
