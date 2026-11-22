@@ -19,7 +19,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <!-- 发布时务必与 js/build.js 的 __LIVE_BUILD__ 保持一致，否则 version-watch 会一直提示“新版已经好了” -->
-  <script>window.__BUILD__="20261122-2859";</script>
+  <script>window.__BUILD__="20261122-2860";</script>
   <script>
     (function () {
       var root = document.documentElement;
@@ -227,8 +227,59 @@
 <link rel="stylesheet" href="css/motion.css?v=20261122-2858" />
 <link rel="stylesheet" href="css/drawer-fix.css?v=20261122-2858" />
   
+<style id="mom-splash-style">
+  html, body { background:#0a0b0f; }
+  #mom-splash{
+    position:fixed; inset:0; z-index:2147483646;
+    display:flex; align-items:center; justify-content:center;
+    background:
+      radial-gradient(75% 55% at 50% 18%, rgba(137,112,255,.24) 0%, rgba(10,11,15,0) 70%),
+      radial-gradient(60% 45% at 50% 100%, rgba(255,171,120,.10) 0%, rgba(10,11,15,0) 70%),
+      #0a0b0f;
+    color:#f7f4ff; overflow:hidden;
+    transition:opacity .5s cubic-bezier(.4,0,.2,1), visibility .5s;
+    pointer-events:none; -webkit-user-select:none; user-select:none;
+  }
+  #mom-splash:before{
+    content:""; position:absolute; inset:-20%;
+    background:radial-gradient(circle at 50% 45%, rgba(140,112,255,.12), transparent 42%);
+    filter:blur(16px); animation:momSplashGlow 2.8s ease-in-out infinite alternate;
+  }
+  #mom-splash.off{opacity:0; visibility:hidden}
+  .mom-splash-stack{position:relative; display:flex; flex-direction:column; align-items:center; transform:translateY(-2vh)}
+  .mom-splash-mark{
+    width:96px; height:96px; border-radius:30px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:38px; font-weight:600; letter-spacing:.08em;
+    color:#fff; text-shadow:0 2px 18px rgba(160,130,255,.45);
+    background:linear-gradient(145deg, rgba(160,130,255,.35), rgba(255,255,255,.06) 55%, rgba(255,176,120,.18));
+    border:1px solid rgba(255,255,255,.22);
+    box-shadow:0 18px 50px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.28), 0 0 40px rgba(140,110,255,.18);
+    animation:momSplashMark 2.2s ease-in-out infinite alternate;
+  }
+  .mom-splash-title{margin-top:22px; font-size:20px; font-weight:600; letter-spacing:.08em; color:#f5f1ff}
+  .mom-splash-sub{margin-top:7px; font-size:11px; letter-spacing:.2em; color:rgba(235,228,255,.52)}
+  .mom-splash-track{margin-top:26px; width:104px; height:2px; border-radius:2px; overflow:hidden; background:rgba(255,255,255,.12)}
+  .mom-splash-track i{display:block; width:44%; height:100%; border-radius:2px; background:linear-gradient(90deg, rgba(160,130,255,.3), #b9a6ff, rgba(255,180,140,.9)); animation:momSplashTrack 1.25s ease-in-out infinite}
+  @keyframes momSplashMark{from{transform:translateY(2px) scale(.985)}to{transform:translateY(-3px) scale(1.015)}}
+  @keyframes momSplashGlow{from{opacity:.55; transform:scale(.95)}to{opacity:1; transform:scale(1.05)}}
+  @keyframes momSplashTrack{0%{transform:translateX(-120%)}100%{transform:translateX(260%)}}
+  @media (prefers-reduced-motion: reduce){
+    .mom-splash-mark,.mom-splash-track i,#mom-splash:before{animation:none}
+    .mom-splash-track i{width:100%; opacity:.6}
+  }
+</style>
 </head>
 <body>
+
+  <div id="mom-splash" role="status" aria-live="polite" aria-label="正在启动末末的小手机">
+    <div class="mom-splash-stack">
+      <div class="mom-splash-mark" aria-hidden="true">末</div>
+      <div class="mom-splash-title">末末的小手机</div>
+      <div class="mom-splash-sub">言言机 · 正在启动</div>
+      <div class="mom-splash-track" aria-hidden="true"><i></i></div>
+    </div>
+  </div>
 
   <!-- 隐藏的文件上传探针 -->
   <input type="file" id="input-global-bg" accept="image/*" style="display: none;" onchange="uploadImageFile(event, 'globalBg')" />
@@ -7772,6 +7823,8 @@ body.mom-booting #phone-screen-root{pointer-events:none}
 (function(){
   var list = ["js/supabase_sync.js","js/config.js?v=2026111627","js/store.js?v=2026111670","js/token-monitor.js?v=2026111673","js/storage-center.js?v=2026111671","js/api-presets.js?v=2026111472","js/wechat/image-presets.js?v=2026111649","js/prompt-presets.js?v=20261121-2150","js/notify.js?v=20261122-2858","js/keepalive.js?v=20261120-1205","js/desktop/desktop.js?v=20261122-2858","js/motion.js?v=20261122-2858","js/layout-motion.js?v=20261122-2858","js/sheet-drag.js?v=20261122-2858","js/press.js?v=20261122-2858","js/touch.js?v=20261122-2858","js/desktop/days.js?v=1789904839051","js/desktop/yanyan-cat.js?v=1789925866085","js/desktop/drag-grid.js?v=20261122-2858","js/desktop/app-store.js?v=2026111002","js/wechat/stickers.js?v=20261121-2130","js/wechat/search-tools.js?v=20261122-2858","js/wechat/weather-tools.js?v=20261122-2858","js/wechat/tool-registry.js?v=20261122-2858","js/wechat/artifact-tools.js?v=20261122-2858","js/wechat/chat.js?v=20261122-2858","js/wechat/voice-input.js?v=2026111591","js/wechat/call.js?v=2026111649","js/wechat/image-gen.js?v=2026111649","js/wechat/moments.js?v=2026111660","js/wechat/characters.js?v=2026111655","js/wechat/group-chat.js?v=2026111652","js/media/music.js?v=20261121-0415","js/media/music-ui.js?v=20261121-0415","js/media/music-lyrics.js?v=20261121-0430","js/qrcode.js?v=2026112010","js/media/netease-login.js?v=2026112011","js/media/companion.js?v=20261120-2235","js/media/watch.js?v=20261120-2235","js/theater/theater.js?v=20261120-1352","js/theater/palace.js?v=2026111121","js/theater/memory-engine.js?v=2026111122","js/theater/worldbooks.js?v=2026111571","js/xhs/xhs.js?v=20261121-0415","js/say/say.js?v=20261122-2858","js/keyboard.js?v=20261122-2858","js/media/reader.js?v=20261120-2235","js/desktop/ledger.js?v=20261121-0300","js/desktop/ledger-app.js?v=20261121-0300","js/desktop/health.js?v=20261121-2245","js/desktop/forum.js?v=20261121-2150","js/desktop/avatar-vault.js?v=2026111145","js/wechat/chat-appearance.js?v=2026111652","js/wechat/masks.js?v=2026111654","js/wechat/wordcards.js?v=2026111183","js/desktop/album-store.js?v=2026111433","js/desktop/photos.js?v=2026111457","js/version-watch.js?v=20261121-0150","js/app.js?v=2026111342"];
   var note = document.getElementById('mom-boot-note');
+  var splash = document.getElementById('mom-splash');
+  var splashAt = (window.performance && performance.now) ? performance.now() : Date.now();
   var started = false, finished = false, done = 0;
   try { document.body.classList.add('mom-booting'); } catch (e) {}
   function finish(){
@@ -7779,6 +7832,12 @@ body.mom-booting #phone-screen-root{pointer-events:none}
     try { document.body.classList.remove('mom-booting'); } catch (e) {}
     if (note) note.classList.add('gone');
     setTimeout(function(){ if (note && note.parentNode) note.parentNode.removeChild(note); }, 450);
+    var now = (window.performance && performance.now) ? performance.now() : Date.now();
+    setTimeout(function(){
+      if (!splash) return;
+      splash.classList.add('off');
+      setTimeout(function(){ if (splash && splash.parentNode) splash.parentNode.removeChild(splash); }, 560);
+    }, Math.max(0, 800 - (now - splashAt)));
   }
   function start(){
     if (started) return; started = true;
