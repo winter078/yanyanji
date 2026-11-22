@@ -222,6 +222,18 @@
     return await readJson(resp);
   }
 
+  // 用同一个 LinkDigest Key 按主题搜小红书笔记（一次 4 credits）
+  async function requestXhsTopicSearch(query, limit) {
+    var xhsKey = readXhsKey();
+    if (!xhsKey) throw new Error('missing_xhs_key');
+    var resp = await timeoutFetch('/api/xhs/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: String(query || '').slice(0, 200), limit: limit || 5, api_key: xhsKey })
+    }, SEARCH_TIMEOUT);
+    return await readJson(resp);
+  }
+
   function firstXhsUrl(text) {
     // 分享卡序列化时可能把 http:\/\/ 转义，先还原再匹配。
     var normalized = String(text || '')
@@ -922,22 +934,39 @@
   async function findXhsNote(keyword) {
     var q = String(keyword || '').trim().replace(/[\[\]]/g, ' ').slice(0, 60);
     if (!q) return null;
-    if (!isEnabled() || !readApiKey()) return xhsSearchCard(q, '点一下直接跳到小红书的搜索结果');
-    var tries = ['site:xiaohongshu.com/explore "' + q + '"', 'site:xiaohongshu.com/explore ' + q, 'site:xiaohongshu.com "' + q + '"', 'site:xiaohongshu.com ' + q];
+    if ((!isEnabled() || !readApiKey()) && !readXhsKey()) return xhsSearchCard(q, '点一下直接跳到小红书的搜索结果');
     var candidates = [];
-    for (var i = 0; i < tries.length && candidates.length < 6; i++) {
+    // 有解析 Key 时，先用 LinkDigest 的站内搜索（能返回可打开的小红书笔记链接）
+    if (readXhsKey()) {
       try {
-        var data = await requestSearch(tries[i]);
-        var list = (data && Array.isArray(data.results)) ? data.results : [];
-        for (var j = 0; j < list.length && candidates.length < 6; j++) {
-          var cand = list[j];
-          if (!cand || !isXhsHost(cand.url) || !isXhsNoteUrl(cand.url)) continue;
-          if (looksLikeXhsAd(cand.title, cand.url)) continue;
-          if (candidates.some(function (c) { return c.url === cand.url; })) continue;
-          candidates.push(cand);
+        var xhsData = await requestXhsTopicSearch(q, 5);
+        var xhsRows = (xhsData && Array.isArray(xhsData.results)) ? xhsData.results : [];
+        for (var xi = 0; xi < xhsRows.length && candidates.length < 6; xi++) {
+          var xc = xhsRows[xi];
+          if (!xc || !isXhsHost(xc.url) || !isXhsNoteUrl(xc.url)) continue;
+          if (looksLikeXhsAd(xc.title, xc.url)) continue;
+          candidates.push({ url: xc.url, title: xc.title || '小红书笔记', snippet: xc.snippet || '' });
         }
-      } catch (eSearch) {
-        console.warn('[XHS] 搜索失败：', eSearch && eSearch.message ? eSearch.message : eSearch);
+      } catch (eTopic) {
+        console.warn('[XHS] 站内搜索失败：', eTopic && eTopic.message ? eTopic.message : eTopic);
+      }
+    }
+    var tries = ['site:xiaohongshu.com/explore "' + q + '"', 'site:xiaohongshu.com/explore ' + q, 'site:xiaohongshu.com "' + q + '"', 'site:xiaohongshu.com ' + q];
+    if (!candidates.length && isEnabled() && readApiKey()) {
+      for (var i = 0; i < tries.length && candidates.length < 6; i++) {
+        try {
+          var data = await requestSearch(tries[i]);
+          var list = (data && Array.isArray(data.results)) ? data.results : [];
+          for (var j = 0; j < list.length && candidates.length < 6; j++) {
+            var cand = list[j];
+            if (!cand || !isXhsHost(cand.url) || !isXhsNoteUrl(cand.url)) continue;
+            if (looksLikeXhsAd(cand.title, cand.url)) continue;
+            if (candidates.some(function (c) { return c.url === cand.url; })) continue;
+            candidates.push(cand);
+          }
+        } catch (eSearch) {
+          console.warn('[XHS] 搜索失败：', eSearch && eSearch.message ? eSearch.message : eSearch);
+        }
       }
     }
     if (!candidates.length) {
@@ -983,7 +1012,12 @@
       cover: cover,
       url: hit.url,
       brandName: '小红书',
-      brandIcon: '📕'
+      brandIcon: '📕',
+      // 给角色看的“已读过”正文，不显示在卡片上
+      readNote: note ? {
+        author: String(note.author || '').slice(0, 60),
+        desc: String(note.desc || '').replace(/[\[\]]/g, '').replace(/\s+/g, ' ').slice(0, 320)
+      } : null
     };
   }
 

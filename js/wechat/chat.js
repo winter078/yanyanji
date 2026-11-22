@@ -6622,7 +6622,8 @@ ${catalog}
               if (found.searchOnly) {
                 recentMessages.push({ role: 'system', content: '【你没法直接翻别人的主页/列表，站内搜索也没抓到她点名的这篇：' + topic + '】你已经给她放了一张「在小红书搜' + topic + '」的入口卡，点开就会跳到小红书 App 的搜索结果，她能在里面找到笔记和主页。回复里只用角色口吻说“我这边只能帮你搜到入口，你点开这张卡直接看”，不要编造笔记标题/内容，不要说“需要你把链接发我”，也不要提接口、后台、技术限制这类词。卡片会自动出现在回复后面。' });
               } else {
-                recentMessages.push({ role: 'system', content: '【已找到一篇真实的小红书笔记：《' + found.title + '》】回复里自然提一句“给你找了一篇”，不要自己写链接、不要编造笔记内容；卡片会自动出现在你的回复后面。绝对不要说“需要你给链接才能查”。' });
+                const readText = found.readNote && found.readNote.desc ? ('你已经读过正文，开头是：' + found.readNote.desc.slice(0, 220)) : '你已经看过标题和封面。';
+                recentMessages.push({ role: 'system', content: '【已找到一篇真实的小红书笔记：《' + found.title + '》】' + readText + ' 回复里用你自己的话提一句这篇讲了什么（别大段复述、别编造正文没有的内容），再说“给你找了一篇”；卡片会自动出现在你的回复后面。绝对不要说“需要你给链接才能查”，也不要把方括号标记写出来。' });
               }
             } else {
               recentMessages.push({ role: 'system', content: '【没搜到能分享的小红书笔记】如实说这次没找到可分享的具体笔记，不要编造链接或标题，也不要说“你把链接发来”。' });
