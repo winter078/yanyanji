@@ -63,12 +63,30 @@ function videoIdOf(value) {
   return m ? m[1] : '';
 }
 
+function mediaUrl(value) {
+  if (typeof value === 'string' && /^https?:/i.test(value)) return value;
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const url = mediaUrl(item);
+      if (url) return url;
+    }
+    return '';
+  }
+  if (value && typeof value === 'object') {
+    for (const key of ['url_list', 'urls', 'url', 'uri']) {
+      const url = mediaUrl(value[key]);
+      if (url) return url;
+    }
+  }
+  return '';
+}
+
 function normalizeVideo(row) {
   if (!row || typeof row !== 'object') return null;
   const url = String(row.url || row.share_url || '').trim();
   const id = videoIdOf(row.id || row.aweme_id || row.video_id || url);
   if (!id && !url) return null;
-  const images = Array.isArray(row.images) ? row.images.filter(function (u) { return typeof u === 'string' && /^https?:/i.test(u); }) : [];
+  const images = Array.isArray(row.images) ? row.images.map(mediaUrl).filter(Boolean) : [];
   const text = String(row.text || row.desc || row.content || '').trim();
   const author = String(row.author_name || row.nickname || row.author || '').trim();
   const title = String(row.title || '').trim() || text.slice(0, 60) || '抖音视频';
@@ -77,7 +95,7 @@ function normalizeVideo(row) {
     url: url || ('https://www.douyin.com/video/' + id),
     title: title,
     text: text,
-    cover: String(row.image_url || row.cover || images[0] || '').trim(),
+    cover: mediaUrl(row.image_url) || mediaUrl(row.cover) || images[0] || '',
     images: images,
     author: author,
     author_id: String(row.author_id || row.sec_uid || '').trim(),
