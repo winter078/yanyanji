@@ -11,7 +11,7 @@ function json(status, payload) {
 function cleanTitle(html) {
   const m = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
   if (!m) return '';
-  return m[1]
+  const title = m[1]
     .replace(/\s*-\s*小红书\s*$/i, '')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
@@ -19,6 +19,9 @@ function cleanTitle(html) {
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 40);
+  // 被风控挡到登录页/官网首页时，title 是「登录 - rednote」这类通用文案，不能当昵称
+  if (!title || /登录|rednote|小红书\s*-\s*你的生活兴趣社区|发现精彩|首页/i.test(title)) return '';
+  return title;
 }
 
 export async function onRequestGet(context) {
