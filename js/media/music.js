@@ -260,6 +260,56 @@
     } catch(e) {}
   }
 
+  // 旧版本只存前 100 首，后面的红心只剩 ID、没有歌。
+  // 这里按红心 ID 里的网易云数字 id 批量补回元信息；只补库，不自动播放。
+  async function repairMissingFavorites() {
+    const missing = favoriteSongIds.filter(id => !allSongs.some(s => s.id === id));
+    const neIds = missing
+      .filter(id => /^ne-\d+$/.test(String(id)))
+      .map(id => String(id).slice(3));
+    if (!neIds.length) return;
+
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 6000);
+      let resp;
+      try {
+        resp = await fetch('/api/music/song?ids=' + encodeURIComponent(neIds.join(',')), {
+          cache: 'no-store',
+          signal: controller.signal
+        });
+      } finally {
+        clearTimeout(timer);
+      }
+      const data = await resp.json().catch(() => ({}));
+      const rows = (data && data.songs) || [];
+      if (!rows.length) return;
+
+      const seen = new Set(allSongs.map(s => s.id));
+      const fresh = [];
+      rows.forEach(item => {
+        const sid = 'ne-' + item.id;
+        if (!item || !item.id || seen.has(sid)) return;
+        seen.add(sid);
+        fresh.push({
+          id: sid,
+          neId: String(item.id),
+          source: 'netease',
+          title: item.name || '未命名歌曲',
+          artist: (item.artist || '网易云音乐') + ' · 网易云',
+          cover: item.cover || '',
+          url: ''
+        });
+      });
+      if (!fresh.length) return;
+      allSongs = allSongs.concat(fresh);
+      saveSongs();
+      renderPlaylistDrawer();
+    } catch(e) {
+      console.warn('Repair favorites err:', e);
+    }
+  }
+
   function todayKey() {
     const d = new Date();
     const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -1201,6 +1251,7 @@
 
     // 恢复上次的歌单、红心和歌单夹；不要替用户选中或播放任何歌
     // （本文件是启动器异步加载的，DOMContentLoaded 可能已经错过，见文件末尾）
+    await repairMissingFavorites();
     updatePlayModeUI();
   };
 
