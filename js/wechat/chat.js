@@ -6344,34 +6344,9 @@ ${catalog}
           return picks.join('\n').slice(0, 1800);
         };
 
-        // ========== 文件生成：角色真的给你做 Word / Excel / PPT ==========
-        pendingArtifactMeta = null;
-        if (window.MomArtifacts && typeof window.MomArtifacts.maybeCreate === 'function') {
-          try {
-            const wantsAllChat = /(全部|所有|整个聊天|从头到尾|全量|一直以来)/.test(lastUserForTools);
-            const wantsNarrow = /(刚才|刚刚|这段|这个话题|这一小段|只整理|只打包)/.test(lastUserForTools) && !wantsAllChat;
-            const topicSnippet = buildTopicSnippet(wantsNarrow ? 8 : 24, wantsAllChat);
-            const made = await window.MomArtifacts.maybeCreate({
-              userText: lastUserForTools,
-              contextSnippet: topicSnippet,
-              scopeNote: topicSnippet ? '本话题 ' + topicSnippet.split('\n').length + ' 条' : '无对话素材'
-            });
-            if (made && made.error) {
-              recentMessages.push({ role: 'system', content: '【文件生成失败】你刚才想给user做文件，但没成功（' + made.error + '）。如实告诉她这次没做成，不要假装已经做好，也不要编造文件内容。' });
-            } else if (made) {
-              pendingArtifactMeta = made;
-              recentMessages.push({ role: 'system', content: '【文件已生成】你刚为user做好了《' + made.name + '》（' + (window.MomArtifacts.kindLabel ? window.MomArtifacts.kindLabel(made.kind) : made.kind) + '，' + made.size + '）。回复里用一句自然的话把文件递给她，例如“给你，拿去用”；不要描述制作过程、技术细节，也不要自己写链接或文件名以外的代码。文件卡片会自动出现在你的回复后面。' });
-            }
-          } catch (artErr) {
-            console.warn('[Artifact] 文件生成异常：', artErr && artErr.message ? artErr.message : artErr);
-          }
-        }
-
-        // ========== 工具注册表 ==========
-        // 先让模型自己判断这轮要不要调用 搜索 / 小红书 / 天气，再真跑、把结果注入。
-        // 规划器不可用（比如中转站挂了）才退回原来的关键词前置检索，保证“帮我搜一下”还能用。
-        // 这一轮已经在做文件了，就不要再搜网页，别拖慢交付。
-        if (!pendingArtifactMeta && window.MomTools && typeof window.MomTools.hasAnyTool === 'function' && window.MomTools.hasAnyTool()) {
+        // ========== 工具协同：先让模型判断要不要 搜索 / 小红书 / 天气，真跑完再喂给文件和回复 ==========
+        let toolText = '';
+        if (window.MomTools && typeof window.MomTools.hasAnyTool === 'function' && window.MomTools.hasAnyTool()) {
           if (typeof window.MomTools.promptBlock === 'function') {
             const toolBlock = window.MomTools.promptBlock();
             if (toolBlock) recentMessages.push({ role: 'system', content: toolBlock });
@@ -6383,16 +6358,20 @@ ${catalog}
             console.warn('[Tools] 工具编排异常：', toolErr && toolErr.message ? toolErr.message : toolErr);
             toolOutputs = null;
           }
-          if (Array.isArray(toolOutputs)) {
+          if (Array.isArray(toolOutputs) && toolOutputs.length) {
             toolOutputs.forEach(function (text) {
               if (text) recentMessages.push({ role: 'system', content: text });
             });
+            toolText = toolOutputs.filter(Boolean).join('\n\n');
           } else {
             // 规划器失败：退回旧的自动检索
             if (typeof window.buildWebSearchContext === 'function') {
               try {
                 const webSearchContext = await window.buildWebSearchContext();
-                if (webSearchContext) recentMessages.push({ role: 'system', content: webSearchContext });
+                if (webSearchContext) {
+                  recentMessages.push({ role: 'system', content: webSearchContext });
+                  toolText = webSearchContext;
+                }
               } catch (searchErr) {
                 console.warn('[WebSearch] 搜索注入失败：', searchErr && searchErr.message ? searchErr.message : searchErr);
               }
@@ -6405,6 +6384,31 @@ ${catalog}
                 console.warn('[Weather] 天气注入失败：', weatherErr && weatherErr.message ? weatherErr.message : weatherErr);
               }
             }
+          }
+        }
+
+        // ========== 文件生成：角色真的给你做 Word / Excel / PPT ==========
+        // 这一步在工具之后，把刚刚搜到的资料一起交给文件生成，才能做到“先搜再出文档”。
+        pendingArtifactMeta = null;
+        if (window.MomArtifacts && typeof window.MomArtifacts.maybeCreate === 'function') {
+          try {
+            const wantsAllChat = /(全部|所有|整个聊天|从头到尾|全量|一直以来)/.test(lastUserForTools);
+            const wantsNarrow = /(刚才|刚刚|这段|这个话题|这一小段|只整理|只打包)/.test(lastUserForTools) && !wantsAllChat;
+            const topicSnippet = buildTopicSnippet(wantsNarrow ? 8 : 24, wantsAllChat);
+            const searchNote = toolText ? '\n\n【刚刚联网检索到的资料：可直接作为文件内容依据，标注来源，不要编造】\n' + toolText.slice(0, 6000) : '';
+            const made = await window.MomArtifacts.maybeCreate({
+              userText: lastUserForTools,
+              contextSnippet: topicSnippet + searchNote,
+              scopeNote: topicSnippet ? '本话题 ' + topicSnippet.split('\n').length + ' 条' : '无对话素材'
+            });
+            if (made && made.error) {
+              recentMessages.push({ role: 'system', content: '【文件生成失败】你刚才想给user做文件，但没成功（' + made.error + '）。如实告诉她这次没做成，不要假装已经做好，也不要编造文件内容。' });
+            } else if (made) {
+              pendingArtifactMeta = made;
+              recentMessages.push({ role: 'system', content: '【文件已生成】你刚为user做好了《' + made.name + '》（' + (window.MomArtifacts.kindLabel ? window.MomArtifacts.kindLabel(made.kind) : made.kind) + '，' + made.size + '）。回复里用一句自然的话把文件递给她，例如“给你，拿去用”；不要描述制作过程、技术细节，也不要自己写链接或文件名以外的代码。文件卡片会自动出现在你的回复后面。' });
+            }
+          } catch (artErr) {
+            console.warn('[Artifact] 文件生成异常：', artErr && artErr.message ? artErr.message : artErr);
           }
         }
 
