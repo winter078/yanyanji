@@ -364,6 +364,31 @@
     saveXhsProfileList(xhsProfileList().filter(function (p) { return p.userId !== key; }));
   }
 
+  // 只粘了链接、没带名字时，去主页抓一下昵称补上（最多等 3.5 秒，抓不到不影响用）
+  async function enrichXhsProfileName(profile) {
+    if (!profile || String(profile.name || '').trim() || !profile.url) return profile;
+    var ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+    var timer = ctrl ? setTimeout(function () { try { ctrl.abort(); } catch (e) {} }, 3500) : null;
+    try {
+      var res = await fetch('/api/xhs/profile?url=' + encodeURIComponent(profile.url), { signal: ctrl ? ctrl.signal : undefined });
+      if (!res || !res.ok) return profile;
+      var data = await res.json();
+      var name = data && data.nickname ? String(data.nickname).trim().slice(0, 20) : '';
+      if (!name) return profile;
+      profile.name = name;
+      var list = xhsProfileList();
+      for (var i = 0; i < list.length; i++) {
+        if (list[i].userId === profile.userId) list[i].name = name;
+      }
+      saveXhsProfileList(list);
+      return profile;
+    } catch (e) {
+      return profile;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+
   function latestXhsProfile() {
     var charId = xhsCurrentCharId();
     var list = xhsProfileList();
@@ -937,6 +962,7 @@
 
   window.__momFindXhsNote = findXhsNote;
   window.__momBindXhsProfile = bindXhsProfile;
+  window.__momEnrichXhsProfileName = enrichXhsProfileName;
   window.__momGetXhsProfile = latestXhsProfile;
   window.__momGetXhsProfiles = xhsProfilesForChar;
   window.__momFindXhsProfileById = findXhsProfileById;

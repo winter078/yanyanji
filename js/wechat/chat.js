@@ -1118,7 +1118,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
     }
     window.renderXhsProfileSettings = renderXhsProfileSettings;
 
-    window.importXhsProfileFromSettings = function () {
+    window.importXhsProfileFromSettings = async function () {
       const input = document.getElementById('xhs-profile-link-input');
       const status = document.getElementById('xhs-profile-status');
       const text = String((input && input.value) || '').trim();
@@ -1131,7 +1131,12 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       }
       if (input) input.value = '';
       renderXhsProfileSettings();
-      if (status) status.innerText = '已存下：' + (String(saved.name || '').trim() || '这位博主');
+      if (!String(saved.name || '').trim() && typeof window.__momEnrichXhsProfileName === 'function') {
+        if (status) status.innerText = '已存下，正在读她的主页昵称…';
+        try { await window.__momEnrichXhsProfileName(saved); } catch (e) {}
+      }
+      renderXhsProfileSettings();
+      if (status) status.innerText = '已存下：' + (String(saved.name || '').trim() || ('小红书号 ' + (saved.xhsId || '已记录')));
     };
 
     function renderChatSettingsUI() {
@@ -6457,6 +6462,7 @@ ${catalog}
         // 用户这轮明确要角色“发/分享”一篇小红书：先找真实笔记，回复说完再补一张卡片
         // 注意要看最近几条用户消息，而不是只看最后一条（用户常说“给我发一篇…”后面再补一句“快点”）
         pendingShareCard = null;
+        try { localStorage.removeItem('momo_pending_share_card_v1'); } catch (e) {}
         try {
           const recentUserLines = (function () {
             const lines = [];
@@ -6503,17 +6509,26 @@ ${catalog}
               const s = String(recentUserLines[ni] || '');
               if (/[《“"「][^》”"」]{2,40}[》”"」]/.test(s) || /帖子是/.test(s)) return true;
               const plain = s.replace(/[，。！？、,.!?]/g, ' ').trim();
-              if (plain.length >= 6 && plain.length <= 40 && !/(xiaohongshu\.com|xhslink\.com|小红书|小某书|红书|帖子|主页|笔记|发我|发给|能不能|帮我|搜一下|找一下|快点|好了|可以吗)/.test(plain)) return true;
+              // 纯小红书写号（如 63814961897）不是笔记标题，别把它当成“她指定了一篇”
+              if (/^(小红书号|号|ID|id)?\s*[0-9]{6,20}\s*(这个号|的号|号)?$/.test(plain)) continue;
+              if (plain.length >= 6 && plain.length <= 40 && !/(xiaohongshu\.com|xhslink\.com|小红书|小某书|红书|帖子|主页|笔记|发我|发给|能不能|帮我|搜一下|找一下|快点|好了|可以吗|ID|id|账号)/.test(plain)) return true;
             }
             return false;
           })();
           if (boundNow && typeof window.__momXhsProfileCard === 'function') {
+            if (typeof window.__momEnrichXhsProfileName === 'function') {
+              try { await window.__momEnrichXhsProfileName(boundNow); } catch (e) {}
+            }
             const boundCard = window.__momXhsProfileCard(boundNow.name || '', boundNow);
             if (boundCard) {
               pendingShareCard = boundCard;
               recentMessages.push({ role: 'system', content: '【她已经把小红书主页长链接交给你了，你记住了】回复里自然说一句“记住了/存好了”，卡片会自动跟在后面；不要说“需要你每次发链接”，也不要提接口、抓取、技术限制。' });
             }
-          } else if ((wantsProfile || mentionsSavedProfile || matchedIdProfile) && (matchedIdProfile || savedProfile) && !hasNamedNote && typeof window.__momXhsProfileCard === 'function') {
+          } else if ((matchedIdProfile || ((wantsProfile || mentionsSavedProfile) && savedProfile)) && !hasNamedNote && typeof window.__momXhsProfileCard === 'function') {
+            const targetProfile = matchedIdProfile || savedProfile;
+            if (targetProfile && typeof window.__momEnrichXhsProfileName === 'function') {
+              try { await window.__momEnrichXhsProfileName(targetProfile); } catch (e) {}
+            }
             const savedCard = window.__momXhsProfileCard('', matchedIdProfile || savedProfile);
             if (savedCard) {
               pendingShareCard = savedCard;
@@ -6564,7 +6579,20 @@ ${catalog}
                 .replace(/\s+/g, ' ').trim();
               return cleaned.slice(0, 40);
             })();
-            const found = await window.__momFindXhsNote(topic || '推荐');
+            const xhsNoticeTool = (window.__momToolNotice && window.__momToolNotice.start)
+              ? window.__momToolNotice.start('xhs', '小红书') : null;
+            let found = null;
+            try {
+              found = await window.__momFindXhsNote(topic || '推荐');
+              if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(xhsNoticeTool, !!found);
+            } catch (findErr) {
+              if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(xhsNoticeTool, false);
+              throw findErr;
+            }
+            if (found) {
+              // 卡片没渲染出来时兜底：先把卡片存起来，收尾时即使内存里的 pending 丢了也能补上
+              try { localStorage.setItem('momo_pending_share_card_v1', JSON.stringify({ card: found, charId: activeChatCharId(), at: Date.now() })); } catch (e) {}
+            }
             const alreadySent = !!found && recentMessages.some(function (m) {
               return m && typeof m.content === 'string' && m.content.indexOf('[SHARECARD:') >= 0 &&
                 m.content.indexOf(found.title.replace(/[\[\]]/g, '').slice(0, 20)) >= 0;
@@ -7375,8 +7403,20 @@ ${catalog}
               }
             }
             // 这一轮找到的小红书笔记：在角色说完之后补一张可点开的卡片
-            if (pendingShareCard) {
-              const share = pendingShareCard;
+            let shareToSend = pendingShareCard;
+            if (!shareToSend) {
+              try {
+                const savedShare = JSON.parse(localStorage.getItem('momo_pending_share_card_v1') || 'null');
+                if (savedShare && savedShare.card && (Date.now() - (savedShare.at || 0) < 10 * 60 * 1000)) {
+                  const owner = String(savedShare.charId || '');
+                  const current = String(activeChatCharId() || '');
+                  if (!owner || !current || owner === current) shareToSend = savedShare.card;
+                }
+              } catch (e) {}
+            }
+            try { localStorage.removeItem('momo_pending_share_card_v1'); } catch (e) {}
+            if (shareToSend) {
+              const share = shareToSend;
               pendingShareCard = null;
               try {
                 const shareIdx = appData.chatHistory.length;
