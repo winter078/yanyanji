@@ -758,23 +758,31 @@
       }
     }
     if (!candidates.length) return null;
-    // 发之前先探一下：已删除/仅自己可见的笔记会被小红书显示成“无法查看”，直接换下一条
+    // 有解析 Key 就用解析结果做校验：已删除/仅自己可见的笔记会直接报“读不到”，换下一条；
+    // 没有 Key 只能靠页面探测（抓到的往往是小红书通用壳，判断力有限）。
     var hit = null;
+    var note = null;
     var fallback = null;
     var probed = 0;
-    for (var k = 0; k < candidates.length; k++) {
-      var probe = await probeNote(candidates[k].url);
-      probed++;
-      if (probe && probe.ok === false) { if (probed >= 4) break; continue; }
-      if (probe && probe.ok === true) { hit = candidates[k]; break; }
-      if (!fallback) fallback = candidates[k];
-      if (probed >= 3) break;
-    }
-    if (!hit) hit = fallback;
-    if (!hit) return null;
-    var note = null;
     if (readXhsKey()) {
-      try { note = await requestXhs(hit.url); } catch (eNote) {} 
+      for (var a = 0; a < candidates.length && a < 4; a++) {
+        try {
+          var parsed = await requestXhs(candidates[a].url);
+          if (parsed && (parsed.title || parsed.desc)) { hit = candidates[a]; note = parsed; break; }
+        } catch (eParse) {}
+      }
+      if (!hit) return null;
+    } else {
+      for (var k = 0; k < candidates.length; k++) {
+        var probe = await probeNote(candidates[k].url);
+        probed++;
+        if (probe && probe.ok === false) { if (probed >= 4) break; continue; }
+        if (probe && probe.ok === true) { hit = candidates[k]; break; }
+        if (!fallback) fallback = candidates[k];
+        if (probed >= 3) break;
+      }
+      if (!hit) hit = fallback;
+      if (!hit) return null;
     }
     var title = (note && note.title) ? String(note.title) : String(hit.title || '小红书笔记');
     if (looksLikeXhsAd(title, hit.url)) return null;
