@@ -3005,7 +3005,10 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       if (task.imageCount) {
         const meta = document.createElement('div');
         meta.className = 'wkt-meta' + (task.imageDropped ? ' warn' : '');
-        meta.textContent = '截图 ' + task.imageCount + ' 张' + (task.imageDropped ? ' · 还有 ' + task.imageDropped + ' 张没带' : '');
+        const splitNote = (task.imageSegments && task.imageSegments > task.imageCount)
+          ? (' · ' + (task.imageCount === 1 ? '长图分 ' + task.imageSegments + ' 段' : '长图共 ' + task.imageSegments + ' 段'))
+          : '';
+        meta.textContent = '截图 ' + task.imageCount + ' 张' + splitNote + (task.imageDropped ? ' · 还有 ' + task.imageDropped + ' 张没带' : '');
         card.appendChild(meta);
       }
       if (goal.textContent) card.appendChild(goal);

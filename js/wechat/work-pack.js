@@ -158,6 +158,7 @@
       status: 'running',
       steps: steps,
       imageCount: hasImages ? (opts.imageCount || 0) : 0,
+      imageSegments: hasImages ? (opts.imageSegments || opts.imageCount || 0) : 0,
       imageDropped: hasImages ? (opts.imageDropped || 0) : 0,
       compareMode: compare,
       artifactId: '',
@@ -217,6 +218,7 @@
           wantsResearch: needsResearch(userText),
           hasImages: hasImages,
           imageCount: sourceImageCount,
+          imageSegments: images.length,
           imageDropped: imageDropped,
           compareMode: compare
         });
@@ -239,6 +241,7 @@
       wantsResearch: needsResearch(userText),
       hasImages: hasImages,
       imageCount: sourceImageCount,
+      imageSegments: images.length,
       imageDropped: imageDropped,
       compareMode: compare
     });
