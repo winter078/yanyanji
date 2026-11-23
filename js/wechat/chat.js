@@ -7252,7 +7252,8 @@ ${catalog}
         let workPackRan = false;
         if (window.WorkPack && typeof window.WorkPack.shouldRun === 'function' && window.WorkPack.shouldRun({
           charId: activeChatCharId(),
-          userText: lastUserForTools
+          userText: lastUserForTools,
+          imageCount: workImages.length
         })) {
           workPackRan = true;
           try {

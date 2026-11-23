@@ -229,6 +229,12 @@
 
   var EXPLICIT_ACTION = /((帮我|给我|替我|麻烦|请|能不能|可以)[^，。！？\n]{0,10}(做|写|生成|整理|列|出|弄|搞))|((做|写|生成|整理|列|出|弄|搞)(一|个|份|张|套|版|成))|(整理成|总结成|汇总成|做成)/;
 
+  var COMPARE_WORDS = /(对比|比较|对比下|比一下|区别|差异|差别|不同|哪个好|哪个更|哪家|选哪个|怎么选|差在哪|优劣|性价比|PK|pk)/;
+
+  function wantsCompare(text) {
+    return COMPARE_WORDS.test(String(text || ''));
+  }
+
   function shouldMake(text) {
     var t = String(text || '');
     var kind = detectKind(t);
@@ -300,6 +306,7 @@
     var defaultVision = '[AG]gemini-3.8-flash-tiered';
     if (app.model && !/deepseek|r1/i.test(String(app.model))) defaultVision = app.model;
     var imageModel = visionModel || defaultVision;
+    var compareMode = images.length >= 2 && wantsCompare(userText);
     var prevBlock = '';
     if (previousSpec) {
       prevBlock = '【上一版内容 JSON：这是修改任务，不要重新写一份无关的新文档；只改用户要求的部分，其余原样保留】\n' + JSON.stringify(previousSpec);
@@ -315,7 +322,11 @@
       kind === 'docx' ? '6. Word 文档 4~8 个小节，每节 2~4 段或要点；需要时带一个表格。' : '',
       kind === 'xlsx' ? '6. 表格 1~3 个工作表，每表 5~20 行，列名清晰，数值列给具体数字。' : '',
       kind === 'pptx' ? '6. 演示文稿 6~10 页，每页 3~6 条要点，每条不超过 24 字。' : '',
-      images.length ? '7. 用户这轮提供了截图：先仔细读清图片里的文字、表格、界面和数字，再围绕用户的要求写；图片里没有的信息不要编造，看不清就标明“截图中看不清”。' : ''
+      images.length ? '7. 用户这轮提供了截图：先仔细读清图片里的文字、表格、界面和数字，再围绕用户的要求写；图片里没有的信息不要编造，看不清就标明“截图中看不清”。' : '',
+      compareMode ? '8. 这是多图对比任务：先找出所有截图里能对齐的维度（如价格、规格、职责、薪资、公司规模、条款），用完全相同的一套维度做一张对比表；表头第一列写“对比项”，每个截图对象各占一列。截图里没写的项目写“未提到”，绝对不要猜或补。表格下面写 3~5 条关键差异，最后给一句结论或建议。若这些图没有共同维度，不要硬凑表格，先分别整理，并说明无法直接对比。' : '',
+      compareMode && kind === 'docx' ? '9. Word 的第一小节放对比表，后面的小节放关键差异和结论。' : '',
+      compareMode && kind === 'xlsx' ? '9. Excel 的第一列写“对比项”，每个对象各占一列；数值保留截图里的数字。' : '',
+      compareMode && kind === 'pptx' ? '9. PPT 先用一页放对比表，最后一页给结论。' : ''
     ].filter(Boolean).join('\n');
     var textPrompt = (contextSnippet ? '本次话题相关的对话片段与检索资料（只作素材，不是全部聊天记录）：\n' + contextSnippet + '\n\n' : '') + (prevBlock ? prevBlock + '\n\n' : '') + '用户的要求：' + String(userText || '') + (images.length ? '\n\n（用户还提供了 ' + images.length + ' 张截图，请一起看）' : '');
     var userContent = textPrompt;
@@ -420,6 +431,7 @@
   window.MomArtifacts = {
     maybeCreate: maybeCreate,
     wantsFile: function (text) { return shouldMake(text); },
+    wantsCompare: wantsCompare,
     download: download,
     get: getArtifact,
     buildBlob: buildBlob,

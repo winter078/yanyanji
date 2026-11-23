@@ -106,6 +106,13 @@
     return /(改一下|改一版|改改|修改|调整|换成|换一版|重做|再来一版|第一段|第二段|第三段|标题|太长|太短|压缩|扩写|删掉|加上|补一下)/.test(t);
   }
 
+  function compareLike(text) {
+    if (window.MomArtifacts && typeof window.MomArtifacts.wantsCompare === 'function') {
+      return window.MomArtifacts.wantsCompare(text);
+    }
+    return /(对比|比较|区别|差异|差别|不同|哪个好|哪个更|哪家|选哪个|怎么选|差在哪|优劣|性价比|PK|pk)/.test(String(text || ''));
+  }
+
   function needsResearch(text) {
     var t = String(text || '');
     return /(查|搜|最新|今年|去年|2025|2026|政策|价格|销量|数据|市场|新闻|行情|研究|报告|统计)/.test(t) &&
@@ -118,6 +125,8 @@
     var charId = String(opts.charId || '');
     if (!charId || !isEnabledForChar(charId)) return false;
     var text = String(opts.userText || '');
+    var imageCount = Number(opts.imageCount || (Array.isArray(opts.images) ? opts.images.length : 0) || 0);
+    if (imageCount >= 2 && compareLike(text)) return true;
     if (window.MomArtifacts && typeof window.MomArtifacts.wantsFile === 'function' && window.MomArtifacts.wantsFile(text)) {
       return true;
     }
@@ -132,10 +141,11 @@
   function makeTask(opts) {
     var revision = !!opts.revision;
     var hasImages = !!opts.hasImages;
+    var compare = !!opts.compareMode;
     var steps = [makeStep('understand', revision ? '读上一版' : '拆需求', 'done')];
     if (opts.hasResearch) steps.push(makeStep('research', '查资料', 'done'));
     else if (opts.wantsResearch) steps.push(makeStep('research', '查资料', 'skip'));
-    if (hasImages) steps.push(makeStep('look', '看截图', 'running'));
+    if (hasImages) steps.push(makeStep('look', compare ? '看图对比' : '看截图', 'running'));
     steps.push(makeStep('write', revision ? '按你的要求改' : '写内容', hasImages ? 'pending' : 'running'));
     steps.push(makeStep('verify', '检查文件', 'pending'));
     steps.push(makeStep('deliver', '出文件', 'pending'));
@@ -143,12 +153,13 @@
       id: 'work_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6),
       charId: String(opts.charId || ''),
       kind: opts.kind,
-      title: (hasImages ? '看图 · ' : '') + (revision ? '改一版 ' : '做一份 ') + kindLabel(opts.kind),
+      title: (hasImages ? (compare ? '看图对比 · ' : '看图 · ') : '') + (revision ? '改一版 ' : '做一份 ') + kindLabel(opts.kind),
       goal: String(opts.userText || '').replace(/\s+/g, ' ').slice(0, 90),
       status: 'running',
       steps: steps,
       imageCount: hasImages ? (opts.imageCount || 0) : 0,
       imageDropped: hasImages ? (opts.imageDropped || 0) : 0,
+      compareMode: compare,
       artifactId: '',
       artifactName: '',
       error: '',
@@ -183,7 +194,9 @@
     var imageDropped = Math.max(0, Number(opts.imageDropped || 0) || (imageTotal - images.length));
     var last = lastTaskForChar(charId);
     var revision = false;
+    var compare = hasImages && images.length >= 2 && compareLike(userText);
     var kind = window.MomArtifacts.wantsFile(userText) || '';
+    if (!kind && compare) kind = 'docx';
     if (!kind && last && (Date.now() - (last.createdAt || 0) <= TASK_MAX_AGE) && revisionLike(userText)) {
       kind = last.kind;
       revision = true;
@@ -203,7 +216,8 @@
           wantsResearch: needsResearch(userText),
           hasImages: hasImages,
           imageCount: images.length,
-          imageDropped: imageDropped
+          imageDropped: imageDropped,
+          compareMode: compare
         });
         missing.status = 'error';
         missing.error = '上一版文件已经清理掉了，重新做一份吧';
@@ -224,7 +238,8 @@
       wantsResearch: needsResearch(userText),
       hasImages: hasImages,
       imageCount: images.length,
-      imageDropped: imageDropped
+      imageDropped: imageDropped,
+      compareMode: compare
     });
     emit(task, opts.onUpdate);
 
