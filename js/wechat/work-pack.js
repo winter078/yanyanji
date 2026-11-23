@@ -131,20 +131,23 @@
 
   function makeTask(opts) {
     var revision = !!opts.revision;
+    var hasImages = !!opts.hasImages;
     var steps = [makeStep('understand', revision ? '读上一版' : '拆需求', 'done')];
     if (opts.hasResearch) steps.push(makeStep('research', '查资料', 'done'));
     else if (opts.wantsResearch) steps.push(makeStep('research', '查资料', 'skip'));
-    steps.push(makeStep('write', revision ? '按你的要求改' : '写内容', 'running'));
+    if (hasImages) steps.push(makeStep('look', '看截图', 'running'));
+    steps.push(makeStep('write', revision ? '按你的要求改' : '写内容', hasImages ? 'pending' : 'running'));
     steps.push(makeStep('verify', '检查文件', 'pending'));
     steps.push(makeStep('deliver', '出文件', 'pending'));
     return {
       id: 'work_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6),
       charId: String(opts.charId || ''),
       kind: opts.kind,
-      title: (revision ? '改一版 ' : '做一份 ') + kindLabel(opts.kind),
+      title: (hasImages ? '看图 · ' : '') + (revision ? '改一版 ' : '做一份 ') + kindLabel(opts.kind),
       goal: String(opts.userText || '').replace(/\s+/g, ' ').slice(0, 90),
       status: 'running',
       steps: steps,
+      imageCount: hasImages ? (opts.imageCount || 0) : 0,
       artifactId: '',
       artifactName: '',
       error: '',
@@ -173,6 +176,8 @@
     if (!charId || !isEnabledForChar(charId)) return null;
 
     var userText = String(opts.userText || '');
+    var images = (Array.isArray(opts.images) ? opts.images : []).filter(Boolean).slice(0, 4);
+    var hasImages = images.length > 0;
     var last = lastTaskForChar(charId);
     var revision = false;
     var kind = window.MomArtifacts.wantsFile(userText) || '';
@@ -192,12 +197,14 @@
           kind: kind,
           revision: true,
           hasResearch: !!opts.toolText,
-          wantsResearch: needsResearch(userText)
+          wantsResearch: needsResearch(userText),
+          hasImages: hasImages,
+          imageCount: images.length
         });
         missing.status = 'error';
         missing.error = '上一版文件已经清理掉了，重新做一份吧';
         missing.steps.forEach(function (step) {
-          if (step.key === 'write' || step.key === 'verify' || step.key === 'deliver') step.status = 'skip';
+          if (step.key === 'look' || step.key === 'write' || step.key === 'verify' || step.key === 'deliver') step.status = 'skip';
         });
         emit(missing, opts.onUpdate);
         return { task: missing, error: missing.error };
@@ -210,7 +217,9 @@
       kind: kind,
       revision: revision,
       hasResearch: !!opts.toolText,
-      wantsResearch: needsResearch(userText)
+      wantsResearch: needsResearch(userText),
+      hasImages: hasImages,
+      imageCount: images.length
     });
     emit(task, opts.onUpdate);
 
@@ -220,6 +229,7 @@
         contextSnippet: opts.contextSnippet || '',
         scopeNote: '工作包任务',
         kind: kind,
+        images: images,
         previousSpec: previousArtifact ? previousArtifact.spec : null,
         silent: true
       });
@@ -228,6 +238,7 @@
         throw new Error((made && made.error) || '没有生成文件');
       }
 
+      setStep(task, 'look', 'done');
       setStep(task, 'write', 'done');
       setStep(task, 'verify', 'running');
       emit(task, opts.onUpdate);
@@ -246,7 +257,12 @@
     } catch (err) {
       task.status = 'error';
       task.error = String(err && err.message ? err.message : err);
-      setStep(task, 'write', 'fail');
+      if (hasImages) {
+        setStep(task, 'look', 'fail');
+        setStep(task, 'write', 'skip');
+      } else {
+        setStep(task, 'write', 'fail');
+      }
       setStep(task, 'verify', 'skip');
       setStep(task, 'deliver', 'skip');
       emit(task, opts.onUpdate);

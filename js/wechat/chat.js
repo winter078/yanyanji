@@ -7085,6 +7085,38 @@ ${catalog}
           return picks.join('\n').slice(0, 1800);
         };
 
+        // 这轮任务带的截图：只取“上一条角色回复之后”的图片，最多 4 张。
+        // 不把历史里很久以前的图混进来，避免拿错素材。
+        const collectWorkImages = function () {
+          const hist = (appData.chatHistory || []).filter(function (m) {
+            return m && !m.hiddenFromView;
+          });
+          let lastAssistant = -1;
+          for (let i = 0; i < hist.length; i++) {
+            if (hist[i] && hist[i].role === 'assistant') lastAssistant = i;
+          }
+          const list = [];
+          for (let i = lastAssistant + 1; i < hist.length; i++) {
+            const m = hist[i];
+            if (!m || m.role !== 'user') continue;
+            let src = '';
+            if (m.media) {
+              src = String(m.media);
+            } else {
+              const c = String(m.content || '');
+              if (c === '[IMAGE]') src = '';
+              else if (/^\[IMAGE:[\s\S]+\]$/.test(c)) src = c.slice(7, -1);
+              else {
+                const q = c.match(/\[IMAGE:([^\]]+)\]/);
+                if (q) src = q[1];
+              }
+            }
+            src = String(src || '').replace(/[\r\n\s]/g, '');
+            if (src) list.push(src);
+          }
+          return list.slice(-4);
+        };
+
         // ========== 工具协同：先让模型判断要不要 搜索 / 小红书 / 天气，真跑完再喂给文件和回复 ==========
         let toolText = '';
         if (window.MomTools && typeof window.MomTools.hasAnyTool === 'function' && window.MomTools.hasAnyTool()) {
@@ -7162,6 +7194,7 @@ ${catalog}
         // ========== 文件生成：角色真的给你做 Word / Excel / PPT ==========
         // 这一步在工具之后，把刚刚搜到的资料一起交给文件生成，才能做到“先搜再出文档”。
         pendingArtifactMeta = null;
+        const workImages = collectWorkImages();
         let workPackRan = false;
         if (window.WorkPack && typeof window.WorkPack.shouldRun === 'function' && window.WorkPack.shouldRun({
           charId: activeChatCharId(),
@@ -7178,6 +7211,7 @@ ${catalog}
               userText: lastUserForTools,
               contextSnippet: topicSnippet + searchNote,
               toolText: toolText,
+              images: workImages,
               onUpdate: function (task) {
                 if (window.__momUpsertWorkTask) window.__momUpsertWorkTask(task);
               }
@@ -7205,7 +7239,8 @@ ${catalog}
             const made = await window.MomArtifacts.maybeCreate({
               userText: lastUserForTools,
               contextSnippet: topicSnippet + searchNote,
-              scopeNote: topicSnippet ? '本话题 ' + topicSnippet.split('\n').length + ' 条' : '无对话素材'
+              scopeNote: topicSnippet ? '本话题 ' + topicSnippet.split('\n').length + ' 条' : '无对话素材',
+              images: workImages
             });
             if (made && made.error) {
               recentMessages.push({ role: 'system', content: '【文件生成失败】你刚才想给user做文件，但没成功（' + made.error + '）。如实告诉她这次没做成，不要假装已经做好，也不要编造文件内容。' });

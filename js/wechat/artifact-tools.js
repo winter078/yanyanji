@@ -249,15 +249,20 @@
     return '{"title":"文档标题","subtitle":"副标题（可空）","sections":[{"heading":"小节标题","paragraphs":["正文段落"],"bullets":["要点"],"table":{"headers":["列1","列2"],"rows":[["值1","值2"]]}}]}';
   }
 
-  async function draft(kind, userText, contextSnippet, previousSpec) {
+  async function draft(kind, userText, contextSnippet, previousSpec, images) {
     var app = window.appData || {};
     var apiKey = String(app.apiKey || '').trim();
     var apiBase = String(app.apiBase || '').trim();
     if (!apiKey || !apiBase) throw new Error('还没有配置模型 Key');
+    var images = (Array.isArray(images) ? images : []).filter(Boolean).slice(0, 4);
     var base = apiBase.replace(/\/+$/, '');
     if (base.endsWith('/chat/completions')) base = base.replace('/chat/completions', '');
     var url = base + '/chat/completions';
     var label = kind === 'xlsx' ? 'Excel 表格' : (kind === 'pptx' ? 'PPT 演示文稿' : 'Word 文档');
+    var visionModel = String(app.visionModel || '').trim();
+    var defaultVision = '[AG]gemini-3.8-flash-tiered';
+    if (app.model && !/deepseek|r1/i.test(String(app.model))) defaultVision = app.model;
+    var imageModel = visionModel || defaultVision;
     var prevBlock = '';
     if (previousSpec) {
       prevBlock = '【上一版内容 JSON：这是修改任务，不要重新写一份无关的新文档；只改用户要求的部分，其余原样保留】\n' + JSON.stringify(previousSpec);
@@ -272,8 +277,16 @@
       '5. JSON 结构必须是：' + schemaFor(kind),
       kind === 'docx' ? '6. Word 文档 4~8 个小节，每节 2~4 段或要点；需要时带一个表格。' : '',
       kind === 'xlsx' ? '6. 表格 1~3 个工作表，每表 5~20 行，列名清晰，数值列给具体数字。' : '',
-      kind === 'pptx' ? '6. 演示文稿 6~10 页，每页 3~6 条要点，每条不超过 24 字。' : ''
+      kind === 'pptx' ? '6. 演示文稿 6~10 页，每页 3~6 条要点，每条不超过 24 字。' : '',
+      images.length ? '7. 用户这轮提供了截图：先仔细读清图片里的文字、表格、界面和数字，再围绕用户的要求写；图片里没有的信息不要编造，看不清就标明“截图中看不清”。' : ''
     ].filter(Boolean).join('\n');
+    var textPrompt = (contextSnippet ? '本次话题相关的对话片段与检索资料（只作素材，不是全部聊天记录）：\n' + contextSnippet + '\n\n' : '') + (prevBlock ? prevBlock + '\n\n' : '') + '用户的要求：' + String(userText || '') + (images.length ? '\n\n（用户还提供了 ' + images.length + ' 张截图，请一起看）' : '');
+    var userContent = textPrompt;
+    if (images.length) {
+      userContent = [{ type: 'text', text: textPrompt }].concat(images.map(function (src) {
+        return { type: 'image_url', image_url: { url: String(src) } };
+      }));
+    }
     var controller = new AbortController();
     var timer = setTimeout(function () { controller.abort(); }, 90000);
     try {
@@ -282,10 +295,10 @@
         signal: controller.signal,
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
         body: JSON.stringify({
-          model: app.model || 'deepseek-chat',
+          model: images.length ? imageModel : (app.model || 'deepseek-chat'),
           messages: [
             { role: 'system', content: sys },
-            { role: 'user', content: (contextSnippet ? '本次话题相关的对话片段与检索资料（只作素材，不是全部聊天记录）：\n' + contextSnippet + '\n\n' : '') + (prevBlock ? prevBlock + '\n\n' : '') + '用户的要求：' + String(userText || '') }
+            { role: 'user', content: userContent }
           ],
           temperature: 0.4,
           max_tokens: 2600
@@ -314,11 +327,12 @@
     if (!kind) return null;
     var label = kind === 'xlsx' ? '表格' : (kind === 'pptx' ? 'PPT' : '文档');
     var previousSpec = opts.previousSpec || null;
+    var images = (Array.isArray(opts.images) ? opts.images : []).filter(Boolean).slice(0, 4);
     var notice = (!opts.silent && window.__momToolNotice && window.__momToolNotice.start)
       ? window.__momToolNotice.start(kind, label)
       : null;
     try {
-      var spec = await draft(kind, userText, opts.contextSnippet || '', previousSpec);
+      var spec = await draft(kind, userText, opts.contextSnippet || '', previousSpec, images);
       var title = spec.title || (label + ' · ' + new Date().toLocaleDateString('zh-CN'));
       var meta = {
         id: uid(),
