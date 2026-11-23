@@ -224,8 +224,7 @@ let appData = null;
       model: localStorage.getItem('momo_api_model') || 'deepseek-chat',
       userNickname: (function(){
         var n = localStorage.getItem('momo_user_nick');
-        if (!n || n === '\u672B\u672B' || n === '\u6C5F\u82B7\u672B') return 'user';
-        return n;
+        return n || 'user';
       })(),
       visionModel: localStorage.getItem('momo_api_vision_model') || '',
       readerModel: localStorage.getItem('momo_api_reader_model') || '',
@@ -317,11 +316,16 @@ let appData = null;
     }
 
     function saveMeProfile() {
+      if (!appData.hero) appData.hero = normalizeHeroData(null);
       appData.hero.userName = document.getElementById('me-name-input').value.trim() || 'user';
       appData.userNickname = document.getElementById('me-nick-input').value.trim() || 'user';
       appData.hero.userHandle = document.getElementById('me-handle-input').value.trim() || '@紫毛爱妻';
       appData.hero.userTag = document.getElementById('me-tag-input').value.trim() || '妻紫';
       appData.hero.locationText = document.getElementById('me-loc-input').value.trim() || '厦门 · ずっと頑張ってきたね、';
+      appData.hero.name = appData.hero.userName;
+      appData.hero.handle = appData.hero.userHandle;
+      appData.hero.tag = appData.hero.userTag;
+      appData.hero.location = appData.hero.locationText;
 
       const myAppearance = document.getElementById('me-appearance-input').value.trim();
       const myHabits = document.getElementById('me-habits-input').value.trim();
@@ -332,9 +336,14 @@ let appData = null;
       localStorage.setItem('momo_user_info_text', myHabits);
       appData.userInfo = myHabits;
 
-      renderHeroTexts();
+      // 只刷新「微信-我」；桌面小组件如果没单独改过，会继续跟着这里。
+      // 如果小组件已经单独改过，就不覆盖它。
       syncMeProfileUI();
-      syncMeProfileUI();
+      try {
+        if (!localStorage.getItem('momo_widget_profile') && typeof renderHeroTexts === 'function') {
+          renderHeroTexts();
+        }
+      } catch (e) {}
       alert('【我】档案已全部更新！');
       openPage('page-home');
     }

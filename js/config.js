@@ -124,8 +124,7 @@
     function normalizeHeroData(raw) {
       const d = raw || {};
       const rawName = d.userName || d.name || '';
-      const oldUserName = '\u6C5F\u82B7\u672B';
-      const name = (rawName && rawName !== oldUserName && rawName !== '我的小手机') ? rawName : 'user';
+      const name = rawName || 'user';
       const handle = d.userHandle || d.handle || "@测试人员";
       const tag = d.userTag || d.tag || "用户";
       const loc = d.locationText || d.location || "生活在真实世界中";
@@ -140,6 +139,39 @@
         location: loc
       };
     }
+
+    // 桌面小组件是独立的一张名片：默认跟着「微信-我」，
+    // 一旦在小组件上单独改过，就只改小组件，不再影响微信资料。
+    function normalizeWidgetData(raw, fallback) {
+      const d = raw || {};
+      const f = fallback || {};
+      const name = d.userName || d.name || f.userName || f.name || 'user';
+      const handle = d.userHandle || d.handle || f.userHandle || f.handle || '@测试人员';
+      const tag = d.userTag || d.tag || f.userTag || f.tag || '用户';
+      const loc = d.locationText || d.location || f.locationText || f.location || '生活在真实世界中';
+      return {
+        userName: name,
+        userHandle: handle,
+        userTag: tag,
+        locationText: loc,
+        name: name,
+        handle: handle,
+        tag: tag,
+        location: loc
+      };
+    }
+
+    function getWidgetProfile() {
+      let raw = null;
+      try { raw = JSON.parse(localStorage.getItem('momo_widget_profile') || 'null'); } catch (e) { raw = null; }
+      const fallback = (window.appData && window.appData.hero) ? window.appData.hero : DEFAULT_HERO_DATA;
+      const profile = normalizeWidgetData(raw, fallback);
+      if (window.appData) window.appData.widgetProfile = profile;
+      return profile;
+    }
+
+    window.normalizeWidgetData = normalizeWidgetData;
+    window.getWidgetProfile = getWidgetProfile;
 
     const DEFAULT_CHAR_PROMPT = `你是一个AI伴侣。请严格遵守用户接下来为你设定的所有身份和性格，不要出戏。`;
 

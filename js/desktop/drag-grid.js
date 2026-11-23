@@ -979,7 +979,9 @@
     const card = document.createElement('div');
     card.className = 'widget-card widget-hero-profile';
     card.style.cssText = 'position: relative; border-radius: 28px; overflow: hidden;';
-    const h = (window.appData && window.appData.hero) ? window.appData.hero : { userName: 'user', userHandle: '@测试人员', userTag: '用户', locationText: '生活在真实世界中' };
+    const h = (typeof getWidgetProfile === 'function')
+      ? getWidgetProfile()
+      : ((window.appData && (window.appData.widgetProfile || window.appData.hero)) || { userName: 'user', userHandle: '@测试人员', userTag: '用户', locationText: '生活在真实世界中' });
     // 名片背景必须写进模板里：桌面组件是刷新后重新生成的，
     // 只靠 applyThemeAndImages 在启动时给 #hero-card-banner 上色会落空（那时元素还没建出来）
     let banner = (window.appData && window.appData.heroBanner) || '';

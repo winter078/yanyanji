@@ -728,8 +728,8 @@ function renderThemePresetsUI() {
     }
 
     function openHeroEditModal(focusField) {
-      const hero = normalizeHeroData(appData.hero);
-      appData.hero = hero;
+      const hero = (typeof getWidgetProfile === 'function') ? getWidgetProfile() : normalizeHeroData(appData.hero);
+      appData.widgetProfile = hero;
       const nameInput = document.getElementById('hero-modal-name');
       const handleInput = document.getElementById('hero-modal-handle');
       const tagInput = document.getElementById('hero-modal-tag');
@@ -764,26 +764,20 @@ function renderThemePresetsUI() {
 
     function saveHeroEditModal() {
       const nameVal = document.getElementById('hero-modal-name').value.trim() || 'user';
-      const handleVal = document.getElementById('hero-modal-handle').value.trim() || '@紫毛爱妻';
-      const tagVal = document.getElementById('hero-modal-tag').value.trim() || '妻紫';
-      const locVal = document.getElementById('hero-modal-location').value.trim() || '厦门 · ずっと頑張ってきたね、';
+      const handleVal = document.getElementById('hero-modal-handle').value.trim() || '@测试人员';
+      const tagVal = document.getElementById('hero-modal-tag').value.trim() || '用户';
+      const locVal = document.getElementById('hero-modal-location').value.trim() || '生活在真实世界中';
 
-      appData.hero = {
+      const widgetProfile = normalizeWidgetData({
         userName: nameVal,
         userHandle: handleVal,
         userTag: tagVal,
-        locationText: locVal,
-        name: nameVal,
-        handle: handleVal,
-        tag: tagVal,
-        location: locVal
-      };
+        locationText: locVal
+      }, getWidgetProfile());
 
-      localStorage.setItem('momo_hero_data', JSON.stringify(appData.hero));
+      appData.widgetProfile = widgetProfile;
+      localStorage.setItem('momo_widget_profile', JSON.stringify(widgetProfile));
       renderHeroTexts();
-      if (typeof syncMeProfileUI === 'function') {
-        syncMeProfileUI();
-      }
       closeHeroEditModal();
     }
 
@@ -792,8 +786,8 @@ function renderThemePresetsUI() {
     }
 
     function renderHeroTexts() {
-      const hero = normalizeHeroData(appData.hero);
-      appData.hero = hero;
+      const hero = (typeof getWidgetProfile === 'function') ? getWidgetProfile() : normalizeHeroData(appData.hero);
+      appData.widgetProfile = hero;
       const nameEl = document.getElementById('hero-display-name');
       const handleEl = document.getElementById('hero-display-handle');
       const tagEl = document.getElementById('hero-display-tag');
