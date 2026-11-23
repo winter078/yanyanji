@@ -2,7 +2,7 @@
 
 更新时间：2026-11-23  
 仓库：`https://github.com/winter078/yanyanji.git`（分支 `main`）  
-本地目录：`C:\Users\29531\phone-dev\latest`  
+本地目录：家里 `C:\Users\29531\phone-dev\latest`；公司 `C:\Users\Administrator\phone-dev\latest`  
 线上入口：`https://momo-phone.pages.dev/phone`  
 当前线上 build：`20261123-0073`（B站前端最后改动停在 0069 时的代码，后续没有单独验收）
 
@@ -27,6 +27,14 @@
 - B站 JSONP 要求 Referer 在 `.bilibili.com` 下，浏览器页面在 `momo-phone.pages.dev`，伪造不了；`fetch` 的 `referrer` 选项实测无效。
 - 公共中转 `api.cors.lol` 曾成功一次，之后持续 429；其他试过的中转多为 401/403/412/429/522/530。
 - B站真实播放流还没验收；`/api/bili/stream` 从 Cloudflare 拉 `bilivideo.com` 是否 200/206 未知；官方播放器直接打开能播，嵌 iframe 在本地测试黑屏。
+
+### 2026-11-23 公司网络复测（重要）
+
+- 公司这台 Windows 直连 `api.bilibili.com` 搜索接口返回 **200**，同一条视频的 `playurl` 也能拿到 `bilivideo.com` 直链。
+- 直链带 `Range: bytes=0-1023` 请求返回 **206**；说明视频 CDN 本身不挑网络，也不挑 `Origin: momo-phone.pages.dev`。
+- 线上 `/api/bili/stream` 用同一条直链实测 **206 / video/mp4 / 1024 字节**，说明 Cloudflare 转发播放流是通的。
+- 结论：**播放流不是问题，真正被挡的是“搜索”和“取播放地址”两个 B站 API**。公司网络能直连只说明可以拿它做测试，不代表能当线上服务器（电脑一关就断）。
+- 线上 `/api/bili/play` 仍返回 `no_stream`；`/api/bili/search` 仍返回空。`view` 的 JSONP 在 live 页面 Referer 下能返回 200，但 `playurl` 的 JSONP 仍是 403。
 
 ## 可选的下一步
 
