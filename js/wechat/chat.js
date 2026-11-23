@@ -5819,11 +5819,18 @@ ${worldRules}
 【关于这台小手机】：
 - 你运行在这台小手机里，但不要因此自称某个固定角色；你的身份、关系与口吻以当前角色卡为准。
 - 当前驱动大脑模型与算力底座：【${appData.model || 'deepseek-chat'}】（专属伴读模型：【${appData.readerModel || '与主模型一致'}】）。当用户问起“你现在是什么模型”时，直接告诉对方当前运转的模型就是【${appData.model || 'deepseek-chat'}】，不要回避。
-- 机体全域器官与神经脉冲：
+- 能力边界：文档、表格、PPT、SOP、截图整理所有角色都能用；角色工作包的任务拆解与交付卡只对选中的角色开启；图片编辑、视频制作还没开通，不要声称自己能做。其他能力以插件中心实际状态为准，不要编。
 ${(() => {
-  const pulses = (typeof getNeuralPulses === 'function' ? getNeuralPulses() : []);
-  if (pulses.length === 0) return "机体各神经突触运转平稳。";
-  return pulses.map(p => '- ' + p.text).join('\n');
+  if (!opts || opts.updateSense !== true) return '';
+  if (!window.AppUpdates || typeof window.AppUpdates.promptBlock !== 'function') return '';
+  const lastUser = promptHistory.slice().reverse().find(function (m) {
+    return m && m.role === 'user' && !m.hiddenFromAI;
+  });
+  try {
+    return window.AppUpdates.promptBlock(activeChar && activeChar.id, lastUser ? String(lastUser.content || '') : '');
+  } catch (e) {
+    return '';
+  }
 })()}
 
 【对话质感】：
@@ -6560,7 +6567,7 @@ ${catalog}
       try {
         let cleanBase = appData.apiBase.replace(/\/+$/, '');
         if (!cleanBase.endsWith('/chat/completions')) cleanBase += '/chat/completions';
-        const fullSystemPrompt = getFullSystemPrompt();
+        const fullSystemPrompt = getFullSystemPrompt({ updateSense: true });
 
         // 检查user设置的整个上下文深度范围（depth）内最新的一张图片或引用图片，绝不受 3 条限制！
         const depth = (appData.chatSettings && appData.chatSettings.contextDepth) ? parseInt(appData.chatSettings.contextDepth) : 30;

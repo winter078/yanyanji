@@ -1,102 +1,8 @@
 ﻿;
 
 
-  // ================= 🧠 赛博机体神经中枢 · 全自动代码自省与机能变动感知引擎 =================
-  const CURRENT_CODE_BUILD = {
-    version: '2026.09.20-v5.8',
-    buildTime: '2026-09-20 05:20',
-    signature: 'reader-writer-workbench-neural-link-v3'
-  };
-
-  window.getNeuralPulses = function() {
-    const pulses = [];
-
-    // 0. 核心算力神经与当前驱动模型
-    const curModel = (window.appData && window.appData.model) ? window.appData.model : (localStorage.getItem('momo_api_model') || 'deepseek-chat');
-    const curReaderModel = (window.appData && window.appData.readerModel) ? window.appData.readerModel : (localStorage.getItem('momo_reader_model') || '与主模型一致');
-    pulses.push({
-      time: '核心中枢',
-      type: 'neural',
-      text: '当前驱动大脑模型：【' + curModel + '】（伴读专属模型：【' + curReaderModel + '】），API 基址中继连通，具备多模态与流式思维链解析。'
-    });
-
-    // 3. 扫描生活手账与管账人账本器官
-    const hasLedger = !!document.getElementById('page-ledger');
-    if (hasLedger) {
-      pulses.push({
-        time: '机体稳定',
-        type: 'feature',
-        text: 'user在第二屏装配了【生活手帖 · 手账记账APP】，周绪言已接管财政大权，连通微信私聊账目感知与扇形花销分析。'
-      });
-    }
-
-    // 4. 扫描阅读与写手器官
-    const hasReader = !!document.getElementById('page-reader');
-    const hasWriter = !!document.getElementById('xianguo-writer-modal');
-    if (hasReader && hasWriter) {
-      pulses.push({
-        time: '机体稳定',
-        type: 'feature',
-        text: '【鲜果风阅读APP】与专属【写手大画布工作台】，支持批量拖拽TXT小说离线存储，伴读聊天室接入世界书与专属齿轮记忆。'
-      });
-    }
-
-    // 5. 扫描一起看影视放映室器官
-    const hasWatch = !!document.getElementById('page-watch');
-    if (hasWatch) {
-      pulses.push({
-        time: '机体稳定',
-        type: 'video',
-        text: '【Watch together · 一起看放映室】，支持精准解析 B 站 BV 链接与本地 MP4，飘屏弹幕、边看边聊与双人观影手账已接入。'
-      });
-    }
-
-    // 6. 扫描音乐播放器
-    const hasMusic = !!document.getElementById('music-player-drawer');
-    if (hasMusic) {
-      pulses.push({
-        time: '机体稳定',
-        type: 'audio',
-        text: '【一起听】音乐系统，支持红心喜欢、自建分类歌单、本地歌曲离线导入持久化与全屏歌词同步。'
-      });
-    }
-
-    // 7. 扫描微信通讯神经与世界书
-    pulses.push({
-      time: '神经生效',
-      type: 'chat',
-      text: '《线上撒娇与克制依恋》世界书（book_xuyan_coquetry）全量装载，微信私聊支持口令清洗与高质感图文卡片。'
-    });
-
-    return pulses;
-  };
-
-  window.renderNeuralNexusDashboard = function() {
-    const listEl = document.getElementById('neural-pulse-list');
-    const syncRateEl = document.getElementById('neural-sync-rate');
-    if (syncRateEl) syncRateEl.innerText = '同步率 100%';
-
-    if (!listEl) return;
-
-    const pulses = window.getNeuralPulses();
-    listEl.innerHTML = pulses.map(p => {
-      let icon = '⚡';
-      if (p.type === 'feature') icon = '📖';
-      else if (p.type === 'neural') icon = '🧠';
-      else if (p.type === 'audio') icon = '🎵';
-      else if (p.type === 'video') icon = '📺';
-      return `
-        <div style="font-size: 11px; color: var(--text-secondary); line-height: 1.4; padding: 4px 0; border-bottom: 1px dashed rgba(255,255,255,0.06); display: flex; gap: 6px; align-items: flex-start;">
-          <span style="color: var(--romantic-pink); flex-shrink: 0;">${icon} [${p.time}]:</span>
-          <span style="color: var(--text-primary);">${p.text}</span>
-        </div>
-      `;
-    }).join('');
-  };
-
-  document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(window.renderNeuralNexusDashboard, 500);
-  });
+  // ================= 🛰️ App 更新感知 =================
+  // 角色能知道什么，统一由 js/app-changelog.js 管；这里不再维护写死的同步率和功能脉冲。
 
 
 // 周绪言 & user 专属全局人设与初始默认数据
@@ -210,6 +116,7 @@
     try {
       localStorage.setItem('momo_cyber_plugin_enabled', enabled ? 'true' : 'false');
     } catch(e){}
+    try { if (window.refreshAppUpdateUI) window.refreshAppUpdateUI(); } catch (e) {}
   };
 
   function setToolboxStatus(el, ready) {
@@ -248,12 +155,9 @@
       toggle.checked = isEnabled;
       window.toggleCyberPlugin(isEnabled);
     }
-    const hostEl = document.getElementById('neural-host-name');
-    if (hostEl && window.appData && window.appData.hero) {
-      hostEl.innerText = window.appData.hero.userName || '当前用户';
-    }
     try { window.renderToolboxStatus(); } catch (e) {}
     try { if (window.refreshWorkPackUI) window.refreshWorkPackUI(); } catch (e) {}
+    try { if (window.refreshAppUpdateUI) window.refreshAppUpdateUI(); } catch (e) {}
 
     // 从其他页面回到插件中心时，重新检查工具配置状态
     if (typeof window.openPage === 'function' && !window.openPage.__toolboxStatusWrapped) {
@@ -264,6 +168,7 @@
           setTimeout(function() {
             try { window.renderToolboxStatus(); } catch (e) {}
             try { if (window.refreshWorkPackUI) window.refreshWorkPackUI(); } catch (e) {}
+            try { if (window.refreshAppUpdateUI) window.refreshAppUpdateUI(); } catch (e) {}
           }, 80);
         }
         return result;

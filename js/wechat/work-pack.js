@@ -377,6 +377,7 @@
       row.appendChild(state);
       list.appendChild(row);
     });
+    try { if (window.refreshAppUpdateUI) window.refreshAppUpdateUI(); } catch (e) {}
   }
 
   window.refreshWorkPackUI = refreshWorkPackUI;

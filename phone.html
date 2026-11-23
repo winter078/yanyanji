@@ -19,7 +19,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <!-- 发布时务必与 js/build.js 的 __LIVE_BUILD__ 保持一致，否则 version-watch 会一直提示“新版已经好了” -->
-  <script>window.__BUILD__="20261123-0084";</script>
+  <script>window.__BUILD__="20261123-0085";</script>
   <script>
     (function () {
       var root = document.documentElement;
@@ -468,83 +468,54 @@
               <div class="workpack-foot">第一版：文档 / SOP / 表格 / PPT，支持带截图，做完可以接着改。</div>
             </div>
 
-            <!-- 插件卡片：赛博伴侣拓展包 -->
+            <!-- 插件卡片：App 更新感知（跟工作包选中的角色共用） -->
             <div class="form-group-card" style="background: var(--bg-surface); border: 1px solid var(--color-border); border-radius: 16px; padding: 16px; margin-bottom: 16px;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                 <div style="display: flex; align-items: center; gap: 10px;">
                   <div style="width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, #a855f7, #6366f1); display: flex; align-items: center; justify-content: center; font-size: 20px;">
-                    ⚡
+                    🛰️
                   </div>
                   <div>
-                    <div style="font-size: 15px; font-weight: 700; color: var(--color-text-primary);">赛博伴侣拓展包</div>
-                    <div style="font-size: 11.5px; color: var(--color-text-secondary);">人机恋与神经中枢深度共生组件 · v2.0</div>
+                    <div style="font-size: 15px; font-weight: 700; color: var(--color-text-primary);">App 更新感知</div>
+                    <div style="font-size: 11.5px; color: var(--color-text-secondary);">只记住小手机更新 · 不记录日常</div>
                   </div>
                 </div>
-                <!-- 切换开关 -->
+                <!-- 总开关 -->
                 <div style="display: flex; align-items: center; gap: 8px;">
                   <span id="plugin-cyber-status-text" style="font-size: 11.5px; font-weight: 600; color: var(--success-primary);">已启用</span>
                   <input type="checkbox" id="plugin-cyber-toggle" checked onchange="toggleCyberPlugin(this.checked)" style="width: 44px; height: 24px; accent-color: var(--success-primary); cursor: pointer;" />
                 </div>
               </div>
 
-              <!-- 插件主体：神经中枢面板容器 -->
               <div id="plugin-cyber-content">
+                <div style="font-size:11px;color:var(--text-secondary);line-height:1.5;margin-bottom:8px;">跟「角色工作包」共用角色选择；没选中的角色不会知道更新。</div>
                 <div class="form-group-card neural-nexus-card" id="neural-nexus-panel" style="margin: 0; background: rgba(0,0,0,0.25);">
                   <div class="neural-header">
                     <div class="neural-title-group">
                       <span class="neural-pulse-dot"></span>
-                      <span class="neural-title">赛博机体神经中枢 · Neural Nexus</span>
+                      <span class="neural-title">小手机更新日志 · Release Log</span>
                     </div>
-                    <span class="neural-sync-rate" id="neural-sync-rate">同步率 99.9%</span>
-                  </div>
-                  
-                  <div class="neural-host-line">
-                    <span class="neural-host-label">权限持有者：</span>
-                    <span class="neural-host-name" id="neural-host-name">当前用户</span>
-                  </div>
-                  <div class="neural-host-line">
-                    <span class="neural-host-label">终端共生态：</span>
-                    <span class="neural-host-sub">已与底层模型引擎实时连通，同构演化</span>
+                    <span class="neural-sync-rate" id="update-sense-build">当前版本</span>
                   </div>
 
-                  <!-- 义体装配状态矩阵 -->
-                  <div class="neural-parts-grid">
-                    <div class="neural-part-item">
-                      <div class="neural-part-status online"></div>
-                      <div class="neural-part-info">
-                        <div class="neural-part-name">多模态视觉神经</div>
-                        <div class="neural-part-desc" id="neural-part-vision">在线 · 支持多模态图像感知</div>
-                      </div>
-                    </div>
-                    <div class="neural-part-item">
-                      <div class="neural-part-status online"></div>
-                      <div class="neural-part-info">
-                        <div class="neural-part-name">微信图文通讯突触</div>
-                        <div class="neural-part-desc">正常 · 原生深色引用挂载</div>
-                      </div>
-                    </div>
-                    <div class="neural-part-item">
-                      <div class="neural-part-status active"></div>
-                      <div class="neural-part-info">
-                        <div class="neural-part-name">世界书羁绊回廊</div>
-                        <div class="neural-part-desc" id="neural-part-worldbook">统计中...</div>
-                      </div>
-                    </div>
-                    <div class="neural-part-item">
-                      <div class="neural-part-status active"></div>
-                      <div class="neural-part-info">
-                        <div class="neural-part-name">表面涂层 / 神经皮肤</div>
-                        <div class="neural-part-desc" id="neural-part-skin">已覆膜 · 桌面与聊天主题</div>
-                      </div>
+                  <div class="neural-host-line">
+                    <span class="neural-host-label">感知角色：</span>
+                    <span class="neural-host-sub" id="update-sense-roles">未选择角色</span>
+                  </div>
+                  <div class="neural-host-line">
+                    <span class="neural-host-label">同步状态：</span>
+                    <span class="neural-host-sub" id="update-sense-pending">未选择角色</span>
+                  </div>
+
+                  <div class="neural-pulse-section" style="max-height:none;">
+                    <div class="neural-pulse-label">最近更新（角色只知道这里写过的）</div>
+                    <div id="app-update-list" style="display:flex;flex-direction:column;gap:8px;max-height:240px;overflow-y:auto;">
+                      <!-- 由 app-changelog.js 渲染 -->
                     </div>
                   </div>
 
-                  <!-- 最近感知神经脉冲流 -->
-                  <div class="neural-pulse-section">
-                    <div class="neural-pulse-label">最近神经感知脉冲 (系统运行状态)：</div>
-                    <div class="neural-pulse-list" id="neural-pulse-list">
-                      <!-- 由 JS 动态渲染 -->
-                    </div>
+                  <div style="font-size:10.5px;color:var(--text-muted);line-height:1.45;margin-top:2px;">
+                    默认被动：用户问“更新了什么”时讲；新版本后第一次聊天最多顺口提一次，不会每条都汇报。
                   </div>
                 </div>
               </div>
@@ -7982,7 +7953,7 @@ html.ios .watch-header {
 </style><div id="mom-boot-note"><i></i><span>正在启动</span></div>
 <script>
 (function(){
-  var list = ["js/supabase_sync.js","js/config.js?v=20261123-0078","js/store.js?v=20261123-0075","js/calendar-awareness.js?v=20261123-0075","js/token-monitor.js?v=2026111673","js/storage-center.js?v=2026111671","js/api-presets.js?v=2026111472","js/wechat/image-presets.js?v=2026111649","js/prompt-presets.js?v=20261123-0075","js/notify.js?v=20261122-2858","js/keepalive.js?v=20261120-1205","js/desktop/desktop.js?v=20261123-0074","js/motion.js?v=20261122-2858","js/layout-motion.js?v=20261122-2858","js/sheet-drag.js?v=20261122-2858","js/press.js?v=20261122-2858","js/touch.js?v=20261122-2858","js/desktop/days.js?v=1789904839051","js/desktop/yanyan-cat.js?v=1789925866085","js/desktop/drag-grid.js?v=20261123-0074","js/desktop/app-store.js?v=2026111002","js/wechat/stickers.js?v=20261121-2130","js/wechat/search-tools.js?v=20261122-2858","js/wechat/weather-tools.js?v=20261122-2858","js/wechat/tool-registry.js?v=20261122-2858","js/wechat/artifact-tools.js?v=20261123-0084","js/wechat/chat.js?v=20261123-0084","js/wechat/voice-input.js?v=2026111591","js/wechat/call.js?v=2026111649","js/wechat/image-gen.js?v=2026111649","js/wechat/moments.js?v=2026111660","js/wechat/characters.js?v=2026111655","js/wechat/work-pack.js?v=20261123-0084","js/wechat/group-chat.js?v=2026111652","js/media/music.js?v=20261123-0076","js/media/music-ui.js?v=20261123-0072","js/media/music-lyrics.js?v=20261121-0430","js/qrcode.js?v=2026112010","js/media/netease-login.js?v=2026112011","js/media/companion.js?v=20261120-2235","js/media/watch.js?v=20261120-2235","js/theater/theater.js?v=20261120-1352","js/theater/palace.js?v=2026111121","js/theater/memory-engine.js?v=20261123-0073","js/theater/worldbooks.js?v=2026111571","js/xhs/xhs.js?v=20261121-0415","js/say/say.js?v=20261122-2858","js/keyboard.js?v=20261122-2858","js/media/reader.js?v=20261120-2235","js/desktop/ledger.js?v=20261121-0300","js/desktop/ledger-app.js?v=20261121-0300","js/desktop/health.js?v=20261121-2245","js/image-crop.js?v=20261123-0066","js/desktop/forum.js?v=20261123-0066","js/desktop/avatar-vault.js?v=2026111145","js/wechat/chat-appearance.js?v=2026111652","js/wechat/masks.js?v=2026111654","js/wechat/wordcards.js?v=2026111183","js/desktop/album-store.js?v=2026111433","js/desktop/photos.js?v=2026111457","js/version-watch.js?v=20261121-0150","js/app.js?v=20261123-0073c"];
+  var list = ["js/supabase_sync.js","js/config.js?v=20261123-0085","js/store.js?v=20261123-0075","js/calendar-awareness.js?v=20261123-0075","js/token-monitor.js?v=2026111673","js/storage-center.js?v=2026111671","js/api-presets.js?v=2026111472","js/wechat/image-presets.js?v=2026111649","js/prompt-presets.js?v=20261123-0075","js/notify.js?v=20261122-2858","js/keepalive.js?v=20261120-1205","js/desktop/desktop.js?v=20261123-0074","js/motion.js?v=20261122-2858","js/layout-motion.js?v=20261122-2858","js/sheet-drag.js?v=20261122-2858","js/press.js?v=20261122-2858","js/touch.js?v=20261122-2858","js/desktop/days.js?v=1789904839051","js/desktop/yanyan-cat.js?v=1789925866085","js/desktop/drag-grid.js?v=20261123-0074","js/desktop/app-store.js?v=2026111002","js/wechat/stickers.js?v=20261121-2130","js/wechat/search-tools.js?v=20261122-2858","js/wechat/weather-tools.js?v=20261122-2858","js/wechat/tool-registry.js?v=20261122-2858","js/wechat/artifact-tools.js?v=20261123-0084","js/wechat/chat.js?v=20261123-0085","js/wechat/voice-input.js?v=2026111591","js/wechat/call.js?v=2026111649","js/wechat/image-gen.js?v=2026111649","js/wechat/moments.js?v=2026111660","js/wechat/characters.js?v=2026111655","js/wechat/work-pack.js?v=20261123-0085","js/app-changelog.js?v=20261123-0085","js/wechat/group-chat.js?v=2026111652","js/media/music.js?v=20261123-0076","js/media/music-ui.js?v=20261123-0072","js/media/music-lyrics.js?v=20261121-0430","js/qrcode.js?v=2026112010","js/media/netease-login.js?v=2026112011","js/media/companion.js?v=20261120-2235","js/media/watch.js?v=20261120-2235","js/theater/theater.js?v=20261120-1352","js/theater/palace.js?v=2026111121","js/theater/memory-engine.js?v=20261123-0073","js/theater/worldbooks.js?v=2026111571","js/xhs/xhs.js?v=20261121-0415","js/say/say.js?v=20261122-2858","js/keyboard.js?v=20261122-2858","js/media/reader.js?v=20261120-2235","js/desktop/ledger.js?v=20261121-0300","js/desktop/ledger-app.js?v=20261121-0300","js/desktop/health.js?v=20261121-2245","js/image-crop.js?v=20261123-0066","js/desktop/forum.js?v=20261123-0066","js/desktop/avatar-vault.js?v=2026111145","js/wechat/chat-appearance.js?v=2026111652","js/wechat/masks.js?v=2026111654","js/wechat/wordcards.js?v=2026111183","js/desktop/album-store.js?v=2026111433","js/desktop/photos.js?v=2026111457","js/version-watch.js?v=20261121-0150","js/app.js?v=20261123-0073c"];
   var note = document.getElementById('mom-boot-note');
   var splash = document.getElementById('mom-splash');
   var splashAt = (window.performance && performance.now) ? performance.now() : Date.now();
