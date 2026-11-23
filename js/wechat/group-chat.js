@@ -677,9 +677,6 @@
         messageEl = stickerBubble;
       } else {
         bubble.innerText = bodyText;
-        if (!opts.typing && typeof window.attachSpeakButtonToBubble === 'function') {
-          window.attachSpeakButtonToBubble(bubble, bodyText, m.role, m);
-        }
       }
     }
     wrap.appendChild(messageEl);

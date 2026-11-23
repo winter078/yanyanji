@@ -1,8 +1,8 @@
 /* ================= 语音通话 · 单聊 =================
-   - 没有真实电话、没有音频文件、没有回放
+   - 没有真实电话；通话记录只存文字
    - 按住说话仍由 voice-input.js 调用 SpeechRecognition，只取文字
    - 用户松手后文字直接进入通话气泡，再走原有单聊生成
-   - 角色回复从 chatHistory 取出，渲染成通话气泡 */
+   - 角色回复从 chatHistory 取出，渲染成通话气泡；气泡上的朗读键走角色语音 */
 (function () {
   'use strict';
 
@@ -451,6 +451,25 @@
       bubble.className = 'call-bubble';
       bubble.textContent = text;
       msg.appendChild(bubble);
+      if (role === 'assistant' && !state.recordView && window.CharVoice &&
+          typeof window.CharVoice.isEnabled === 'function' && window.CharVoice.isEnabled()) {
+        var speakBtn = document.createElement('button');
+        speakBtn.type = 'button';
+        speakBtn.className = 'call-speak-btn';
+        speakBtn.title = '听 TA 说';
+        speakBtn.setAttribute('aria-label', '播放这条通话语音');
+        speakBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5l-5 4H4z" fill="currentColor"></path><path d="M16.2 8.6a5.2 5.2 0 0 1 0 6.8M18.6 6.2a8.4 8.4 0 0 1 0 11.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg>';
+        speakBtn.onclick = function (e) {
+          e.stopPropagation();
+          try {
+            window.CharVoice.speak(text, {
+              charId: (speaker && speaker.id) || currentCharId(),
+              btn: speakBtn
+            });
+          } catch (err) {}
+        };
+        bubble.appendChild(speakBtn);
+      }
       if (meta) {
         var m = document.createElement('div');
         m.className = 'call-msg-meta';

@@ -527,6 +527,33 @@
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
 }
+.call-speak-btn {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin: 0 0 0 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  opacity: .5;
+  vertical-align: -3px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.call-speak-btn svg { width: 15px; height: 15px; display: block; }
+.call-speak-btn.is-playing { opacity: 1; animation: callVoicePulse .9s ease-in-out infinite; }
+@keyframes callVoicePulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.14); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .call-speak-btn.is-playing { animation: none; }
+}
 .call-msg-meta {
   margin-top: 4px;
   font-size: 9.5px;

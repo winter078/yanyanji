@@ -4796,9 +4796,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
             bubble.innerText = speechText.trim() || cleanText;
           }
 
-          if (!isTyping && cleanText !== '__TYPING__') {
-            attachSpeakButton(bubble, speechText.trim() || cleanText, role, currentMsg);
-          }
+          // 普通文字气泡不挂喇叭：角色语音只在语音条和通话里出现。
 
           if (msgIndex !== -1) {
             bindBubbleLongPress(bubble, msgIndex);
