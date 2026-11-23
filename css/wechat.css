@@ -1211,6 +1211,41 @@ html.kb-open #page-chat .wechat-input-bar-v2 {
   gap: 3px;
 }
 
+/* 音乐分享卡：比普通链接卡更像一张正在播放的唱片 */
+.msg-share-card-music {
+  border-left: 2px solid var(--theme-accent);
+  background: linear-gradient(155deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.02)), var(--bg-surface);
+}
+.msg-share-card-music .msg-share-title {
+  font-size: 15.5px;
+  letter-spacing: 0.2px;
+}
+.msg-share-card-music .msg-share-cover {
+  width: 58px;
+  height: 58px;
+  border-radius: 10px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+.msg-share-cover-music {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: linear-gradient(135deg, #5c4b63, #23232b);
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 24px;
+  line-height: 1;
+}
+.msg-share-cover-music img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.msg-share-card-music .msg-share-brand-badge span:last-child {
+  color: var(--theme-accent) !important;
+}
+
 /* ================= 真实微信 1:1 居中时间分隔标志 (图二原生复刻) ================= */
 .wechat-time-divider {
   display: flex;

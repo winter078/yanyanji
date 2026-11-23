@@ -4422,7 +4422,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
           const isRead = kind === 'read' || kind === 'read_invite';
           const isInvite = kind.indexOf('_invite') > -1;
           const shareCard = document.createElement('div');
-          shareCard.className = 'msg-share-card';
+          shareCard.className = 'msg-share-card' + (isMusic ? ' msg-share-card-music' : '');
           shareCard.title = isInvite ? '点击接受这份邀请' : (isMusic || isWatch || isRead ? '点击现在打开' : '点击在浏览器中打开链接');
           shareCard.onclick = (e) => {
             if (!document.body.classList.contains('chat-multi-mode')) {
@@ -4554,7 +4554,19 @@ window.syncNarrationModeUI = syncNarrationModeUI;
 
           midEl.appendChild(descEl);
 
-          if (cardData.cover) {
+          if (isMusic) {
+            const coverEl = document.createElement('div');
+            coverEl.className = 'msg-share-cover msg-share-cover-music';
+            coverEl.innerText = '♪';
+            if (cardData.cover) {
+              const coverImg = document.createElement('img');
+              coverImg.setAttribute('referrerpolicy', 'no-referrer');
+              coverImg.onerror = () => coverImg.remove();
+              coverImg.src = cardData.cover;
+              coverEl.appendChild(coverImg);
+            }
+            midEl.appendChild(coverEl);
+          } else if (cardData.cover) {
             const coverEl = document.createElement('img');
             coverEl.className = 'msg-share-cover';
             coverEl.src = cardData.cover;
@@ -5278,6 +5290,12 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       handleSendOnly();
     }
 
+    // 外部卡片（分享的音乐 / 一起听邀请）先落进聊天记录，再让角色自然接一句。
+    // 不读输入框，避免把用户还没发出去的草稿一起发出去。
+    window.triggerChatAiReply = function () {
+      return triggerAiReaction();
+    };
+
     function chatAlbumPromptText() {
       if (window.__groupMode) return '';
       var debugBase = {
@@ -5487,6 +5505,12 @@ ${(() => {
       const match = m.content.match(/\[SHARECARD:([^\]]+)\]/);
       if (match) {
         const d = JSON.parse(match[1]);
+        if (d.kind === 'music' || d.kind === 'music_invite') {
+          const artist = String(d.artist || '').split('·')[0].trim();
+          return '- ★★★【user刚刚把一首歌分享给你：《' + (d.title || '这首歌') + '》' + (artist ? ' — ' + artist : '') + '】：\n' +
+                 '  ' + (d.kind === 'music_invite' ? '她点的是「邀请你一起听」，想和你戴上同一副耳机。' : '她只是想把这首歌给你听听。') + '\n' +
+                 '  【绝对活人感准则】：你已经在耳机里听到这首歌了，按当前角色卡自然接一句旋律、歌词或此刻心情；不要问“这是什么歌”，也不要复述卡片上的字段。';
+        }
         return '- ★★★【user刚刚向你分享了一篇' + (d.brand || '平台') + '内容】：\n' +
                '  标题：《' + (d.title || '未知标题') + '》\n' +
                '  作者与出处：' + (d.author || d.brand) + '\n' +
@@ -5521,6 +5545,12 @@ ${(() => {
       const match = m.content.match(/\[SHARECARD:([^\]]+)\]/);
       if (match) {
         const d = JSON.parse(match[1]);
+        if (d.kind === 'music' || d.kind === 'music_invite') {
+          const artist = String(d.artist || '').split('·')[0].trim();
+          return '- 【user分享了一首歌：《' + (d.title || '这首歌') + '》' + (artist ? ' — ' + artist : '') + '】\n  ' +
+            (d.kind === 'music_invite' ? '她邀请你戴上耳机一起听。' : '她想把这首歌也放给你听。') +
+            '\n  *态度准则*：你已经听到了，就着歌名、歌手、旋律或歌词自然接一句；不要问“这是什么”，也不要像读链接摘要一样复述。';
+        }
         return '- 【user分享了一篇' + (d.brand || '平台') + '内容】：\n  标题：《' + (d.title || '未知标题') + '》\n  简介与内容：' + (d.desc || '暂无详细描述') + '\n  *态度准则*：你已经点开看过了这个链接。必须像一个陪伴在她身边的鲜活男友一样，就该帖子的故事、作者或视频内容，极尽自然地跟user八卦、吐槽、心疼她、或者发表你的毒舌/温润看法，绝不能问“这是什么”！';
       }
     } catch(e){}
@@ -6525,7 +6555,14 @@ ${catalog}
               if (sMatch) {
                 try {
                   const sData = JSON.parse(sMatch[1]);
-                  textContent = '【此前分享的链接：' + (sData.title || sData.url || '网页链接') + '（' + (sData.url || '') + '）】';
+                  if (sData.kind === 'music' || sData.kind === 'music_invite') {
+                    const artist = String(sData.artist || '').split('·')[0].trim();
+                    textContent = '【' + baseUserNickname() + '给你分享了首歌：《' + (sData.title || '这首歌') + '》' +
+                      (artist ? ' — ' + artist : '') +
+                      (sData.kind === 'music_invite' ? '，想邀请你戴上耳机一起听' : '，想让你也听听') + '】';
+                  } else {
+                    textContent = '【此前分享的链接：' + (sData.title || sData.url || '网页链接') + '（' + (sData.url || '') + '）】';
+                  }
                 } catch(e){}
               }
             }

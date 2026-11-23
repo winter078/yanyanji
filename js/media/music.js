@@ -1353,12 +1353,14 @@
     const tag = document.getElementById('music-live-tag');
     if (tag) tag.innerText = musicCompanionId() ? ('💬 ' + name + '的耳语') : '💬 角色耳语';
 
-    // 发卡按钮跟着聊天对象走（卡片出现在微信聊天里，那边是谁就发给谁）
+    // 发卡入口跟着聊天对象走（卡片出现在微信聊天里，那边是谁就发给谁）
     const chatName = String((window.appData && window.appData.botRemark) || '周绪言').trim().split(/\s+/)[0] || '周绪言';
-    const shareBtn = document.getElementById('music-share-btn');
-    const inviteBtn = document.getElementById('music-invite-btn');
-    if (shareBtn) shareBtn.innerText = '🎵 发给' + chatName + '这首歌';
-    if (inviteBtn) inviteBtn.innerText = '🎧 邀' + chatName + '一起听';
+    const shareBtn = document.getElementById('music-share-open-btn');
+    const inviteBtn = document.getElementById('music-invite-open-btn');
+    if (shareBtn) shareBtn.title = '分享这首歌给' + chatName;
+    if (inviteBtn) inviteBtn.title = '邀' + chatName + '一起听';
+    const recipient = document.getElementById('mz-share-recipient');
+    if (recipient) recipient.innerText = chatName;
   };
 
   window.openMusicCompanionPicker = function() {
@@ -1420,36 +1422,135 @@
   }
 
   // mode: 'share' 只发音乐卡片 | 'invite' 邀请一起听
-  window.sendMusicCardToChar = function(mode) {
-    const song = (typeof currentSong !== 'undefined' && currentSong) || null;
+  let musicShareSending = false;
+  let musicShareDefaultMode = 'share';
+
+  function musicShareSong() {
+    return (typeof currentSong !== 'undefined' && currentSong) || null;
+  }
+
+  function musicShareCover(song) {
+    if (!song) return '';
+    try {
+      const custom = song.id ? localStorage.getItem('mz_cover_' + String(song.id)) : '';
+      if (custom) return custom;
+    } catch (e) {}
+    return song.cover || '';
+  }
+
+  window.openMusicShareSheet = function (mode) {
+    const song = musicShareSong();
+    if (!song) { musicToast('先放一首歌再分享'); return; }
+    musicShareDefaultMode = (mode === 'invite') ? 'invite' : 'share';
+
+    const owner = musicChatOwner();
+    const coverEl = document.getElementById('mz-share-cover');
+    const titleEl = document.getElementById('mz-share-title');
+    const artistEl = document.getElementById('mz-share-artist');
+    const recipientEl = document.getElementById('mz-share-recipient');
+    const noteEl = document.getElementById('mz-share-note');
+    const replyEl = document.getElementById('mz-share-reply');
+    const cover = musicShareCover(song);
+
+    if (coverEl) {
+      coverEl.classList.remove('has-image');
+      coverEl.style.backgroundImage = '';
+      coverEl.dataset.cover = cover || '';
+      if (cover) {
+        const testCover = new Image();
+        testCover.onload = function () {
+          if (coverEl.dataset.cover !== cover) return;
+          coverEl.style.backgroundImage = 'url("' + cover.replace(/"/g, '%22') + '")';
+          coverEl.classList.add('has-image');
+        };
+        testCover.onerror = function () {
+          if (coverEl.dataset.cover !== cover) return;
+          coverEl.classList.remove('has-image');
+          coverEl.style.backgroundImage = '';
+        };
+        testCover.src = cover;
+      }
+    }
+    if (titleEl) titleEl.innerText = song.title || '这首歌';
+    if (artistEl) artistEl.innerText = String(song.artist || '').split('·')[0].trim() || '未署名';
+    if (recipientEl) recipientEl.innerText = owner;
+    if (noteEl) noteEl.value = '';
+    if (replyEl) replyEl.checked = true;
+
+    const sheet = document.getElementById('mz-share-sheet');
+    if (sheet) sheet.classList.add('open');
+  };
+
+  window.closeMusicShareSheet = function (ev) {
+    const sheet = document.getElementById('mz-share-sheet');
+    if (!sheet) return;
+    if (ev && ev.target !== sheet) return;
+    sheet.classList.remove('open');
+  };
+
+  window.confirmMusicShare = function (mode) {
+    const song = musicShareSong();
+    if (!song) { musicToast('先放一首歌再分享'); return; }
+    const noteEl = document.getElementById('mz-share-note');
+    const replyEl = document.getElementById('mz-share-reply');
+    window.sendMusicCardToChar(mode || musicShareDefaultMode, {
+      note: noteEl ? noteEl.value : '',
+      reply: replyEl ? replyEl.checked : true
+    });
+  };
+
+  window.sendMusicCardToChar = function(mode, options) {
+    if (musicShareSending) return;
+    const song = musicShareSong();
     if (!song) { musicToast('先放一首歌再发'); return; }
     const hub = window.appData;
     if (!hub) { musicToast('聊天还没准备好，稍后再试'); return; }
     if (!Array.isArray(hub.chatHistory)) hub.chatHistory = [];
 
+    const opts = options || {};
+    const note = String(opts.note == null ? '' : opts.note).trim().slice(0, 60);
+    const wantReply = opts.reply !== false;
     const invite = mode === 'invite';
     const card = {
       kind: invite ? 'music_invite' : 'music',
       songId: song.id || '',
       title: song.title || '这首歌',
       artist: song.artist || '',
-      desc: (song.artist || '未署名') + (invite ? ' · 邀你一起听' : ' · 分享给你'),
-      cover: song.cover || '',
-      brand: invite ? '一起听邀请' : '音乐分享',
+      desc: (String(song.artist || '').split('·')[0].trim() || '未署名') + (invite ? ' · 想和你一起听' : ' · 分享给你'),
+      cover: musicShareCover(song),
+      brand: invite ? '一起听邀请' : '音乐卡片',
       brandIcon: invite ? '🎧' : '🎵'
     };
-    const content = (invite ? '「邀请你一起听」' : '') + '[SHARECARD:' + JSON.stringify(card) + ']';
+    const content = (note ? note + '\n' : '') + '[SHARECARD:' + JSON.stringify(card) + ']';
     const t = (typeof getNowStr === 'function') ? getNowStr() : '刚刚';
     hub.chatHistory.push({ role: 'user', content: content, time: t });
 
+    musicShareSending = true;
     try {
       if (typeof window.saveChatHistoryNow === 'function') window.saveChatHistoryNow();
       else localStorage.setItem('momo_chat_history', JSON.stringify(hub.chatHistory.slice(-50)));
     } catch (e) {}
+    setTimeout(function () { musicShareSending = false; }, 900);
 
     const owner = musicChatOwner();
-    musicToast(invite ? ('邀请已发给' + owner + '，去聊天里点卡片') : ('已发给' + owner));
+    const sentMsg = invite ? ('邀请已发到和' + owner + '的聊天') : ('音乐卡片已发到和' + owner + '的聊天');
+    musicToast(sentMsg + (wantReply ? '，等TA回你' : ''));
+
+    // 先把所有浮层收掉，切到微信聊天，让用户立刻看到那张卡
+    const sheet = document.getElementById('mz-share-sheet');
+    if (sheet) sheet.classList.remove('open');
     if (typeof mzCloseMoreSheet === 'function') mzCloseMoreSheet();
+    if (typeof mzClosePlayer === 'function') mzClosePlayer();
+
+    setTimeout(function () {
+      if (typeof window.openPage === 'function') window.openPage('page-chat');
+      if (typeof window.scrollChatToBottom === 'function') window.scrollChatToBottom();
+      if (wantReply && !window.__groupMode && typeof window.triggerChatAiReply === 'function') {
+        setTimeout(function () {
+          try { window.triggerChatAiReply(); } catch (e) {}
+        }, 420);
+      }
+    }, 320);
   };
 
   // 点卡片播放：优先按 id 找，没有再按歌名
@@ -1526,7 +1627,7 @@
         title: song.title || want || '这首歌',
         artist: song.artist || '',
         desc: (String(song.artist || '').split('·')[0].trim() || '未署名') + (invite ? ' · 邀你一起听' : ' · 分享给你'),
-        cover: song.cover || '',
+        cover: musicShareCover(song),
         brand: invite ? '一起听邀请' : '音乐分享',
         brandIcon: invite ? '🎧' : '🎵'
       };

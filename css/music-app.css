@@ -460,6 +460,27 @@
 }
 .mz-song-artist { font-size: 12.5px; opacity: 0.55; margin-top: 4px; }
 
+/* ---- 一起听：把正在听的歌分享到聊天 / 邀请一起听 ---- */
+.mz-song-actions {
+  display: flex; gap: 8px; justify-content: center; align-items: center;
+  margin-top: 11px;
+}
+.mz-song-action {
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  height: 32px; padding: 0 13px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.07);
+  color: #f2f2f4;
+  font-family: inherit;
+  font-size: 11.5px;
+  line-height: 1;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+.mz-song-action span { font-size: 12px; opacity: 0.82; }
+.mz-song-action:active { transform: scale(0.96); background: rgba(255, 255, 255, 0.14); }
+
 .mz-wish {
   font-size: 10.5px; opacity: 0.4;
   margin-top: 10px; text-align: center;
@@ -699,6 +720,87 @@
   padding: 8px 0;
 }
 .mz-sheet-actions { flex-direction: column; gap: 8px; align-items: stretch; }
+
+/* ---------- 分享卡 sheet ---------- */
+.mz-share-sheet { padding-top: 8px; }
+.mz-share-preview {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.055);
+}
+.mz-share-preview-cover {
+  flex: none; width: 58px; height: 58px;
+  border-radius: 12px;
+  background-color: #26262b;
+  background-image: linear-gradient(135deg, #5c4b63, #23232b);
+  background-position: center;
+  background-size: cover;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.38);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.mz-share-cover-note {
+  font-size: 24px; line-height: 1;
+  color: rgba(255, 255, 255, 0.42);
+}
+.mz-share-preview-cover.has-image .mz-share-cover-note { display: none; }
+.mz-share-preview-info { flex: 1; min-width: 0; }
+.mz-share-kicker {
+  font-size: 10.5px; opacity: 0.48; letter-spacing: 0.4px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mz-share-kicker span { opacity: 0.9; }
+.mz-share-title {
+  margin-top: 5px;
+  font-size: 16px; font-weight: 700; line-height: 1.35;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mz-share-artist {
+  margin-top: 3px;
+  font-size: 11.5px; opacity: 0.5;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mz-share-note {
+  width: 100%; height: 42px; box-sizing: border-box;
+  margin-top: 12px; padding: 0 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f2f2f4; font-family: inherit; font-size: 13px;
+  outline: none;
+}
+.mz-share-note::placeholder { color: rgba(255, 255, 255, 0.32); }
+.mz-share-note:focus { border-color: rgba(255, 255, 255, 0.30); background: rgba(255, 255, 255, 0.11); }
+.mz-share-reply {
+  display: flex; align-items: center; gap: 7px;
+  margin: 9px 2px 12px;
+  font-size: 11px; color: rgba(255, 255, 255, 0.52);
+}
+.mz-share-reply input { width: 14px; height: 14px; accent-color: #f2f2f4; }
+.mz-share-actions { display: flex; gap: 8px; align-items: stretch; }
+.mz-share-main {
+  flex: 1; height: 44px;
+  border: none; border-radius: 14px;
+  background: #f2f2f4; color: #111;
+  font-family: inherit; font-size: 13px; font-weight: 700;
+}
+.mz-share-main:active { transform: scale(0.98); opacity: 0.88; }
+.mz-share-secondary {
+  flex: none; height: 44px; padding: 0 15px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f2f2f4;
+  font-family: inherit; font-size: 12.5px;
+}
+.mz-share-secondary:active { background: rgba(255, 255, 255, 0.14); }
+.mz-share-tip {
+  margin-top: 9px;
+  font-size: 10.5px; line-height: 1.5;
+  text-align: center; color: rgba(255, 255, 255, 0.34);
+}
 
 /* ---------- 唱片墙：容器与"上墙"按钮 ---------- */
 .mz-shelf-wrap {
