@@ -263,8 +263,14 @@
     if (isVision && /too large|payload|size|dimension|resolution|base64|too long/.test(lower)) {
       return '看截图失败：截图太大或格式不对；换清晰的短截图再试。';
     }
+    if (isVision && /(图片|图像|截图).*(太大|过大|尺寸|分辨率|格式)|(太大|过大).*(图片|图像|截图)/.test(String(body || ''))) {
+      return '看截图失败：截图太大或格式不对；换清晰的短截图再试。';
+    }
     if (isVision && /invalid image|image url|failed to fetch image|image.*invalid|url.*invalid/.test(lower)) {
       return '看截图失败：截图没有正确送达模型（链接失效或没上传完）；重新发一次截图。';
+    }
+    if (isVision && /(不支持|无法识别|不能识别).*(图片|图像|截图)|(图片|图像|截图).*(不支持|无法识别)/.test(String(body || ''))) {
+      return '看截图失败：当前模型不支持看图；在设置里选一个支持视觉的模型。';
     }
     if (isVision && /(image|vision|multimodal|modality|content[^\n]{0,20}type)/.test(lower) && /(not support|unsupported|invalid|not allowed|must be|does not)/.test(lower)) {
       return '看截图失败：当前模型不支持看图；在设置里选一个支持视觉的模型。';
@@ -357,8 +363,12 @@
       var raw = String(content || '').trim().replace(/```json/gi, '```').replace(/```/g, '').trim();
       var start = raw.indexOf('{');
       var end = raw.lastIndexOf('}');
+      var hasJson = start >= 0 && end > start;
+      if (images.length && !hasJson && /看不清|模糊|无法辨认|无法识别|字太小|太糊/.test(raw)) {
+        throw new Error('看截图失败：截图里有些内容看不清（模糊或字太小）；换一张更清楚、字大一点的截图再试。');
+      }
       if (!raw) throw new Error(images.length ? '看截图失败：模型没有返回内容，可能没看懂截图；换一张更清晰的图再试。' : '模型没有返回内容');
-      if (start < 0 || end <= start) throw new Error(images.length ? '看截图失败：模型看完了，但没按格式输出；重试一次，或换识图模型。' : '模型没有返回结构化内容');
+      if (!hasJson) throw new Error(images.length ? '看截图失败：模型看完了，但没按格式输出；重试一次，或换识图模型。' : '模型没有返回结构化内容');
       var spec;
       try { spec = JSON.parse(raw.slice(start, end + 1)); } catch (e) {
         throw new Error(images.length ? '看截图失败：模型返回的格式不对；重试一次，或换识图模型。' : '内容格式不对');
