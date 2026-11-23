@@ -123,12 +123,17 @@
       var j = JSON.parse(text);
       msg = (j.error && (j.error.message || j.error.code)) || (typeof j.error === 'string' ? j.error : '') || j.message || j.msg || '';
     } catch (e) { msg = String(text || '').trim().slice(0, 120); }
+    if (msg) {
+      if (status === 401) return 'Key 无效或已失效：' + msg;
+      if (status === 403) return 'Key 没权限，或「音频生成 1.0」还没开通：' + msg;
+      return msg;
+    }
     if (status === 401 || status === 403) return 'Key 没权限或已失效';
     if (status === 404) return '接口地址里找不到 /audio/speech 或模型名不对';
     if (status === 413) return '要读的文字太长';
     if (status === 429) return '额度用完或服务太忙';
     if (status >= 500) return '语音服务暂时不可用';
-    return (msg ? msg : ('接口返回 ' + status));
+    return '接口返回 ' + status;
   }
 
   function base64ToBlob(b64, mime) {
