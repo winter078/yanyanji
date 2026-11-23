@@ -27,6 +27,7 @@ ENV_PATH = BASE_DIR / ".env"
 USAGE_PATH = BASE_DIR / "data" / "search_usage.json"
 
 TAVILY_URL = "https://api.tavily.com/search"
+VOLC_TTS_URL = "https://openspeech.bytedance.com/api/v3/tts/create"
 XHS_PUBLIC_URL = os.environ.get("MOMO_XHS_PUBLIC_URL", "https://momo-phone.pages.dev/api/xhs")
 MONTHLY_LIMIT = int(os.environ.get("SEARCH_MONTHLY_LIMIT", "900"))
 DAILY_LIMIT = int(os.environ.get("SEARCH_DAILY_LIMIT", "10"))
@@ -654,6 +655,55 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_POST(self):
         path_only = self.path.split("?")[0]
+        if path_only == "/api/tts/volc":
+            body = self._read_json() or {}
+            api_key = str(body.get("apiKey") or "").strip()
+            voice = str(body.get("voice") or "").strip()[:160]
+            text = str(body.get("text") or "").strip()[:3000]
+            speed = float(body.get("speed") or 1)
+            if not api_key or not voice or not text:
+                self._send_json(400, {"error": "missing_key_voice_or_text"})
+                return
+            speech_rate = max(-50, min(100, int(round((speed - 1) * 100))))
+            payload = json.dumps({
+                "model": "seed-audio-1.0",
+                "text_prompt": text,
+                "references": [{"speaker": voice}],
+                "audio_config": {
+                    "format": "mp3",
+                    "sample_rate": 44100,
+                    "speech_rate": speech_rate,
+                    "loudness_rate": 0,
+                    "pitch_rate": 0,
+                },
+                "watermark": {},
+            }, ensure_ascii=False).encode("utf-8")
+            req = urllib.request.Request(
+                VOLC_TTS_URL,
+                data=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "X-Api-Key": api_key,
+                    "X-Api-Request-Id": str(int(time.time() * 1000)),
+                },
+                method="POST",
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=60) as resp:
+                    status = resp.status
+                    raw = resp.read()
+            except urllib.error.HTTPError as e:
+                status = e.code
+                raw = e.read()
+            except Exception as e:
+                self._send_json(504, {"error": "volc_tts_failed", "detail": str(e)[:180]})
+                return
+            try:
+                data = json.loads(raw.decode("utf-8"))
+            except Exception:
+                data = {"error": "volc_tts_bad_response", "detail": raw[:180].decode("utf-8", "replace")}
+            self._send_json(status, data)
+            return
         if path_only == "/api/xhs":
             body = self._read_json() or {}
             url = str(body.get("url") or "").strip()

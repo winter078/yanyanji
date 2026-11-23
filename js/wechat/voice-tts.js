@@ -6,6 +6,7 @@
 (function () {
   'use strict';
 
+  var VOLC_DEFAULT_VOICE = 'ICL_uranus_zh_male_cixingnansang_tob';
   var CONFIG_KEY = 'momo_tts_config_v1';
   var MAX_CACHE = 10;
   var currentAudio = null;
@@ -29,11 +30,13 @@
   function normalizeConfig(raw) {
     raw = raw && typeof raw === 'object' ? raw : {};
     return {
+      provider: raw.provider === 'openai' ? 'openai' : 'volc',
       enabled: !!raw.enabled,
       baseUrl: String(raw.baseUrl || '').trim().replace(/\/+$/, ''),
       apiKey: String(raw.apiKey || '').trim(),
+      volcKey: String(raw.volcKey || '').trim(),
       model: String(raw.model || 'gpt-4o-mini-tts').trim(),
-      defaultVoice: String(raw.defaultVoice || 'alloy').trim()
+      defaultVoice: String(raw.defaultVoice || '').trim()
     };
   }
 
@@ -41,9 +44,11 @@
 
   function getConfig() {
     return {
+      provider: config.provider,
       enabled: config.enabled,
       baseUrl: config.baseUrl,
       apiKey: config.apiKey,
+      volcKey: config.volcKey,
       model: config.model,
       defaultVoice: config.defaultVoice
     };
@@ -57,6 +62,7 @@
   }
 
   function isEnabled() {
+    if (config.provider === 'volc') return !!(config.enabled && config.volcKey);
     return !!(config.enabled && config.baseUrl);
   }
 
@@ -87,7 +93,11 @@
   function voiceForChar(charId, override) {
     override = override || {};
     var c = charInfo(charId);
-    var voiceId = String(override.voiceId || c.voiceId || config.defaultVoice || 'alloy').trim() || 'alloy';
+    var fallbackVoice = config.provider === 'volc' ? VOLC_DEFAULT_VOICE : 'alloy';
+    var defaultVoice = config.defaultVoice || fallbackVoice;
+    if (config.provider === 'volc' && defaultVoice === 'alloy') defaultVoice = fallbackVoice;
+    if (config.provider === 'openai' && /^ICL_/i.test(defaultVoice)) defaultVoice = 'alloy';
+    var voiceId = String(override.voiceId || c.voiceId || defaultVoice).trim();
     var rate = clamp(override.rate || c.voiceRate || 1, 0.6, 1.6);
     return { voiceId: voiceId, rate: rate, charName: String(c.name || '角色') };
   }
@@ -108,7 +118,7 @@
     var msg = '';
     try {
       var j = JSON.parse(text);
-      msg = (j.error && (j.error.message || j.error.code)) || j.message || j.msg || '';
+      msg = (j.error && (j.error.message || j.error.code)) || (typeof j.error === 'string' ? j.error : '') || j.message || j.msg || '';
     } catch (e) { msg = String(text || '').trim().slice(0, 120); }
     if (status === 401 || status === 403) return 'Key 没权限或已失效';
     if (status === 404) return '接口地址里找不到 /audio/speech 或模型名不对';
@@ -130,6 +140,7 @@
 
   async function requestTts(text, voice, rate) {
     if (!isEnabled()) throw new Error('还没配置角色语音接口');
+    if (config.provider === 'volc') return requestVolcTts(text, voice, rate);
     var url = ttsEndpoint(config.baseUrl);
     if (!url) throw new Error('语音接口地址是空的');
     var body = {
@@ -184,6 +195,46 @@
       if (b64blob) return URL.createObjectURL(b64blob);
     }
     throw new Error('语音接口返回的内容不是音频；确认地址是 /audio/speech');
+  }
+
+  async function requestVolcTts(text, voice, rate) {
+    if (!config.volcKey) throw new Error('还没填火山 API Key');
+    if (!voice) throw new Error('这个角色还没填火山音色 ID');
+    var controller = new AbortController();
+    var timer = setTimeout(function () { controller.abort(); }, 60000);
+    var resp;
+    try {
+      resp = await fetch('/api/tts/volc', {
+        method: 'POST',
+        signal: controller.signal,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiKey: config.volcKey,
+          voice: voice,
+          text: String(text || '').slice(0, 3000),
+          speed: clamp(rate || 1, 0.6, 1.6)
+        })
+      });
+    } catch (e) {
+      if (e && (e.name === 'AbortError' || /abort/i.test(String(e.message || '')))) {
+        throw new Error('火山语音超时，60 秒没返回');
+      }
+      throw new Error('连不上火山语音：' + (e && e.message ? e.message : e));
+    } finally {
+      clearTimeout(timer);
+    }
+    var raw = '';
+    try { raw = await resp.text(); } catch (e) {}
+    var data = safeParse(raw, null);
+    if (!resp.ok) throw new Error(responseError(resp.status, raw) || ('火山语音返回 ' + resp.status));
+    if (!data) throw new Error('火山语音返回的内容不是 JSON');
+    if (typeof data.url === 'string' && data.url) return data.url;
+    var b64 = data.audio || data.audio_base64 || (data.data && (data.data.audio || data.data.audio_base64));
+    if (typeof b64 === 'string' && b64.length > 32) {
+      var blob = base64ToBlob(b64, 'audio/mpeg');
+      if (blob) return URL.createObjectURL(blob);
+    }
+    throw new Error('火山语音没有返回音频');
   }
 
   function rememberAudio(key, src) {
@@ -346,36 +397,68 @@
     el.style.color = ok ? '#07c160' : 'var(--color-text-secondary)';
   }
 
+  function updateProviderFields() {
+    var providerEl = document.getElementById('tts-provider-input');
+    var provider = providerEl ? providerEl.value : config.provider;
+    var openai = document.getElementById('tts-openai-fields');
+    var volc = document.getElementById('tts-volc-fields');
+    var voice = document.getElementById('tts-default-voice-input');
+    if (openai) openai.style.display = provider === 'openai' ? '' : 'none';
+    if (volc) volc.style.display = provider === 'volc' ? '' : 'none';
+    if (voice) {
+      var current = String(voice.value || '').trim();
+      if (provider === 'volc' && (!current || current === 'alloy')) voice.value = VOLC_DEFAULT_VOICE;
+      if (provider === 'openai' && /^ICL_/i.test(current)) voice.value = 'alloy';
+    }
+  }
+  window.updateTtsProviderFields = updateProviderFields;
+
   function renderSettings() {
+    var provider = document.getElementById('tts-provider-input');
     var on = document.getElementById('tts-enabled-toggle');
     var base = document.getElementById('tts-base-input');
     var key = document.getElementById('tts-key-input');
+    var volcKey = document.getElementById('tts-volc-key-input');
     var model = document.getElementById('tts-model-input');
     var voice = document.getElementById('tts-default-voice-input');
+    if (provider) provider.value = config.provider;
     if (on) on.checked = !!config.enabled;
     if (base) base.value = config.baseUrl || '';
     if (key) key.value = config.apiKey || '';
+    if (volcKey) volcKey.value = config.volcKey || '';
     if (model) model.value = config.model || '';
     if (voice) voice.value = config.defaultVoice || '';
-    if (!config.enabled) setStatus('还没启用。填好地址和音色后打开开关，角色才能出声。', false);
-    else if (!config.baseUrl) setStatus('启用了，但接口地址还是空的。', false);
+    updateProviderFields();
+    if (!config.enabled) setStatus('还没启用。选好接口、填好 Key 后打开开关，角色才能出声。', false);
+    else if (config.provider === 'volc' && !config.volcKey) setStatus('启用了，但火山 API Key 还是空的。', false);
+    else if (config.provider === 'openai' && !config.baseUrl) setStatus('启用了，但 OpenAI 兼容地址还是空的。', false);
+    else if (config.provider === 'volc') setStatus('已启用：火山豆包 · 角色卡里填音色 ID', true);
     else setStatus('已启用：' + (config.model || '默认模型') + ' · 默认音色 ' + (config.defaultVoice || 'alloy'), true);
   }
 
   function saveFromSettings() {
+    updateProviderFields();
+    var provider = document.getElementById('tts-provider-input');
     var on = document.getElementById('tts-enabled-toggle');
     var base = document.getElementById('tts-base-input');
     var key = document.getElementById('tts-key-input');
+    var volcKey = document.getElementById('tts-volc-key-input');
     var model = document.getElementById('tts-model-input');
     var voice = document.getElementById('tts-default-voice-input');
     var saved = saveConfig({
+      provider: provider ? provider.value : config.provider,
       enabled: !!(on && on.checked),
       baseUrl: base ? base.value : '',
       apiKey: key ? key.value : '',
+      volcKey: volcKey ? volcKey.value : '',
       model: model ? model.value : '',
       defaultVoice: voice ? voice.value : ''
     });
-    setStatus(saved.enabled ? ('已保存：' + (saved.model || '默认模型') + ' · ' + (saved.defaultVoice || 'alloy')) : '已保存，但语音开关关着。', saved.enabled);
+    if (saved.provider === 'volc') {
+      setStatus(saved.enabled ? '已保存：火山豆包；角色卡里填音色 ID' : '已保存，但语音开关关着。', saved.enabled);
+    } else {
+      setStatus(saved.enabled ? ('已保存：' + (saved.model || '默认模型') + ' · ' + (saved.defaultVoice || 'alloy')) : '已保存，但语音开关关着。', saved.enabled);
+    }
     toast(saved.enabled ? '语音设置已保存' : '语音设置已保存，开关仍是关的');
     return saved;
   }
@@ -406,6 +489,7 @@
   window.CharVoice = {
     getConfig: getConfig,
     saveConfig: saveConfig,
+    voiceForChar: voiceForChar,
     isEnabled: isEnabled,
     speak: speak,
     preview: preview,

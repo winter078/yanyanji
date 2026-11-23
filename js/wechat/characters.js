@@ -563,9 +563,11 @@
     const statusEl = document.getElementById('char-voice-status');
     const voiceId = idEl ? idEl.value.trim() : (c.voiceId || '');
     const rate = rateEl ? Number(rateEl.value) || 1 : (c.voiceRate || 1);
+    const resolved = window.CharVoice.voiceForChar(c.id, { voiceId: voiceId, rate: rate });
     if (statusEl) {
+      const shownVoice = resolved.voiceId;
       statusEl.textContent = window.CharVoice.isEnabled()
-        ? ('正在用音色「' + (voiceId || window.CharVoice.getConfig().defaultVoice || 'alloy') + '」试听…')
+        ? ('正在用音色「' + (shownVoice || '未填写') + '」试听…')
         : '还没配置语音接口，先用系统声音试听…';
     }
     let usedFallback = false;
