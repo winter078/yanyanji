@@ -249,12 +249,43 @@
     return '{"title":"文档标题","subtitle":"副标题（可空）","sections":[{"heading":"小节标题","paragraphs":["正文段落"],"bullets":["要点"],"table":{"headers":["列1","列2"],"rows":[["值1","值2"]]}}]}';
   }
 
+  function clipText(text, n) {
+    return String(text || '').replace(/\s+/g, ' ').trim().slice(0, n || 160);
+  }
+
+  function apiFailure(status, body, isVision, model) {
+    var lower = String(body || '').toLowerCase();
+    var prefix = isVision ? '看截图失败：' : '';
+    if (status === 401 || status === 403) return prefix + '模型 Key 没权限或已失效，先去设置里检查 Key。';
+    if (status === 404) return prefix + (isVision ? '当前接口找不到识图模型「' + model + '」' : '当前接口找不到模型「' + model + '」') + '，换一个模型再试。';
+    if (status === 429) return prefix + '模型额度用完或太忙，过一会儿再试。';
+    if (status === 413) return isVision ? '看截图失败：截图太大，模型收不下；先发 1~2 张关键截图，或截短一点。' : '请求内容太大，模型收不下。';
+    if (isVision && /too large|payload|size|dimension|resolution|base64|too long/.test(lower)) {
+      return '看截图失败：截图太大或格式不对；换清晰的短截图再试。';
+    }
+    if (isVision && /invalid image|image url|failed to fetch image|image.*invalid|url.*invalid/.test(lower)) {
+      return '看截图失败：截图没有正确送达模型（链接失效或没上传完）；重新发一次截图。';
+    }
+    if (isVision && /(image|vision|multimodal|modality|content[^\n]{0,20}type)/.test(lower) && /(not support|unsupported|invalid|not allowed|must be|does not)/.test(lower)) {
+      return '看截图失败：当前模型不支持看图；在设置里选一个支持视觉的模型。';
+    }
+    if (isVision && /(model|engine).*(not support|unsupported)/.test(lower)) {
+      return '看截图失败：当前模型不支持看图；在设置里选一个支持视觉的模型。';
+    }
+    if (isVision && (status === 400 || status === 422)) return '看截图失败：模型拒绝了这组截图（' + status + '）；换一张更清晰的截图，或换支持看图的模型。';
+    return prefix + '模型接口返回 ' + status + '；先重试，还不行就换模型。';
+  }
+
   async function draft(kind, userText, contextSnippet, previousSpec, images) {
     var app = window.appData || {};
     var apiKey = String(app.apiKey || '').trim();
     var apiBase = String(app.apiBase || '').trim();
-    if (!apiKey || !apiBase) throw new Error('还没有配置模型 Key');
     var images = (Array.isArray(images) ? images : []).filter(Boolean).slice(0, 4);
+    var badImages = images.filter(function (src) {
+      return !/^(data:image\/|https?:\/\/)/i.test(String(src || ''));
+    });
+    if (badImages.length) throw new Error('看截图失败：有 ' + badImages.length + ' 张截图没有正确加载；重新发一次截图。');
+    if (!apiKey || !apiBase) throw new Error(images.length ? '看截图失败：还没配置模型 Key；先去设置里填 Key 和接口地址。' : '还没有配置模型 Key');
     var base = apiBase.replace(/\/+$/, '');
     if (base.endsWith('/chat/completions')) base = base.replace('/chat/completions', '');
     var url = base + '/chat/completions';
@@ -290,29 +321,49 @@
     var controller = new AbortController();
     var timer = setTimeout(function () { controller.abort(); }, 90000);
     try {
-      var resp = await fetch(url, {
-        method: 'POST',
-        signal: controller.signal,
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
-        body: JSON.stringify({
-          model: images.length ? imageModel : (app.model || 'deepseek-chat'),
-          messages: [
-            { role: 'system', content: sys },
-            { role: 'user', content: userContent }
-          ],
-          temperature: 0.4,
-          max_tokens: 2600
-        })
-      });
-      if (!resp.ok) throw new Error('模型返回 ' + resp.status);
-      var data = await resp.json();
+      var resp;
+      try {
+        resp = await fetch(url, {
+          method: 'POST',
+          signal: controller.signal,
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+          body: JSON.stringify({
+            model: images.length ? imageModel : (app.model || 'deepseek-chat'),
+            messages: [
+              { role: 'system', content: sys },
+              { role: 'user', content: userContent }
+            ],
+            temperature: 0.4,
+            max_tokens: 2600
+          })
+        });
+      } catch (fetchErr) {
+        if (fetchErr && (fetchErr.name === 'AbortError' || /abort/i.test(String(fetchErr.message || '')))) {
+          throw new Error(images.length ? '看截图失败：识图超时（90 秒）；可能是截图太大或网络慢，先发 1~2 张关键截图再试。' : '生成超时（90 秒），稍后再试。');
+        }
+        throw new Error(images.length ? '看截图失败：连不上模型接口；检查网络、代理和接口地址后再试。' : '连不上模型接口，检查网络和接口地址。');
+      }
+      if (!resp.ok) {
+        var errBody = '';
+        try { errBody = await resp.text(); } catch (e) {}
+        console.warn('[Artifact] 模型接口错误：', resp.status, clipText(errBody, 300));
+        throw new Error(apiFailure(resp.status, errBody, images.length > 0, images.length ? imageModel : (app.model || 'deepseek-chat')));
+      }
+      var data;
+      try { data = await resp.json(); } catch (e) {
+        throw new Error(images.length ? '看截图失败：模型返回的内容无法解析；重试一次。' : '模型返回内容无法解析');
+      }
       var content = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
       var raw = String(content || '').trim().replace(/```json/gi, '```').replace(/```/g, '').trim();
       var start = raw.indexOf('{');
       var end = raw.lastIndexOf('}');
-      if (start < 0 || end <= start) throw new Error('模型没有返回结构化内容');
-      var spec = JSON.parse(raw.slice(start, end + 1));
-      if (!spec || typeof spec !== 'object') throw new Error('内容格式不对');
+      if (!raw) throw new Error(images.length ? '看截图失败：模型没有返回内容，可能没看懂截图；换一张更清晰的图再试。' : '模型没有返回内容');
+      if (start < 0 || end <= start) throw new Error(images.length ? '看截图失败：模型看完了，但没按格式输出；重试一次，或换识图模型。' : '模型没有返回结构化内容');
+      var spec;
+      try { spec = JSON.parse(raw.slice(start, end + 1)); } catch (e) {
+        throw new Error(images.length ? '看截图失败：模型返回的格式不对；重试一次，或换识图模型。' : '内容格式不对');
+      }
+      if (!spec || typeof spec !== 'object') throw new Error(images.length ? '看截图失败：模型返回的内容不是有效文档；重试一次。' : '内容格式不对');
       return spec;
     } finally {
       clearTimeout(timer);
