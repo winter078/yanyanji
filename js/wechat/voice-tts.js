@@ -97,7 +97,10 @@
     var defaultVoice = config.defaultVoice || fallbackVoice;
     if (config.provider === 'volc' && defaultVoice === 'alloy') defaultVoice = fallbackVoice;
     if (config.provider === 'openai' && /^ICL_/i.test(defaultVoice)) defaultVoice = 'alloy';
-    var voiceId = String(override.voiceId || c.voiceId || defaultVoice).trim();
+    var charVoice = String(override.voiceId || c.voiceId || '').trim();
+    if (config.provider === 'volc' && /^(alloy|ash|ballad|cedar|coral|echo|fable|marin|nova|onyx|sage|shimmer|verse)$/i.test(charVoice)) charVoice = '';
+    if (config.provider === 'openai' && /^ICL_/i.test(charVoice)) charVoice = '';
+    var voiceId = String(charVoice || defaultVoice).trim();
     var rate = clamp(override.rate || c.voiceRate || 1, 0.6, 1.6);
     return { voiceId: voiceId, rate: rate, charName: String(c.name || '角色') };
   }
