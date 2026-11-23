@@ -120,9 +120,9 @@
 
   const CHAT_BUILTINS = [
     { id: 'character_setting', title: '角色设定', group: 'foundation', hint: '角色卡里的性格、身份与说话方式' },
-    { id: 'time', title: '时间感知', group: 'world', hint: '现实时间、作息与昼夜态度' },
+    { id: 'time', title: '时间与日子感知', group: 'world', hint: '现实时间、作息、生日节日与节前节后' },
     { id: 'relationship', title: '关系边界', group: 'foundation', hint: '按角色卡决定亲近程度，不擅自越界' },
-    { id: 'user_profile', title: '用户资料', group: 'foundation', hint: '姓名、称呼、外貌、习惯与签名' },
+    { id: 'user_profile', title: '用户资料', group: 'foundation', hint: '姓名、称呼、生日、外貌、习惯与签名' },
     { id: 'share_links', title: '分享链接感知', group: 'world', hint: '读懂 user 分享的图文链接' },
     { id: 'honesty', title: '诚实铁律', group: 'rules', hint: '看不到就说看不到，不脑补' },
     { id: 'share_cards', title: '外部链接卡片', group: 'world', hint: '对分享过的卡片保持记忆' },

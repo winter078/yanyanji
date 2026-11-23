@@ -304,6 +304,14 @@ let appData = null;
       document.getElementById('me-appearance-input').value = localStorage.getItem('momo_my_appearance') || '（未填写外貌）';
       document.getElementById('me-habits-input').value = appData.userInfo || DEFAULT_USER_INFO;
 
+      const birthdayInput = document.getElementById('me-birthday-input');
+      const birthdayCalendar = document.getElementById('me-birthday-calendar');
+      if (birthdayInput) {
+        const b = (typeof readUserBirthday === 'function') ? readUserBirthday() : null;
+        birthdayInput.value = b ? (b.month + '-' + b.day) : '';
+        if (birthdayCalendar) birthdayCalendar.value = b ? b.calendar : 'solar';
+      }
+
       document.getElementById('me-page-name-title').innerText = h.userName || 'user';
       document.getElementById('me-page-handle-title').innerText = h.userHandle || '@紫毛爱妻';
 
@@ -330,10 +338,29 @@ let appData = null;
       const myAppearance = document.getElementById('me-appearance-input').value.trim();
       const myHabits = document.getElementById('me-habits-input').value.trim();
 
+      const birthdayInput = document.getElementById('me-birthday-input');
+      const birthdayCalendar = document.getElementById('me-birthday-calendar');
+      const birthdayRaw = birthdayInput ? birthdayInput.value.trim() : '';
+      let birthday = null;
+      if (birthdayRaw) {
+        birthday = (typeof parseBirthdayInput === 'function')
+          ? parseBirthdayInput(birthdayRaw, birthdayCalendar ? birthdayCalendar.value : 'solar')
+          : null;
+        if (!birthday) {
+          alert('生日格式不太对。请填月和日，例如 8-15、8/15 或 8月15日；农历生日也按这个格式。');
+          return;
+        }
+      }
+
       localStorage.setItem('momo_hero_data', JSON.stringify(appData.hero));
       localStorage.setItem('momo_user_nick', appData.userNickname);
       localStorage.setItem('momo_my_appearance', myAppearance);
       localStorage.setItem('momo_user_info_text', myHabits);
+      if (birthday) {
+        localStorage.setItem('momo_user_birthday', JSON.stringify(birthday));
+      } else {
+        localStorage.removeItem('momo_user_birthday');
+      }
       appData.userInfo = myHabits;
 
       // 只刷新「微信-我」；桌面小组件如果没单独改过，会继续跟着这里。

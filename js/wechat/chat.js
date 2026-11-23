@@ -5439,6 +5439,12 @@ ${(() => {
          '- *绝对活人感准则*：你清楚感知到现实里每一秒流逝。当user在凌晨找你，第一反应是心疼她怎么还不睡；当在饭点找你，顺口问一句吃了没；白天陪她工作创作，晚上陪她温存。严禁像不知今夕何年的呆板机器人！';
 })()}
 
+${(() => {
+  const s = appData.chatSettings || {};
+  if (s.realTimeSense === false) return '';
+  return (typeof window.getCalendarPromptBlock === 'function') ? window.getCalendarPromptBlock() : '';
+})()}
+
 【你与用户的关系】：
 - 你现在的身份、性格、说话方式、与用户的关系，全部以当前角色卡为准。不要套用任何旧角色、旧称呼或旧关系。
 - 角色卡没有写明的部分，保持自然、克制、有边界，不要自行补成固定恋人设定。
@@ -5450,6 +5456,13 @@ ${(() => {
 - 称呼优先级：日常优先用「${userRemark}」；只有确认身份或故意调侃时，才用全名「${userName}」。
 - 用户自己的账号昵称与签名（仅作资料，不代表你和用户的关系）：${userHandle} · ${userTag}
 - 居住与签名：${userLocation}
+- 生日（只写日期，别猜年份和年龄）：${(() => {
+  try {
+    if (typeof window.readUserBirthday !== 'function') return '未设置';
+    const b = window.readUserBirthday();
+    return b ? ((b.calendar === 'lunar' ? '农历' : '公历') + b.month + '月' + b.day + '日') : '未设置';
+  } catch (e) { return '未设置'; }
+})()}
 - 外貌特征：${myAppearance}
 - 习惯与喜好：${myHabits}
 ${maskIdentityContext}${maskTransitionContext}
@@ -8514,6 +8527,9 @@ ${catalog}
     const timeCtx = (typeof getRealTimeContext === 'function')
       ? getRealTimeContext()
       : { fullStr: '此刻', period: '日常', periodTone: '温存陪伴' };
+    const calendarCtx = (typeof window.getCalendarPromptBlock === 'function' && !(appData.chatSettings && appData.chatSettings.realTimeSense === false))
+      ? window.getCalendarPromptBlock()
+      : '';
     const uNick = baseUserNickname();
     const recentSlice = history.slice(-16).map(m => {
       const who = m.role === 'user' ? uNick : name;
@@ -8559,6 +8575,7 @@ ${catalog}
 
     const prompt = `【当前情境】
 你是${name}${card && card.tag ? '（' + card.tag + '）' : ''}。现在${timeCtx.fullStr}，当前作息阶段：${timeCtx.period}。
+${calendarCtx}
 ${silenceLine}
 近期聊天参考：
 ${recentSlice || '（还没有聊过）'}
@@ -8793,6 +8810,9 @@ ${callEligible ? `【先决定联系方式】
     try {
       const history = (window.appData && Array.isArray(window.appData.chatHistory)) ? window.appData.chatHistory : [];
       const timeCtx = (typeof getRealTimeContext === 'function') ? getRealTimeContext() : { fullStr: '此刻', period: '日常', periodTone: '温存陪伴' };
+      const calendarCtx = (typeof window.getCalendarPromptBlock === 'function' && !(appData.chatSettings && appData.chatSettings.realTimeSense === false))
+        ? window.getCalendarPromptBlock()
+        : '';
       const s = (window.appData && window.appData.chatSettings) ? window.appData.chatSettings : {};
       const intervalNum = s.bgIntervalVal || 1;
       const intervalUnitStr = (s.bgIntervalUnit === 'minutes' ? '分钟' : '小时');
@@ -8815,6 +8835,7 @@ ${callEligible ? `【先决定联系方式】
 
 ${silenceLine}
 现实时间感知：${timeCtx.fullStr} · 当前作息阶段：${timeCtx.period}。
+${calendarCtx}
 近期聊天参考：
 ${recentSlice || '两人此前温馨互动'}
 
