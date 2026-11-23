@@ -253,6 +253,7 @@
       hostEl.innerText = window.appData.hero.userName || '当前用户';
     }
     try { window.renderToolboxStatus(); } catch (e) {}
+    try { if (window.refreshWorkPackUI) window.refreshWorkPackUI(); } catch (e) {}
 
     // 从其他页面回到插件中心时，重新检查工具配置状态
     if (typeof window.openPage === 'function' && !window.openPage.__toolboxStatusWrapped) {
@@ -262,6 +263,7 @@
         if (pageId === 'page-plugins') {
           setTimeout(function() {
             try { window.renderToolboxStatus(); } catch (e) {}
+            try { if (window.refreshWorkPackUI) window.refreshWorkPackUI(); } catch (e) {}
           }, 80);
         }
         return result;

@@ -1496,6 +1496,139 @@ body[data-theme="light"] .wechat-tool-pill.sel {
   box-shadow: inset 0 0 0 1px rgba(0,0,0,0.28);
 }
 
+/* ================= 角色工作包任务卡 ================= */
+.wechat-work-task {
+  width: calc(100% - 76px);
+  max-width: 330px;
+  margin: 10px 0 8px 52px;
+  padding: 11px 12px 10px;
+  border-radius: 14px;
+  background: var(--bg-surface, rgba(255,255,255,0.72));
+  border: 1px solid var(--color-border, rgba(0,0,0,0.08));
+  box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+  box-sizing: border-box;
+}
+
+.wechat-work-task.running {
+  border-color: rgba(168, 85, 247, 0.30);
+  box-shadow: 0 4px 16px rgba(168, 85, 247, 0.10);
+}
+
+.wechat-work-task.done {
+  border-color: rgba(7, 193, 96, 0.25);
+}
+
+.wechat-work-task.error {
+  border-color: rgba(229, 72, 77, 0.28);
+}
+
+.wkt-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+
+.wkt-kicker {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  color: #a855f7;
+  background: rgba(168, 85, 247, 0.10);
+  border-radius: 7px;
+  padding: 2px 6px;
+}
+
+.wkt-state {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-muted, #8a8a93);
+  flex-shrink: 0;
+}
+
+.wechat-work-task.running .wkt-state { color: #a855f7; }
+.wechat-work-task.done .wkt-state { color: var(--success-primary, #07c160); }
+.wechat-work-task.error .wkt-state { color: #e5484d; }
+
+.wkt-title {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--color-text-primary, #2b2b2f);
+}
+
+.wkt-goal {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--color-text-secondary, #8a8a93);
+  margin-top: 3px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.wkt-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.wkt-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--text-muted, #9aa0a6);
+  font-size: 10px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.wkt-step-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.55;
+}
+
+.wkt-step.done {
+  color: var(--success-primary, #07c160);
+  background: rgba(7, 193, 96, 0.10);
+}
+.wkt-step.done .wkt-step-dot { opacity: 1; }
+
+.wkt-step.running {
+  color: #a855f7;
+  background: rgba(168, 85, 247, 0.12);
+  font-weight: 600;
+}
+.wkt-step.running .wkt-step-dot {
+  opacity: 1;
+  animation: wktPulse 1.1s ease-in-out infinite;
+}
+
+.wkt-step.fail {
+  color: #e5484d;
+  background: rgba(229, 72, 77, 0.10);
+}
+.wkt-step.skip {
+  color: var(--text-muted, #9aa0a6);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.22);
+}
+
+@keyframes wktPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.7); opacity: 0.55; }
+}
+
 #tool-sel-bar {
   position: absolute;
   left: 14px;

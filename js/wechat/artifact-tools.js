@@ -249,7 +249,7 @@
     return '{"title":"文档标题","subtitle":"副标题（可空）","sections":[{"heading":"小节标题","paragraphs":["正文段落"],"bullets":["要点"],"table":{"headers":["列1","列2"],"rows":[["值1","值2"]]}}]}';
   }
 
-  async function draft(kind, userText, contextSnippet) {
+  async function draft(kind, userText, contextSnippet, previousSpec) {
     var app = window.appData || {};
     var apiKey = String(app.apiKey || '').trim();
     var apiBase = String(app.apiBase || '').trim();
@@ -258,13 +258,17 @@
     if (base.endsWith('/chat/completions')) base = base.replace('/chat/completions', '');
     var url = base + '/chat/completions';
     var label = kind === 'xlsx' ? 'Excel 表格' : (kind === 'pptx' ? 'PPT 演示文稿' : 'Word 文档');
+    var prevBlock = '';
+    if (previousSpec) {
+      prevBlock = '【上一版内容 JSON：这是修改任务，不要重新写一份无关的新文档；只改用户要求的部分，其余原样保留】\n' + JSON.stringify(previousSpec);
+    }
     var sys = [
       '你是一名专业文档撰写助手，不是角色扮演。根据用户的要求，直接产出一份可以直接拿去用的' + label + '内容。',
       '要求：',
       '1. 内容具体、可执行，不要空话套话；用户没给细节时，按常见工作场景补齐合理内容，并保持中立专业。',
       '2. 素材范围：只把与这次要求直接相关的对话内容当素材，提炼后重写；不要把聊天记录原样搬进文件，无关闲聊、亲密称呼和语气词全部忽略。若素材里包含【刚刚联网检索到的资料】，可以直接引用其中的事实和数字，但涉及来源时要如实标注，绝不编造来源或数据。',
-      '3. 中文输出；标题和小标题简洁。',
-      '4. 只输出严格 JSON，不要 markdown 代码块，不要解释。',
+      previousSpec ? '3. 这是修改任务：以【上一版内容 JSON】为基础，按用户这次的要求修改；不要丢掉上一版里用户没有要求改动的部分。' : '3. 中文输出；标题和小标题简洁。',
+      previousSpec ? '4. 中文输出；标题和小标题简洁；只输出严格 JSON，不要 markdown 代码块，不要解释。' : '4. 只输出严格 JSON，不要 markdown 代码块，不要解释。',
       '5. JSON 结构必须是：' + schemaFor(kind),
       kind === 'docx' ? '6. Word 文档 4~8 个小节，每节 2~4 段或要点；需要时带一个表格。' : '',
       kind === 'xlsx' ? '6. 表格 1~3 个工作表，每表 5~20 行，列名清晰，数值列给具体数字。' : '',
@@ -281,7 +285,7 @@
           model: app.model || 'deepseek-chat',
           messages: [
             { role: 'system', content: sys },
-            { role: 'user', content: (contextSnippet ? '本次话题相关的对话片段与检索资料（只作素材，不是全部聊天记录）：\n' + contextSnippet + '\n\n' : '') + '用户的要求：' + String(userText || '') }
+            { role: 'user', content: (contextSnippet ? '本次话题相关的对话片段与检索资料（只作素材，不是全部聊天记录）：\n' + contextSnippet + '\n\n' : '') + (prevBlock ? prevBlock + '\n\n' : '') + '用户的要求：' + String(userText || '') }
           ],
           temperature: 0.4,
           max_tokens: 2600
@@ -306,14 +310,15 @@
   async function maybeCreate(options) {
     var opts = options || {};
     var userText = String(opts.userText || '');
-    var kind = shouldMake(userText);
+    var kind = opts.kind || shouldMake(userText);
     if (!kind) return null;
     var label = kind === 'xlsx' ? '表格' : (kind === 'pptx' ? 'PPT' : '文档');
-    var notice = (window.__momToolNotice && window.__momToolNotice.start)
+    var previousSpec = opts.previousSpec || null;
+    var notice = (!opts.silent && window.__momToolNotice && window.__momToolNotice.start)
       ? window.__momToolNotice.start(kind, label)
       : null;
     try {
-      var spec = await draft(kind, userText, opts.contextSnippet || '');
+      var spec = await draft(kind, userText, opts.contextSnippet || '', previousSpec);
       var title = spec.title || (label + ' · ' + new Date().toLocaleDateString('zh-CN'));
       var meta = {
         id: uid(),
@@ -328,10 +333,10 @@
       var blob = await buildBlob(meta);
       meta.size = formatSize(blob.size);
       saveArtifact(meta);
-      if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(notice, true);
+      if (!opts.silent && window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(notice, true);
       return meta;
     } catch (err) {
-      if (window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(notice, false);
+      if (!opts.silent && window.__momToolNotice && window.__momToolNotice.end) window.__momToolNotice.end(notice, false);
       console.warn('[Artifact] 生成失败：', err && err.message ? err.message : err);
       return { error: String(err && err.message ? err.message : err) };
     }

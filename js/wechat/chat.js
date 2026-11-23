@@ -2945,6 +2945,106 @@ window.syncNarrationModeUI = syncNarrationModeUI;
 
     window.__momToolNotice = { start: startToolNotice, end: endToolNotice };
 
+    // ================= 角色工作包任务卡 =================
+    function workTaskState(task) {
+      if (task && task.status === 'done') return { cls: 'done', text: '已完成' };
+      if (task && task.status === 'error') return { cls: 'error', text: '没做成' };
+      return { cls: 'running', text: '进行中' };
+    }
+
+    function renderWorkTaskCard(task, idx) {
+      const container = document.getElementById('message-container');
+      if (!container || !task || !task.id) return null;
+      let card = container.querySelector('[data-work-task-id="' + String(task.id) + '"]');
+      if (!card) {
+        card = document.createElement('div');
+        card.setAttribute('data-work-task-id', String(task.id));
+        container.appendChild(card);
+      }
+      const state = workTaskState(task);
+      card.className = 'wechat-work-task ' + state.cls;
+
+      card.innerHTML = '';
+      const head = document.createElement('div');
+      head.className = 'wkt-head';
+      const kicker = document.createElement('span');
+      kicker.className = 'wkt-kicker';
+      kicker.textContent = '工作包';
+      const stateEl = document.createElement('span');
+      stateEl.className = 'wkt-state';
+      stateEl.textContent = state.text;
+      head.appendChild(kicker);
+      head.appendChild(stateEl);
+
+      const title = document.createElement('div');
+      title.className = 'wkt-title';
+      title.textContent = task.title || '工作包任务';
+
+      const goal = document.createElement('div');
+      goal.className = 'wkt-goal';
+      goal.textContent = task.goal || '';
+      if (!goal.textContent) goal.style.display = 'none';
+
+      const steps = document.createElement('div');
+      steps.className = 'wkt-steps';
+      (task.steps || []).forEach(function (step) {
+        if (!step || !step.label) return;
+        const pill = document.createElement('span');
+        pill.className = 'wkt-step ' + (step.status || 'pending');
+        const dot = document.createElement('span');
+        dot.className = 'wkt-step-dot';
+        const label = document.createElement('span');
+        label.textContent = step.label;
+        pill.appendChild(dot);
+        pill.appendChild(label);
+        steps.appendChild(pill);
+      });
+
+      card.appendChild(head);
+      card.appendChild(title);
+      if (goal.textContent) card.appendChild(goal);
+      if (task.error) {
+        const err = document.createElement('div');
+        err.className = 'wkt-goal';
+        err.style.color = '#e5484d';
+        err.style.marginTop = '5px';
+        err.textContent = task.error;
+        card.appendChild(err);
+      }
+      card.appendChild(steps);
+      return card;
+    }
+
+    function upsertWorkTaskMessage(task) {
+      if (!task || !task.id) return;
+      if (!Array.isArray(appData.chatHistory)) appData.chatHistory = [];
+      const copy = JSON.parse(JSON.stringify(task));
+      let idx = -1;
+      for (let i = 0; i < appData.chatHistory.length; i++) {
+        const m = appData.chatHistory[i];
+        if (m && m.workTask && m.workTask.id === copy.id) { idx = i; break; }
+      }
+      if (idx < 0) {
+        appData.chatHistory.push({
+          id: 'workmsg_' + copy.id,
+          role: 'system',
+          workTask: copy,
+          hiddenFromAI: true,
+          hiddenFromView: false,
+          time: getNowStr(),
+          timestamp: Date.now()
+        });
+        idx = appData.chatHistory.length - 1;
+      } else {
+        appData.chatHistory[idx].workTask = copy;
+      }
+      renderWorkTaskCard(copy, idx);
+      try { safeSaveChatHistory(); } catch (e) {}
+      try { scrollChatToBottom && scrollChatToBottom(); } catch (e) {}
+    }
+
+    window.__momUpsertWorkTask = upsertWorkTaskMessage;
+
     // 通话结束后，聊天里只留一条“通话时长”。点它才会出现打开通话记录的入口。
     function renderCallRecordNotice(m) {
       const container = document.getElementById('message-container');
@@ -4895,6 +4995,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
         appData.chatHistory.forEach((m, idx) => {
           if (!m) return;
           if (m.hiddenFromView) return;
+          if (m.workTask) { renderWorkTaskCard(m.workTask, idx); return; }
           if (m.toolCall) { renderToolNotice(m, idx); return; }
           const mTime = m.time || getNowStr();
           const mTs = parseMsgTimestampSafe(m);
@@ -6962,7 +7063,7 @@ ${catalog}
         // 除非user明确说“全部/所有聊天记录”，否则绝不把整本流水账塞进去。
         const buildTopicSnippet = function (limit, wide) {
           const hist = (appData.chatHistory || []).filter(function (m) {
-            return m && !m.hiddenFromView && !m.artifact && !m.notice && !m.toolCall && (m.role === 'user' || m.role === 'assistant');
+            return m && !m.hiddenFromView && !m.artifact && !m.notice && !m.toolCall && !m.workTask && (m.role === 'user' || m.role === 'assistant');
           });
           const timeToMin = function (str) {
             const mt = String(str || '').match(/^(\d{1,2}):(\d{2})$/);
@@ -7061,7 +7162,41 @@ ${catalog}
         // ========== 文件生成：角色真的给你做 Word / Excel / PPT ==========
         // 这一步在工具之后，把刚刚搜到的资料一起交给文件生成，才能做到“先搜再出文档”。
         pendingArtifactMeta = null;
-        if (window.MomArtifacts && typeof window.MomArtifacts.maybeCreate === 'function') {
+        let workPackRan = false;
+        if (window.WorkPack && typeof window.WorkPack.shouldRun === 'function' && window.WorkPack.shouldRun({
+          charId: activeChatCharId(),
+          userText: lastUserForTools
+        })) {
+          workPackRan = true;
+          try {
+            const wantsAllChat = /(全部|所有|整个聊天|从头到尾|全量|一直以来)/.test(lastUserForTools);
+            const wantsNarrow = /(刚才|刚刚|这段|这个话题|这一小段|只整理|只打包)/.test(lastUserForTools) && !wantsAllChat;
+            const topicSnippet = buildTopicSnippet(wantsNarrow ? 8 : 24, wantsAllChat);
+            const searchNote = toolText ? '\n\n【刚刚联网检索到的资料：可直接作为文件内容依据，标注来源，不要编造】\n' + toolText.slice(0, 6000) : '';
+            const workResult = await window.WorkPack.run({
+              charId: activeChatCharId(),
+              userText: lastUserForTools,
+              contextSnippet: topicSnippet + searchNote,
+              toolText: toolText,
+              onUpdate: function (task) {
+                if (window.__momUpsertWorkTask) window.__momUpsertWorkTask(task);
+              }
+            });
+            if (workResult && workResult.artifact) {
+              pendingArtifactMeta = workResult.artifact;
+              recentMessages.push({ role: 'system', content: '【工作包已完成】你刚为user做好了《' + workResult.artifact.name + '》（' + (window.MomArtifacts.kindLabel ? window.MomArtifacts.kindLabel(workResult.artifact.kind) : workResult.artifact.kind) + '，' + workResult.artifact.size + '）。回复里用一句自然的话把文件递给她，例如“给你，拿去用”；不要描述制作过程、技术细节，也不要自己写链接或文件名以外的代码。文件卡片会自动出现在你的回复后面。' });
+            } else if (workResult && workResult.error) {
+              recentMessages.push({ role: 'system', content: '【工作包任务失败】你刚才想给user做文件，但没成功（' + workResult.error + '）。如实告诉她这次没做成，不要假装已经做好，也不要编造文件内容。' });
+            } else {
+              recentMessages.push({ role: 'system', content: '【工作包没有接住】这轮看起来像工作请求，但没有生成文件。自然问一句她具体想要什么，不要假装已经做好。' });
+            }
+          } catch (workErr) {
+            console.warn('[WorkPack] 任务执行异常：', workErr && workErr.message ? workErr.message : workErr);
+            recentMessages.push({ role: 'system', content: '【工作包任务失败】任务执行中断了。如实告诉她这次没做成，不要假装已经做好。' });
+          }
+        }
+
+        if (!workPackRan && window.MomArtifacts && typeof window.MomArtifacts.maybeCreate === 'function') {
           try {
             const wantsAllChat = /(全部|所有|整个聊天|从头到尾|全量|一直以来)/.test(lastUserForTools);
             const wantsNarrow = /(刚才|刚刚|这段|这个话题|这一小段|只整理|只打包)/.test(lastUserForTools) && !wantsAllChat;

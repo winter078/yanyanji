@@ -342,6 +342,221 @@
   }
 }
 
+/* ================= 角色工作包（按角色开启） ================= */
+.workpack-card {
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.10);
+  box-sizing: border-box;
+}
+
+.workpack-card::before {
+  content: '';
+  position: absolute;
+  top: -46px;
+  right: -46px;
+  width: 130px;
+  height: 130px;
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.16), transparent 70%);
+  pointer-events: none;
+}
+
+.workpack-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  position: relative;
+}
+
+.workpack-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.workpack-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #a855f7, #6366f1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.workpack-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1.25;
+}
+
+.workpack-subtitle {
+  font-size: 11.5px;
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+.workpack-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: #a855f7;
+  background: rgba(168, 85, 247, 0.12);
+  border: 1px solid rgba(168, 85, 247, 0.25);
+  padding: 2px 8px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.workpack-desc {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  margin-bottom: 12px;
+  position: relative;
+}
+
+.workpack-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 9px 10px;
+  position: relative;
+}
+
+.workpack-summary-row #work-pack-summary {
+  min-width: 0;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.workpack-manage-btn {
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, #a855f7, #6366f1);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.workpack-manage-btn:active {
+  transform: scale(0.97);
+}
+
+.workpack-role-list {
+  display: none;
+  margin-top: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg-card);
+  position: relative;
+}
+
+.workpack-role-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--color-border);
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.workpack-role-row:last-child {
+  border-bottom: 0;
+}
+
+.workpack-role-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #a855f7;
+  flex-shrink: 0;
+}
+
+.workpack-role-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: rgba(168, 85, 247, 0.14);
+  flex-shrink: 0;
+}
+
+.workpack-role-avatar-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #a855f7;
+}
+
+.workpack-role-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.workpack-role-state {
+  flex-shrink: 0;
+  font-size: 10.5px;
+  color: var(--text-muted);
+  background: rgba(148, 163, 184, 0.12);
+  border-radius: 8px;
+  padding: 2px 7px;
+}
+
+.workpack-role-row input[type="checkbox"]:checked ~ .workpack-role-state {
+  color: var(--success-primary);
+  background: rgba(7, 193, 96, 0.12);
+}
+
+.workpack-empty {
+  padding: 14px 10px;
+  font-size: 11.5px;
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.workpack-foot {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin-top: 10px;
+  position: relative;
+}
+
 /* ================= iOS 桌面自由网格、小组件库与相框展示样式 ================= */
 
 /* 拓展桌面编辑操作条 (平时完全隐藏，仅编辑模式悬浮在页面底部，不占网格布局高度) */
