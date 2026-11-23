@@ -3971,6 +3971,25 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       try { if (typeof scheduleChatBubbleRefit === 'function') scheduleChatBubbleRefit(); } catch (e) {}
       return true;
     }
+    function attachSpeakButton(bubble, text, role, currentMsg) {
+      if (!bubble || role !== 'assistant' || !text || !window.CharVoice) return;
+      const clean = String(text || '').replace(/\s+/g, ' ').trim();
+      if (!clean || clean === '__TYPING__' || clean === '……') return;
+      const charId = (currentMsg && (currentMsg.speakerId || currentMsg.charId)) ||
+        (typeof window.getActiveCharacter === 'function' && window.getActiveCharacter() && window.getActiveCharacter().id) || '';
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'msg-speak-btn';
+      btn.title = '听 TA 说';
+      btn.setAttribute('aria-label', '播放这条语音');
+      btn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5l-5 4H4z" fill="currentColor"></path><path d="M16.2 8.6a5.2 5.2 0 0 1 0 6.8M18.6 6.2a8.4 8.4 0 0 1 0 11.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg>';
+      btn.onclick = function (e) {
+        e.stopPropagation();
+        try { window.CharVoice.speak(clean, { charId: charId, btn: btn }); } catch (err) {}
+      };
+      bubble.appendChild(btn);
+    }
+
     function renderMessageBubble(role, text, time = getNowStr(), thought = '', msgIndex = -1, mediaData = null, isTyping = false) {
       if (role === 'system' || (typeof text === 'string' && text.startsWith('[SYSTEMHINT:'))) {
         let hintText = typeof text === 'string' ? text : '';
@@ -4278,6 +4297,8 @@ window.syncNarrationModeUI = syncNarrationModeUI;
         let voiceText = voiceMatch ? ((voiceMatch[2] || '') + ' ' + (voiceMatch[3] || '')).trim() : cleanText;
         voiceText = voiceText.replace(/^[「“"]+|[」”"]+$/g, '').trim();
         const shownDuration = duration || '';
+        const voiceCharId = (currentMsg && (currentMsg.speakerId || currentMsg.charId)) ||
+          (typeof window.getActiveCharacter === 'function' && window.getActiveCharacter() && window.getActiveCharacter().id) || '';
 
         const voiceBubble = document.createElement('div');
         voiceBubble.className = 'msg-bubble-wechat msg-voice-bubble';
@@ -4306,6 +4327,9 @@ window.syncNarrationModeUI = syncNarrationModeUI;
         voiceBubble.onclick = function(e) {
           if (document.body.classList.contains('chat-multi-mode')) return;
           transcript.style.display = transcript.style.display === 'none' ? 'block' : 'none';
+          if (role === 'assistant' && voiceText && window.CharVoice) {
+            try { window.CharVoice.speak(voiceText, { charId: voiceCharId, btn: wave }); } catch (err) {}
+          }
         };
         if (msgIndex !== -1) {
           bindBubbleLongPress(voiceBubble, msgIndex);
@@ -4772,6 +4796,10 @@ window.syncNarrationModeUI = syncNarrationModeUI;
             bubble.innerText = speechText.trim() || cleanText;
           }
 
+          if (!isTyping && cleanText !== '__TYPING__') {
+            attachSpeakButton(bubble, speechText.trim() || cleanText, role, currentMsg);
+          }
+
           if (msgIndex !== -1) {
             bindBubbleLongPress(bubble, msgIndex);
           }
@@ -4925,6 +4953,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
     }
 
     window.loadChatHistory = loadChatHistory;
+    window.attachSpeakButtonToBubble = attachSpeakButton;
 
     // 「我说」递一页给角色：把纸页卡片当图片发进来，并让他回一句
     window.sayDeliverCard = async function (opt) {

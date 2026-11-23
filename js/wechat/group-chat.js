@@ -637,6 +637,9 @@
         if (document.body.classList.contains('chat-multi-mode')) return;
         e.stopPropagation();
         transcript.style.display = transcript.style.display === 'none' ? 'block' : 'none';
+        if (m.role !== 'user' && voiceText && window.CharVoice) {
+          try { window.CharVoice.speak(voiceText, { charId: m.speakerId || '', btn: wave }); } catch (err) {}
+        }
       };
       messageEl = bubble;
     } else {
@@ -674,6 +677,9 @@
         messageEl = stickerBubble;
       } else {
         bubble.innerText = bodyText;
+        if (!opts.typing && typeof window.attachSpeakButtonToBubble === 'function') {
+          window.attachSpeakButtonToBubble(bubble, bodyText, m.role, m);
+        }
       }
     }
     wrap.appendChild(messageEl);

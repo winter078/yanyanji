@@ -55,6 +55,8 @@
       avatar: c.avatar || '',
       tag: c.tag || '',
       intro: c.intro || '',
+      voiceId: String(c.voiceId || '').trim().slice(0, 80),
+      voiceRate: Math.max(0.6, Math.min(1.6, Number(c.voiceRate) || 1)),
       prompt: c.prompt || '',
       promptBackup: c.promptBackup || '',
       directives: c.directives || '',
@@ -521,6 +523,17 @@
     if (tag) tag.value = c.tag || '';
     const intro = document.getElementById('wx-char-intro-field');
     if (intro) intro.value = c.intro || '';
+    const voiceId = document.getElementById('char-voice-id-field');
+    if (voiceId) voiceId.value = c.voiceId || '';
+    const voiceRate = document.getElementById('char-voice-rate-field');
+    if (voiceRate) voiceRate.value = String(c.voiceRate || 1);
+    updateCharVoiceRateLabel(c.voiceRate || 1);
+    const voiceStatus = document.getElementById('char-voice-status');
+    if (voiceStatus) {
+      voiceStatus.textContent = (window.CharVoice && window.CharVoice.isEnabled && window.CharVoice.isEnabled())
+        ? '点「试听」会按这个音色和语速读一句。'
+        : '还没配置语音接口，点「试听」会先用系统声音。';
+    }
     const prompt = document.getElementById('char-prompt-field');
     if (prompt) prompt.value = c.prompt || genericCharacterPrompt(c);
     const dir = document.getElementById('core-directives-field');
@@ -530,6 +543,48 @@
 
     renderRelations(c);
   }
+
+  function updateCharVoiceRateLabel(value) {
+    const label = document.getElementById('char-voice-rate-label');
+    const n = Math.max(0.6, Math.min(1.6, Number(value) || 1));
+    if (label) label.textContent = n.toFixed(1) + '×';
+  }
+  window.updateCharVoiceRateLabel = updateCharVoiceRateLabel;
+
+  function previewCharacterVoice(btn) {
+    const c = find(editingId);
+    if (!c) return;
+    if (!window.CharVoice || typeof window.CharVoice.preview !== 'function') {
+      toast('语音模块还没加载好，刷新一下页面');
+      return;
+    }
+    const idEl = document.getElementById('char-voice-id-field');
+    const rateEl = document.getElementById('char-voice-rate-field');
+    const statusEl = document.getElementById('char-voice-status');
+    const voiceId = idEl ? idEl.value.trim() : (c.voiceId || '');
+    const rate = rateEl ? Number(rateEl.value) || 1 : (c.voiceRate || 1);
+    if (statusEl) {
+      statusEl.textContent = window.CharVoice.isEnabled()
+        ? ('正在用音色「' + (voiceId || window.CharVoice.getConfig().defaultVoice || 'alloy') + '」试听…')
+        : '还没配置语音接口，先用系统声音试听…';
+    }
+    let usedFallback = false;
+    window.CharVoice.preview({
+      charId: c.id,
+      voiceId: voiceId,
+      rate: rate,
+      btn: btn,
+      onFallback: function (reason) {
+        usedFallback = true;
+        if (statusEl) statusEl.textContent = '这次用的是' + reason + '；配好语音接口后会换成角色音色。';
+      }
+    }).then(function () {
+      if (statusEl && !usedFallback) statusEl.textContent = '试听请求已发出去；如果没听到，再点一次。';
+    }).catch(function (e) {
+      if (statusEl) statusEl.textContent = '试听失败：' + (e && e.message ? e.message : e);
+    });
+  }
+  window.previewCharacterVoice = previewCharacterVoice;
 
   function openCharacterEditor(id) {
     openContactsDrawer_close();
@@ -562,6 +617,10 @@
     if (tagEl) c.tag = tagEl.value.trim();
     const introEl = document.getElementById('wx-char-intro-field');
     if (introEl) c.intro = introEl.value.trim();
+    const voiceIdEl = document.getElementById('char-voice-id-field');
+    if (voiceIdEl) c.voiceId = voiceIdEl.value.trim().slice(0, 80);
+    const voiceRateEl = document.getElementById('char-voice-rate-field');
+    if (voiceRateEl) c.voiceRate = Math.max(0.6, Math.min(1.6, Number(voiceRateEl.value) || 1));
     const promptEl = document.getElementById('char-prompt-field');
     if (promptEl) c.prompt = promptEl.value.trim();
     const dirEl = document.getElementById('core-directives-field');

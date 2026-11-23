@@ -54,6 +54,9 @@
       if (window.PromptPresets && window.PromptPresets.renderSettings) {
         window.PromptPresets.renderSettings();
       }
+      if (window.CharVoice && window.CharVoice.renderSettings) {
+        window.CharVoice.renderSettings();
+      }
     }
 
     try { bindLongPressHandlers(); } catch (e) { console.error('[mom] bindLongPressHandlers failed:', e); }

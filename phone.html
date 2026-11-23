@@ -19,7 +19,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <!-- 发布时务必与 js/build.js 的 __LIVE_BUILD__ 保持一致，否则 version-watch 会一直提示“新版已经好了” -->
-  <script>window.__BUILD__="20261123-0087";</script>
+  <script>window.__BUILD__="20261123-0088";</script>
   <script>
     (function () {
       var root = document.documentElement;
@@ -199,7 +199,7 @@
   <link rel="stylesheet" href="css/themes.css?v=2026111001" />
   <link rel="stylesheet" href="css/desktop.css?v=20261123-0078" />
   <link rel="stylesheet" href="css/notify.css" />
-  <link rel="stylesheet" href="css/wechat.css?v=20261123-0080" />
+  <link rel="stylesheet" href="css/wechat.css?v=20261123-0088" />
   <link rel="stylesheet" href="css/call.css?v=2026111649" />
   <link rel="stylesheet" href="css/skin-qq.css?v=2026111022" />
   <link rel="stylesheet" href="css/moments.css?v=2026111652" />
@@ -2622,6 +2622,34 @@
               <input type="text" id="wx-char-intro-field" class="form-input-box" placeholder="例如：在线伴侣 · 随时对话" maxlength="30" />
             </div>
 
+            <!-- 🎙️ 每个角色一套声音：音色 ID + 语速 -->
+            <div class="form-group-card">
+              <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <div class="form-label-title" style="margin-bottom: 0;">🎙️ 角色声音</div>
+                <button type="button" onclick="previewCharacterVoice(this)" style="padding: 5px 10px; border-radius: 8px; border: 1px solid rgba(10,132,255,0.38); background: var(--bg-elevated); color: #0a84ff; font-size: 11.5px; font-weight: 700; cursor: pointer; flex-shrink: 0;">试听</button>
+              </div>
+              <input id="char-voice-id-field" class="form-input-box" list="char-voice-id-list" placeholder="音色 ID，例如 nova、onyx；留空用默认音色" style="margin: 0;" />
+              <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
+                <span style="font-size: 11px; color: var(--color-text-secondary); flex-shrink: 0;">语速</span>
+                <input id="char-voice-rate-field" type="range" min="0.7" max="1.4" step="0.05" value="1" oninput="updateCharVoiceRateLabel(this.value)" style="flex: 1; min-width: 0; accent-color: var(--theme-accent);" />
+                <span id="char-voice-rate-label" style="font-size: 11px; color: var(--color-text-primary); width: 38px; text-align: right; flex-shrink: 0;">1.0×</span>
+              </div>
+              <div id="char-voice-status" style="font-size: 10.5px; color: var(--color-text-secondary); line-height: 1.5; margin-top: 7px;">每个角色可以填不同音色；还没配置语音接口时会先用系统声音。</div>
+            </div>
+            <datalist id="char-voice-id-list">
+              <option value="alloy"></option>
+              <option value="ash"></option>
+              <option value="ballad"></option>
+              <option value="coral"></option>
+              <option value="echo"></option>
+              <option value="fable"></option>
+              <option value="nova"></option>
+              <option value="onyx"></option>
+              <option value="sage"></option>
+              <option value="shimmer"></option>
+              <option value="verse"></option>
+            </datalist>
+
             <!-- ✨ 角色灵魂指令舱 (最高优先级后置强注入，专治 AI 客服腔) -->
             <div class="form-group-card" style="border: 1px solid rgba(242, 139, 130, 0.35); background: var(--bg-elevated); box-shadow: 0 8px 24px rgba(0,0,0,0.45);">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
@@ -4051,11 +4079,11 @@
                 </div>
                 <div style="font-size: 10.5px; color: var(--color-text-secondary); line-height: 1.45;">生图 API 已经拆成独立预设，在下方「生图 API 预设」卡片里切换线路、填地址 / Key / 模型；不再和聊天预设绑在一起。</div>
               </div>
-              <div style="display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-top: 0.5px solid var(--color-border); opacity: 0.55;">
-                <div style="font-size: 13px; font-weight: 600; color: var(--color-text-primary);">🎙️ 语音 / TTS</div>
-                <span style="font-size: 10.5px; color: var(--color-text-secondary);">待功能上线</span>
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-top: 0.5px solid var(--color-border);">
+                <div style="font-size: 13px; font-weight: 700; color: var(--color-text-primary);">🎙️ 语音 / TTS</div>
+                <span style="font-size: 10.5px; color: #07c160; font-weight: 700;">独立语音卡</span>
               </div>
-              <div style="font-size: 10.5px; color: var(--color-text-secondary); line-height: 1.4; margin-top: 4px;">生图已接通；语音槽位已预留，联网搜索已接到下方卡片。</div>
+              <div style="font-size: 10.5px; color: var(--color-text-secondary); line-height: 1.4; margin-top: 4px;">语音已接通，在下方「角色语音」卡片里填地址 / Key / 模型；每个角色可以在角色卡里填不同音色。</div>
             </div>
 
             <!-- 🖼️ 生图 API 独立预设：像聊天 API 一样切换线路 -->
@@ -4091,6 +4119,38 @@
                 <div id="api-image-test-note" style="font-size: 10.5px; color: var(--color-text-secondary); line-height: 1.45; margin-top: 7px;"></div>
               </div>
               <div style="font-size: 10.5px; color: var(--color-text-secondary); line-height: 1.45; margin-top: 5px;">「测试」只用固定提示词请求一张干净的图，不读取任何角色锁脸、画风、参考图或聊天上下文；只验证地址 / Key / 模型和图片返回。</div>
+            </div>
+
+            <!-- 🎙️ 角色语音：独立地址 / Key / 模型；音色在每张角色卡里单独填 -->
+            <div class="form-group-card" id="tts-api-card" style="margin-bottom: 12px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px;">
+                <div class="form-label-title" style="margin-bottom: 0;">🎙️ 角色语音</div>
+                <label style="display: flex; align-items: center; gap: 7px; flex-shrink: 0; cursor: pointer; font-size: 11.5px; color: var(--color-text-secondary);">
+                  启用
+                  <input type="checkbox" id="tts-enabled-toggle" aria-label="启用角色语音" style="width: 38px; height: 22px; accent-color: #07c160; cursor: pointer;" />
+                </label>
+              </div>
+              <div style="font-size: 10.5px; color: var(--color-text-secondary); line-height: 1.5; margin-bottom: 9px;">按 OpenAI 兼容的 <b>/audio/speech</b> 接。每个角色在角色卡里填自己的音色 ID；留空就用这里的默认音色。</div>
+              <div style="font-size: 10.5px; color: var(--color-text-secondary); margin: 0 2px 4px;">Base URL</div>
+              <input id="tts-base-input" class="form-input-box" placeholder="例如：https://api.openai.com/v1" style="margin: 0;" />
+              <div style="font-size: 10.5px; color: var(--color-text-secondary); margin: 9px 2px 4px;">API Key</div>
+              <input id="tts-key-input" type="password" class="form-input-box" placeholder="sk-xxxxxxxx" style="margin: 0;" />
+              <div style="display: flex; gap: 8px;">
+                <div style="flex: 1; min-width: 0;">
+                  <div style="font-size: 10.5px; color: var(--color-text-secondary); margin: 9px 2px 4px;">语音模型</div>
+                  <input id="tts-model-input" class="form-input-box" placeholder="例如：gpt-4o-mini-tts" style="margin: 0;" />
+                </div>
+                <div style="flex: 1; min-width: 0;">
+                  <div style="font-size: 10.5px; color: var(--color-text-secondary); margin: 9px 2px 4px;">默认音色</div>
+                  <input id="tts-default-voice-input" class="form-input-box" list="char-voice-id-list" placeholder="例如：alloy" style="margin: 0;" />
+                </div>
+              </div>
+              <div style="display: flex; gap: 8px; margin-top: 11px;">
+                <button type="button" onclick="saveTtsSettings()" style="padding: 8px 13px; border-radius: 9px; border: 1px solid rgba(7,193,96,0.38); background: var(--bg-elevated); color: #07c160; font-size: 12px; font-weight: 700; cursor: pointer;">保存</button>
+                <button type="button" id="tts-test-btn" onclick="testTtsApi()" style="padding: 8px 13px; border-radius: 9px; border: 1px solid rgba(10,132,255,0.38); background: var(--bg-elevated); color: #0a84ff; font-size: 12px; font-weight: 700; cursor: pointer;">试听测试</button>
+              </div>
+              <div id="tts-status" style="font-size: 10.5px; color: var(--color-text-secondary); font-weight: 600; line-height: 1.5; margin-top: 9px;">还没启用。填好地址和音色后打开开关，角色才能出声。</div>
+              <div style="font-size: 10.5px; color: var(--color-text-secondary); line-height: 1.5; margin-top: 6px;">接口失败时会先用系统声音兜底，并在聊天里提示原因。语音只在你点播放或试听时出声，不会在后台自动朗读。</div>
             </div>
 
             <!-- 联网搜索：每个用户填自己的 Tavily Key，不共享内置 Key -->
@@ -7953,7 +8013,7 @@ html.ios .watch-header {
 </style><div id="mom-boot-note"><i></i><span>正在启动</span></div>
 <script>
 (function(){
-  var list = ["js/supabase_sync.js","js/config.js?v=20261123-0085","js/store.js?v=20261123-0075","js/calendar-awareness.js?v=20261123-0075","js/token-monitor.js?v=2026111673","js/storage-center.js?v=2026111671","js/api-presets.js?v=2026111472","js/wechat/image-presets.js?v=2026111649","js/prompt-presets.js?v=20261123-0075","js/notify.js?v=20261122-2858","js/keepalive.js?v=20261120-1205","js/desktop/desktop.js?v=20261123-0074","js/motion.js?v=20261122-2858","js/layout-motion.js?v=20261122-2858","js/sheet-drag.js?v=20261122-2858","js/press.js?v=20261122-2858","js/touch.js?v=20261122-2858","js/desktop/days.js?v=1789904839051","js/desktop/yanyan-cat.js?v=1789925866085","js/desktop/drag-grid.js?v=20261123-0074","js/desktop/app-store.js?v=2026111002","js/wechat/stickers.js?v=20261121-2130","js/wechat/search-tools.js?v=20261122-2858","js/wechat/weather-tools.js?v=20261122-2858","js/wechat/tool-registry.js?v=20261122-2858","js/wechat/artifact-tools.js?v=20261123-0087","js/wechat/chat.js?v=20261123-0087","js/wechat/voice-input.js?v=2026111591","js/wechat/call.js?v=2026111649","js/wechat/image-gen.js?v=2026111649","js/wechat/moments.js?v=2026111660","js/wechat/characters.js?v=2026111655","js/wechat/work-pack.js?v=20261123-0087","js/app-changelog.js?v=20261123-0087","js/wechat/group-chat.js?v=2026111652","js/media/music.js?v=20261123-0076","js/media/music-ui.js?v=20261123-0072","js/media/music-lyrics.js?v=20261121-0430","js/qrcode.js?v=2026112010","js/media/netease-login.js?v=2026112011","js/media/companion.js?v=20261120-2235","js/media/watch.js?v=20261120-2235","js/theater/theater.js?v=20261120-1352","js/theater/palace.js?v=2026111121","js/theater/memory-engine.js?v=20261123-0073","js/theater/worldbooks.js?v=2026111571","js/xhs/xhs.js?v=20261121-0415","js/say/say.js?v=20261122-2858","js/keyboard.js?v=20261122-2858","js/media/reader.js?v=20261120-2235","js/desktop/ledger.js?v=20261121-0300","js/desktop/ledger-app.js?v=20261121-0300","js/desktop/health.js?v=20261121-2245","js/image-crop.js?v=20261123-0066","js/desktop/forum.js?v=20261123-0066","js/desktop/avatar-vault.js?v=2026111145","js/wechat/chat-appearance.js?v=2026111652","js/wechat/masks.js?v=2026111654","js/wechat/wordcards.js?v=2026111183","js/desktop/album-store.js?v=2026111433","js/desktop/photos.js?v=2026111457","js/version-watch.js?v=20261121-0150","js/app.js?v=20261123-0073c"];
+  var list = ["js/supabase_sync.js","js/config.js?v=20261123-0085","js/store.js?v=20261123-0075","js/calendar-awareness.js?v=20261123-0075","js/token-monitor.js?v=2026111673","js/storage-center.js?v=2026111671","js/api-presets.js?v=2026111472","js/wechat/image-presets.js?v=2026111649","js/prompt-presets.js?v=20261123-0075","js/notify.js?v=20261122-2858","js/keepalive.js?v=20261120-1205","js/desktop/desktop.js?v=20261123-0074","js/motion.js?v=20261122-2858","js/layout-motion.js?v=20261122-2858","js/sheet-drag.js?v=20261122-2858","js/press.js?v=20261122-2858","js/touch.js?v=20261122-2858","js/desktop/days.js?v=1789904839051","js/desktop/yanyan-cat.js?v=1789925866085","js/desktop/drag-grid.js?v=20261123-0074","js/desktop/app-store.js?v=2026111002","js/wechat/stickers.js?v=20261121-2130","js/wechat/search-tools.js?v=20261122-2858","js/wechat/weather-tools.js?v=20261122-2858","js/wechat/tool-registry.js?v=20261122-2858","js/wechat/artifact-tools.js?v=20261123-0087","js/wechat/chat.js?v=20261123-0088","js/wechat/voice-tts.js?v=20261123-0088","js/wechat/voice-input.js?v=2026111591","js/wechat/call.js?v=2026111649","js/wechat/image-gen.js?v=2026111649","js/wechat/moments.js?v=2026111660","js/wechat/characters.js?v=20261123-0088","js/wechat/work-pack.js?v=20261123-0087","js/app-changelog.js?v=20261123-0088","js/wechat/group-chat.js?v=20261123-0088","js/media/music.js?v=20261123-0076","js/media/music-ui.js?v=20261123-0072","js/media/music-lyrics.js?v=20261121-0430","js/qrcode.js?v=2026112010","js/media/netease-login.js?v=2026112011","js/media/companion.js?v=20261120-2235","js/media/watch.js?v=20261120-2235","js/theater/theater.js?v=20261120-1352","js/theater/palace.js?v=2026111121","js/theater/memory-engine.js?v=20261123-0073","js/theater/worldbooks.js?v=2026111571","js/xhs/xhs.js?v=20261121-0415","js/say/say.js?v=20261122-2858","js/keyboard.js?v=20261122-2858","js/media/reader.js?v=20261120-2235","js/desktop/ledger.js?v=20261121-0300","js/desktop/ledger-app.js?v=20261121-0300","js/desktop/health.js?v=20261121-2245","js/image-crop.js?v=20261123-0066","js/desktop/forum.js?v=20261123-0066","js/desktop/avatar-vault.js?v=2026111145","js/wechat/chat-appearance.js?v=2026111652","js/wechat/masks.js?v=2026111654","js/wechat/wordcards.js?v=2026111183","js/desktop/album-store.js?v=2026111433","js/desktop/photos.js?v=2026111457","js/version-watch.js?v=20261121-0150","js/app.js?v=20261123-0088"];
   var note = document.getElementById('mom-boot-note');
   var splash = document.getElementById('mom-splash');
   var splashAt = (window.performance && performance.now) ? performance.now() : Date.now();

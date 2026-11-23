@@ -2056,3 +2056,41 @@ body[data-theme="light"] .wechat-tool-pill.sel {
   -webkit-user-select: none !important;
   user-select: none !important;
 }
+
+/* 角色语音：每条文字气泡右下角的播放键 */
+.msg-speak-btn {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin: 0 0 0 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  opacity: 0.5;
+  vertical-align: -3px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.msg-speak-btn svg { width: 15px; height: 15px; display: block; }
+.msg-speak-btn.is-playing { opacity: 1; animation: charVoicePulse 0.9s ease-in-out infinite; }
+.msg-voice-bubble .is-playing span { animation: charVoiceWave 0.7s ease-in-out infinite alternate; }
+.msg-voice-bubble .is-playing span:nth-child(2n) { animation-delay: 0.12s; }
+.msg-voice-bubble .is-playing span:nth-child(3n) { animation-delay: 0.24s; }
+@keyframes charVoicePulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.14); }
+}
+@keyframes charVoiceWave {
+  from { transform: scaleY(0.72); opacity: 0.45; }
+  to { transform: scaleY(1.1); opacity: 0.9; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .msg-speak-btn.is-playing,
+  .msg-voice-bubble .is-playing span { animation: none; }
+}
+
