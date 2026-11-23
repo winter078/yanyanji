@@ -212,6 +212,34 @@
     } catch(e){}
   };
 
+  function setToolboxStatus(el, ready) {
+    if (!el) return;
+    el.innerText = ready ? '可用' : '未配置';
+    el.classList.toggle('ready', !!ready);
+    el.classList.toggle('off', !ready);
+  }
+
+  window.renderToolboxStatus = function() {
+    var app = window.appData || {};
+    var docReady = !!(String(app.apiKey || '').trim() && String(app.apiBase || '').trim());
+    setToolboxStatus(document.getElementById('toolbox-doc-status'), docReady);
+    setToolboxStatus(document.getElementById('toolbox-sop-status'), docReady);
+
+    var toolCount = 0;
+    try {
+      toolCount = (window.MomTools && typeof window.MomTools.list === 'function')
+        ? (window.MomTools.list() || []).length
+        : 0;
+    } catch (e) { toolCount = 0; }
+    setToolboxStatus(document.getElementById('toolbox-search-status'), toolCount > 0);
+
+    var imageReady = false;
+    try {
+      imageReady = !!(window.isCharacterImageConfigured && window.isCharacterImageConfigured());
+    } catch (e) { imageReady = false; }
+    setToolboxStatus(document.getElementById('toolbox-image-status'), imageReady);
+  };
+
   function initPluginsCenter() {
     const saved = localStorage.getItem('momo_cyber_plugin_enabled');
     const toggle = document.getElementById('plugin-cyber-toggle');
@@ -224,8 +252,31 @@
     if (hostEl && window.appData && window.appData.hero) {
       hostEl.innerText = window.appData.hero.userName || '当前用户';
     }
+    try { window.renderToolboxStatus(); } catch (e) {}
+
+    // 从其他页面回到插件中心时，重新检查工具配置状态
+    if (typeof window.openPage === 'function' && !window.openPage.__toolboxStatusWrapped) {
+      const prevOpenPage = window.openPage;
+      const wrappedOpenPage = function(pageId) {
+        const result = prevOpenPage.apply(this, arguments);
+        if (pageId === 'page-plugins') {
+          setTimeout(function() {
+            try { window.renderToolboxStatus(); } catch (e) {}
+          }, 80);
+        }
+        return result;
+      };
+      wrappedOpenPage.__toolboxStatusWrapped = true;
+      window.openPage = wrappedOpenPage;
+    }
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
+  function bootPluginsCenter() {
     setTimeout(initPluginsCenter, 300);
-  });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootPluginsCenter, { once: true });
+  } else {
+    bootPluginsCenter();
+  }

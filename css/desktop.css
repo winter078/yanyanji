@@ -184,6 +184,164 @@
   margin-right: 4px;
 }
 
+/* ================= 小手机工具箱（所有角色通用） ================= */
+.toolbox-card {
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.10);
+  box-sizing: border-box;
+}
+
+.toolbox-card::before {
+  content: '';
+  position: absolute;
+  top: -46px;
+  right: -46px;
+  width: 130px;
+  height: 130px;
+  background: radial-gradient(circle, rgba(52, 211, 153, 0.16), transparent 70%);
+  pointer-events: none;
+}
+
+.toolbox-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  position: relative;
+}
+
+.toolbox-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.toolbox-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #34d399, #0ea5e9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.toolbox-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1.25;
+}
+
+.toolbox-subtitle {
+  font-size: 11.5px;
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+.toolbox-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--success-primary);
+  background: rgba(7, 193, 96, 0.12);
+  border: 1px solid rgba(7, 193, 96, 0.25);
+  padding: 2px 8px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.toolbox-desc {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  margin-bottom: 12px;
+  position: relative;
+}
+
+.toolbox-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  position: relative;
+}
+
+.toolbox-item {
+  min-width: 0;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+.toolbox-item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.toolbox-item-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.toolbox-status {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  color: var(--text-muted);
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.toolbox-status.ready {
+  color: var(--success-primary);
+  background: rgba(7, 193, 96, 0.12);
+}
+
+.toolbox-status.off {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.12);
+}
+
+.toolbox-item-desc {
+  font-size: 10.5px;
+  color: var(--color-text-secondary);
+  line-height: 1.35;
+}
+
+.toolbox-foot {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin-top: 10px;
+  position: relative;
+}
+
+@media (max-width: 360px) {
+  .toolbox-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ================= iOS 桌面自由网格、小组件库与相框展示样式 ================= */
 
 /* 拓展桌面编辑操作条 (平时完全隐藏，仅编辑模式悬浮在页面底部，不占网格布局高度) */
