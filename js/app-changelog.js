@@ -7,6 +7,13 @@
   // 每次发版在这里加一条人话更新；不要写代码、接口、模型、后台这类词。
   var UPDATES = [
     {
+      build: '20261123-0092',
+      title: 'Key 没给权限时提示怎么改',
+      items: [
+        '遇到“requested resource not granted”时，会直接说明是 Key 没有「音频生成 1.0」权限，要改成全部权限或换同项目的新 Key。'
+      ]
+    },
+    {
       build: '20261123-0091',
       title: '语音出错时说得更清楚',
       items: [

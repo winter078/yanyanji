@@ -124,6 +124,9 @@
       msg = (j.error && (j.error.message || j.error.code)) || (typeof j.error === 'string' ? j.error : '') || j.message || j.msg || '';
     } catch (e) { msg = String(text || '').trim().slice(0, 120); }
     if (msg) {
+      if (/requested resource not granted|not granted/i.test(msg)) {
+        return '这个 Key 没有「音频生成 1.0」的权限：去 API Key 管理把权限改成「全部权限」，或换到已开通服务的同一个项目新建 Key。';
+      }
       if (status === 401) return 'Key 无效或已失效：' + msg;
       if (status === 403) return 'Key 没权限，或「音频生成 1.0」还没开通：' + msg;
       return msg;
