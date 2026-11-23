@@ -292,7 +292,7 @@
     var app = window.appData || {};
     var apiKey = String(app.apiKey || '').trim();
     var apiBase = String(app.apiBase || '').trim();
-    var images = (Array.isArray(images) ? images : []).filter(Boolean).slice(0, 4);
+    var images = (Array.isArray(images) ? images : []).filter(Boolean).slice(0, 8);
     var badImages = images.filter(function (src) {
       return !/^(data:image\/|https?:\/\/)/i.test(String(src || ''));
     });
@@ -401,7 +401,7 @@
     if (!kind) return null;
     var label = kind === 'xlsx' ? '表格' : (kind === 'pptx' ? 'PPT' : '文档');
     var previousSpec = opts.previousSpec || null;
-    var images = (Array.isArray(opts.images) ? opts.images : []).filter(Boolean).slice(0, 4);
+    var images = (Array.isArray(opts.images) ? opts.images : []).filter(Boolean).slice(0, 8);
     var sourceImageCount = Number(opts.sourceImageCount || 0) || images.length;
     var notice = (!opts.silent && window.__momToolNotice && window.__momToolNotice.start)
       ? window.__momToolNotice.start(kind, label)

@@ -189,7 +189,7 @@
     if (!charId || !isEnabledForChar(charId)) return null;
 
     var userText = String(opts.userText || '');
-    var images = (Array.isArray(opts.images) ? opts.images : []).filter(Boolean).slice(0, 4);
+    var images = (Array.isArray(opts.images) ? opts.images : []).filter(Boolean).slice(0, 8);
     var hasImages = images.length > 0;
     var sourceImageCount = hasImages ? Math.max(1, Number(opts.sourceImageCount || opts.imageCount || 0) || images.length) : 0;
     var imageTotal = Math.max(sourceImageCount, Number(opts.imageTotal || 0));

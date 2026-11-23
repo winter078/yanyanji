@@ -7180,7 +7180,7 @@ ${catalog}
         };
 
         // 大图/长截图先处理再交给模型：普通大图缩到 2048 内，长截图切成上下连续的几段。
-        // 最多仍然只发 4 段图像，避免一次任务又慢又贵。
+        // 1~3 张源图最多发 4 段，避免又慢又贵；4 张源图放宽到 8 段，免得每张长图只能挤成 1 段。
         const loadWorkImage = function (src) {
           return new Promise(function (resolve) {
             var img = new Image();
@@ -7231,7 +7231,7 @@ ${catalog}
           var metas = [];
           var loaded = await Promise.all(list.map(function (src) { return loadWorkImage(src); }));
           for (var i = 0; i < loaded.length; i++) metas.push(loaded[i]);
-          var maxPayloads = 4;
+          var maxPayloads = metas.length >= 4 ? 8 : 4;
           var desired = metas.map(function (m) {
             if (!m.ok) return 1;
             var longShot = m.h > m.w * 1.8 && m.h > 1200;
