@@ -1558,6 +1558,17 @@ body[data-theme="light"] .wechat-tool-pill.sel {
   color: var(--color-text-primary, #2b2b2f);
 }
 
+.wkt-meta {
+  font-size: 10.5px;
+  line-height: 1.4;
+  color: #8b5cf6;
+  margin-top: 3px;
+}
+
+.wkt-meta.warn {
+  color: #b45309;
+}
+
 .wkt-goal {
   font-size: 11px;
   line-height: 1.45;

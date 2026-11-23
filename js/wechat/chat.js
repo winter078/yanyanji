@@ -3002,6 +3002,12 @@ window.syncNarrationModeUI = syncNarrationModeUI;
 
       card.appendChild(head);
       card.appendChild(title);
+      if (task.imageCount) {
+        const meta = document.createElement('div');
+        meta.className = 'wkt-meta' + (task.imageDropped ? ' warn' : '');
+        meta.textContent = '截图 ' + task.imageCount + ' 张' + (task.imageDropped ? ' · 还有 ' + task.imageDropped + ' 张没带' : '');
+        card.appendChild(meta);
+      }
       if (goal.textContent) card.appendChild(goal);
       if (task.error) {
         const err = document.createElement('div');
@@ -7085,36 +7091,82 @@ ${catalog}
           return picks.join('\n').slice(0, 1800);
         };
 
-        // 这轮任务带的截图：只取“上一条角色回复之后”的图片，最多 4 张。
-        // 不把历史里很久以前的图混进来，避免拿错素材。
+        // 这轮任务带的截图：保留最近 30 分钟内、上次任务用掉之后的图片，最多 4 张。
+        // 中间角色回一句“要 Word 还是表格”不会把截图弄丢；任务成功后才标记用掉。
+        const WORK_IMG_TTL = 30 * 60 * 1000;
+        const WORK_IMG_CACHE_KEY = 'momo_work_image_cache_v1';
+        const workImageKey = function (m, i) {
+          return String((m && m.id) || ((m && m.timestamp) || 0) + '_' + i);
+        };
+        const workImageScope = function () {
+          try { return String(activeChatCharId() || 'default'); } catch (e) { return 'default'; }
+        };
+        const readWorkImageCache = function () {
+          try {
+            const all = JSON.parse(localStorage.getItem(WORK_IMG_CACHE_KEY) || '{}') || {};
+            const one = all[workImageScope()];
+            return one && typeof one === 'object' ? one : null;
+          } catch (e) { return null; }
+        };
+        const writeWorkImageCache = function (entry) {
+          try {
+            const all = JSON.parse(localStorage.getItem(WORK_IMG_CACHE_KEY) || '{}') || {};
+            all[workImageScope()] = entry;
+            localStorage.setItem(WORK_IMG_CACHE_KEY, JSON.stringify(all));
+          } catch (e) {}
+        };
         const collectWorkImages = function () {
           const hist = (appData.chatHistory || []).filter(function (m) {
             return m && !m.hiddenFromView;
           });
-          let lastAssistant = -1;
-          for (let i = 0; i < hist.length; i++) {
-            if (hist[i] && hist[i].role === 'assistant') lastAssistant = i;
+          const cache = readWorkImageCache();
+          const consumedKey = String((cache && cache.consumedKey) || '');
+          let start = 0;
+          if (consumedKey) {
+            for (let i = hist.length - 1; i >= 0; i--) {
+              if (workImageKey(hist[i], i) === consumedKey) {
+                start = i + 1;
+                break;
+              }
+            }
           }
-          const list = [];
-          for (let i = lastAssistant + 1; i < hist.length; i++) {
+          const cutoff = Date.now() - WORK_IMG_TTL;
+          const items = [];
+          for (let i = start; i < hist.length; i++) {
             const m = hist[i];
             if (!m || m.role !== 'user') continue;
+            const c = String(m.content || '');
+            if (/^\[(?:STICKER|TEXTCARD|ARTIFACT|FILECARD|SHARECARD)/.test(c)) continue;
             let src = '';
             if (m.media) {
               src = String(m.media);
+            } else if (c === '[IMAGE]') {
+              src = '';
+            } else if (/^\[IMAGE:[\s\S]+\]$/.test(c)) {
+              src = c.slice(7, -1);
             } else {
-              const c = String(m.content || '');
-              if (c === '[IMAGE]') src = '';
-              else if (/^\[IMAGE:[\s\S]+\]$/.test(c)) src = c.slice(7, -1);
-              else {
-                const q = c.match(/\[IMAGE:([^\]]+)\]/);
-                if (q) src = q[1];
-              }
+              const q = c.match(/\[IMAGE:([^\]]+)\]/);
+              if (q) src = q[1];
             }
             src = String(src || '').replace(/[\r\n\s]/g, '');
-            if (src) list.push(src);
+            if (!src) continue;
+            const ts = Number(m.timestamp || 0);
+            if (ts && ts < cutoff) continue;
+            if (!ts && i < hist.length - 30) continue;
+            items.push({ src: src, key: workImageKey(m, i) });
           }
-          return list.slice(-4);
+          const picked = items.slice(-4);
+          return {
+            images: picked.map(function (x) { return x.src; }),
+            total: items.length,
+            dropped: Math.max(0, items.length - 4),
+            lastKey: items.length ? items[items.length - 1].key : '',
+            keys: picked.map(function (x) { return x.key; })
+          };
+        };
+        const markWorkImagesUsed = function (info) {
+          if (!info || !info.lastKey) return;
+          writeWorkImageCache({ consumedKey: info.lastKey, at: Date.now() });
         };
 
         // ========== 工具协同：先让模型判断要不要 搜索 / 小红书 / 天气，真跑完再喂给文件和回复 ==========
@@ -7194,7 +7246,9 @@ ${catalog}
         // ========== 文件生成：角色真的给你做 Word / Excel / PPT ==========
         // 这一步在工具之后，把刚刚搜到的资料一起交给文件生成，才能做到“先搜再出文档”。
         pendingArtifactMeta = null;
-        const workImages = collectWorkImages();
+        const workImageInfo = collectWorkImages();
+        const workImages = workImageInfo.images;
+        const shotDropNote = workImageInfo.dropped ? ' 这轮只带了最后 4 张截图，另有 ' + workImageInfo.dropped + ' 张没带；回复里顺口说一句“这次先带了 4 张，剩下分两次发我”。' : '';
         let workPackRan = false;
         if (window.WorkPack && typeof window.WorkPack.shouldRun === 'function' && window.WorkPack.shouldRun({
           charId: activeChatCharId(),
@@ -7212,13 +7266,16 @@ ${catalog}
               contextSnippet: topicSnippet + searchNote,
               toolText: toolText,
               images: workImages,
+              imageTotal: workImageInfo.total,
+              imageDropped: workImageInfo.dropped,
               onUpdate: function (task) {
                 if (window.__momUpsertWorkTask) window.__momUpsertWorkTask(task);
               }
             });
             if (workResult && workResult.artifact) {
+              markWorkImagesUsed(workImageInfo);
               pendingArtifactMeta = workResult.artifact;
-              recentMessages.push({ role: 'system', content: '【工作包已完成】你刚为user做好了《' + workResult.artifact.name + '》（' + (window.MomArtifacts.kindLabel ? window.MomArtifacts.kindLabel(workResult.artifact.kind) : workResult.artifact.kind) + '，' + workResult.artifact.size + '）。回复里用一句自然的话把文件递给她，例如“给你，拿去用”；不要描述制作过程、技术细节，也不要自己写链接或文件名以外的代码。文件卡片会自动出现在你的回复后面。' });
+              recentMessages.push({ role: 'system', content: '【工作包已完成】你刚为user做好了《' + workResult.artifact.name + '》（' + (window.MomArtifacts.kindLabel ? window.MomArtifacts.kindLabel(workResult.artifact.kind) : workResult.artifact.kind) + '，' + workResult.artifact.size + '）。回复里用一句自然的话把文件递给她，例如“给你，拿去用”；不要描述制作过程、技术细节，也不要自己写链接或文件名以外的代码。文件卡片会自动出现在你的回复后面。' + shotDropNote });
             } else if (workResult && workResult.error) {
               recentMessages.push({ role: 'system', content: '【工作包任务失败】你刚才想给user做文件，但没成功（' + workResult.error + '）。如实告诉她这次没做成，不要假装已经做好，也不要编造文件内容。' });
             } else {
@@ -7245,8 +7302,9 @@ ${catalog}
             if (made && made.error) {
               recentMessages.push({ role: 'system', content: '【文件生成失败】你刚才想给user做文件，但没成功（' + made.error + '）。如实告诉她这次没做成，不要假装已经做好，也不要编造文件内容。' });
             } else if (made) {
+              markWorkImagesUsed(workImageInfo);
               pendingArtifactMeta = made;
-              recentMessages.push({ role: 'system', content: '【文件已生成】你刚为user做好了《' + made.name + '》（' + (window.MomArtifacts.kindLabel ? window.MomArtifacts.kindLabel(made.kind) : made.kind) + '，' + made.size + '）。回复里用一句自然的话把文件递给她，例如“给你，拿去用”；不要描述制作过程、技术细节，也不要自己写链接或文件名以外的代码。文件卡片会自动出现在你的回复后面。' });
+              recentMessages.push({ role: 'system', content: '【文件已生成】你刚为user做好了《' + made.name + '》（' + (window.MomArtifacts.kindLabel ? window.MomArtifacts.kindLabel(made.kind) : made.kind) + '，' + made.size + '）。回复里用一句自然的话把文件递给她，例如“给你，拿去用”；不要描述制作过程、技术细节，也不要自己写链接或文件名以外的代码。文件卡片会自动出现在你的回复后面。' + shotDropNote });
             }
           } catch (artErr) {
             console.warn('[Artifact] 文件生成异常：', artErr && artErr.message ? artErr.message : artErr);

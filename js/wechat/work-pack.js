@@ -148,6 +148,7 @@
       status: 'running',
       steps: steps,
       imageCount: hasImages ? (opts.imageCount || 0) : 0,
+      imageDropped: hasImages ? (opts.imageDropped || 0) : 0,
       artifactId: '',
       artifactName: '',
       error: '',
@@ -178,6 +179,8 @@
     var userText = String(opts.userText || '');
     var images = (Array.isArray(opts.images) ? opts.images : []).filter(Boolean).slice(0, 4);
     var hasImages = images.length > 0;
+    var imageTotal = Math.max(images.length, Number(opts.imageTotal || 0));
+    var imageDropped = Math.max(0, Number(opts.imageDropped || 0) || (imageTotal - images.length));
     var last = lastTaskForChar(charId);
     var revision = false;
     var kind = window.MomArtifacts.wantsFile(userText) || '';
@@ -199,7 +202,8 @@
           hasResearch: !!opts.toolText,
           wantsResearch: needsResearch(userText),
           hasImages: hasImages,
-          imageCount: images.length
+          imageCount: images.length,
+          imageDropped: imageDropped
         });
         missing.status = 'error';
         missing.error = '上一版文件已经清理掉了，重新做一份吧';
@@ -219,7 +223,8 @@
       hasResearch: !!opts.toolText,
       wantsResearch: needsResearch(userText),
       hasImages: hasImages,
-      imageCount: images.length
+      imageCount: images.length,
+      imageDropped: imageDropped
     });
     emit(task, opts.onUpdate);
 
