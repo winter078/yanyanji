@@ -7169,6 +7169,116 @@ ${catalog}
           writeWorkImageCache({ consumedKey: info.lastKey, at: Date.now() });
         };
 
+        // 大图/长截图先处理再交给模型：普通大图缩到 2048 内，长截图切成上下连续的几段。
+        // 最多仍然只发 4 段图像，避免一次任务又慢又贵。
+        const loadWorkImage = function (src) {
+          return new Promise(function (resolve) {
+            var img = new Image();
+            var done = false;
+            var finish = function (ok) {
+              if (done) return;
+              done = true;
+              resolve({
+                src: src,
+                img: img,
+                ok: ok,
+                w: img.naturalWidth || img.width || 1,
+                h: img.naturalHeight || img.height || 1
+              });
+            };
+            img.onload = function () { finish(true); };
+            img.onerror = function () { finish(false); };
+            setTimeout(function () { finish(false); }, 5000);
+            try { img.src = src; } catch (e) { finish(false); }
+          });
+        };
+
+        const renderWorkImageSlice = function (meta, sy, sh) {
+          try {
+            var scale = Math.min(1, 2048 / Math.max(meta.w, sh));
+            var outW = Math.max(1, Math.round(meta.w * scale));
+            var outH = Math.max(1, Math.round(sh * scale));
+            var canvas = document.createElement('canvas');
+            canvas.width = outW;
+            canvas.height = outH;
+            var ctx = canvas.getContext('2d');
+            if (!ctx) return meta.src;
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, outW, outH);
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(meta.img, 0, sy, meta.w, sh, 0, 0, outW, outH);
+            var url = canvas.toDataURL('image/jpeg', 0.92);
+            return (url && url.length > 100) ? url : meta.src;
+          } catch (e) {
+            return meta.src;
+          }
+        };
+
+        const prepareWorkImages = async function (sources) {
+          var list = (Array.isArray(sources) ? sources : []).filter(Boolean).slice(0, 4);
+          if (!list.length) return [];
+          var metas = [];
+          var loaded = await Promise.all(list.map(function (src) { return loadWorkImage(src); }));
+          for (var i = 0; i < loaded.length; i++) metas.push(loaded[i]);
+          var maxPayloads = 4;
+          var desired = metas.map(function (m) {
+            if (!m.ok) return 1;
+            var longShot = m.h > m.w * 1.8 && m.h > 1200;
+            return longShot ? Math.max(1, Math.ceil(m.h / 1400)) : 1;
+          });
+          var parts = metas.map(function () { return 1; });
+          var total = parts.length;
+          while (total < maxPayloads) {
+            var best = -1;
+            var bestScore = 0;
+            for (var j = 0; j < desired.length; j++) {
+              if (desired[j] > parts[j]) {
+                var score = desired[j] / parts[j];
+                var better = score > bestScore + 1e-9;
+                if (!better && Math.abs(score - bestScore) <= 1e-9 && best >= 0 && parts[j] < parts[best]) better = true;
+                if (better) { bestScore = score; best = j; }
+              }
+            }
+            if (best < 0) break;
+            parts[best]++;
+            total++;
+          }
+          while (total > maxPayloads) {
+            var cut = -1;
+            for (var k = 0; k < parts.length; k++) {
+              if (parts[k] > 1 && (cut < 0 || parts[k] > parts[cut])) cut = k;
+            }
+            if (cut < 0) break;
+            parts[cut]--;
+            total--;
+          }
+          var out = [];
+          for (var n = 0; n < metas.length; n++) {
+            var m = metas[n];
+            if (!m.ok) { out.push(list[n]); continue; }
+            var count = parts[n];
+            if (count <= 1) {
+              if (m.w <= 2048 && m.h <= 2048 && String(list[n]).length < 1200000) {
+                out.push(list[n]);
+              } else {
+                out.push(renderWorkImageSlice(m, 0, m.h));
+              }
+              continue;
+            }
+            var overlap = Math.min(48, Math.max(16, Math.round((m.h / count) * 0.05)));
+            for (var p = 0; p < count; p++) {
+              var sy = Math.floor((p * m.h) / count) - (p > 0 ? overlap : 0);
+              var ey = Math.floor(((p + 1) * m.h) / count) + (p < count - 1 ? overlap : 0);
+              sy = Math.max(0, sy);
+              ey = Math.min(m.h, ey);
+              if (ey <= sy) ey = Math.min(m.h, sy + 2);
+              out.push(renderWorkImageSlice(m, sy, ey - sy));
+            }
+          }
+          return out.slice(0, maxPayloads);
+        };
+
         // ========== 工具协同：先让模型判断要不要 搜索 / 小红书 / 天气，真跑完再喂给文件和回复 ==========
         let toolText = '';
         if (window.MomTools && typeof window.MomTools.hasAnyTool === 'function' && window.MomTools.hasAnyTool()) {
@@ -7247,13 +7357,15 @@ ${catalog}
         // 这一步在工具之后，把刚刚搜到的资料一起交给文件生成，才能做到“先搜再出文档”。
         pendingArtifactMeta = null;
         const workImageInfo = collectWorkImages();
-        const workImages = workImageInfo.images;
+        const sourceImageCount = workImageInfo.images.length;
+        const preparedWorkImages = await prepareWorkImages(workImageInfo.images);
+        const workImages = preparedWorkImages.length ? preparedWorkImages : workImageInfo.images;
         const shotDropNote = workImageInfo.dropped ? ' 这轮只带了最后 4 张截图，另有 ' + workImageInfo.dropped + ' 张没带；回复里顺口说一句“这次先带了 4 张，剩下分两次发我”。' : '';
         let workPackRan = false;
         if (window.WorkPack && typeof window.WorkPack.shouldRun === 'function' && window.WorkPack.shouldRun({
           charId: activeChatCharId(),
           userText: lastUserForTools,
-          imageCount: workImages.length
+          imageCount: sourceImageCount
         })) {
           workPackRan = true;
           try {
@@ -7267,6 +7379,8 @@ ${catalog}
               contextSnippet: topicSnippet + searchNote,
               toolText: toolText,
               images: workImages,
+              imageCount: sourceImageCount,
+              sourceImageCount: sourceImageCount,
               imageTotal: workImageInfo.total,
               imageDropped: workImageInfo.dropped,
               onUpdate: function (task) {
@@ -7298,7 +7412,8 @@ ${catalog}
               userText: lastUserForTools,
               contextSnippet: topicSnippet + searchNote,
               scopeNote: topicSnippet ? '本话题 ' + topicSnippet.split('\n').length + ' 条' : '无对话素材',
-              images: workImages
+              images: workImages,
+              sourceImageCount: sourceImageCount
             });
             if (made && made.error) {
               recentMessages.push({ role: 'system', content: '【文件生成失败】你刚才想给user做文件，但没成功（' + made.error + '）。如实告诉她这次没做成，不要假装已经做好，也不要编造文件内容。' });

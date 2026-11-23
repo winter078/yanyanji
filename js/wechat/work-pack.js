@@ -190,11 +190,12 @@
     var userText = String(opts.userText || '');
     var images = (Array.isArray(opts.images) ? opts.images : []).filter(Boolean).slice(0, 4);
     var hasImages = images.length > 0;
-    var imageTotal = Math.max(images.length, Number(opts.imageTotal || 0));
-    var imageDropped = Math.max(0, Number(opts.imageDropped || 0) || (imageTotal - images.length));
+    var sourceImageCount = hasImages ? Math.max(1, Number(opts.sourceImageCount || opts.imageCount || 0) || images.length) : 0;
+    var imageTotal = Math.max(sourceImageCount, Number(opts.imageTotal || 0));
+    var imageDropped = Math.max(0, Number(opts.imageDropped || 0) || (imageTotal - sourceImageCount));
     var last = lastTaskForChar(charId);
     var revision = false;
-    var compare = hasImages && images.length >= 2 && compareLike(userText);
+    var compare = hasImages && sourceImageCount >= 2 && compareLike(userText);
     var kind = window.MomArtifacts.wantsFile(userText) || '';
     if (!kind && compare) kind = 'docx';
     if (!kind && last && (Date.now() - (last.createdAt || 0) <= TASK_MAX_AGE) && revisionLike(userText)) {
@@ -215,7 +216,7 @@
           hasResearch: !!opts.toolText,
           wantsResearch: needsResearch(userText),
           hasImages: hasImages,
-          imageCount: images.length,
+          imageCount: sourceImageCount,
           imageDropped: imageDropped,
           compareMode: compare
         });
@@ -237,7 +238,7 @@
       hasResearch: !!opts.toolText,
       wantsResearch: needsResearch(userText),
       hasImages: hasImages,
-      imageCount: images.length,
+      imageCount: sourceImageCount,
       imageDropped: imageDropped,
       compareMode: compare
     });
@@ -250,6 +251,7 @@
         scopeNote: '工作包任务',
         kind: kind,
         images: images,
+        sourceImageCount: sourceImageCount,
         previousSpec: previousArtifact ? previousArtifact.spec : null,
         silent: true
       });
