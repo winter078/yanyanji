@@ -755,11 +755,12 @@ html.kb-open #page-chat .wechat-input-bar-v2 {
   transform: scale(.94);
 }
 #chat-input-bar .wechat-bar-action-slot {
-  width: 31px;
-  flex: 0 0 31px;
-  display: flex;
+  width: 0;
+  flex: 0 0 0;
+  display: none;
   align-items: center;
   justify-content: flex-end;
+  overflow: hidden;
 }
 #chat-input-bar .wechat-send-text-btn {
   display: none;
@@ -795,17 +796,25 @@ html.kb-open #page-chat .wechat-input-bar-v2 {
 #chat-input-bar:has(.chat-capsule-textarea:not(:placeholder-shown)) .wechat-bar-action-slot {
   width: 56px;
   flex: 0 0 56px;
+  display: flex;
 }
 #chat-input-bar:has(.chat-capsule-textarea:not(:placeholder-shown)) .wechat-inline-mic { display: none; }
 #chat-input-bar:has(.chat-capsule-textarea:not(:placeholder-shown)) .wechat-inline-emoji { display: flex; }
 #chat-input-bar:has(.chat-capsule-textarea:not(:placeholder-shown)) .wechat-emoji-outside { display: none; }
+#chat-input-bar:has(.chat-capsule-textarea:not(:placeholder-shown)) .wechat-voice-key { display: none; }
 #chat-input-bar:has(.chat-capsule-textarea:not(:placeholder-shown)) .wechat-plus-toggle { display: none; }
 #chat-input-bar:has(.chat-capsule-textarea:not(:placeholder-shown)) .wechat-send-text-btn { display: flex; }
 #chat-input-bar.is-generating .wechat-inline-mic,
 #chat-input-bar.is-generating .wechat-inline-emoji,
 #chat-input-bar.is-generating .wechat-emoji-outside,
+#chat-input-bar.is-generating .wechat-voice-key,
 #chat-input-bar.is-generating .wechat-plus-toggle,
 #chat-input-bar.is-generating .wechat-send-text-btn { display: none; }
+#chat-input-bar.is-generating .wechat-bar-action-slot {
+  width: 31px;
+  flex: 0 0 31px;
+  display: flex;
+}
 
 
 .stop-gen-btn.pulse-stop {

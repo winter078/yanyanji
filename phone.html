@@ -19,7 +19,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <!-- 发布时务必与 js/build.js 的 __LIVE_BUILD__ 保持一致，否则 version-watch 会一直提示“新版已经好了” -->
-  <script>window.__BUILD__="20261124-2310";</script>
+  <script>window.__BUILD__="20261124-2318";</script>
   <script>
     (function () {
       var root = document.documentElement;
@@ -199,7 +199,7 @@
   <link rel="stylesheet" href="css/themes.css?v=2026111001" />
   <link rel="stylesheet" href="css/desktop.css?v=20261123-0078" />
   <link rel="stylesheet" href="css/notify.css" />
-  <link rel="stylesheet" href="css/wechat.css?v=20261124-2236" />
+  <link rel="stylesheet" href="css/wechat.css?v=20261124-2318" />
   <link rel="stylesheet" href="css/archive.css?v=20261124-2305" />
   <link rel="stylesheet" href="css/xinsheng-preset.css?v=20261124-2236" />
   <link rel="stylesheet" href="css/call.css?v=20261123-0095" />
@@ -910,9 +910,9 @@
             </div>
 
             <footer class="wechat-input-bar-v2" id="chat-input-bar">
-              <!-- 仿微信底栏：左语音，中间输入，右侧加号 / 有字变发送 -->
-              <button class="chat-circle-btn chat-voice-hold-btn wechat-voice-key" id="chat-voice-hold-btn" type="button" title="按住说话，松手确认文字" aria-label="按住说话，松手后确认文字">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"></circle><path d="M9.3 8.6a5.2 5.2 0 0 0 0 6.8"></path><path d="M14.7 8.6a5.2 5.2 0 0 1 0 6.8"></path><path d="M6.7 6.2a8.2 8.2 0 0 0 0 11.6"></path><path d="M17.3 6.2a8.2 8.2 0 0 1 0 11.6"></path></svg>
+              <!-- 仿微信底栏：左加号，中间输入，右侧表情 / 语音；有字变发送 -->
+              <button class="chat-circle-btn wechat-plus-toggle" type="button" onclick="togglePlusDrawer()" title="更多功能" aria-label="更多功能">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
               </button>
 
               <div class="chat-pill-input-box wechat-input-box">
@@ -929,10 +929,11 @@
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M8.5 14s1.3 1.8 3.5 1.8 3.5-1.8 3.5-1.8"></path><line x1="9" y1="9.5" x2="9.01" y2="9.5"></line><line x1="15" y1="9.5" x2="15.01" y2="9.5"></line></svg>
               </button>
 
+              <button class="chat-circle-btn chat-voice-hold-btn wechat-voice-key" id="chat-voice-hold-btn" type="button" title="按住说话，松手确认文字" aria-label="按住说话，松手后确认文字">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"></circle><path d="M9.3 8.6a5.2 5.2 0 0 0 0 6.8"></path><path d="M14.7 8.6a5.2 5.2 0 0 1 0 6.8"></path><path d="M6.7 6.2a8.2 8.2 0 0 0 0 11.6"></path><path d="M17.3 6.2a8.2 8.2 0 0 1 0 11.6"></path></svg>
+              </button>
+
               <div class="wechat-bar-action-slot">
-                <button class="chat-circle-btn wechat-plus-toggle" type="button" onclick="togglePlusDrawer()" title="更多功能" aria-label="更多功能">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                </button>
                 <button class="wechat-send-text-btn" id="chat-send-text-btn" type="button" onclick="handleTriggerGenerate()" title="发送并让角色回复">发送</button>
                 <button class="chat-stop-circle" id="stop-btn" type="button" onclick="handleStopGenerate()" title="暂停生成" style="display: none;">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2.5"></rect></svg>
