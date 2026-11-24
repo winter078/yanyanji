@@ -491,6 +491,7 @@
       if (!ok) return false;
     }
     currentSong = song;
+    try { if (window.Archive && typeof window.Archive.noteListen === 'function') window.Archive.noteListen(song); } catch (e) {}
     if (window.MzLyrics) {
       try { window.MzLyrics.load(song); } catch (e) {}
     }
@@ -528,6 +529,7 @@
   }
 
   function playMusic() {
+    try { if (window.Archive && typeof window.Archive.resumeListen === 'function') window.Archive.resumeListen(); } catch (e) {}
     audio.play().then(() => {
       isPlaying = true;
       updatePlayStateUI();
@@ -540,6 +542,7 @@
 
   function pauseMusic() {
     audio.pause();
+    try { if (window.Archive && typeof window.Archive.endListen === 'function') window.Archive.endListen(); } catch (e) {}
     isPlaying = false;
     updatePlayStateUI();
   }
