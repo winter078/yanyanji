@@ -916,6 +916,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       if (modal) {
         modal.style.display = 'flex';
         modal.classList.add('open');
+        modal.classList.add('cot-preset-mode');
       }
       if (typeof toggleCotHistoryView === 'function') toggleCotHistoryView();
     }
@@ -953,9 +954,13 @@ window.syncNarrationModeUI = syncNarrationModeUI;
           if (heartSection) heartSection.style.display = 'none';
           if (hero) hero.style.display = 'none';
           if (reasoningSection) reasoningSection.style.display = 'none';
+          if (modal) modal.classList.add('cot-preset-mode');
+          const clockBtn = document.getElementById('cot-bottom-history');
+          if (clockBtn) clockBtn.classList.remove('is-active');
         } else {
           presetPage.style.display = 'none';
           if (hero) hero.style.display = '';
+          if (modal) modal.classList.remove('cot-preset-mode');
         }
       }
       const chainText = cleanCotText(cotText !== undefined ? cotText : latestReasoningChain);
@@ -980,7 +985,11 @@ window.syncNarrationModeUI = syncNarrationModeUI;
     }
 
     function closeCotModal() {
-      document.getElementById('cot-modal').classList.remove('open');
+      const modal = document.getElementById('cot-modal');
+      if (modal) {
+        modal.classList.remove('open');
+        modal.classList.remove('cot-preset-mode');
+      }
       isCotHistoryMode = false;
     }
 
@@ -990,6 +999,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       const historyView = document.getElementById('cot-modal-history');
       const subTitle = document.getElementById('cot-sheet-subtitle');
       const gearBtn = document.getElementById('btn-cot-history');
+      const clockBtn = document.getElementById('cot-bottom-history');
 
       isCotHistoryMode = !isCotHistoryMode;
 
@@ -1000,6 +1010,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
         if (gearBtn) {
           gearBtn.style.color = ''; gearBtn.style.background = ''; gearBtn.style.border = ''; gearBtn.classList.add('chat-gear-btn'); gearBtn.classList.toggle('is-active', true);
         }
+        if (clockBtn) clockBtn.classList.add('is-active');
         renderCotHistoryList();
       } else {
         if (content) content.style.display = 'block';
@@ -1008,6 +1019,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
         if (gearBtn) {
           gearBtn.style.color = ''; gearBtn.style.background = ''; gearBtn.style.border = ''; gearBtn.classList.add('chat-gear-btn'); gearBtn.classList.toggle('is-active', false);
         }
+        if (clockBtn) clockBtn.classList.remove('is-active');
       }
     };
 

@@ -331,3 +331,73 @@
   width: 0;
   height: 0;
 }
+
+/* ══════════════════════
+   心声展开态：去顶栏、去边距，用底部浮动操作栏
+══════════════════════ */
+.cot-preset-mode .ios-bottom-sheet-card {
+  position: relative;
+  padding: 10px 0 0;
+  background: #0b0b0b;
+  border-top: 0;
+  border-radius: 24px 24px 0 0;
+  box-shadow: 0 -12px 44px rgba(0, 0, 0, .7);
+}
+.cot-preset-mode .ios-bottom-sheet-grabber,
+.cot-preset-mode .ios-bottom-sheet-header,
+.cot-preset-mode .xinsheng-sheet-foot {
+  display: none !important;
+}
+.cot-preset-mode .ios-bottom-sheet-body {
+  padding: 2px 10px 88px;
+}
+.cot-preset-mode #cot-modal-history {
+  padding: 10px 12px 94px !important;
+}
+
+.cot-bottom-bar {
+  display: none;
+}
+.cot-preset-mode .cot-bottom-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  pointer-events: none;
+}
+.cot-bottom-btn {
+  pointer-events: auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid #3a3a3a;
+  background: rgba(30, 30, 30, .92);
+  color: #dddddd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .5);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  transition: transform .15s, background .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.cot-bottom-btn svg { width: 18px; height: 18px; }
+.cot-bottom-btn:active { transform: scale(.92); background: #262626; }
+.cot-settings-btn {
+  background: #42658e;
+  border-color: #587aa6;
+  color: #ffffff;
+}
+.cot-settings-btn:active { background: #4d74a1; }
+.cot-history-btn.is-active {
+  background: #42658e;
+  border-color: #587aa6;
+  color: #ffffff;
+}

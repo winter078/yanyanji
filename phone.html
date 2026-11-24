@@ -19,7 +19,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <!-- 发布时务必与 js/build.js 的 __LIVE_BUILD__ 保持一致，否则 version-watch 会一直提示“新版已经好了” -->
-  <script>window.__BUILD__="20261124-2340";</script>
+  <script>window.__BUILD__="20261124-2345";</script>
   <script>
     (function () {
       var root = document.documentElement;
@@ -201,7 +201,7 @@
   <link rel="stylesheet" href="css/notify.css" />
   <link rel="stylesheet" href="css/wechat.css?v=20261124-2330" />
   <link rel="stylesheet" href="css/archive.css?v=20261124-2305" />
-  <link rel="stylesheet" href="css/xinsheng-preset.css?v=20261124-2340" />
+  <link rel="stylesheet" href="css/xinsheng-preset.css?v=20261124-2345" />
   <link rel="stylesheet" href="css/call.css?v=20261123-0095" />
   <link rel="stylesheet" href="css/skin-qq.css?v=2026111022" />
   <link rel="stylesheet" href="css/moments.css?v=2026111652" />
@@ -2159,6 +2159,19 @@
             <!-- 视图 2：历史心声流列表 -->
             <div class="ios-bottom-sheet-body" id="cot-modal-history" style="display: none; flex: 1; overflow-y: auto; padding: 10px 2px 30px;">
               <div id="cot-history-list" style="display: flex; flex-direction: column; gap: 12px;"></div>
+            </div>
+
+            <!-- 底部悬浮操作栏：关闭 / 自定义 / 历史心声 -->
+            <div class="cot-bottom-bar" id="cot-bottom-bar">
+              <button class="cot-bottom-btn cot-close-btn" type="button" onclick="closeCotModal()" title="关闭" aria-label="关闭">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+              </button>
+              <button class="cot-bottom-btn cot-settings-btn" type="button" onclick="openXinshengSettings()" title="自定义心声样式与提示词" aria-label="心声设置">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1 1.56V21a2 2 0 0 1-4 0v-.09a1.7 1.7 0 0 0-1.1-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.88 1.7 1.7 0 0 0-1.56-1H3a2 2 0 0 1 0-4h.09a1.7 1.7 0 0 0 1.56-1.1 1.7 1.7 0 0 0-.34-1.88l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.88.34H9a1.7 1.7 0 0 0 1-1.56V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.88V9a1.7 1.7 0 0 0 1.56 1H21a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.56 1z"></path></svg>
+              </button>
+              <button class="cot-bottom-btn cot-history-btn" id="cot-bottom-history" type="button" onclick="toggleCotHistoryView()" title="历史心声" aria-label="历史心声">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.4"></circle><path d="M12 7.4v4.9l3.3 2"></path></svg>
+              </button>
             </div>
           </div>
         </div>
@@ -8115,7 +8128,7 @@ html.ios .watch-header {
 </style><div id="mom-boot-note"><i></i><span>正在启动</span></div>
 <script>
 (function(){
-  var list = ["js/supabase_sync.js","js/config.js?v=20261123-0085","js/store.js?v=20261123-0075","js/calendar-awareness.js?v=20261123-0075","js/token-monitor.js?v=2026111673","js/storage-center.js?v=2026111671","js/api-presets.js?v=2026111472","js/wechat/image-presets.js?v=2026111649","js/prompt-presets.js?v=20261123-0075","js/notify.js?v=20261122-2858","js/keepalive.js?v=20261120-1205","js/desktop/desktop.js?v=20261124-2223","js/motion.js?v=20261122-2858","js/layout-motion.js?v=20261122-2858","js/sheet-drag.js?v=20261122-2858","js/press.js?v=20261122-2858","js/touch.js?v=20261122-2858","js/desktop/days.js?v=1789904839051","js/desktop/yanyan-cat.js?v=1789925866085","js/desktop/drag-grid.js?v=20261123-0074","js/desktop/app-store.js?v=2026111002","js/wechat/stickers.js?v=20261121-2130","js/wechat/search-tools.js?v=20261122-2858","js/wechat/weather-tools.js?v=20261122-2858","js/wechat/tool-registry.js?v=20261122-2858","js/wechat/artifact-tools.js?v=20261123-0087","js/wechat/chat.js?v=20261124-2236","js/wechat/voice-tts.js?v=20261123-0092","js/wechat/voice-input.js?v=20261124-2236","js/wechat/call.js?v=20261124-0120","js/wechat/archive.js?v=20261124-2310","js/wechat/image-gen.js?v=2026111649","js/wechat/moments.js?v=2026111660","js/wechat/characters.js?v=20261124-2236","js/wechat/work-pack.js?v=20261123-0087","js/app-changelog.js?v=20261123-0095","js/wechat/group-chat.js?v=20261123-0094","js/media/music.js?v=20261124-2305","js/media/music-ui.js?v=20261123-0072","js/media/music-lyrics.js?v=20261121-0430","js/qrcode.js?v=2026112010","js/media/netease-login.js?v=2026112011","js/media/companion.js?v=20261120-2235","js/media/watch.js?v=20261120-2235","js/theater/theater.js?v=20261120-1352","js/theater/palace.js?v=2026111121","js/theater/memory-engine.js?v=20261123-0073","js/theater/worldbooks.js?v=2026111571","js/xhs/xhs.js?v=20261121-0415","js/say/say.js?v=20261122-2858","js/keyboard.js?v=20261122-2858","js/media/reader.js?v=20261120-2235","js/desktop/ledger.js?v=20261121-0300","js/desktop/ledger-app.js?v=20261121-0300","js/desktop/health.js?v=20261121-2245","js/image-crop.js?v=20261123-0066","js/desktop/forum.js?v=20261123-0066","js/desktop/avatar-vault.js?v=2026111145","js/wechat/chat-appearance.js?v=2026111652","js/wechat/masks.js?v=2026111654","js/wechat/wordcards.js?v=2026111183","js/desktop/album-store.js?v=2026111433","js/desktop/photos.js?v=2026111457","js/version-watch.js?v=20261121-0150","js/app.js?v=20261123-0088"];
+  var list = ["js/supabase_sync.js","js/config.js?v=20261123-0085","js/store.js?v=20261123-0075","js/calendar-awareness.js?v=20261123-0075","js/token-monitor.js?v=2026111673","js/storage-center.js?v=2026111671","js/api-presets.js?v=2026111472","js/wechat/image-presets.js?v=2026111649","js/prompt-presets.js?v=20261123-0075","js/notify.js?v=20261122-2858","js/keepalive.js?v=20261120-1205","js/desktop/desktop.js?v=20261124-2223","js/motion.js?v=20261122-2858","js/layout-motion.js?v=20261122-2858","js/sheet-drag.js?v=20261122-2858","js/press.js?v=20261122-2858","js/touch.js?v=20261122-2858","js/desktop/days.js?v=1789904839051","js/desktop/yanyan-cat.js?v=1789925866085","js/desktop/drag-grid.js?v=20261123-0074","js/desktop/app-store.js?v=2026111002","js/wechat/stickers.js?v=20261121-2130","js/wechat/search-tools.js?v=20261122-2858","js/wechat/weather-tools.js?v=20261122-2858","js/wechat/tool-registry.js?v=20261122-2858","js/wechat/artifact-tools.js?v=20261123-0087","js/wechat/chat.js?v=20261124-2345","js/wechat/voice-tts.js?v=20261123-0092","js/wechat/voice-input.js?v=20261124-2236","js/wechat/call.js?v=20261124-0120","js/wechat/archive.js?v=20261124-2310","js/wechat/image-gen.js?v=2026111649","js/wechat/moments.js?v=2026111660","js/wechat/characters.js?v=20261124-2236","js/wechat/work-pack.js?v=20261123-0087","js/app-changelog.js?v=20261123-0095","js/wechat/group-chat.js?v=20261123-0094","js/media/music.js?v=20261124-2305","js/media/music-ui.js?v=20261123-0072","js/media/music-lyrics.js?v=20261121-0430","js/qrcode.js?v=2026112010","js/media/netease-login.js?v=2026112011","js/media/companion.js?v=20261120-2235","js/media/watch.js?v=20261120-2235","js/theater/theater.js?v=20261120-1352","js/theater/palace.js?v=2026111121","js/theater/memory-engine.js?v=20261123-0073","js/theater/worldbooks.js?v=2026111571","js/xhs/xhs.js?v=20261121-0415","js/say/say.js?v=20261122-2858","js/keyboard.js?v=20261122-2858","js/media/reader.js?v=20261120-2235","js/desktop/ledger.js?v=20261121-0300","js/desktop/ledger-app.js?v=20261121-0300","js/desktop/health.js?v=20261121-2245","js/image-crop.js?v=20261123-0066","js/desktop/forum.js?v=20261123-0066","js/desktop/avatar-vault.js?v=2026111145","js/wechat/chat-appearance.js?v=2026111652","js/wechat/masks.js?v=2026111654","js/wechat/wordcards.js?v=2026111183","js/desktop/album-store.js?v=2026111433","js/desktop/photos.js?v=2026111457","js/version-watch.js?v=20261121-0150","js/app.js?v=20261123-0088"];
   var note = document.getElementById('mom-boot-note');
   var splash = document.getElementById('mom-splash');
   var splashAt = (window.performance && performance.now) ? performance.now() : Date.now();
