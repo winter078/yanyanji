@@ -28,12 +28,15 @@
     groupCall: false,
     groupTurn: 0,
     groupCallerId: '',
-    incomingReason: ''
+    incomingReason: '',
+    replyMode: 'text'
   };
 
   var els = {};
   var pickerGroup = null;
   var pickerSelected = [];
+  var callSpeakQueue = [];
+  var callSpeakBusy = false;
 
   function $(id) { return document.getElementById(id); }
   function app() {
@@ -425,6 +428,63 @@
     return { text: cleanReplyText(text), action: actions.join('\n') };
   }
 
+  function clearCallSpeechQueue() {
+    callSpeakQueue = [];
+    callSpeakBusy = false;
+  }
+
+  function drainCallSpeech() {
+    if (callSpeakBusy || !callSpeakQueue.length) return;
+    var job = callSpeakQueue.shift();
+    callSpeakBusy = true;
+    var finish = function () {
+      var wait = Math.max(1200, Math.min(30000, String(job.text || '').length * 220));
+      setTimeout(function () {
+        callSpeakBusy = false;
+        drainCallSpeech();
+      }, wait);
+    };
+    try {
+      var p = window.CharVoice.speak(job.text, { charId: job.charId, fallback: false });
+      if (p && typeof p.then === 'function') p.then(finish, finish);
+      else finish();
+    } catch (e) {
+      finish();
+    }
+  }
+
+  function enqueueCallSpeech(text, charId) {
+    var clean = String(text || '').trim();
+    if (!clean || clean === '……') return;
+    if (!window.CharVoice || typeof window.CharVoice.isEnabled !== 'function' || !window.CharVoice.isEnabled()) return;
+    callSpeakQueue.push({ text: clean, charId: charId || currentCharId() });
+    drainCallSpeech();
+  }
+
+  function renderCallReplyMode() {
+    var box = $('call-reply-mode');
+    if (!box) return;
+    var buttons = box.querySelectorAll('[data-reply-mode]');
+    for (var i = 0; i < buttons.length; i++) {
+      var mode = buttons[i].getAttribute('data-reply-mode');
+      buttons[i].classList.toggle('is-active', mode === state.replyMode);
+    }
+  }
+
+  function setCallReplyMode(mode) {
+    var next = String(mode) === 'voice' ? 'voice' : 'text';
+    if (state.replyMode === next) return;
+    state.replyMode = next;
+    if (next === 'text') {
+      clearCallSpeechQueue();
+      try { if (window.CharVoice && typeof window.CharVoice.stop === 'function') window.CharVoice.stop(); } catch (e) {}
+    } else if (!window.CharVoice || typeof window.CharVoice.isEnabled !== 'function' || !window.CharVoice.isEnabled()) {
+      toast('语音 Key 还没接通，先显示文字');
+    }
+    renderCallReplyMode();
+  }
+  window.setCallReplyMode = setCallReplyMode;
+
   function appendMessage(role, rawText, meta, speaker) {
     var parsed = role === 'assistant' ? splitAssistantReply(rawText) : { text: String(rawText || '').trim(), action: '' };
     var text = parsed.text;
@@ -451,7 +511,8 @@
       bubble.className = 'call-bubble';
       bubble.textContent = text;
       msg.appendChild(bubble);
-      if (role === 'assistant' && !state.recordView && window.CharVoice &&
+      var voiceMode = (state.replyMode === 'voice' && !state.recordView);
+      if (role === 'assistant' && voiceMode && window.CharVoice &&
           typeof window.CharVoice.isEnabled === 'function' && window.CharVoice.isEnabled()) {
         var speakBtn = document.createElement('button');
         speakBtn.type = 'button';
@@ -469,6 +530,7 @@
           } catch (err) {}
         };
         bubble.appendChild(speakBtn);
+        enqueueCallSpeech(text, (speaker && speaker.id) || currentCharId());
       }
       if (meta) {
         var m = document.createElement('div');
@@ -1093,6 +1155,9 @@
     state.mode = opts.incoming ? 'incoming' : 'outgoing';
     state.groupCallerId = String(opts.callerId || (members[0] && members[0].id) || '');
     state.incomingReason = String(opts.reason || '').trim();
+    state.replyMode = 'text';
+    clearCallSpeechQueue();
+    renderCallReplyMode();
 
     fillGroupIdentity(g, members, opts);
     setCallBackground();
@@ -1148,6 +1213,9 @@
     state.groupTurn = 0;
     state.groupCallerId = '';
     state.incomingReason = '';
+    state.replyMode = 'text';
+    clearCallSpeechQueue();
+    renderCallReplyMode();
     fillIdentity();
     setPeopleMode(false);
     setCallBackground();
@@ -1323,6 +1391,8 @@
       writeCallSummary(record.id, duration);
     }
 
+    clearCallSpeechQueue();
+    try { if (window.CharVoice && typeof window.CharVoice.stop === 'function') window.CharVoice.stop(); } catch (e) {}
     close();
     if (duration > 1000) {
       toast('通话结束 · ' + formatTimer(duration));
@@ -1731,6 +1801,7 @@
     fillIdentity();
     setPeopleMode(false);
     updateClock();
+    renderCallReplyMode();
 
     window.VoiceInput && (window.__voiceCallMode = false);
   }

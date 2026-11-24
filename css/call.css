@@ -603,6 +603,46 @@
   padding: 8px 6px 0;
   text-align: center;
 }
+.call-reply-mode {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 0 8px;
+}
+.call-reply-mode-label {
+  font-size: 10.5px;
+  color: rgba(244, 239, 232, .42);
+  letter-spacing: .03em;
+}
+.call-reply-mode-switch {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid rgba(244, 239, 232, .12);
+  border-radius: 999px;
+  background: rgba(24, 23, 28, .58);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.call-reply-mode-switch button {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  border-radius: 999px;
+  padding: 4px 11px;
+  background: transparent;
+  color: rgba(244, 239, 232, .5);
+  font-size: 10.5px;
+  line-height: 1.2;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background .18s ease, color .18s ease;
+}
+.call-reply-mode-switch button.is-active {
+  background: rgba(244, 239, 232, .88);
+  color: #1c1a20;
+  font-weight: 650;
+}
 .call-footer-actions {
   display: flex;
   align-items: flex-start;
