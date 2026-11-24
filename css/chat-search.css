@@ -148,6 +148,41 @@
   font-size: 11px;
   color: var(--color-text-secondary);
 }
+.cs-custom-date {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 0.5px solid var(--border-default);
+}
+.cs-custom-date input[type="date"] {
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  padding: 0 9px;
+  border-radius: 9px;
+  border: 1px solid var(--border-default);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: inherit;
+  color-scheme: dark;
+  box-sizing: border-box;
+}
+.cs-date-clear {
+  flex: none;
+  display: none;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  background: var(--bg-base);
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+}
 
 .cs-summary-row {
   display: flex;

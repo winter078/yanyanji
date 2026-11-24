@@ -7,6 +7,8 @@
 
   var state = {
     keyword: '',
+    dateMode: 'all',
+    date: '',
     range: 'all',
     start: '00:00',
     end: '23:59',
@@ -100,29 +102,192 @@
       .trim();
   }
 
+  function timestampOf(m) {
+    if (!m) return 0;
+    var raw = m.timestamp;
+    if (raw == null) raw = m.ts;
+    if (raw == null) raw = m.createdAt;
+    if (raw == null) raw = m.created_at;
+    if (raw == null || raw === '') return 0;
+    if (typeof raw === 'string' && /^\d+(\.\d+)?$/.test(raw)) raw = Number(raw);
+    if (typeof raw === 'number' && isFinite(raw) && raw > 0) {
+      return raw < 100000000000 ? raw * 1000 : raw;
+    }
+    var parsed = new Date(raw);
+    return isNaN(parsed.getTime()) ? 0 : parsed.getTime();
+  }
+
+  function pad2(n) {
+    return n < 10 ? '0' + n : String(n);
+  }
+
+  function localDateKey(value) {
+    var d = typeof value === 'number' ? new Date(value) : new Date(String(value));
+    if (isNaN(d.getTime())) return '';
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  }
+
+  function todayDateKey() {
+    return localDateKey(Date.now());
+  }
+
+  function addDays(dateKey, delta) {
+    var parts = String(dateKey || '').split('-');
+    if (parts.length !== 3) return dateKey;
+    var d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    d.setDate(d.getDate() + Number(delta || 0));
+    return localDateKey(d.getTime());
+  }
+
+  function dateKeyFromText(value) {
+    if (!value) return '';
+    var text = String(value).trim();
+    if (!text) return '';
+    var full = text.match(/(\d{4})[年\/-](\d{1,2})[月\/-](\d{1,2})/);
+    if (full) {
+      return full[1] + '-' + pad2(Number(full[2])) + '-' + pad2(Number(full[3]));
+    }
+    var monthDay = text.match(/(\d{1,2})月(\d{1,2})日/);
+    if (!monthDay) monthDay = text.match(/(\d{1,2})\/(\d{1,2})(?:\s|$)/);
+    if (monthDay) {
+      var year = new Date().getFullYear();
+      var key = year + '-' + pad2(Number(monthDay[1])) + '-' + pad2(Number(monthDay[2]));
+      if (key > todayDateKey()) key = (year - 1) + '-' + pad2(Number(monthDay[1])) + '-' + pad2(Number(monthDay[2]));
+      return key;
+    }
+    return '';
+  }
+
+  function messageDateKey(m) {
+    if (!m) return '';
+    var ts = timestampOf(m);
+    if (ts) return localDateKey(ts);
+    var fields = [m.dateKey, m.date, m.day, m.time];
+    for (var i = 0; i < fields.length; i++) {
+      var key = dateKeyFromText(fields[i]);
+      if (key) return key;
+    }
+    return '';
+  }
+
   function messageTime(m) {
     var t = String((m && m.time) || '');
     if (/^\d{1,2}:\d{2}$/.test(t)) return t;
     var clock = t.match(/(\d{1,2}):(\d{2})/);
     if (clock) return clock[1] + ':' + clock[2];
-    if (m && m.timestamp) {
-      var d = new Date(Number(m.timestamp));
-      if (!isNaN(d.getTime())) {
-        return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
-      }
+    var ts = timestampOf(m);
+    if (ts) {
+      var d = new Date(ts);
+      return pad2(d.getHours()) + ':' + pad2(d.getMinutes());
     }
     return '';
   }
 
-  function messageTimeLabel(m) {
-    if (m && m.timestamp) {
-      var d = new Date(Number(m.timestamp));
-      if (!isNaN(d.getTime())) {
-        return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
-      }
-    }
-    return String((m && m.time) || '时间未知');
+  function shortDateLabel(dateKey) {
+    if (!dateKey) return '';
+    if (dateKey === todayDateKey()) return '今天';
+    if (dateKey === addDays(todayDateKey(), -1)) return '昨天';
+    if (dateKey === addDays(todayDateKey(), -2)) return '前天';
+    var parts = dateKey.split('-');
+    return Number(parts[1]) + '/' + Number(parts[2]);
   }
+
+  function messageTimeLabel(m, dateKey) {
+    var clock = messageTime(m);
+    if (dateKey) return shortDateLabel(dateKey) + (clock ? ' ' + clock : '');
+    if (m && m.time) return String(m.time);
+    return '时间未知';
+  }
+
+  function buildDateKeys(list) {
+    var keys = new Array(list.length);
+    var clocks = new Array(list.length);
+    var hasExplicit = false;
+    var i;
+
+    for (i = 0; i < list.length; i++) {
+      var m = list[i];
+      keys[i] = messageDateKey(m);
+      clocks[i] = messageTime(m);
+      if (keys[i]) hasExplicit = true;
+    }
+
+    if (!hasExplicit) {
+      var base = todayDateKey();
+      var nextClock = null;
+      for (i = list.length - 1; i >= 0; i--) {
+        var clock = minutes(clocks[i]);
+        if (nextClock !== null && clock !== null && clock > nextClock) base = addDays(base, -1);
+        keys[i] = base;
+        if (clock !== null) nextClock = clock;
+      }
+      return keys;
+    }
+
+    var lastKey = '';
+    var lastClock = null;
+    for (i = 0; i < list.length; i++) {
+      if (keys[i]) {
+        lastKey = keys[i];
+        lastClock = minutes(clocks[i]);
+        continue;
+      }
+      if (!lastKey) continue;
+      var currentClock = minutes(clocks[i]);
+      if (currentClock !== null && lastClock !== null && currentClock < lastClock) {
+        lastKey = addDays(lastKey, 1);
+      }
+      keys[i] = lastKey;
+      if (currentClock !== null) lastClock = currentClock;
+    }
+
+    var nextKey = '';
+    var nextMaxClock = null;
+    for (i = list.length - 1; i >= 0; i--) {
+      if (keys[i]) {
+        nextKey = keys[i];
+        nextMaxClock = minutes(clocks[i]);
+        continue;
+      }
+      if (!nextKey) continue;
+      var earlierClock = minutes(clocks[i]);
+      if (earlierClock !== null && nextMaxClock !== null && earlierClock > nextMaxClock) {
+        nextKey = addDays(nextKey, -1);
+      }
+      keys[i] = nextKey;
+      if (earlierClock !== null) nextMaxClock = earlierClock;
+    }
+
+    for (i = 0; i < list.length; i++) {
+      if (!keys[i]) keys[i] = todayDateKey();
+    }
+    return keys;
+  }
+
+  function hasDateFilter() {
+    return state.dateMode !== 'all' && !(state.dateMode === 'custom' && !state.date);
+  }
+
+  function inDateRange(dateKey) {
+    if (!hasDateFilter()) return true;
+    if (!dateKey) return false;
+    if (state.dateMode === 'today') return dateKey === todayDateKey();
+    if (state.dateMode === 'yesterday') return dateKey === addDays(todayDateKey(), -1);
+    if (state.dateMode === 'week') {
+      return dateKey >= addDays(todayDateKey(), -6) && dateKey <= todayDateKey();
+    }
+    if (state.dateMode === 'custom') return dateKey === state.date;
+    return true;
+  }
+
+  function dateRangeLabel() {
+    if (state.dateMode === 'today') return '今天';
+    if (state.dateMode === 'yesterday') return '昨天';
+    if (state.dateMode === 'week') return '近 7 天';
+    if (state.dateMode === 'custom' && state.date) return shortDateLabel(state.date);
+    return '';
+  }
+
 
   function minutes(value) {
     var match = String(value || '').match(/^(\d{1,2}):(\d{2})$/);
@@ -191,12 +356,15 @@
   function collect() {
     var list = loadMessages();
     var listTerms = terms();
+    var dateKeys = buildDateKeys(list);
     var records = [];
 
     list.forEach(function (m, index) {
       if (!m || m.role === 'system') return;
       var text = displayText(m);
       if (!text) return;
+      var dateKey = dateKeys[index] || '';
+      if (!inDateRange(dateKey)) return;
       if (!inRange(messageTime(m))) return;
 
       var haystack = text.toLowerCase();
@@ -207,7 +375,8 @@
         msg: m,
         text: text,
         clock: messageTime(m),
-        timeLabel: messageTimeLabel(m),
+        dateKey: dateKey,
+        timeLabel: messageTimeLabel(m, dateKey),
         isUser: m.role === 'user',
         isNarration: !!m.narration
       });
@@ -238,19 +407,22 @@
 
     var listTerms = terms();
     var hasQuery = !!state.keyword.trim();
+    var hasDate = hasDateFilter();
     var hasTime = state.range !== 'all';
-    if (!hasQuery && !hasTime) {
-      results.innerHTML = '<div class="cs-empty"><div class="cs-empty-icon">⌕</div><div class="cs-empty-title">输入关键字，或选一个时间段</div><div class="cs-empty-text">只搜当前角色的聊天记录，不会串到别的角色。</div></div>';
-      summary.textContent = '关键字 + 时间';
+    if (!hasQuery && !hasTime && !hasDate) {
+      results.innerHTML = '<div class="cs-empty"><div class="cs-empty-icon">⌕</div><div class="cs-empty-title">输入关键字，或选一个日期/时间段</div><div class="cs-empty-text">只搜当前角色的聊天记录，不会串到别的角色。</div></div>';
+      summary.textContent = '关键字 / 日期 / 时间';
       return;
     }
 
     var records = collect();
     var total = records.length;
-    summary.textContent = '找到 ' + total + ' 条' + (hasTime ? ' · ' + rangeLabel() : '');
+    summary.textContent = '找到 ' + total + ' 条' +
+      (hasDate ? ' · ' + dateRangeLabel() : '') +
+      (hasTime ? ' · ' + rangeLabel() : '');
 
     if (!total) {
-      results.innerHTML = '<div class="cs-empty"><div class="cs-empty-icon">⌕</div><div class="cs-empty-title">没有找到</div><div class="cs-empty-text">换个关键字，或把时间范围放宽一点。</div></div>';
+      results.innerHTML = '<div class="cs-empty"><div class="cs-empty-icon">⌕</div><div class="cs-empty-title">没有找到</div><div class="cs-empty-text">换个关键字，或把日期、时间范围放宽一点。</div></div>';
       return;
     }
 
@@ -289,11 +461,20 @@
     if (input) input.value = state.keyword;
     if (clear) clear.style.display = state.keyword ? 'flex' : 'none';
 
-    Array.prototype.forEach.call(document.querySelectorAll('.cs-chip'), function (btn) {
+    Array.prototype.forEach.call(document.querySelectorAll('.cs-chip[data-range]'), function (btn) {
       btn.classList.toggle('active', btn.getAttribute('data-range') === state.range);
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('.cs-chip[data-date]'), function (btn) {
+      btn.classList.toggle('active', btn.getAttribute('data-date') === state.dateMode);
     });
     var custom = document.getElementById('chat-search-custom-time');
     if (custom) custom.style.display = state.range === 'custom' ? 'flex' : 'none';
+    var customDate = document.getElementById('chat-search-custom-date');
+    if (customDate) customDate.style.display = state.dateMode === 'custom' ? 'flex' : 'none';
+    var dateInput = document.getElementById('chat-search-date');
+    if (dateInput && dateInput.value !== state.date) dateInput.value = state.date;
+    var dateClear = document.getElementById('chat-search-date-clear');
+    if (dateClear) dateClear.style.display = state.date ? 'flex' : 'none';
 
     var sort = document.getElementById('chat-search-sort');
     if (sort) sort.textContent = state.sort === 'desc' ? '最新在前' : '最早在前';
@@ -307,6 +488,8 @@
 
   function openChatSearchPage() {
     state.keyword = '';
+    state.dateMode = 'all';
+    state.date = '';
     state.range = 'all';
     state.start = '00:00';
     state.end = '23:59';
@@ -314,8 +497,13 @@
     state.openId = '';
     var startInput = document.getElementById('chat-search-time-start');
     var endInput = document.getElementById('chat-search-time-end');
+    var dateInput = document.getElementById('chat-search-date');
     if (startInput) startInput.value = state.start;
     if (endInput) endInput.value = state.end;
+    if (dateInput) {
+      dateInput.value = '';
+      dateInput.max = todayDateKey();
+    }
     syncControls();
     render();
     if (typeof window.openPage === 'function') window.openPage('page-chat-search');
@@ -336,6 +524,8 @@
     var clear = document.getElementById('chat-search-clear');
     var customStart = document.getElementById('chat-search-time-start');
     var customEnd = document.getElementById('chat-search-time-end');
+    var dateInput = document.getElementById('chat-search-date');
+    var dateClear = document.getElementById('chat-search-date-clear');
     var sort = document.getElementById('chat-search-sort');
     var results = document.getElementById('chat-search-results');
 
@@ -352,12 +542,33 @@
         if (input) input.focus();
       });
     }
-    Array.prototype.forEach.call(document.querySelectorAll('.cs-chip'), function (btn) {
+    Array.prototype.forEach.call(document.querySelectorAll('.cs-chip[data-range]'), function (btn) {
       btn.addEventListener('click', function () {
         var range = btn.getAttribute('data-range') || 'all';
         update({ range: range });
       });
     });
+    Array.prototype.forEach.call(document.querySelectorAll('.cs-chip[data-date]'), function (btn) {
+      btn.addEventListener('click', function () {
+        var mode = btn.getAttribute('data-date') || 'all';
+        update({ dateMode: mode });
+        if (mode === 'custom' && dateInput) {
+          setTimeout(function () { dateInput.focus({ preventScroll: true }); }, 30);
+        }
+      });
+    });
+    if (dateInput) {
+      dateInput.max = todayDateKey();
+      dateInput.addEventListener('change', function () {
+        var value = this.value || '';
+        update({ date: value, dateMode: value ? 'custom' : 'all' });
+      });
+    }
+    if (dateClear) {
+      dateClear.addEventListener('click', function () {
+        update({ date: '', dateMode: 'all' });
+      });
+    }
     if (customStart) {
       customStart.addEventListener('change', function () {
         state.start = this.value || '00:00';
