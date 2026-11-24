@@ -235,6 +235,8 @@ function renderThemePresetsUI() {
         } catch (e) {}
         p.style.opacity = '';
         p.style.transform = '';
+        p.style.willChange = '';
+        p.classList.remove('is-page-transitioning');
         p.style.zIndex = '';
       };
       allPages.forEach(p => {
@@ -251,38 +253,11 @@ function renderThemePresetsUI() {
               if (p.id === 'page-home' && pageId !== 'page-home') {
                 // 桌面垫在 App 下面，让 App 从图标上"长出来"
                 p.style.zIndex = '9';
-                // iOS 的"扎进去"：桌面从被点图标处整体放大 1.14 并虚化，App 同时从图标长大
-                const iv = document.getElementById('ios-viewport');
-                const dk = document.getElementById('home-dock-bar');
-                const ir = window.__momLastIconRect;
-                const originFor = (el) => {
-                  if (!ir || !el) return '50% 50%';
-                  const r = el.getBoundingClientRect();
-                  if (!r.width) return '50% 50%';
-                  const sc = (el.offsetWidth || r.width) / r.width || 1;
-                  const x = (ir.left + ir.width / 2 - r.left) / sc;
-                  const y = (ir.top + ir.height / 2 - r.top) / sc;
-                  return x.toFixed(1) + 'px ' + y.toFixed(1) + 'px';
-                };
-                const diveFrames = [
-                  { transform: 'scale(1)' },
-                  { transform: 'scale(1.12)' }
-                ];
-                const diveOpts = { duration: 260, easing: 'cubic-bezier(.38,0,.6,.95)', fill: 'forwards' };
-                if (iv && typeof iv.animate === 'function') {
-                  try { iv.style.transformOrigin = originFor(iv); iv.animate(diveFrames, diveOpts); } catch (e) {}
-                }
-                if (dk && typeof dk.animate === 'function') {
-                  try { dk.style.transformOrigin = originFor(dk); dk.animate(diveFrames, diveOpts); } catch (e) {}
-                }
+                // 不再缩放整张桌面：它马上会被 App 盖住，缩放只会多推一层全屏图层，反而掉帧
                 let done2 = false;
                 const hideHome = () => {
                   if (done2) return;
                   done2 = true;
-                  try { if (iv) iv.getAnimations().forEach(a => { try { a.cancel(); } catch (e) {} }); } catch (e) {}
-                  try { if (dk) dk.getAnimations().forEach(a => { try { a.cancel(); } catch (e) {} }); } catch (e) {}
-                  try { if (iv) { iv.style.transform = ''; iv.style.filter = ''; iv.style.transformOrigin = ''; } } catch (e) {}
-                  try { if (dk) { dk.style.transform = ''; dk.style.filter = ''; dk.style.transformOrigin = ''; } } catch (e) {}
                   p.style.display = 'none';
                   p.style.opacity = '';
                   p.style.transform = '';
@@ -300,16 +275,16 @@ function renderThemePresetsUI() {
                 const cy = (backRect.top + backRect.height / 2 - pr.top) / scalePx;
                 const s = Math.max(0.06, Math.min(0.6, backRect.width / (pr.width || 1)));
                 const origin = cx.toFixed(1) + 'px ' + cy.toFixed(1) + 'px';
-                const endRadius = Math.min(160, Math.round(19 / s)) + 'px';
+                p.style.willChange = 'transform,opacity';
+                p.classList.add('is-page-transitioning');
                 out = p.animate(
                   [
-                    { opacity: 1, transform: 'scale(1)', transformOrigin: origin, borderRadius: '0px', offset: 0 },
-                    { opacity: 1, transform: 'scale(0.86)', transformOrigin: origin, borderRadius: '22px', offset: 0.25 },
-                    { opacity: 1, transform: 'scale(' + s + ')', transformOrigin: origin, borderRadius: endRadius, offset: 0.75 },
-                    { opacity: 1, transform: 'scale(' + s + ')', transformOrigin: origin, borderRadius: endRadius, offset: 0.93 },
-                    { opacity: 0, transform: 'scale(' + s + ')', transformOrigin: origin, borderRadius: endRadius, offset: 1 }
+                    { opacity: 1, transform: 'scale(1)', transformOrigin: origin, offset: 0 },
+                    { opacity: 1, transform: 'scale(0.92)', transformOrigin: origin, offset: 0.22 },
+                    { opacity: 1, transform: 'scale(' + s + ')', transformOrigin: origin, offset: 0.78 },
+                    { opacity: 0, transform: 'scale(' + s + ')', transformOrigin: origin, offset: 1 }
                   ],
-                  { duration: 340, easing: 'cubic-bezier(.3,.05,.25,1)', fill: 'forwards' }
+                  { duration: 260, easing: 'cubic-bezier(.32,0,.3,1)', fill: 'forwards' }
                 );
               } else {
                 out = p.animate(
@@ -325,10 +300,12 @@ function renderThemePresetsUI() {
                 p.style.display = 'none';
                 p.style.opacity = '';
                 p.style.transform = '';
+                p.style.willChange = '';
+                p.classList.remove('is-page-transitioning');
                 p.style.zIndex = '';
               };
               out.finished.then(hide, hide);
-              setTimeout(hide, 400);
+              setTimeout(hide, 320);
             } catch (e) { p.style.display = 'none'; }
           } else {
             p.style.display = 'none';
@@ -368,17 +345,25 @@ function renderThemePresetsUI() {
               const cy = (iconRect.top + iconRect.height / 2 - pr.top) / scalePx;
               const s = Math.max(0.06, Math.min(0.6, iconRect.width / (pr.width || 1)));
               const origin = cx.toFixed(1) + 'px ' + cy.toFixed(1) + 'px';
-              // 放大过程中保持"小圆角"观感：起点按缩放比例放大圆角，视觉半径接近图标圆角
-              const startRadius = Math.min(160, Math.round(19 / s)) + 'px';
-              target.animate(
+              // 只动 transform/opacity，交给合成器跑；不再逐帧改圆角，避免整页重绘
+              target.style.willChange = 'transform,opacity';
+              target.classList.add('is-page-transitioning');
+              const openAnim = target.animate(
                 [
-                  { opacity: 0, transform: 'scale(' + s + ')', transformOrigin: origin, borderRadius: startRadius, offset: 0 },
-                  { opacity: 0.9, transform: 'scale(1.03)', transformOrigin: origin, borderRadius: '14px', offset: 0.52 },
-                  { opacity: 1, transform: 'scale(0.994)', transformOrigin: origin, borderRadius: '5px', offset: 0.76 },
-                  { opacity: 1, transform: 'scale(1)', transformOrigin: origin, borderRadius: '0px', offset: 1 }
+                  { opacity: .55, transform: 'scale(' + s + ')', transformOrigin: origin, offset: 0 },
+                  { opacity: 1, transform: 'scale(1.012)', transformOrigin: origin, offset: .58 },
+                  { opacity: 1, transform: 'scale(.998)', transformOrigin: origin, offset: .82 },
+                  { opacity: 1, transform: 'scale(1)', transformOrigin: origin, offset: 1 }
                 ],
-                { duration: 400, easing: 'cubic-bezier(.2,.68,.26,1)' }
+                { duration: 330, easing: 'cubic-bezier(.2,.9,.25,1)', fill: 'forwards' }
               );
+              openAnim.finished.then(() => {
+                try { openAnim.cancel(); } catch (e) {}
+                target.style.willChange = '';
+                target.style.transform = '';
+                target.style.opacity = '';
+                target.classList.remove('is-page-transitioning');
+              }, () => { target.style.willChange = ''; target.classList.remove('is-page-transitioning'); });
             } else if (isHome) {
               // 壁纸直接出现，不做整页淡入（避免和 App 交叉淡化发灰）；图标另有浮现动画
               target.style.opacity = '';
@@ -387,55 +372,17 @@ function renderThemePresetsUI() {
             // 弹簧动效只保留在「桌面图标点击 → 打开 App」这一条路径上。
           } catch (e) {}
         }
-        // 回桌面：App 收进图标的同时，桌面原本是"放大 + 虚化"，等 App 收好再弹回原位（iOS 的一收一出）
+        // 回桌面：只做一个很轻的桌面淡入，不去缩放整张桌面和 Dock（省掉两层全屏重绘）
         if (pageId === 'page-home' && prevActive && prevActive.id !== 'page-home') {
-          const iv = document.getElementById('ios-viewport');
-          const dk = document.getElementById('home-dock-bar');
-          const ir = window.__momOpenIconRect;
-          const originFor = (el) => {
-            if (!ir || !el) return '50% 38%';
-            const r = el.getBoundingClientRect();
-            if (!r.width) return '50% 38%';
-            const sc = (el.offsetWidth || r.width) / r.width || 1;
-            const x = (ir.left + ir.width / 2 - r.left) / sc;
-            const y = (ir.top + ir.height / 2 - r.top) / sc;
-            return x.toFixed(1) + 'px ' + y.toFixed(1) + 'px';
-          };
-          const settle = [
-            { transform: 'scale(1.12)', offset: 0 },
-            { transform: 'scale(1.12)', offset: 0.62 },
-            { transform: 'scale(1.015)', offset: 0.86 },
-            { transform: 'scale(1)', offset: 1 }
-          ];
-          const opts = { duration: 380, easing: 'cubic-bezier(.25,.9,.3,1)', fill: 'forwards' };
-          try {
-            if (iv) {
-              iv.getAnimations().forEach(a => { try { a.cancel(); } catch (e) {} });
-              iv.style.transformOrigin = originFor(iv);
-              const a = iv.animate(settle, opts);
-              a.onfinish = () => {
-                try {
-                  a.cancel();
-                  iv.style.transform = '';
-                  iv.style.filter = '';
-                  iv.style.transformOrigin = '';
-                } catch (e) {}
-              };
-            }
-            if (dk) {
-              dk.getAnimations().forEach(a => { try { a.cancel(); } catch (e) {} });
-              dk.style.transformOrigin = originFor(dk);
-              const b = dk.animate(settle, opts);
-              b.onfinish = () => {
-                try {
-                  b.cancel();
-                  dk.style.transform = '';
-                  dk.style.filter = '';
-                  dk.style.transformOrigin = '';
-                } catch (e) {}
-              };
-            }
-          } catch (e) {}
+          target.style.opacity = '.82';
+          const homeIn = target.animate(
+            [{ opacity: .82, offset: 0 }, { opacity: 1, offset: 1 }],
+            { duration: 260, easing: 'cubic-bezier(.22,.9,.3,1)', fill: 'forwards' }
+          );
+          homeIn.finished.then(() => {
+            try { homeIn.cancel(); } catch (e) {}
+            target.style.opacity = '';
+          }, () => { target.style.opacity = ''; });
         }
         if (pageId === 'page-app-store') {
           if (typeof window.renderAppStore === 'function') defer(function () { window.renderAppStore(); });
