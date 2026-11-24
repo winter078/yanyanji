@@ -688,7 +688,8 @@ html.kb-open #page-chat .wechat-input-bar-v2 {
 }
 
 /* ================= 仿微信输入栏：语音 + 输入 + 加号/发送 ================= */
-#chat-input-bar .wechat-voice-key {
+#chat-input-bar .wechat-voice-key,
+#chat-input-bar .wechat-generate-key {
   width: 32px;
   height: 32px;
   background: transparent;
@@ -697,11 +698,13 @@ html.kb-open #page-chat .wechat-input-bar-v2 {
   color: var(--text-primary);
   opacity: .95;
 }
-#chat-input-bar .wechat-voice-key:active {
+#chat-input-bar .wechat-voice-key:active,
+#chat-input-bar .wechat-generate-key:active {
   background: var(--glass-soft);
   transform: scale(.94);
 }
 #chat-input-bar .wechat-voice-key svg { width: 16px; height: 16px; }
+#chat-input-bar .wechat-generate-key svg { width: 17px; height: 17px; }
 #chat-input-bar .wechat-input-box {
   min-height: 31px;
   border-radius: 6px;
@@ -802,11 +805,13 @@ html.kb-open #page-chat .wechat-input-bar-v2 {
 #chat-input-bar:has(.chat-capsule-textarea:not(:placeholder-shown)) .wechat-inline-emoji { display: none; }
 #chat-input-bar:has(.chat-capsule-textarea:not(:placeholder-shown)) .wechat-emoji-outside { display: flex; }
 #chat-input-bar:has(.chat-capsule-textarea:not(:placeholder-shown)) .wechat-voice-key { display: none; }
+#chat-input-bar:has(.chat-capsule-textarea:not(:placeholder-shown)) .wechat-generate-key { display: none; }
 #chat-input-bar:has(.chat-capsule-textarea:not(:placeholder-shown)) .wechat-plus-toggle { display: flex; }
 #chat-input-bar:has(.chat-capsule-textarea:not(:placeholder-shown)) .wechat-send-text-btn { display: flex; }
 #chat-input-bar.is-generating .wechat-inline-mic,
 #chat-input-bar.is-generating .wechat-inline-emoji,
 #chat-input-bar.is-generating .wechat-voice-key,
+#chat-input-bar.is-generating .wechat-generate-key,
 #chat-input-bar.is-generating .wechat-send-text-btn { display: none; }
 #chat-input-bar.is-generating .wechat-emoji-outside,
 #chat-input-bar.is-generating .wechat-plus-toggle { display: flex; }
