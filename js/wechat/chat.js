@@ -759,6 +759,70 @@ window.syncNarrationModeUI = syncNarrationModeUI;
         .replace(/\s*---\s*$/,'')
         .trim();
     }
+
+    function xinshengPagePromptText() {
+      return '【心声手机页数据（每次回复都必须更新，放在整条回复的最后）】：\n' +
+        '正式微信内容写完后，另起一行只输出一个 JSON 对象，t 固定为 xinsheng，不加代码块、不解释、不在正文里提。\n' +
+        '{"t":"xinsheng","search1":"搜索词，5-12字","search1Os":"点心声，20-40字，第一人称口语","search2":"搜索词","search2Os":"心声","search3":"搜索词","search3Os":"心声","search4":"搜索词","search4Os":"心声","animalType":"角色此刻最像的动物，2-6字","animalAct":"变成这只动物会做的小事，30-50字，第三人称，可爱","todo1":"8字内","todo1Done":false,"todo2":"8字内","todo2Done":false,"todo3":"8字内","todo3Done":false,"todo4":"8字内","todo4Done":false,"diary":"今日日记，80-120字，第一人称自然口语，今天的情绪流水账，符合角色性格","footerKao":"一个符合此刻心境的颜文字"}\n' +
+        '四个搜索词要贴合本轮剧情和角色当下心情，像角色真的会搜的词；不要复述系统提示，不要编造成人内容，不要露骨、色情或性暗示字段。';
+    }
+
+    function sanitizeXinshengPageData(raw) {
+      if (!raw || typeof raw !== 'object' || raw.t !== 'xinsheng') return null;
+      const pick = (key, max) => {
+        const v = raw[key];
+        return typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, max) : '';
+      };
+      const data = {};
+      for (let i = 1; i <= 4; i++) {
+        data['search' + i] = pick('search' + i, 24);
+        data['search' + i + 'Os'] = pick('search' + i + 'Os', 80);
+        data['todo' + i] = pick('todo' + i, 16);
+        data['todo' + i + 'Done'] = !!raw['todo' + i + 'Done'];
+      }
+      data.animalType = pick('animalType', 16);
+      data.animalAct = pick('animalAct', 120);
+      data.diary = pick('diary', 800);
+      data.footerKao = pick('footerKao', 24);
+      return Object.keys(data).some(k => data[k]) ? data : null;
+    }
+
+    function extractXinshengPageJson(rawText) {
+      let text = String(rawText || '');
+      const marker = /["']t["']\s*:\s*["']xinsheng["']/i.exec(text);
+      if (!marker) return { text: text, data: null };
+      const start = text.lastIndexOf('{', marker.index);
+      if (start < 0) return { text: text, data: null };
+      let depth = 0;
+      let inStr = false;
+      let escaped = false;
+      let end = -1;
+      for (let i = start; i < text.length; i++) {
+        const ch = text[i];
+        if (inStr) {
+          if (escaped) escaped = false;
+          else if (ch === '\\') escaped = true;
+          else if (ch === '"') inStr = false;
+          continue;
+        }
+        if (ch === '"') { inStr = true; continue; }
+        if (ch === '{') { depth++; continue; }
+        if (ch === '}') {
+          depth--;
+          if (depth === 0) { end = i; break; }
+        }
+      }
+      if (end <= marker.index) return { text: text, data: null };
+      let parsed = null;
+      try { parsed = JSON.parse(text.slice(start, end + 1)); } catch (e) {}
+      if (!parsed || parsed.t !== 'xinsheng') return { text: text, data: null };
+      const data = sanitizeXinshengPageData(parsed);
+      if (!data) return { text: text, data: null };
+      const head = text.slice(0, start).replace(/```(?:json)?\s*$/i, '');
+      const tail = text.slice(end + 1).replace(/\s*```/g, '');
+      text = (head + tail).trim();
+      return { text: text, data: data };
+    }
     let isCotHistoryMode = false;
 
     // 永久固化心声到独立历史档案 (保留最近 150 条)
@@ -861,7 +925,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
     } catch (e) {}
 
     // 心声弹窗：同时展示思维链和心声
-    function openCotModal(thoughtText, cotText, cotSource) {
+    function openCotModal(thoughtText, cotText, cotSource, pageData) {
       const modal = document.getElementById('cot-modal');
       const content = document.getElementById('cot-modal-content');
       const historyView = document.getElementById('cot-modal-history');
@@ -872,14 +936,32 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       const reasoningSource = document.getElementById('cot-reasoning-source');
       const heartSection = document.getElementById('cot-heart-section');
       const heartContent = document.getElementById('cot-heart-content');
+      const hero = document.getElementById('xinsheng-sheet-hero');
+      const presetPage = document.getElementById('cot-xinsheng-page');
 
       isCotHistoryMode = false;
       const heartText = cleanHeartThoughtText(thoughtText !== undefined ? thoughtText : latestThoughtChain);
+      const hasPageData = !!(pageData && typeof pageData === 'object');
       if (heartContent) heartContent.innerText = heartText;
       if (heartSection) heartSection.style.display = heartText ? '' : 'none';
+
+      if (presetPage) {
+        presetPage.innerHTML = '';
+        if (heartText || hasPageData) {
+          presetPage.appendChild(buildXinshengPresetPage(heartText, cotText || '', pageData));
+          presetPage.style.display = 'block';
+          if (heartSection) heartSection.style.display = 'none';
+          if (hero) hero.style.display = 'none';
+          if (reasoningSection) reasoningSection.style.display = 'none';
+        } else {
+          presetPage.style.display = 'none';
+          if (hero) hero.style.display = '';
+        }
+      }
       const chainText = cleanCotText(cotText !== undefined ? cotText : latestReasoningChain);
       if (reasoningContent) reasoningContent.innerText = chainText;
       if (reasoningSection) reasoningSection.style.display = chainText ? '' : 'none';
+      if (presetPage && (heartText || hasPageData) && reasoningSection) reasoningSection.style.display = 'none';
       if (reasoningSource) reasoningSource.innerText = (cotSource === 'prompt' ? '补写' : '模型');
 
       if (content) content.style.display = 'block';
@@ -4079,64 +4161,157 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       bubble.appendChild(btn);
     }
 
-    function buildXinshengInline(thoughtText, cotText, cotSource) {
+    function buildXinshengPresetPage(heartText, cotText, pageData) {
+      const heart = cleanHeartThoughtText(heartText || '').trim() || '他还没把这句话说出口。';
+      const page = (pageData && typeof pageData === 'object') ? pageData : null;
+      const parts = heart.split(/[。！？!?；;\n]+/).map(s => s.trim()).filter(Boolean);
+      const fallbackTerms = ['他刚刚那句话', '要不要先回', '他今晚在想什么', '下次见面'];
+      const fallbackOs = [
+        heart,
+        '想回，又怕显得太急。',
+        '先看看她会不会再发一条。',
+        '刚才那句话，他记下了。'
+      ];
+      const terms = [];
+      const osTexts = [];
+      for (let i = 0; i < 4; i++) {
+        const n = i + 1;
+        const piece = parts[i] || '';
+        const pTerm = page ? String(page['search' + n] || '').trim() : '';
+        const pOs = page ? String(page['search' + n + 'Os'] || '').trim() : '';
+        terms.push(pTerm || fallbackTerms[i]);
+        osTexts.push(pOs || piece || fallbackOs[i]);
+      }
+
+      const shy = /怕|不安|紧张|担心|犹豫|克制/.test(heart);
+      const soft = /喜欢|暖|笑|开心|记得|舍不得/.test(heart);
+      const animalType = (page && page.animalType) ? page.animalType
+        : (shy ? '竖起耳朵的兔子' : (soft ? '翻肚皮的猫' : '装睡的猫'));
+      const animalAct = (page && page.animalAct) ? page.animalAct
+        : (shy
+          ? '把想说的话揉成一小团，压在爪子底下，等你先伸手。'
+          : (soft ? '在你身边翻了个身，露出最软的肚皮，又假装只是困了。' : '趴在窗边装睡，耳朵却一直朝着你的方向。'));
+      const todos = page ? [
+        { text: String(page.todo1 || '别回太快').trim(), done: !!page.todo1Done },
+        { text: String(page.todo2 || '记住这句话').trim(), done: !!page.todo2Done },
+        { text: String(page.todo3 || '先不追问').trim(), done: !!page.todo3Done },
+        { text: String(page.todo4 || '晚点再看').trim(), done: !!page.todo4Done }
+      ] : [
+        { text: '别回太快', done: false },
+        { text: '记住这句话', done: true },
+        { text: '先不追问', done: false },
+        { text: '晚点再看', done: false }
+      ];
+
+      function el(tag, cls, text) {
+        const node = document.createElement(tag);
+        if (cls) node.className = cls;
+        if (text !== undefined) node.textContent = text;
+        return node;
+      }
+
+      const root = el('div', 'xt-root');
+      for (let i = 1; i <= 4; i++) {
+        const toggle = el('input', 'xt-toggle');
+        toggle.type = 'checkbox';
+        toggle.id = 'xt-t' + i;
+        if (i === 1) toggle.checked = true;
+        root.appendChild(toggle);
+      }
+
+      const content = el('div', 'xt-content');
+
+      for (let i = 0; i < 4; i++) {
+        const n = i + 1;
+        const row = el('label', 'xt-text-search' + n, terms[i]);
+        row.htmlFor = 'xt-t' + n;
+        content.appendChild(row);
+        content.appendChild(el('div', 'xt-text-search' + n + 'Os', osTexts[i]));
+      }
+
+      const twoCol = el('div', 'xt-row');
+
+      const animalCard = el('div', 'xt-card');
+      animalCard.appendChild(el('div', 'xt-card-title', '🐾  动物塑'));
+      animalCard.appendChild(el('span', 'xt-text-animalType', animalType));
+      animalCard.appendChild(el('span', 'xt-text-animalAct', animalAct));
+      twoCol.appendChild(animalCard);
+
+      const todoCard = el('div', 'xt-card');
+      todoCard.appendChild(el('div', 'xt-card-title', '📋  待办备忘'));
+      const todoList = el('div', 'xt-list');
+      todos.forEach(todo => {
+        const item = el('div', 'xt-list-item' + (todo.done ? ' xt-list-item-on' : ''));
+        item.appendChild(el('div', 'xt-list-check'));
+        item.appendChild(el('span', 'xt-list-text', todo.text));
+        todoList.appendChild(item);
+      });
+      todoCard.appendChild(todoList);
+      twoCol.appendChild(todoCard);
+      content.appendChild(twoCol);
+
+      const diaryCard = el('div', 'xt-card');
+      diaryCard.appendChild(el('div', 'xt-card-title', '✏️  今日日记'));
+      diaryCard.appendChild(el('div', 'xt-quote', (page && page.diary) ? page.diary : heart));
+      content.appendChild(diaryCard);
+
+      content.appendChild(el('div', 'xt-text-footerKao', (page && page.footerKao) ? page.footerKao : '（ ˘ω˘ ）'));
+      root.appendChild(content);
+      return root;
+    }
+
+    function buildXinshengInline(thoughtText, cotText, cotSource, pageData) {
       const wrap = document.createElement('div');
       wrap.className = 'xinsheng-inline';
       const row = document.createElement('div');
       row.className = 'xinsheng-inline-row';
-      const drawers = {};
+      wrap.appendChild(row);
 
-      function makePill(label, kind, source) {
+      function makePill(label, kind, source, arrow) {
         const pill = document.createElement('div');
         pill.className = 'xinsheng-inline-pill xinsheng-inline-pill-' + kind;
         pill.setAttribute('role', 'button');
         pill.setAttribute('tabindex', '0');
-        pill.innerHTML = '<span class="xinsheng-inline-dot"></span><span class="xinsheng-inline-label">' + label + '</span>' + (source ? '<span class="xinsheng-inline-src">' + source + '</span>' : '') + '<span class="xinsheng-inline-chevron">∨</span>';
-        const toggle = (e) => {
-          if (e) e.stopPropagation();
-          const drawer = drawers[kind];
-          if (!drawer) return;
-          const willOpen = !drawer.classList.contains('open');
-          Object.keys(drawers).forEach(k => {
-            drawers[k].classList.remove('open');
-            const p = row.querySelector('.xinsheng-inline-pill-' + k);
-            if (p) {
-              p.classList.remove('is-open');
-              p.setAttribute('aria-expanded', 'false');
-              const chev = p.querySelector('.xinsheng-inline-chevron');
-              if (chev) chev.innerText = '∨';
-            }
-          });
-          if (willOpen) {
-            drawer.classList.add('open');
-            pill.classList.add('is-open');
-            pill.setAttribute('aria-expanded', 'true');
-            const chev = pill.querySelector('.xinsheng-inline-chevron');
-            if (chev) chev.innerText = '∧';
-          }
-        };
-        pill.onclick = toggle;
-        pill.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') toggle(e); };
+        pill.setAttribute('aria-label', label + (source ? ' · ' + source : ''));
+        pill.innerHTML = '<span class="xinsheng-inline-dot"></span><span class="xinsheng-inline-label">' + label + '</span>' + (source ? '<span class="xinsheng-inline-src">' + source + '</span>' : '') + '<span class="xinsheng-inline-chevron">' + (arrow || '∨') + '</span>';
         return pill;
       }
 
-      function makeDrawer(kind, text) {
+      // 思维链：默认展开，点标题栏可以收起
+      if (cotText) {
+        const pill = makePill('思维链', 'cot', cotSource === 'prompt' ? '补写' : (cotSource === 'model' ? '模型' : ''), '∧');
         const drawer = document.createElement('div');
-        drawer.className = 'xinsheng-inline-drawer xinsheng-inline-drawer-' + kind;
-        drawer.innerText = text;
-        drawers[kind] = drawer;
-        return drawer;
+        drawer.className = 'xinsheng-inline-drawer xinsheng-inline-drawer-cot open';
+        drawer.innerText = cotText;
+        const toggleCot = (e) => {
+          if (e) e.stopPropagation();
+          const willOpen = !drawer.classList.contains('open');
+          drawer.classList.toggle('open', willOpen);
+          pill.classList.toggle('is-open', willOpen);
+          pill.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+          const chev = pill.querySelector('.xinsheng-inline-chevron');
+          if (chev) chev.innerText = willOpen ? '∧' : '∨';
+        };
+        pill.classList.add('is-open');
+        pill.setAttribute('aria-expanded', 'true');
+        pill.onclick = toggleCot;
+        pill.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') toggleCot(e); };
+        row.appendChild(pill);
+        wrap.appendChild(drawer);
       }
 
-      if (cotText) {
-        row.appendChild(makePill('思维链', 'cot', cotSource === 'prompt' ? '补写' : (cotSource === 'model' ? '模型' : '')));
-        wrap.appendChild(makeDrawer('cot', cotText));
-      }
+      // 心声：点开独立弹层，给自定义 CSS 留空间
       if (thoughtText) {
-        row.appendChild(makePill('心声', 'heart', '内心'));
-        wrap.appendChild(makeDrawer('heart', thoughtText));
+        const heart = makePill('心声', 'heart', '点开', '›');
+        const openHeart = (e) => {
+          if (e) e.stopPropagation();
+          openCotModal(thoughtText, '', undefined, pageData);
+        };
+        heart.onclick = openHeart;
+        heart.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') openHeart(e); };
+        row.appendChild(heart);
       }
-      wrap.insertBefore(row, wrap.firstChild);
+
       return wrap;
     }
 
@@ -4203,6 +4378,9 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       const avatar = document.createElement('div');
       avatar.className = 'msg-avatar';
       const hasBotAvatarImage = !!(role === 'assistant' && appData.botAvatar);
+      const msgHeartPage = (msgIndex >= 0 && Array.isArray(appData.chatHistory) && appData.chatHistory[msgIndex])
+        ? (appData.chatHistory[msgIndex].heartPage || null)
+        : null;
       const activeAppearanceCharId = (typeof currentRemarkCharId === 'function') ? currentRemarkCharId() : '';
       if (role === 'user') {
         // 每条消息按“发这条时用的那个身份”显示头像/名字：旧记录不会跟着当前小号改名。
@@ -4230,7 +4408,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
         if (thought) group.setAttribute('data-thought', thought);
         if (cot) group.setAttribute('data-cot', cot);
         if (cotSource) group.setAttribute('data-cot-source', cotSource);
-        if (hasBotAvatarImage && (thought || cot)) {
+        if (hasBotAvatarImage && (thought || cot || msgHeartPage)) {
           avatar.classList.add('has-xinsheng');
           avatar.title = '点击查看心声';
           avatar.onclick = (e) => {
@@ -4239,7 +4417,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
               const bubbleThought = group.getAttribute('data-thought') || thought || latestThoughtChain;
               const bubbleCot = group.getAttribute('data-cot') || cot || '';
               const bubbleSource = group.getAttribute('data-cot-source') || cotSource || '';
-              openCotModal(bubbleThought, bubbleCot, bubbleSource);
+              openCotModal(bubbleThought, bubbleCot, bubbleSource, msgHeartPage);
             }
           };
         }
@@ -4252,8 +4430,8 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       col.className = 'msg-content-col';
 
       // 有头像：心声收进头像点击；没有头像：思维链/心声缩成并排小胶囊，点开才展开
-      if (role === 'assistant' && !hasBotAvatarImage && (thought || cot)) {
-        col.appendChild(buildXinshengInline((thought || '').trim(), (cot || '').trim(), cotSource));
+      if (role === 'assistant' && !hasBotAvatarImage && (thought || cot || msgHeartPage)) {
+        col.appendChild(buildXinshengInline((thought || '').trim(), (cot || '').trim(), cotSource, msgHeartPage));
       }
 
       // 外层气泡包裹
@@ -6102,6 +6280,7 @@ ${(() => {
       if (xinshengCustomPrompt) {
         promptText += '\n\n【心声补充要求（用户自定义，优先遵守）】：\n' + xinshengCustomPrompt;
       }
+      promptText += '\n\n' + xinshengPagePromptText();
       const albumPromptText = chatAlbumPromptText();
       if (albumPromptText) promptText += albumPromptText;
       // 预设可能强行让角色发表情包；用户没有存表情时，在最后补一条硬约束，避免编造 [表情包: 摸头]。
@@ -7770,6 +7949,7 @@ ${catalog}
         let reasoning = (msgObj.reasoning_content || '').trim();
         let thought = '';
         let promptedCot = '';
+        let heartPageData = null;
         let pendingGeneratedImage = null;
 
         // 提取 <think> / <thinking> / <thought>
@@ -7794,6 +7974,10 @@ ${catalog}
         // 有些预设会把 Claude 的 thinking 闭合标签直接吐出来；不要让它进入聊天气泡。
         botReply = botReply.replace(/<(?:think|thinking|thought)>[\s\S]*$/gi, '').trim();
         botReply = botReply.replace(/<\/?(?:think|thinking|thought)>/gi, '').trim();
+
+        const pageExtract = extractXinshengPageJson(botReply);
+        botReply = pageExtract.text;
+        heartPageData = pageExtract.data;
 
         // 角色主动生图：模型写 [生图: 画面描述] 时，先把图生成起来，等文字气泡发完再插图。
         try {
@@ -7949,7 +8133,7 @@ ${catalog}
           if (!singleText && searchCards.length) singleText = '喏，链接都在这儿，点开看。';
           if (!singleText) singleText = '……';
           const newAiIdx = appData.chatHistory.length;
-          appData.chatHistory.push({ role: 'assistant', content: singleText, thought: thought, cot: cot, cotSource: cotSource, time: getNowStr(), maskId: currentMaskId()});
+          appData.chatHistory.push({ role: 'assistant', content: singleText, thought: thought, cot: cot, cotSource: cotSource, heartPage: heartPageData, time: getNowStr(), maskId: currentMaskId()});
           if (/^\[IMAGE:[\s\S]*\]$/.test(singleText)) {
             autoSaveChatImageToAlbum(singleText.slice(7, -1), { source: 'chat-bot' });
           }
@@ -8458,7 +8642,7 @@ ${catalog}
               const curCotSource = (idx === 0 ? cotSource : '');
               const segContent = isImage ? ('[IMAGE:' + item.src + ']') : (isCard ? ('[SHARECARD:' + JSON.stringify(item.card) + ']') : item.text);
               const segIdx = appData.chatHistory.length;
-              const historyItem = { role: role, content: segContent, thought: curThought, cot: curCot, cotSource: curCotSource, time: getNowStr(), isSearchCard: isCard };
+              const historyItem = { role: role, content: segContent, thought: curThought, cot: curCot, cotSource: curCotSource, heartPage: idx === 0 ? heartPageData : null, time: getNowStr(), isSearchCard: isCard };
               if (isImage) {
                 historyItem.albumPhotoId = item.photoId;
                 historyItem.fromAlbum = true;
@@ -9075,6 +9259,9 @@ ${catalog}
     let botReply = String(raw || '').trim();
     let thought = '';
     let cot = '';
+    const pageExtract = extractXinshengPageJson(botReply);
+    botReply = pageExtract.text;
+    const heartPage = pageExtract.data;
     const thinkMatch = botReply.match(/<(?:thought|think|thinking)>([\s\S]*?)<\/(?:thought|think|thinking)>/i);
     if (thinkMatch) {
       cot = thinkMatch[1].trim();
@@ -9120,7 +9307,7 @@ ${catalog}
     botReply = botReply.replace(/^(?:---|\*\*\*|===)\s*/, '').trim();
     if (typeof cleanHeartThoughtText === 'function') thought = cleanHeartThoughtText(thought);
     const paragraphs = botReply.split(/\n+/).map(p => p.trim()).filter(Boolean);
-    return { thought, cot: cleanCotText(cot), paragraphs: paragraphs.length ? paragraphs : [botReply].filter(Boolean) };
+    return { thought, cot: cleanCotText(cot), paragraphs: paragraphs.length ? paragraphs : [botReply].filter(Boolean), heartPage: heartPage };
   }
 
   async function performProactiveSendForChar(charId, { isManualTest = false } = {}) {
@@ -9233,7 +9420,7 @@ ${callEligible ? `【先决定联系方式】
 （一到两句，写你现在为什么想找她）
 ---
 第一条
-第二条`;
+第二条` + '\n\n' + xinshengPagePromptText();
 
     if (!window.appData || !appData.apiKey || !appData.apiBase) {
       if (isManualTest) alert('请先在设置中配置 API Key 与接口地址。');
@@ -9292,6 +9479,7 @@ ${callEligible ? `【先决定联系方式】
       const reasoning = (data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.reasoning_content) || '';
       let cot = cleanCotText(reasoning) || parsed.cot || '';
       const cotSource = cleanCotText(reasoning) ? 'model' : (parsed.cot ? 'prompt' : '');
+      const heartPage = parsed.heartPage || null;
       const paragraphs = parsed.paragraphs;
       if (!paragraphs.length) return false;
 
@@ -9306,7 +9494,7 @@ ${callEligible ? `【先决定联系方式】
       const chatVisible = targetIsActive && pageChat &&
         (pageChat.classList.contains('active') || pageChat.style.display !== 'none');
 
-      const append = (piece, pieceThought, ts, render, pieceCot, pieceCotSource) => {
+      const append = (piece, pieceThought, ts, render, pieceCot, pieceCotSource, pieceHeartPage) => {
         const idx = history.length;
         history.push({
           role: 'assistant',
@@ -9314,6 +9502,7 @@ ${callEligible ? `【先决定联系方式】
           thought: pieceThought || '',
           cot: pieceCot || '',
           cotSource: pieceCotSource || '',
+          heartPage: pieceHeartPage || null,
           time: nowStr,
           timestamp: ts,
           maskId: currentMaskId()
@@ -9327,7 +9516,7 @@ ${callEligible ? `【先决定联系方式】
 
       if (isSingle || paragraphs.length <= 1) {
         const one = isSingle ? paragraphs.join('\n') : paragraphs[0];
-        append(one, thought, baseTs, chatVisible, cot, cotSource);
+        append(one, thought, baseTs, chatVisible, cot, cotSource, heartPage);
       } else if (chatVisible) {
         await new Promise(resolve => {
           let i = 0;
@@ -9335,7 +9524,7 @@ ${callEligible ? `【先决定联系方式】
             if (i >= paragraphs.length) { resolve(); return; }
             const piece = paragraphs[i];
             if (i === 0 && typeof maybeInsertTimeDivider === 'function') maybeInsertTimeDivider(nowStr, baseTs);
-            append(piece, i === 0 ? thought : '', baseTs + i * 1000, true, i === 0 ? cot : '', i === 0 ? cotSource : '');
+            append(piece, i === 0 ? thought : '', baseTs + i * 1000, true, i === 0 ? cot : '', i === 0 ? cotSource : '', i === 0 ? heartPage : null);
             i++;
             if (i < paragraphs.length) setTimeout(next, 750);
             else resolve();
@@ -9343,7 +9532,7 @@ ${callEligible ? `【先决定联系方式】
           next();
         });
       } else {
-        paragraphs.forEach((piece, i) => append(piece, i === 0 ? thought : '', baseTs + i * 1000, false, i === 0 ? cot : '', i === 0 ? cotSource : ''));
+        paragraphs.forEach((piece, i) => append(piece, i === 0 ? thought : '', baseTs + i * 1000, false, i === 0 ? cot : '', i === 0 ? cotSource : '', i === 0 ? heartPage : null));
       }
 
       if (!targetIsActive) {
@@ -9480,7 +9669,7 @@ ${recentSlice || '两人此前温馨互动'}
 ---
 ${uNick}，水喝到了没有？
 要是还坐在桌子前，先把手里的画笔放下来，把手腕转一转。
-不许一直弓着背窝着。要是累了哪怕给我发个表情包都行，让我知道你乖乖喝水了。`;
+不许一直弓着背窝着。要是累了哪怕给我发个表情包都行，让我知道你乖乖喝水了。` + '\n\n' + xinshengPagePromptText();
 
       if (window.appData && window.appData.apiKey && window.appData.apiBase) {
         let cleanBase = window.appData.apiBase.trim().replace(/\/+$/, '');
@@ -9505,6 +9694,9 @@ ${uNick}，水喝到了没有？
         if (res.ok) {
           const data = await res.json();
           let botReply = data.choices[0].message.content || (uNick + '，在忙什么呢？');
+          const pageExtract = extractXinshengPageJson(botReply);
+          botReply = pageExtract.text;
+          const heartPageData = pageExtract.data;
           const reasoning = (data.choices[0].message.reasoning_content || '').trim();
           let thought = '';
           let cot = '';
@@ -9581,6 +9773,7 @@ ${uNick}，水喝到了没有？
               thought: thought,
               cot: cot,
               cotSource: cotSource,
+              heartPage: heartPageData,
               time: nowStr,
               timestamp: Date.now(),
               maskId: currentMaskId()
@@ -9616,6 +9809,7 @@ ${uNick}，水喝到了没有？
                 thought: curThought,
                 cot: curCot,
                 cotSource: curCotSource,
+                heartPage: pIdx === 0 ? heartPageData : null,
                 time: nowStr,
                 timestamp: Date.now(),
                 maskId: currentMaskId()

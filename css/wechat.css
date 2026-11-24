@@ -2386,7 +2386,20 @@ body[data-theme="light"] .wechat-tool-pill.sel {
   flex: 0 0 auto;
 }
 .xinsheng-inline-pill-cot .xinsheng-inline-dot { background: #6f8191; }
-.xinsheng-inline-pill-heart .xinsheng-inline-dot { background: #9a818d; }
+.xinsheng-inline-pill-heart .xinsheng-inline-dot { background: #b4899d; }
+.xinsheng-inline-pill-heart {
+  border-color: #453a41;
+  background: rgba(26, 21, 24, .96);
+}
+.xinsheng-inline-pill-heart.is-open,
+.xinsheng-inline-pill-heart:active { border-color: #8a6d7b; }
+.xinsheng-inline-pill-heart .xinsheng-inline-src { color: #b99aa7; }
+.xinsheng-inline-pill-heart .xinsheng-inline-chevron {
+  color: #cbb9c2;
+  font-size: 12px;
+  margin-left: 2px;
+}
+.xinsheng-inline-pill-cot .xinsheng-inline-chevron { color: #9aa7b2; }
 .xinsheng-inline-label { color: #e4e4e4; font-weight: 600; }
 .xinsheng-inline-src {
   color: #7e7e7e;

@@ -166,7 +166,8 @@
   <link rel="stylesheet" href="css/themes.css?v=2026111001" />
   <link rel="stylesheet" href="css/desktop.css?v=2026111720" />
   <link rel="stylesheet" href="css/notify.css" />
-  <link rel="stylesheet" href="css/wechat.css?v=2026112403" />
+  <link rel="stylesheet" href="css/wechat.css?v=20261124-2122" />
+  <link rel="stylesheet" href="css/xinsheng-preset.css?v=20261124-2122" />
   <link rel="stylesheet" href="css/call.css?v=2026111649" />
   <link rel="stylesheet" href="css/skin-qq.css?v=2026111022" />
   <link rel="stylesheet" href="css/moments.css?v=2026111652" />
@@ -1913,10 +1914,10 @@
 
             <!-- 视图 1：当前心声 + 思维链 -->
             <div class="ios-bottom-sheet-body xinsheng-sheet-body" id="cot-modal-content" style="display: block; flex: 1; overflow-y: auto;">
-              <div class="xinsheng-sheet-hero">
+              <div class="xinsheng-sheet-hero" id="xinsheng-sheet-hero">
                 <div class="xinsheng-sheet-kicker">THE PART HE DOESN'T SAY OUT LOUD</div>
                 <div class="xinsheng-sheet-hero-title">心声</div>
-                <div class="xinsheng-sheet-hero-sub">头像点开是这里；没有头像时，它会和思维链一起站在消息旁边。</div>
+                <div class="xinsheng-sheet-hero-sub">有头像时点头像进来；没有头像时，点消息旁的「心声」也能进来。思维链留在消息里展开。</div>
               </div>
               <section class="xinsheng-sheet-card xinsheng-sheet-cot" id="cot-reasoning-section">
                 <div class="xinsheng-sheet-card-head">
@@ -1925,6 +1926,7 @@
                 </div>
                 <div class="xinsheng-sheet-card-body" id="cot-reasoning-content"></div>
               </section>
+              <div id="cot-xinsheng-page" class="xinsheng-xt-shell" style="display: none;"></div>
               <section class="xinsheng-sheet-card xinsheng-sheet-heart" id="cot-heart-section">
                 <div class="xinsheng-sheet-card-head">
                   <span class="xinsheng-sheet-card-title">心声</span>
@@ -6141,7 +6143,7 @@
   <script src="js/wechat/stickers.js?v=2026111150"></script>
   <script src="js/wechat/search-tools.js?v=2026111316"></script>
   <script src="js/wechat/weather-tools.js?v=2026111668"></script>
-  <script src="js/wechat/chat.js?v=2026112403"></script>
+  <script src="js/wechat/chat.js?v=20261124-2122"></script>
   <script src="js/wechat/voice-input.js?v=2026111591"></script>
   <script src="js/wechat/call.js?v=2026111649"></script>
   <script src="js/wechat/image-gen.js?v=2026111649"></script>
