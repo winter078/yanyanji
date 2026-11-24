@@ -1021,6 +1021,18 @@
       const countEl = document.getElementById('palace-category-count');
       if (countEl) countEl.innerText = `共 ${tabCards.length} 篇`;
 
+      const brokenCount = (window.MemoryEngine && typeof window.MemoryEngine.isBrokenMemoryCard === 'function')
+        ? tabCards.filter(c => window.MemoryEngine.isBrokenMemoryCard(c)).length
+        : 0;
+      if (brokenCount > 0 && currentPalaceTab === 'wechat' && currentPalaceWechatScope === 'single') {
+        container.insertAdjacentHTML('beforeend', `
+          <div style="background: rgba(245, 158, 11, 0.10); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 12px; padding: 11px 13px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+            <div style="font-size: 12.5px; color: #fbbf24; line-height: 1.5;">⚠️ 有 ${brokenCount} 条总结解析失败，正文可能是 JSON 残片。</div>
+            <button onclick="window.repairBrokenMemoryCards()" style="flex-shrink: 0; border: 1px solid rgba(245, 158, 11, 0.55); background: rgba(245, 158, 11, 0.15); color: #fbbf24; font-size: 12px; font-weight: 700; padding: 6px 10px; border-radius: 8px; cursor: pointer;">重新生成</button>
+          </div>
+        `);
+      }
+
       if (tabCards.length === 0) {
         let emptyDesc = '这里还没有沉淀下回忆，在上方点击添加或总结吧~';
         if (currentPalaceTab === 'pen') emptyDesc = '「' + palaceCurrentWechatName() + '」还没有亲笔。选好角色或群聊后，点右上角「+ 亲笔记录」写下重要的设定、约定和心事~';
@@ -1077,13 +1089,16 @@
         const ownerBadge = card.ownerCharName
           ? '<span style="background: var(--info-soft); color: var(--info-primary); font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 5px; margin-left: 6px;">' + String(card.ownerCharName).replace(/</g, '&lt;') + ' 的片段</span>'
           : '';
+        const mergedBadge = card.consolidatedInto
+          ? '<span style="background: var(--bg-base); color: var(--text-muted); font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 5px; margin-left: 6px;">已并入中期</span>'
+          : '';
         const latestBadge = isLatest ? '<span style="background: var(--info-soft); color: var(--info-primary); font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">最新</span>' : '';
 
         // 关键词流
         const tagsHtml = (card.tags || []).map(t => `<span style="background: var(--bg-base); color: var(--text-secondary); font-size: 11.5px; padding: 3px 8px; border-radius: 6px; font-weight: 500; border: 0.5px solid var(--border-default);">${t}</span>`).join(' ');
 
         // 是否展示多选勾选框（user亲笔无需多选大总结，只为后三者服务）
-        const showCheckbox = (currentPalaceTab !== 'pen');
+        const showCheckbox = (currentPalaceTab !== 'pen' && !card.consolidatedInto);
         const checkboxHtml = showCheckbox ? `
           <div onclick="window.toggleSelectPalaceCard('${card.id}')" style="cursor: pointer; width: 22px; height: 22px; border-radius: 50%; border: ${isSelected ? 'none' : '1.5px solid var(--border-default)'}; background: ${isSelected ? 'var(--palace-highlight)' : 'transparent'}; display: flex; align-items: center; justify-content: center; transition: all 0.15s;">
             ${isSelected ? '<span style="color:#ffffff; font-size: 13px; font-weight: 800; /* 保留: 勾选框白色高对比度符号 */">✓</span>' : ''}
@@ -1095,6 +1110,7 @@
             <div style="display: flex; align-items: center;">
               <span class="text-primary" style="font-size: 16px; font-weight: 700;">${card.title || '无题记忆'}</span>
               ${levelBadge}
+              ${mergedBadge}
               ${ownerBadge}
               ${latestBadge}
             </div>
@@ -1274,6 +1290,41 @@ ${ctx.scope === 'group' ? '6. 【群聊视角】：写清谁说了什么、谁�
     }
 
     // 立即总结
+    window.repairBrokenMemoryCards = async function() {
+      if (currentPalaceTab !== 'wechat' || currentPalaceWechatScope !== 'single') {
+        alert('目前只支持重生成单人私聊的异常记忆。');
+        return;
+      }
+      if (!window.MemoryEngine || typeof window.MemoryEngine.repairBrokenCards !== 'function') {
+        alert('记忆引擎还没加载完成，稍后再试。');
+        return;
+      }
+      const ctx = getCurrentPalaceTargetContext();
+      if (!ctx || !ctx.id) {
+        alert('当前没有选中的角色。');
+        return;
+      }
+      const loadingNotice = alertModalLoading('正在按原消息范围重新总结异常记忆...');
+      try {
+        const result = await window.MemoryEngine.repairBrokenCards('single', ctx.id);
+        try {
+          await window.MemoryEngine.maybeConsolidateMid('single', ctx.id, { force: true });
+        } catch (e) {}
+        renderPalaceMemories();
+        if (loadingNotice && loadingNotice.remove) loadingNotice.remove();
+        if (!result.total) {
+          alert('没有找到可重生成的异常记忆。');
+        } else if (result.repaired) {
+          alert(`已重新生成 ${result.repaired} 条记忆${result.failed ? '，还有 ' + result.failed + ' 条缺少原聊天记录' : ''}。`);
+        } else {
+          alert('重生成失败：原聊天记录可能已清理，或记忆接口暂不可用。');
+        }
+      } catch (e) {
+        if (loadingNotice && loadingNotice.remove) loadingNotice.remove();
+        alert('重生成失败：' + (e && e.message ? e.message : e));
+      }
+    };
+
     window.triggerImmediateSummary = async function() {
       const history = getHistoryForCurrentTab();
       const total = history.length;

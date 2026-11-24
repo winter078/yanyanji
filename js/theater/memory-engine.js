@@ -101,6 +101,7 @@
     var cards = store();
     return cards.filter(function (c) {
       if (!c || c.category !== 'wechat') return false;
+      if (c.consolidatedInto) return false;
       var s = c.chatScope || 'single';
       return s === scope && String(c.targetId || '') === String(targetId || '');
     });
@@ -282,6 +283,62 @@
     };
   }
 
+  function stripModelFence(raw) {
+    return String(raw || '').replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
+  }
+
+  function parseMemoryResult(raw) {
+    var text = stripModelFence(raw);
+    var obj = null;
+    var start = text.indexOf('{');
+    var end = text.lastIndexOf('}');
+    var jsonText = (start >= 0 && end > start) ? text.slice(start, end + 1) : '';
+    if (jsonText) {
+      try { obj = JSON.parse(jsonText); } catch (e) {}
+    }
+    if (!obj) {
+      try { obj = JSON.parse(text); } catch (e) {}
+    }
+
+    var memory = '';
+    if (obj && obj.memory !== undefined && obj.memory !== null) {
+      if (Array.isArray(obj.memory)) {
+        memory = obj.memory.map(function (s) { return String(s || '').trim(); }).filter(Boolean).join('\n');
+      } else {
+        memory = String(obj.memory).trim();
+      }
+    }
+    // 兼容 JSON 整体被截断、但 memory 字符串本身已经完整的情况
+    if (!memory) {
+      var complete = text.match(/"memory"\s*:\s*"((?:\\.|[^"\\])*)"/);
+      if (complete) memory = complete[1];
+    }
+    if (!memory) {
+      // 纯文本总结可以接受；但 JSON 残片绝不能当总结落库
+      if (/\{[\s\S]*"memory"\s*:/.test(text) || (start >= 0 && end > start)) {
+        throw new Error('记忆总结 JSON 不完整');
+      }
+      memory = text;
+    }
+    memory = memory
+      .replace(/\\n/g, '\n')
+      .replace(/\\"/g, '"')
+      .replace(/\\\\/g, '\\')
+      .trim();
+    memory = memory.replace(/^(?:\s*["“])|(?:["”]\s*)$/g, '').trim();
+    if (!memory) throw new Error('记忆总结为空');
+
+    var keywords = [];
+    if (obj && Array.isArray(obj.keywords)) {
+      keywords = obj.keywords.map(function (s) { return String(s || '').trim(); }).filter(Boolean);
+    } else if (obj && typeof obj.keywords === 'string') {
+      keywords = obj.keywords.split(/[,，、\s]+/).map(function (s) { return s.trim(); }).filter(Boolean);
+    }
+    var importance = obj && obj.importance !== undefined ? parseInt(obj.importance, 10) : 2;
+    if (!(importance >= 1 && importance <= 5)) importance = 2;
+    return { memory: memory, keywords: keywords.slice(0, 8), importance: importance };
+  }
+
   async function callMemoryModel(charNameValue, conversationText, pending) {
     var api = memoryApiConfig();
     if (!api.apiKey) throw new Error('缺少 API Key');
@@ -291,27 +348,218 @@
       '请只用第一人称「我」记录这段私聊里对角色有意义的事，保留具体动作、物件、约定、情绪变化。' +
       '不要写分析、不要写“用户说/角色说”的第三人称报告，不要堆砌空泛形容词。';
     var user = '以下是最近 ' + pending + ' 条私聊记录。\n\n' + conversationText +
-      '\n\n只输出 JSON，不要解释：{"memory":"3到5句第一人称短记忆，每句不超过45字","keywords":["4到8个具体名词或动作"],"importance":1到5的整数}';
+      '\n\n只输出一个完整 JSON 对象，不要解释、不要代码块、不要前后缀：' +
+      '{"memory":"3到5句第一人称短记忆，每句不超过45字","keywords":["4到8个具体名词或动作"],"importance":1到5的整数}' +
+      '\nimportance 只能是 1-5 的整数：5=关系定义/承诺/禁忌/长期重要，4=重要约定/长期偏好/重大事件，3=值得记住的日常，2=普通日常，1=闲聊。' +
+      '\nmemory 必须是字符串，不能是数组；JSON 必须完整闭合。';
+
+    var lastErr = null;
+    for (var attempt = 0; attempt < 2; attempt++) {
+      var strictHint = attempt ? '\n上次输出不是完整可解析的 JSON。这次务必只输出一个完整 JSON 对象，memory 只写完整句子，不要数组、不要代码块、不要解释。' : '';
+      var resp = await fetch(base, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + api.apiKey },
+        body: JSON.stringify({
+          model: api.model,
+          messages: [{ role: 'system', content: sys + strictHint }, { role: 'user', content: user }],
+          temperature: attempt ? 0.2 : 0.5,
+          max_tokens: attempt ? 900 : 800
+        })
+      });
+      if (!resp.ok) throw new Error('记忆总结接口异常: ' + (await resp.text()).slice(0, 80));
+      var data = await resp.json();
+      var choice = (data.choices || [])[0] || {};
+      var raw = (choice.message || {}).content || '';
+      if (choice.finish_reason === 'length' && attempt === 0) {
+        lastErr = new Error('记忆总结被截断');
+        continue;
+      }
+      try {
+        return parseMemoryResult(raw);
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    throw lastErr || new Error('记忆总结解析失败');
+  }
+
+  function midEveryFor(scope, targetId) {
+    var cfg = readConfig();
+    var rec = (cfg.wechatTargets || {})[targetKey(scope, targetId)] || {};
+    return Math.max(3, Math.min(8, parseInt(rec.midEvery, 10) || parseInt(cfg.midEvery, 10) || 4));
+  }
+
+  async function callMemoryMergeModel(charNameValue, shortCards) {
+    var api = memoryApiConfig();
+    if (!api.apiKey) throw new Error('缺少 API Key');
+    var base = String(api.baseUrl || 'https://api.deepseek.com/v1').replace(/\/+$/, '');
+    if (!/\/chat\/completions$/.test(base)) base += '/chat/completions';
+    var sys = '你是角色「' + charNameValue + '」自己的记忆整理官，不是旁白。' +
+      '把几段短期记忆融成一段更稳定的中期记忆，只保留具体事件、约定、关系变化和反复出现的偏好。' +
+      '不要写分析、不要写第三人称报告、不要堆砌空泛形容词。';
+    var user = '以下是同一段关系里连续的短期记忆分卷：\n\n' +
+      shortCards.map(function (c, i) {
+        return '### 短期片段 ' + (i + 1) + '（' + (c.dateStr || '') + '）\n' +
+          String(c.summary || c.content || '') + '\n关键词：' + ((c.tags || []).join('、') || '无');
+      }).join('\n\n') +
+      '\n\n只输出一个完整 JSON 对象，不要解释、不要代码块、不要前后缀：' +
+      '{"memory":"180到320字的第一人称中期记忆，保留具体事件与约定","keywords":["5到8个具体名词或动作"],"importance":3到4的整数}' +
+      '\nmemory 必须是字符串，不能是数组；JSON 必须完整闭合。';
     var resp = await fetch(base, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + api.apiKey },
       body: JSON.stringify({
         model: api.model,
         messages: [{ role: 'system', content: sys }, { role: 'user', content: user }],
-        temperature: 0.5,
-        max_tokens: 420
+        temperature: 0.3,
+        max_tokens: 900
       })
     });
-    if (!resp.ok) throw new Error('记忆总结接口异常: ' + (await resp.text()).slice(0, 80));
+    if (!resp.ok) throw new Error('中期合并接口异常: ' + (await resp.text()).slice(0, 80));
     var data = await resp.json();
-    var raw = (((data.choices || [])[0] || {}).message || {}).content || '';
-    raw = raw.replace(/```json|```/g, '').trim();
-    var obj = null;
-    try { obj = JSON.parse(raw); } catch (e) {}
-    var memory = obj && obj.memory ? String(obj.memory).trim() : raw.trim();
-    if (!memory) throw new Error('记忆总结为空');
-    var keywords = obj && Array.isArray(obj.keywords) ? obj.keywords.map(String).filter(Boolean).slice(0, 8) : [];
-    return { memory: memory, keywords: keywords, importance: obj && obj.importance ? parseInt(obj.importance, 10) || 2 : 2 };
+    var choice = (data.choices || [])[0] || {};
+    var raw = (choice.message || {}).content || '';
+    if (choice.finish_reason === 'length') throw new Error('中期合并被截断');
+    return parseMemoryResult(raw);
+  }
+
+  var midRunning = {};
+
+  async function maybeConsolidateMid(scope, targetId, opts) {
+    opts = opts || {};
+    if (!targetId) return null;
+    // 先只做单聊：群聊的名字/视角不同，等单聊稳定后再接群聊
+    if (scope !== 'single') return null;
+    var cfg = readConfig();
+    if (!opts.force && cfg.autoMid === false) return null;
+    var key = targetKey(scope, targetId);
+    if (midRunning[key]) return null;
+    var all = cardsFor(scope, targetId);
+    var shorts = all.filter(function (c) {
+      return layerOf(c) === LAYERS.short && !c.consolidatedInto;
+    }).sort(function (a, b) {
+      return (parseInt(a.createdAt, 10) || 0) - (parseInt(b.createdAt, 10) || 0);
+    });
+    var every = midEveryFor(scope, targetId);
+    if (shorts.length < every) return null;
+    var picked = shorts.slice(0, every);
+    midRunning[key] = true;
+    try {
+      var result = await callMemoryMergeModel(charName(targetId), picked);
+      var cards = store();
+      var sameLayer = cards.filter(function (c) {
+        return c && c.category === 'wechat' && (c.chatScope || 'single') === scope &&
+          String(c.targetId || '') === String(targetId || '') && layerOf(c) === LAYERS.mid;
+      }).length;
+      var now = new Date();
+      var dateStr = now.getFullYear() + '/' + (now.getMonth() + 1) + '/' + now.getDate() + ' ' +
+        String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+      var startIdx = Math.min.apply(null, picked.map(function (c) { return parseInt(c.startIdx, 10) || 0; }));
+      var endIdx = Math.max.apply(null, picked.map(function (c) { return parseInt(c.endIdx, 10) || 0; }));
+      var mid = {
+        id: 'mem_mid_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+        category: 'wechat',
+        chatScope: scope,
+        targetId: targetId,
+        targetName: charName(targetId),
+        level: 1,
+        layer: LAYERS.mid,
+        pinned: false,
+        title: '中期总结 ' + (sameLayer + 1),
+        dateStr: dateStr,
+        summary: result.memory,
+        tags: result.keywords.length ? result.keywords : ['自动中期', '私聊'],
+        importance: Math.max(3, parseInt(result.importance, 10) || 3),
+        source: 'auto-mid',
+        ownerCharId: '',
+        sourceCardIds: picked.map(function (c) { return c.id; }),
+        msgRangeStr: '合并 ' + picked.map(function (c) { return c.title; }).join(' / ') +
+          ' · 消息 ' + (startIdx + 1) + '-' + endIdx,
+        createdAt: Date.now()
+      };
+      cards.unshift(mid);
+      picked.forEach(function (c) {
+        c.consolidatedInto = mid.id;
+        c.consolidatedAt = Date.now();
+      });
+      saveStore();
+      setTargetState(scope, targetId, { lastMidAt: Date.now() });
+      try { if (window.renderPalaceMemories) window.renderPalaceMemories(); } catch (e) {}
+      return mid;
+    } finally {
+      delete midRunning[key];
+    }
+  }
+
+  function isBrokenMemoryCard(card) {
+    if (!card || card.category !== 'wechat') return false;
+    var text = String(card.summary || card.content || '').trim();
+    return /^\s*(?:\{|```)/.test(text) && /"?memory"?\s*:/.test(text);
+  }
+
+  async function repairBrokenCards(scope, targetId, opts) {
+    opts = opts || {};
+    if (!targetId || scope !== 'single') return { repaired: 0, failed: 0, total: 0 };
+    var max = Math.max(1, Math.min(20, parseInt(opts.max, 10) || 10));
+    var cards = store().filter(function (c) {
+      return c && c.category === 'wechat' &&
+        (c.chatScope || 'single') === scope &&
+        String(c.targetId || '') === String(targetId || '') &&
+        !c.consolidatedInto && isBrokenMemoryCard(c);
+    }).slice(0, max);
+    if (!cards.length) return { repaired: 0, failed: 0, total: 0 };
+
+    var hist = getHistoryForChar(targetId);
+    var cname = charName(targetId);
+    var me = meName();
+    var repaired = 0;
+    var failed = 0;
+    for (var i = 0; i < cards.length; i++) {
+      var card = cards[i];
+      var slice = [];
+      if (card.msgIds && card.msgIds.length) {
+        var byId = {};
+        hist.forEach(function (m) { if (m && m.id) byId[m.id] = m; });
+        slice = card.msgIds.map(function (id) { return byId[id]; }).filter(Boolean);
+      }
+      if (!slice.length && card.startIdx !== undefined && card.endIdx !== undefined) {
+        slice = hist.slice(Math.max(0, parseInt(card.startIdx, 10) || 0), Math.max(0, parseInt(card.endIdx, 10) || 0));
+      }
+      if (!slice.length) {
+        failed++;
+        continue;
+      }
+      var lines = slice.map(function (m) {
+        var who = m.role === 'user' ? me : (m.name || cname);
+        return who + '：' + String(m.content || '').replace(/\s+/g, ' ');
+      }).join('\n');
+      try {
+        var result = await callMemoryModel(cname, lines, slice.length);
+        var layer = result.importance >= 5 ? LAYERS.core : (result.importance >= 4 ? LAYERS.mid : LAYERS.short);
+        var sameLayer = store().filter(function (c) {
+          return c && c.id !== card.id && c.category === 'wechat' &&
+            (c.chatScope || 'single') === scope &&
+            String(c.targetId || '') === String(targetId || '') &&
+            layerOf(c) === layer;
+        }).length;
+        var prefix = layer === LAYERS.core ? '核心印记 ' : (layer === LAYERS.mid ? '中期总结 ' : '短期片段 ');
+        card.summary = result.memory;
+        card.tags = result.keywords.length ? result.keywords : ['自动记忆', '私聊'];
+        card.importance = result.importance;
+        card.layer = layer;
+        card.level = layer === LAYERS.core ? 2 : (layer === LAYERS.mid ? 1 : 0);
+        card.pinned = layer === LAYERS.core;
+        card.title = prefix + (sameLayer + 1);
+        card.source = 'auto-single-repaired';
+        card.repairedAt = Date.now();
+        repaired++;
+      } catch (e) {
+        failed++;
+      }
+    }
+    saveStore();
+    try { if (window.renderPalaceMemories) window.renderPalaceMemories(); } catch (e) {}
+    return { repaired: repaired, failed: failed, total: cards.length };
   }
 
   async function maybeAutoSummarizeSingle(charId, opts) {
@@ -381,6 +629,11 @@
     saveStore();
     setTargetState('single', charId, { pointer: end, lastAutoAt: Date.now() });
     try { if (window.renderPalaceMemories) window.renderPalaceMemories(); } catch (e) {}
+    try {
+      await maybeConsolidateMid('single', charId);
+    } catch (e) {
+      console.warn('[MemoryEngine] 自动中期合并失败：', e && e.message ? e.message : e);
+    }
     return card;
   }
 
@@ -413,6 +666,9 @@
     recall: recall,
     buildText: buildText,
     maybeAutoSummarizeSingle: maybeAutoSummarizeSingle,
+    maybeConsolidateMid: maybeConsolidateMid,
+    repairBrokenCards: repairBrokenCards,
+    isBrokenMemoryCard: isBrokenMemoryCard,
     setCore: setCore,
     _debug: { store: store, queryTerms: queryTerms, pointerFor: pointerFor }
   };
