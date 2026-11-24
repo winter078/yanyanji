@@ -1,5 +1,5 @@
-// 记忆引擎 v1：三层记忆 + 群视角编年史 + 成员片段
-// 不引入向量库，不引入情感坐标；用固定槽位 + 关键词/时间权重召回。
+// 记忆引擎 v1.1：三层记忆 + 群视角编年史 + 成员片段
+// 不接外部向量库；用固定槽位 + 关键词/时间权重 + 本地轻量向量重排召回。
 (function () {
   'use strict';
 
@@ -159,7 +159,46 @@
     return terms.slice(0, 18);
   }
 
-  function scoreCard(card, query) {
+  // 本地轻量向量：不做神经 embedding，只用中文双字/英文词的一袋特征算余弦相似度。
+  // 好处是零依赖、零网络、不会拖慢回复；以后接真 embedding 时只需替换这两个函数。
+  function textVector(text) {
+    var compact = String(text || '').toLowerCase().replace(/[^\u4e00-\u9fa5a-z0-9]+/g, '');
+    var bag = {};
+    if (!compact) return bag;
+    if (compact.length === 1) {
+      bag[compact] = 1;
+      return bag;
+    }
+    for (var i = 0; i < compact.length - 1; i++) {
+      var pair = compact.slice(i, i + 2);
+      if (/^[\u4e00-\u9fa5]{2}$/.test(pair) || /^[a-z0-9]{2}$/.test(pair)) {
+        bag[pair] = (bag[pair] || 0) + 1;
+      }
+    }
+    return bag;
+  }
+
+  function cosineSimilarity(a, b) {
+    var keys = Object.keys(a);
+    if (!keys.length) return 0;
+    var dot = 0;
+    var normA = 0;
+    var normB = 0;
+    keys.forEach(function (k) {
+      var av = a[k] || 0;
+      var bv = b[k] || 0;
+      dot += av * bv;
+      normA += av * av;
+      if (bv) normB += bv * bv;
+    });
+    Object.keys(b).forEach(function (k) {
+      if (!a[k]) normB += b[k] * b[k];
+    });
+    if (!normA || !normB) return 0;
+    return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+  }
+
+  function scoreCard(card, query, queryVector) {
     var layer = layerOf(card);
     var score = layer === LAYERS.core ? 80 : (layer === LAYERS.mid ? 45 : 18);
     if (card.pinned) score += 20;
@@ -176,13 +215,19 @@
       else if (title.indexOf(t) >= 0) score += 4;
       else if (summary.indexOf(t) >= 0) score += 2;
     });
+    if (query) {
+      var qv = queryVector || textVector(query);
+      var cv = textVector(title + ' ' + summary + ' ' + tags);
+      score += cosineSimilarity(qv, cv) * 45;
+    }
     return score;
   }
 
   function pick(pool, n, query, exclude) {
     var seen = exclude || {};
+    var queryVector = query ? textVector(query) : {};
     return pool.filter(function (c) { return c && !seen[c.id]; })
-      .map(function (c) { return { c: c, s: scoreCard(c, query) }; })
+      .map(function (c) { return { c: c, s: scoreCard(c, query, queryVector) }; })
       .sort(function (a, b) { return b.s - a.s; })
       .slice(0, Math.max(0, n))
       .map(function (x) { seen[x.c.id] = true; return x.c; });

@@ -6155,9 +6155,21 @@ ${(() => {
   const activeId = (window.WB && typeof window.WB.activeCharId === 'function')
     ? window.WB.activeCharId()
     : (localStorage.getItem('momo_active_char') || '');
+  const memoryQuery = (() => {
+    const hist = Array.isArray(appData.chatHistory) ? appData.chatHistory : [];
+    for (let i = hist.length - 1; i >= 0; i--) {
+      const m = hist[i];
+      if (!m || m.role !== 'user' || m.recalled || m.hiddenFromAI) continue;
+      const text = String(m.content || '').replace(/\s+/g, ' ').trim();
+      if (!text) continue;
+      if (/^\[(IMAGE|STICKER|VOICE|FILECARD|SHARECARD|TEXTCARD|RECALL)/.test(text)) continue;
+      return text;
+    }
+    return '';
+  })();
   try {
     if (window.getPalaceMemoryTextFor) {
-      const scoped = window.getPalaceMemoryTextFor('single', activeId, 7);
+      const scoped = window.getPalaceMemoryTextFor('single', activeId, 7, { query: memoryQuery });
       return scoped || '这个角色还没有专属记忆存档。';
     }
   } catch (e) {}
@@ -9395,7 +9407,7 @@ ${catalog}
     const memoryText = (() => {
       try {
         if (typeof window.getPalaceMemoryTextFor === 'function') {
-          const scoped = window.getPalaceMemoryTextFor('single', targetId, 7);
+          const scoped = window.getPalaceMemoryTextFor('single', targetId, 7, { query: recentSlice });
           if (scoped) return scoped;
         }
       } catch (e) {}
