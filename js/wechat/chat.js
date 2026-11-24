@@ -4211,23 +4211,38 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       }
 
       const root = el('div', 'xt-root');
-      for (let i = 1; i <= 4; i++) {
-        const toggle = el('input', 'xt-toggle');
-        toggle.type = 'checkbox';
-        toggle.id = 'xt-t' + i;
-        if (i === 1) toggle.checked = true;
-        root.appendChild(toggle);
-      }
-
       const content = el('div', 'xt-content');
+
+      const searchCard = el('div', 'xt-search-card');
+      const searchHead = el('div', 'xt-search-head');
+      searchHead.appendChild(el('span', 'xt-search-head-ico', '🔍'));
+      searchHead.appendChild(el('span', 'xt-search-head-text', '最近搜索'));
+      searchCard.appendChild(searchHead);
 
       for (let i = 0; i < 4; i++) {
         const n = i + 1;
-        const row = el('label', 'xt-text-search' + n, terms[i]);
+        const item = el('div', 'xt-search-item');
+        const toggle = el('input', 'xt-toggle');
+        toggle.type = 'checkbox';
+        toggle.id = 'xt-t' + n;
+        const row = el('label', 'xt-text-search' + n + ' xt-search-row', terms[i]);
         row.htmlFor = 'xt-t' + n;
-        content.appendChild(row);
-        content.appendChild(el('div', 'xt-text-search' + n + 'Os', osTexts[i]));
+        const note = el('div', 'xt-text-search' + n + 'Os xt-search-note', osTexts[i]);
+        item.appendChild(toggle);
+        item.appendChild(row);
+        item.appendChild(note);
+        searchCard.appendChild(item);
       }
+
+      // 手风琴：同时只展开一条，默认全部收起
+      searchCard.addEventListener('change', function (e) {
+        const t = e.target;
+        if (!t || !t.classList || !t.classList.contains('xt-toggle') || !t.checked) return;
+        searchCard.querySelectorAll('.xt-toggle').forEach(function (other) {
+          if (other !== t) other.checked = false;
+        });
+      });
+      content.appendChild(searchCard);
 
       const twoCol = el('div', 'xt-row');
 
