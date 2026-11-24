@@ -469,6 +469,12 @@
   window.openArchivePage = openArchivePage;
   window.closeArchivePage = closeArchivePage;
 
+  // 刷新/重开页面时音乐已经停了，把上一次没结算的“正在听”收尾，避免一直显示在听
+  try { if (readCurrentListen()) endListen(); } catch (e) {}
+  window.addEventListener('pagehide', function () {
+    try { endListen(); } catch (e) {}
+  });
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () { ensureListDelegate(); }, { once: true });
   } else {
