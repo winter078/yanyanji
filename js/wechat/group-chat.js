@@ -608,7 +608,7 @@
       bubble.innerText = String(m.content || '');
       messageEl = bubble;
     } else if (m.voice && !opts.typing) {
-      // 群聊语音：只显示波形、时长和转写；没有音频，也不播放。
+      // 群聊语音：显示波形、时长和转写；点开只展开文字，点小喇叭才合成播放。
       const voiceText = String(m.voice.transcript || m.content || '').trim();
       const shownDuration = Number(m.voice.duration) > 0 ? String(Math.round(Number(m.voice.duration))) : '';
       bubble.classList.add('msg-voice-bubble');
@@ -627,6 +627,22 @@
       label.innerText = shownDuration ? (shownDuration + '″') : '语音';
       voiceRow.appendChild(wave);
       voiceRow.appendChild(label);
+      // 点语音条只展开转写；点旁边的小喇叭才真正合成播放、才会产生费用。
+      if (m.role !== 'user' && voiceText && window.CharVoice) {
+        const playBtn = document.createElement('button');
+        playBtn.type = 'button';
+        playBtn.className = 'msg-speak-btn';
+        playBtn.title = '听 TA 说';
+        playBtn.setAttribute('aria-label', '播放这条语音');
+        playBtn.style.margin = '0';
+        playBtn.style.flex = '0 0 auto';
+        playBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5l-5 4H4z" fill="currentColor"></path><path d="M16.2 8.6a5.2 5.2 0 0 1 0 6.8M18.6 6.2a8.4 8.4 0 0 1 0 11.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg>';
+        playBtn.onclick = function (e) {
+          e.stopPropagation();
+          try { window.CharVoice.speak(voiceText, { charId: m.speakerId || '', btn: playBtn }); } catch (err) {}
+        };
+        voiceRow.appendChild(playBtn);
+      }
       const transcript = document.createElement('div');
       transcript.style.cssText = 'display:none;font-size:11px;line-height:1.5;opacity:.68;border-top:1px solid currentColor;padding-top:6px;white-space:normal;word-break:break-word;';
       transcript.innerText = voiceText || '（语音内容）';
@@ -637,9 +653,6 @@
         if (document.body.classList.contains('chat-multi-mode')) return;
         e.stopPropagation();
         transcript.style.display = transcript.style.display === 'none' ? 'block' : 'none';
-        if (m.role !== 'user' && voiceText && window.CharVoice) {
-          try { window.CharVoice.speak(voiceText, { charId: m.speakerId || '', btn: wave }); } catch (err) {}
-        }
       };
       messageEl = bubble;
     } else {

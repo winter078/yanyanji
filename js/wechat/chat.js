@@ -4318,6 +4318,23 @@ window.syncNarrationModeUI = syncNarrationModeUI;
         voiceRow.appendChild(wave);
         voiceRow.appendChild(label);
 
+        // 语音条只负责展开转写；点这个小喇叭才真正合成播放、才会产生费用。
+        if (role === 'assistant' && voiceText && window.CharVoice) {
+          const playBtn = document.createElement('button');
+          playBtn.type = 'button';
+          playBtn.className = 'msg-speak-btn';
+          playBtn.title = '听 TA 说';
+          playBtn.setAttribute('aria-label', '播放这条语音');
+          playBtn.style.margin = '0';
+          playBtn.style.flex = '0 0 auto';
+          playBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5l-5 4H4z" fill="currentColor"></path><path d="M16.2 8.6a5.2 5.2 0 0 1 0 6.8M18.6 6.2a8.4 8.4 0 0 1 0 11.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg>';
+          playBtn.onclick = function(e) {
+            e.stopPropagation();
+            try { window.CharVoice.speak(voiceText, { charId: voiceCharId, btn: playBtn }); } catch (err) {}
+          };
+          voiceRow.appendChild(playBtn);
+        }
+
         const transcript = document.createElement('div');
         transcript.style.cssText = 'display:none;font-size:11px;line-height:1.5;opacity:.68;border-top:1px solid currentColor;padding-top:6px;white-space:normal;word-break:break-word;';
         transcript.innerText = voiceText || '（语音内容）';
@@ -4327,9 +4344,6 @@ window.syncNarrationModeUI = syncNarrationModeUI;
         voiceBubble.onclick = function(e) {
           if (document.body.classList.contains('chat-multi-mode')) return;
           transcript.style.display = transcript.style.display === 'none' ? 'block' : 'none';
-          if (role === 'assistant' && voiceText && window.CharVoice) {
-            try { window.CharVoice.speak(voiceText, { charId: voiceCharId, btn: wave }); } catch (err) {}
-          }
         };
         if (msgIndex !== -1) {
           bindBubbleLongPress(voiceBubble, msgIndex);
