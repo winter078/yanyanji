@@ -1196,8 +1196,6 @@
     const title = document.querySelector('#page-chat .wechat-title');
     if (title) title.innerText = (c && c.name) || (window.appData && window.appData.botRemark) || '角色';
     syncSingleChatSubtitle(c);
-    const ph = document.getElementById('chat-input');
-    if (ph) ph.placeholder = '和TA说点心事...';
     if (c && typeof window.switchChatHistoryToActiveChar === 'function') {
       window.switchChatHistoryToActiveChar(c.id, false);
     }
