@@ -19,7 +19,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <!-- 发布时务必与 js/build.js 的 __LIVE_BUILD__ 保持一致，否则 version-watch 会一直提示“新版已经好了” -->
-  <script>window.__BUILD__="20261124-2122";</script>
+  <script>window.__BUILD__="20261124-2146";</script>
   <script>
     (function () {
       var root = document.documentElement;
@@ -199,8 +199,8 @@
   <link rel="stylesheet" href="css/themes.css?v=2026111001" />
   <link rel="stylesheet" href="css/desktop.css?v=20261123-0078" />
   <link rel="stylesheet" href="css/notify.css" />
-  <link rel="stylesheet" href="css/wechat.css?v=20261124-2122" />
-  <link rel="stylesheet" href="css/xinsheng-preset.css?v=20261124-2122" />
+  <link rel="stylesheet" href="css/wechat.css?v=20261124-2146" />
+  <link rel="stylesheet" href="css/xinsheng-preset.css?v=20261124-2146" />
   <link rel="stylesheet" href="css/call.css?v=20261123-0095" />
   <link rel="stylesheet" href="css/skin-qq.css?v=2026111022" />
   <link rel="stylesheet" href="css/moments.css?v=2026111652" />
@@ -909,38 +909,33 @@
             </div>
 
             <footer class="wechat-input-bar-v2" id="chat-input-bar">
-              <!-- 图二左一：纯白圆圈加号 -->
-              <button class="chat-circle-btn" type="button" onclick="togglePlusDrawer()" title="更多功能">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              <!-- 仿微信底栏：左语音，中间输入，右侧加号 / 有字变发送 -->
+              <button class="chat-circle-btn chat-voice-hold-btn wechat-voice-key" id="chat-voice-hold-btn" type="button" title="按住说话，松手确认文字" aria-label="按住说话，松手后确认文字">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"></circle><path d="M9.3 8.6a5.2 5.2 0 0 0 0 6.8"></path><path d="M14.7 8.6a5.2 5.2 0 0 1 0 6.8"></path><path d="M6.7 6.2a8.2 8.2 0 0 0 0 11.6"></path><path d="M17.3 6.2a8.2 8.2 0 0 1 0 11.6"></path></svg>
               </button>
 
-              <!-- 图二左二：纯白圆圈表情包 -->
-              <button class="chat-circle-btn" type="button" onclick="toggleStickerDrawer()" title="表情包">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
+              <div class="chat-pill-input-box wechat-input-box">
+                <textarea id="chat-input" class="chat-capsule-textarea" rows="1" placeholder=" " aria-label="输入消息"></textarea>
+                <button class="wechat-inline-mic" type="button" title="按住左侧语音键说话" aria-label="语音输入">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M6 11v1a6 6 0 0 0 12 0v-1"></path><path d="M12 18v3"></path></svg>
+                </button>
+                <button class="wechat-inline-emoji" type="button" onclick="toggleStickerDrawer()" title="表情包" aria-label="表情包">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M8.5 14s1.3 1.8 3.5 1.8 3.5-1.8 3.5-1.8"></path><line x1="9" y1="9.5" x2="9.01" y2="9.5"></line><line x1="15" y1="9.5" x2="15.01" y2="9.5"></line></svg>
+                </button>
+              </div>
+
+              <button class="chat-circle-btn wechat-emoji-outside" type="button" onclick="toggleStickerDrawer()" title="表情包" aria-label="表情包">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M8.5 14s1.3 1.8 3.5 1.8 3.5-1.8 3.5-1.8"></path><line x1="9" y1="9.5" x2="9.01" y2="9.5"></line><line x1="15" y1="9.5" x2="15.01" y2="9.5"></line></svg>
               </button>
 
-              <!-- 按住说话：松手后停留确认，确认前不会发送 -->
-              <button class="chat-circle-btn chat-voice-hold-btn" id="chat-voice-hold-btn" type="button" title="按住说话" aria-label="按住说话，松手后确认文字">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"></rect><path d="M5 10v1a7 7 0 0 0 14 0v-1"></path><path d="M12 18v4"></path><path d="M8 22h8"></path></svg>
-              </button>
-
-              <!-- 图二中间：纯白圆角胶囊输入框，内嵌✨生成与✈发送 -->
-              <div class="chat-pill-input-box">
-                <textarea id="chat-input" class="chat-capsule-textarea" rows="1" placeholder="和TA说点心事..."></textarea>
-                <div class="chat-pill-actions">
-                  <!-- 生成按键：✨ 星芒 -->
-                  <button class="chat-inner-action-btn gen-spark-btn" id="gen-btn" type="button" onclick="handleTriggerGenerate()" title="发完让角色回复">
-                    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"></path><circle cx="5" cy="5" r="1"></circle></svg>
-                  </button>
-                  <!-- 发送按键：✈ 纸飞机 -->
-                  <button class="chat-inner-action-btn send-plane-btn" id="send-btn" type="button" onclick="handleSendOnly()" title="直接发送">
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                  </button>
-                  <!-- 暂停生成按键：⏹ 1:1 复刻停止生成 (按下生成后显示，点击即可中止生成) -->
-                  <button class="chat-inner-action-btn stop-gen-btn" id="stop-btn" type="button" onclick="handleStopGenerate()" title="暂停生成" style="display: none;">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2.5"></rect></svg>
-                  </button>
-                </div>
+              <div class="wechat-bar-action-slot">
+                <button class="chat-circle-btn wechat-plus-toggle" type="button" onclick="togglePlusDrawer()" title="更多功能" aria-label="更多功能">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                </button>
+                <button class="wechat-send-text-btn" id="chat-send-text-btn" type="button" onclick="handleTriggerGenerate()" title="发送并让角色回复">发送</button>
+                <button class="chat-stop-circle" id="stop-btn" type="button" onclick="handleStopGenerate()" title="暂停生成" style="display: none;">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2.5"></rect></svg>
+                </button>
               </div>
             </footer>
 
@@ -8084,7 +8079,7 @@ html.ios .watch-header {
 </style><div id="mom-boot-note"><i></i><span>正在启动</span></div>
 <script>
 (function(){
-  var list = ["js/supabase_sync.js","js/config.js?v=20261123-0085","js/store.js?v=20261123-0075","js/calendar-awareness.js?v=20261123-0075","js/token-monitor.js?v=2026111673","js/storage-center.js?v=2026111671","js/api-presets.js?v=2026111472","js/wechat/image-presets.js?v=2026111649","js/prompt-presets.js?v=20261123-0075","js/notify.js?v=20261122-2858","js/keepalive.js?v=20261120-1205","js/desktop/desktop.js?v=20261123-0074","js/motion.js?v=20261122-2858","js/layout-motion.js?v=20261122-2858","js/sheet-drag.js?v=20261122-2858","js/press.js?v=20261122-2858","js/touch.js?v=20261122-2858","js/desktop/days.js?v=1789904839051","js/desktop/yanyan-cat.js?v=1789925866085","js/desktop/drag-grid.js?v=20261123-0074","js/desktop/app-store.js?v=2026111002","js/wechat/stickers.js?v=20261121-2130","js/wechat/search-tools.js?v=20261122-2858","js/wechat/weather-tools.js?v=20261122-2858","js/wechat/tool-registry.js?v=20261122-2858","js/wechat/artifact-tools.js?v=20261123-0087","js/wechat/chat.js?v=20261124-2122","js/wechat/voice-tts.js?v=20261123-0092","js/wechat/voice-input.js?v=2026111591","js/wechat/call.js?v=20261124-0120","js/wechat/image-gen.js?v=2026111649","js/wechat/moments.js?v=2026111660","js/wechat/characters.js?v=20261123-0089","js/wechat/work-pack.js?v=20261123-0087","js/app-changelog.js?v=20261123-0095","js/wechat/group-chat.js?v=20261123-0094","js/media/music.js?v=20261123-0076","js/media/music-ui.js?v=20261123-0072","js/media/music-lyrics.js?v=20261121-0430","js/qrcode.js?v=2026112010","js/media/netease-login.js?v=2026112011","js/media/companion.js?v=20261120-2235","js/media/watch.js?v=20261120-2235","js/theater/theater.js?v=20261120-1352","js/theater/palace.js?v=2026111121","js/theater/memory-engine.js?v=20261123-0073","js/theater/worldbooks.js?v=2026111571","js/xhs/xhs.js?v=20261121-0415","js/say/say.js?v=20261122-2858","js/keyboard.js?v=20261122-2858","js/media/reader.js?v=20261120-2235","js/desktop/ledger.js?v=20261121-0300","js/desktop/ledger-app.js?v=20261121-0300","js/desktop/health.js?v=20261121-2245","js/image-crop.js?v=20261123-0066","js/desktop/forum.js?v=20261123-0066","js/desktop/avatar-vault.js?v=2026111145","js/wechat/chat-appearance.js?v=2026111652","js/wechat/masks.js?v=2026111654","js/wechat/wordcards.js?v=2026111183","js/desktop/album-store.js?v=2026111433","js/desktop/photos.js?v=2026111457","js/version-watch.js?v=20261121-0150","js/app.js?v=20261123-0088"];
+  var list = ["js/supabase_sync.js","js/config.js?v=20261123-0085","js/store.js?v=20261123-0075","js/calendar-awareness.js?v=20261123-0075","js/token-monitor.js?v=2026111673","js/storage-center.js?v=2026111671","js/api-presets.js?v=2026111472","js/wechat/image-presets.js?v=2026111649","js/prompt-presets.js?v=20261123-0075","js/notify.js?v=20261122-2858","js/keepalive.js?v=20261120-1205","js/desktop/desktop.js?v=20261123-0074","js/motion.js?v=20261122-2858","js/layout-motion.js?v=20261122-2858","js/sheet-drag.js?v=20261122-2858","js/press.js?v=20261122-2858","js/touch.js?v=20261122-2858","js/desktop/days.js?v=1789904839051","js/desktop/yanyan-cat.js?v=1789925866085","js/desktop/drag-grid.js?v=20261123-0074","js/desktop/app-store.js?v=2026111002","js/wechat/stickers.js?v=20261121-2130","js/wechat/search-tools.js?v=20261122-2858","js/wechat/weather-tools.js?v=20261122-2858","js/wechat/tool-registry.js?v=20261122-2858","js/wechat/artifact-tools.js?v=20261123-0087","js/wechat/chat.js?v=20261124-2146","js/wechat/voice-tts.js?v=20261123-0092","js/wechat/voice-input.js?v=20261124-2146","js/wechat/call.js?v=20261124-0120","js/wechat/image-gen.js?v=2026111649","js/wechat/moments.js?v=2026111660","js/wechat/characters.js?v=20261123-0089","js/wechat/work-pack.js?v=20261123-0087","js/app-changelog.js?v=20261123-0095","js/wechat/group-chat.js?v=20261123-0094","js/media/music.js?v=20261123-0076","js/media/music-ui.js?v=20261123-0072","js/media/music-lyrics.js?v=20261121-0430","js/qrcode.js?v=2026112010","js/media/netease-login.js?v=2026112011","js/media/companion.js?v=20261120-2235","js/media/watch.js?v=20261120-2235","js/theater/theater.js?v=20261120-1352","js/theater/palace.js?v=2026111121","js/theater/memory-engine.js?v=20261123-0073","js/theater/worldbooks.js?v=2026111571","js/xhs/xhs.js?v=20261121-0415","js/say/say.js?v=20261122-2858","js/keyboard.js?v=20261122-2858","js/media/reader.js?v=20261120-2235","js/desktop/ledger.js?v=20261121-0300","js/desktop/ledger-app.js?v=20261121-0300","js/desktop/health.js?v=20261121-2245","js/image-crop.js?v=20261123-0066","js/desktop/forum.js?v=20261123-0066","js/desktop/avatar-vault.js?v=2026111145","js/wechat/chat-appearance.js?v=2026111652","js/wechat/masks.js?v=2026111654","js/wechat/wordcards.js?v=2026111183","js/desktop/album-store.js?v=2026111433","js/desktop/photos.js?v=2026111457","js/version-watch.js?v=20261121-0150","js/app.js?v=20261123-0088"];
   var note = document.getElementById('mom-boot-note');
   var splash = document.getElementById('mom-splash');
   var splashAt = (window.performance && performance.now) ? performance.now() : Date.now();

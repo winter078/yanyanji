@@ -335,8 +335,9 @@
     state.pointerId = e.pointerId;
     state.startY = e.clientY;
     try {
-      if (els.holdBtn && els.holdBtn.setPointerCapture) {
-        els.holdBtn.setPointerCapture(e.pointerId);
+      const captureEl = e.currentTarget || els.holdBtn;
+      if (captureEl && captureEl.setPointerCapture) {
+        captureEl.setPointerCapture(e.pointerId);
       }
     } catch (err) {}
     startRecognition();
@@ -434,11 +435,14 @@
     }
 
     if (els.holdBtn) {
-      els.holdBtn.addEventListener('pointerdown', onHoldPointerDown);
-      els.holdBtn.addEventListener('pointermove', onHoldPointerMove);
-      els.holdBtn.addEventListener('pointerup', onHoldPointerUp);
-      els.holdBtn.addEventListener('pointercancel', onHoldPointerCancel);
-      els.holdBtn.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+      els.holdBtns = [els.holdBtn, document.querySelector('.wechat-inline-mic')].filter(Boolean);
+      els.holdBtns.forEach(function (btn) {
+        btn.addEventListener('pointerdown', onHoldPointerDown);
+        btn.addEventListener('pointermove', onHoldPointerMove);
+        btn.addEventListener('pointerup', onHoldPointerUp);
+        btn.addEventListener('pointercancel', onHoldPointerCancel);
+        btn.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+      });
     }
 
     if (els.confirmText) {

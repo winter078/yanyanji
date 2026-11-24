@@ -6743,13 +6743,11 @@ ${catalog}
           }, 1200);
         }
       } catch (e) {}
-      const genBtn = document.getElementById('gen-btn');
-      const sendBtn = document.getElementById('send-btn');
+      const composerBar = document.getElementById('chat-input-bar');
       const stopBtn = document.getElementById('stop-btn');
+      if (composerBar) composerBar.classList.toggle('is-generating', !!generating);
       
       if (generating) {
-        if (genBtn) genBtn.style.display = 'none';
-        if (sendBtn) sendBtn.style.display = 'none';
         if (stopBtn) {
           stopBtn.style.display = 'flex';
           stopBtn.classList.add('pulse-stop');
@@ -6759,8 +6757,6 @@ ${catalog}
           stopBtn.style.display = 'none';
           stopBtn.classList.remove('pulse-stop');
         }
-        if (genBtn) genBtn.style.display = 'flex';
-        if (sendBtn) sendBtn.style.display = 'flex';
       }
     }
 
