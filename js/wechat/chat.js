@@ -433,7 +433,8 @@
     }
     window.handleSendFile = handleSendFile;
 
-﻿var latestThoughtChain = localStorage.getItem('momo_latest_cot') || '';
+var latestThoughtChain = localStorage.getItem('momo_latest_cot') || '';
+var latestReasoningChain = localStorage.getItem('momo_latest_reasoning') || '';
 function sanitizeChatHistory() {
   if (!Array.isArray(appData.chatHistory)) appData.chatHistory = [];
   // 绝对严禁任何自动净化函数擅自裁切或篡改user的聊天记录！
@@ -750,6 +751,14 @@ window.syncNarrationModeUI = syncNarrationModeUI;
         .replace(/^[\s:：-]+/, '')
         .trim();
     }
+    function cleanCotText(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/^[【\[]思维链[】\]]\s*[:：]?\s*/i, '')
+        .replace(/^[\s:：-]+/, '')
+        .replace(/\s*---\s*$/,'')
+        .trim();
+    }
     let isCotHistoryMode = false;
 
     // 永久固化心声到独立历史档案 (保留最近 150 条)
@@ -782,30 +791,110 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       }
     };
 
-    // 思维链弹窗打开
-    function openCotModal(thoughtText) {
+    // ===== 心声自定义：CSS / 提示词 / 样式预设 =====
+    var XINSHENG_PRESETS = {
+      default: '',
+      polar: ':root{--xs-paper:#000;--xs-panel:#080808;--xs-line:#202020;--xs-ink:#f4f4f4;--xs-muted:#8f8f8f;--xs-soft:#141414;} .xinsheng-sheet-card,.xinsheng-panel{border-color:#202020;}',
+      mono: '.xinsheng-sheet-card,.xinsheng-panel{background:transparent;border-color:transparent;box-shadow:none;padding-left:0;padding-right:0;} .xinsheng-sheet-card-badge,.xinsheng-panel-src{display:none;}'
+    };
+
+    function applyXinshengCss(css) {
+      var style = document.getElementById('momo-xinsheng-custom-css');
+      if (!style) {
+        style = document.createElement('style');
+        style.id = 'momo-xinsheng-custom-css';
+        document.head.appendChild(style);
+      }
+      style.textContent = String(css || '').replace(/<\/style/gi, '');
+    }
+
+    function openXinshengSettings() {
+      var modal = document.getElementById('xinsheng-settings-modal');
+      var cssInput = document.getElementById('xs-css-input');
+      var promptInput = document.getElementById('xs-prompt-input');
+      if (cssInput) cssInput.value = localStorage.getItem('momo_xinsheng_css') || '';
+      if (promptInput) promptInput.value = localStorage.getItem('momo_xinsheng_prompt') || '';
+      if (modal) {
+        modal.style.display = 'flex';
+        modal.classList.add('open');
+      }
+    }
+
+    function closeXinshengSettings() {
+      var modal = document.getElementById('xinsheng-settings-modal');
+      if (modal) modal.classList.remove('open');
+    }
+
+    function applyXinshengPreset(name) {
+      var cssInput = document.getElementById('xs-css-input');
+      if (!cssInput) return;
+      cssInput.value = XINSHENG_PRESETS[name] || '';
+    }
+
+    function saveXinshengSettings() {
+      var cssInput = document.getElementById('xs-css-input');
+      var promptInput = document.getElementById('xs-prompt-input');
+      var css = cssInput ? cssInput.value.trim() : '';
+      var prompt = promptInput ? promptInput.value.trim() : '';
+      try {
+        localStorage.setItem('momo_xinsheng_css', css);
+        localStorage.setItem('momo_xinsheng_prompt', prompt);
+      } catch (e) {}
+      applyXinshengCss(css);
+      closeXinshengSettings();
+      if (typeof alert === 'function') alert('心声设置已保存');
+    }
+
+    function openCotHistoryFromSettings() {
+      closeXinshengSettings();
+      isCotHistoryMode = false;
+      var modal = document.getElementById('cot-modal');
+      if (modal) {
+        modal.style.display = 'flex';
+        modal.classList.add('open');
+      }
+      if (typeof toggleCotHistoryView === 'function') toggleCotHistoryView();
+    }
+
+    try {
+      applyXinshengCss(localStorage.getItem('momo_xinsheng_css') || '');
+    } catch (e) {}
+
+    // 心声弹窗：同时展示思维链和心声
+    function openCotModal(thoughtText, cotText, cotSource) {
       const modal = document.getElementById('cot-modal');
       const content = document.getElementById('cot-modal-content');
       const historyView = document.getElementById('cot-modal-history');
       const subTitle = document.getElementById('cot-sheet-subtitle');
       const gearBtn = document.getElementById('btn-cot-history');
+      const reasoningSection = document.getElementById('cot-reasoning-section');
+      const reasoningContent = document.getElementById('cot-reasoning-content');
+      const reasoningSource = document.getElementById('cot-reasoning-source');
+      const heartSection = document.getElementById('cot-heart-section');
+      const heartContent = document.getElementById('cot-heart-content');
 
-      // 默认展示单句心声
       isCotHistoryMode = false;
-      if (content) {
-        content.style.display = 'block';
-        content.innerText = (typeof cleanHeartThoughtText === "function" ? cleanHeartThoughtText(thoughtText || latestThoughtChain) : (thoughtText || latestThoughtChain)) || '你在我胸口开了一扇窗，整段整段的心事，全写在这里。';
-      }
+      const heartText = cleanHeartThoughtText(thoughtText !== undefined ? thoughtText : latestThoughtChain);
+      if (heartContent) heartContent.innerText = heartText;
+      if (heartSection) heartSection.style.display = heartText ? '' : 'none';
+      const chainText = cleanCotText(cotText !== undefined ? cotText : latestReasoningChain);
+      if (reasoningContent) reasoningContent.innerText = chainText;
+      if (reasoningSection) reasoningSection.style.display = chainText ? '' : 'none';
+      if (reasoningSource) reasoningSource.innerText = (cotSource === 'prompt' ? '补写' : '模型');
+
+      if (content) content.style.display = 'block';
       if (historyView) historyView.style.display = 'none';
       if (subTitle) subTitle.style.display = 'none';
       if (gearBtn) { gearBtn.style.color = ''; gearBtn.classList.add('chat-gear-btn'); }
 
-      // 若传入的心声有效，确保沉淀进历史库
       if (thoughtText && thoughtText.trim()) {
         window.recordThoughtHistory(thoughtText);
       }
 
-      modal.classList.add('open');
+      if (modal) {
+        modal.style.display = 'flex';
+        modal.classList.add('open');
+      }
     }
 
     function closeCotModal() {
@@ -3990,7 +4079,68 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       bubble.appendChild(btn);
     }
 
-    function renderMessageBubble(role, text, time = getNowStr(), thought = '', msgIndex = -1, mediaData = null, isTyping = false) {
+    function buildXinshengInline(thoughtText, cotText, cotSource) {
+      const wrap = document.createElement('div');
+      wrap.className = 'xinsheng-inline';
+      const row = document.createElement('div');
+      row.className = 'xinsheng-inline-row';
+      const drawers = {};
+
+      function makePill(label, kind, source) {
+        const pill = document.createElement('div');
+        pill.className = 'xinsheng-inline-pill xinsheng-inline-pill-' + kind;
+        pill.setAttribute('role', 'button');
+        pill.setAttribute('tabindex', '0');
+        pill.innerHTML = '<span class="xinsheng-inline-dot"></span><span class="xinsheng-inline-label">' + label + '</span>' + (source ? '<span class="xinsheng-inline-src">' + source + '</span>' : '') + '<span class="xinsheng-inline-chevron">∨</span>';
+        const toggle = (e) => {
+          if (e) e.stopPropagation();
+          const drawer = drawers[kind];
+          if (!drawer) return;
+          const willOpen = !drawer.classList.contains('open');
+          Object.keys(drawers).forEach(k => {
+            drawers[k].classList.remove('open');
+            const p = row.querySelector('.xinsheng-inline-pill-' + k);
+            if (p) {
+              p.classList.remove('is-open');
+              p.setAttribute('aria-expanded', 'false');
+              const chev = p.querySelector('.xinsheng-inline-chevron');
+              if (chev) chev.innerText = '∨';
+            }
+          });
+          if (willOpen) {
+            drawer.classList.add('open');
+            pill.classList.add('is-open');
+            pill.setAttribute('aria-expanded', 'true');
+            const chev = pill.querySelector('.xinsheng-inline-chevron');
+            if (chev) chev.innerText = '∧';
+          }
+        };
+        pill.onclick = toggle;
+        pill.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') toggle(e); };
+        return pill;
+      }
+
+      function makeDrawer(kind, text) {
+        const drawer = document.createElement('div');
+        drawer.className = 'xinsheng-inline-drawer xinsheng-inline-drawer-' + kind;
+        drawer.innerText = text;
+        drawers[kind] = drawer;
+        return drawer;
+      }
+
+      if (cotText) {
+        row.appendChild(makePill('思维链', 'cot', cotSource === 'prompt' ? '补写' : (cotSource === 'model' ? '模型' : '')));
+        wrap.appendChild(makeDrawer('cot', cotText));
+      }
+      if (thoughtText) {
+        row.appendChild(makePill('心声', 'heart', '内心'));
+        wrap.appendChild(makeDrawer('heart', thoughtText));
+      }
+      wrap.insertBefore(row, wrap.firstChild);
+      return wrap;
+    }
+
+    function renderMessageBubble(role, text, time = getNowStr(), thought = '', msgIndex = -1, cot = '', cotSource = '', mediaData = null, isTyping = false) {
       if (role === 'system' || (typeof text === 'string' && text.startsWith('[SYSTEMHINT:'))) {
         let hintText = typeof text === 'string' ? text : '';
         if (hintText.startsWith('[SYSTEMHINT:') && hintText.endsWith(']')) {
@@ -4052,6 +4202,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
 
       const avatar = document.createElement('div');
       avatar.className = 'msg-avatar';
+      const hasBotAvatarImage = !!(role === 'assistant' && appData.botAvatar);
       const activeAppearanceCharId = (typeof currentRemarkCharId === 'function') ? currentRemarkCharId() : '';
       if (role === 'user') {
         // 每条消息按“发这条时用的那个身份”显示头像/名字：旧记录不会跟着当前小号改名。
@@ -4077,13 +4228,21 @@ window.syncNarrationModeUI = syncNarrationModeUI;
         if (appData.botAvatar) avatar.innerHTML = `<img src="${appData.botAvatar}" alt="${(appData.botRemark || '角色')}头像" />`;
         else avatar.innerText = (appData.botRemark || '角色').trim().slice(0, 1) || '角';
         if (thought) group.setAttribute('data-thought', thought);
-        avatar.onclick = (e) => {
-          if (!document.body.classList.contains('chat-multi-mode')) {
-            e.stopPropagation();
-            const bubbleThought = group.getAttribute('data-thought') || thought || latestThoughtChain;
-            openCotModal(bubbleThought);
-          }
-        };
+        if (cot) group.setAttribute('data-cot', cot);
+        if (cotSource) group.setAttribute('data-cot-source', cotSource);
+        if (hasBotAvatarImage && (thought || cot)) {
+          avatar.classList.add('has-xinsheng');
+          avatar.title = '点击查看心声';
+          avatar.onclick = (e) => {
+            if (!document.body.classList.contains('chat-multi-mode')) {
+              e.stopPropagation();
+              const bubbleThought = group.getAttribute('data-thought') || thought || latestThoughtChain;
+              const bubbleCot = group.getAttribute('data-cot') || cot || '';
+              const bubbleSource = group.getAttribute('data-cot-source') || cotSource || '';
+              openCotModal(bubbleThought, bubbleCot, bubbleSource);
+            }
+          };
+        }
       }
       const avatarBoxEl = (typeof window.createChatAvatarBox === 'function')
         ? window.createChatAvatarBox(avatar, role === 'user' ? 'self' : 'bot', activeAppearanceCharId)
@@ -4092,30 +4251,9 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       const col = document.createElement('div');
       col.className = 'msg-content-col';
 
-      // 如果是绪言发言且带有思考链，在气泡上方优雅渲染 Claude 风格 Thinking 药丸与折叠盒
-      if (role === 'assistant' && thought && thought.trim()) {
-        const thinkWrap = document.createElement('div');
-        thinkWrap.className = 'claude-thinking-wrap';
-
-        // 1:1 复刻图4极简优雅风
-        const pill = document.createElement('div');
-        pill.className = 'thinking-pill-v4';
-        pill.innerHTML = '<span class="thinking-pill-dot" style="background:var(--danger-primary); box-shadow: 0 0 6px rgba(255,123,146,0.6);"></span> <span class="thinking-pill-title" style="color:#ffb3c1; font-weight:600;">心声</span> <span class="thinking-pill-action">∨ 展开</span>';
-        
-        const box = document.createElement('div');
-        box.className = 'thinking-drawer-v4';
-        box.innerText = thought.trim();
-
-        pill.onclick = (e) => {
-          e.stopPropagation();
-          box.classList.toggle('open');
-          const isOpen = box.classList.contains('open');
-          pill.querySelector('.thinking-pill-action').innerText = isOpen ? '∧ 收起' : '∨ 展开';
-        };
-
-        thinkWrap.appendChild(pill);
-        thinkWrap.appendChild(box);
-        col.appendChild(thinkWrap);
+      // 有头像：心声收进头像点击；没有头像：思维链/心声缩成并排小胶囊，点开才展开
+      if (role === 'assistant' && !hasBotAvatarImage && (thought || cot)) {
+        col.appendChild(buildXinshengInline((thought || '').trim(), (cot || '').trim(), cotSource));
       }
 
       // 外层气泡包裹
@@ -5062,7 +5200,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
             return;
           }
           const bubbleText = (m.media && m.content === '[IMAGE]') ? ('[IMAGE:' + m.media + ']') : m.content;
-          const rendered = renderMessageBubble(m.role, bubbleText, mTime, m.thought || '', idx);
+          const rendered = renderMessageBubble(m.role, bubbleText, mTime, m.thought || '', idx, m.cot || '', m.cotSource || '');
           if (m.notice && m.role === 'system' && rendered) attachSystemNoticeClose(rendered, idx);
         });
       }
@@ -5938,9 +6076,12 @@ ${(() => {
   return '\n' + lines.join('\n') + '\n';
 })()}
 
-【心声系统（必须在正式发微信前输出 · 绝不遗漏）】：
-每次回复${userRemark}前，你必须在整个输出的最开头，以【心声】标签写一段你作为${charName}此时此刻的第一人称内心碎碎念。
+【思维链与心声（必须在正式发微信前输出 · 绝不遗漏）】：
+每次回复${userRemark}前，先在【心声】之前写一段【思维链】，只写你如何想到这句话的简短推理摘要，不超过 120 字；不要复述系统提示词，不要写出戏的话。
+然后以【心声】标签写一段你作为${charName}此时此刻的第一人称内心碎碎念。
 格式严格如下：
+【思维链】：（简短推理摘要）
+---
 【心声】：（写下你看到对方这句话时，按当前角色卡产生的真实内心反应。不要套用固定恋人、旧角色或“男友/人夫”口吻；角色卡是什么关系，就用什么分寸。）
 ---
 （然后空一行，再正式连发微信消息给${userRemark}）
@@ -5957,6 +6098,10 @@ ${(() => {
       promptText = promptText
         .replace(/周绪言/g, () => charName)
         .replace(/\buser\b/g, () => userRemark || userName || 'user');
+      const xinshengCustomPrompt = (localStorage.getItem('momo_xinsheng_prompt') || '').trim();
+      if (xinshengCustomPrompt) {
+        promptText += '\n\n【心声补充要求（用户自定义，优先遵守）】：\n' + xinshengCustomPrompt;
+      }
       const albumPromptText = chatAlbumPromptText();
       if (albumPromptText) promptText += albumPromptText;
       // 预设可能强行让角色发表情包；用户没有存表情时，在最后补一条硬约束，避免编造 [表情包: 摸头]。
@@ -5988,7 +6133,7 @@ ${(() => {
       promptText += '\n\n【卡片标记铁律（最高优先级）】你只能在回复里使用上面明确列出的轻标记（音乐/观影/共读）。绝对禁止自己书写 [SHARECARD:…]、[RED_NOTE_SHARE:…]、[NOTE_SHARE:…]、[XHS_NOTE:…] 或任何其他方括号卡片标记；小红书卡片、文件卡片、网页卡片都由界面自动生成，你只写正常说的话。写了会被当成乱码露在聊天里。';
       promptText += '\n【说话禁区】严禁出现“搜索接口、接口、后台、反爬、风控、抓不到、技术限制、链接发我才能查”这类词。找不到就自然说“这次没翻到合适的，我给你留个入口”，不要解释系统怎么工作。';
       if (window.__voiceCallMode && !window.__voiceCallMinimized) {
-        promptText += '\n\n【语音通话模式（本轮最高优先级）】现在你们正在通电话。只写电话里真正说出口的台词：不要【心声】、不要 ---、不要动作/旁白/镜头/括号描写，不要表情包、图片、引用格式或微信排版。像真人接电话一样自然、口语、短，通常 1 到 4 句；可以停顿、反问、没听清让对方再说一遍。不要复述用户刚说的话，也不要解释自己是 AI。';
+        promptText += '\n\n【语音通话模式（本轮最高优先级）】现在你们正在通电话。只写电话里真正说出口的台词：不要【思维链】、不要【心声】、不要 ---、不要动作/旁白/镜头/括号描写，不要表情包、图片、引用格式或微信排版。像真人接电话一样自然、口语、短，通常 1 到 4 句；可以停顿、反问、没听清让对方再说一遍。不要复述用户刚说的话，也不要解释自己是 AI。';
       }
 
       if (!/周绪言|绪言/.test(charName)) {
@@ -6567,7 +6712,7 @@ ${catalog}
         log.push('box=' + (container ? 'ok' : 'none') + ',dots=' + (container ? container.querySelectorAll('.typing-indicator-box').length : '-'));
         if (!container) { window.__momRestoreLog = log.concat('skip-nobox'); return; }
         if (container.querySelector('.typing-indicator-box')) { window.__momRestoreLog = log.concat('skip-hasdots'); return; }
-        const made = renderMessageBubble('assistant', '__TYPING__', getNowStr(), '', -1, null, true);
+        const made = renderMessageBubble('assistant', '__TYPING__', getNowStr(), '', -1, '', '', null, true);
         log.push('made=' + (made ? '1' : '0') + ',dotsAfter=' + container.querySelectorAll('.typing-indicator-box').length);
         scrollChatToBottom();
         window.__momRestoreLog = log;
@@ -6605,7 +6750,7 @@ ${catalog}
       };
 
       clearChatTypingPlaceholders();
-      const loading = renderMessageBubble('assistant', '……', getNowStr(), '', -1, null, true);
+      const loading = renderMessageBubble('assistant', '……', getNowStr(), '', -1, '', '', null, true);
       scrollChatToBottom();
 
       try {
@@ -7622,13 +7767,15 @@ ${catalog}
 
         const msgObj = data.choices[0].message;
         let botReply = msgObj.content || '……';
-        let thought = (msgObj.reasoning_content || '').trim();
+        let reasoning = (msgObj.reasoning_content || '').trim();
+        let thought = '';
+        let promptedCot = '';
         let pendingGeneratedImage = null;
 
         // 提取 <think> / <thinking> / <thought>
         const thinkMatch = botReply.match(/<(?:thought|think|thinking)>([\s\S]*?)<\/(?:thought|think|thinking)>/i);
         if (thinkMatch) {
-          thought = thinkMatch[1].trim();
+          if (!reasoning) reasoning = thinkMatch[1].trim();
           botReply = botReply.replace(/<(?:thought|think|thinking)>[\s\S]*?<\/(?:thought|think|thinking)>/gi, '').trim();
         }
         // 模型偶尔会自己编一个卡片标记（如 [RED_NOTE_SHARE:标题]）：转成小红书搜索卡，别把标记原文露在气泡里
@@ -7674,6 +7821,13 @@ ${catalog}
 
         // 100% 稳定提取【绪言心声】（不依赖任何接口私有协议，作为文本开头自然流淌）
         // 匹配格式如：【心声】：... 或 【绪言心声】：... 或 [心声]... 或 <think>...
+        // 先剥离提示词补写的【思维链】，再把剩下的【心声】和正式回复拆开。
+        const promptedCotMatch = botReply.match(/[【\[]思维链[】\]]\s*[:：]?\s*([\s\S]*?)(?=\n\s*(?:---|\*\*\*|===)|\n\s*[【\[]心声[】\]]|$)/i);
+        if (promptedCotMatch) {
+          promptedCot = cleanCotText(promptedCotMatch[1]);
+          botReply = botReply.replace(promptedCotMatch[0], '').trim();
+          botReply = botReply.replace(/^\s*(?:---|\*\*\*|===)\s*\n?/, '').trim();
+        }
         // 稳健提取绪言心声 (洗净所有标签与前导标点)
         if (botReply.includes('【心声】') || botReply.includes('【绪言心声】') || botReply.includes('[心声]')) {
           const splitDelim = botReply.includes('---') ? '---' : (botReply.includes('===') ? '===' : '\n\n');
@@ -7681,6 +7835,19 @@ ${catalog}
           if (parts.length > 1) {
             thought = parts[0];
             botReply = parts.slice(1).join('\n').trim();
+          } else {
+            const heartLabel = botReply.match(/[【\[]心声[】\]]\s*[:：]?\s*/);
+            if (heartLabel) {
+              const afterHeart = botReply.slice(heartLabel.index + heartLabel[0].length).trim();
+              const firstBreak = afterHeart.search(/\n/);
+              if (firstBreak > -1) {
+                thought = afterHeart.slice(0, firstBreak).trim();
+                botReply = afterHeart.slice(firstBreak).trim();
+              } else {
+                thought = afterHeart;
+                botReply = '';
+              }
+            }
           }
         } else if (botReply.includes('<think>')) {
           const tPieces = botReply.split(/<\/?think>/i);
@@ -7692,8 +7859,12 @@ ${catalog}
         if (typeof cleanHeartThoughtText === 'function') {
           thought = cleanHeartThoughtText(thought);
         }
+        let cot = cleanCotText(reasoning || promptedCot);
+        const cotSource = reasoning ? 'model' : (promptedCot ? 'prompt' : '');
         latestThoughtChain = thought;
+        latestReasoningChain = cot;
         try { localStorage.setItem('momo_latest_cot', thought); } catch(e){}
+        try { localStorage.setItem('momo_latest_reasoning', cot); } catch(e){}
         if (typeof window.recordThoughtHistory === 'function' && thought) {
           window.recordThoughtHistory(thought, botReply);
         }
@@ -7778,12 +7949,12 @@ ${catalog}
           if (!singleText && searchCards.length) singleText = '喏，链接都在这儿，点开看。';
           if (!singleText) singleText = '……';
           const newAiIdx = appData.chatHistory.length;
-          appData.chatHistory.push({ role: 'assistant', content: singleText, thought: thought, time: getNowStr(), maskId: currentMaskId()});
+          appData.chatHistory.push({ role: 'assistant', content: singleText, thought: thought, cot: cot, cotSource: cotSource, time: getNowStr(), maskId: currentMaskId()});
           if (/^\[IMAGE:[\s\S]*\]$/.test(singleText)) {
             autoSaveChatImageToAlbum(singleText.slice(7, -1), { source: 'chat-bot' });
           }
           maybeInsertTimeDivider(getNowStr(), Date.now());
-          renderMessageBubble('assistant', singleText, getNowStr(), thought, newAiIdx);
+          renderMessageBubble('assistant', singleText, getNowStr(), thought, newAiIdx, cot, cotSource);
           try { safeSaveChatHistory(); } catch(e){}
           appendSearchCards(searchCards, getNowStr());
           if (pendingRemarkNotice && typeof window.pushChatSystemNotice === 'function') {
@@ -8283,9 +8454,11 @@ ${catalog}
                 return;
               }
               const curThought = (idx === 0 ? thought : '');
+              const curCot = (idx === 0 ? cot : '');
+              const curCotSource = (idx === 0 ? cotSource : '');
               const segContent = isImage ? ('[IMAGE:' + item.src + ']') : (isCard ? ('[SHARECARD:' + JSON.stringify(item.card) + ']') : item.text);
               const segIdx = appData.chatHistory.length;
-              const historyItem = { role: role, content: segContent, thought: curThought, time: getNowStr(), isSearchCard: isCard };
+              const historyItem = { role: role, content: segContent, thought: curThought, cot: curCot, cotSource: curCotSource, time: getNowStr(), isSearchCard: isCard };
               if (isImage) {
                 historyItem.albumPhotoId = item.photoId;
                 historyItem.fromAlbum = true;
@@ -8295,7 +8468,7 @@ ${catalog}
                 autoSaveChatImageToAlbum(segContent.slice(7, -1), { source: 'chat-bot' });
               }
               if (idx === 0) maybeInsertTimeDivider(getNowStr(), Date.now());
-              renderMessageBubble(role, segContent, getNowStr(), curThought, segIdx);
+              renderMessageBubble(role, segContent, getNowStr(), curThought, segIdx, curCot, curCotSource);
               try { safeSaveChatHistory(); } catch(e){}
               scrollChatToBottom();
               if (isImage) noteChatImageSent();
@@ -8901,12 +9074,20 @@ ${catalog}
   function parseProactiveReply(raw) {
     let botReply = String(raw || '').trim();
     let thought = '';
+    let cot = '';
     const thinkMatch = botReply.match(/<(?:thought|think|thinking)>([\s\S]*?)<\/(?:thought|think|thinking)>/i);
     if (thinkMatch) {
-      thought = thinkMatch[1].trim();
+      cot = thinkMatch[1].trim();
       botReply = botReply.replace(/<(?:thought|think|thinking)>[\s\S]*?<\/(?:thought|think|thinking)>/gi, '').trim();
     }
     botReply = botReply.replace(/<\/?(?:think|thinking|thought)>/gi, '').trim();
+
+    const promptedCotMatch = botReply.match(/[【\[]思维链[】\]]\s*[:：]?\s*([\s\S]*?)(?=\n\s*(?:---|\*\*\*|===)|\n\s*[【\[]心声[】\]]|$)/i);
+    if (promptedCotMatch) {
+      if (!cot) cot = promptedCotMatch[1].trim();
+      botReply = botReply.replace(promptedCotMatch[0], '').trim();
+      botReply = botReply.replace(/^\s*(?:---|\*\*\*|===)\s*\n?/, '').trim();
+    }
 
     if (botReply.includes('【心声】') || botReply.includes('【绪言心声】') || botReply.includes('[心声]')) {
       const delimMatch = botReply.match(/(?:---|\*\*\*|===)/);
@@ -8919,6 +9100,19 @@ ${catalog}
         if (parts.length > 1) {
           thought = parts[0].replace(/^[【\[](?:绪言)?心声[】\]][：:]?\s*/i, '').trim();
           botReply = parts.slice(1).join('\n').trim();
+        } else {
+          const heartLabel = botReply.match(/[【\[]心声[】\]]\s*[:：]?\s*/);
+          if (heartLabel) {
+            const afterHeart = botReply.slice(heartLabel.index + heartLabel[0].length).trim();
+            const firstBreak = afterHeart.search(/\n/);
+            if (firstBreak > -1) {
+              thought = afterHeart.slice(0, firstBreak).trim();
+              botReply = afterHeart.slice(firstBreak).trim();
+            } else {
+              thought = afterHeart;
+              botReply = '';
+            }
+          }
         }
       }
     }
@@ -8926,7 +9120,7 @@ ${catalog}
     botReply = botReply.replace(/^(?:---|\*\*\*|===)\s*/, '').trim();
     if (typeof cleanHeartThoughtText === 'function') thought = cleanHeartThoughtText(thought);
     const paragraphs = botReply.split(/\n+/).map(p => p.trim()).filter(Boolean);
-    return { thought, paragraphs: paragraphs.length ? paragraphs : [botReply].filter(Boolean) };
+    return { thought, cot: cleanCotText(cot), paragraphs: paragraphs.length ? paragraphs : [botReply].filter(Boolean) };
   }
 
   async function performProactiveSendForChar(charId, { isManualTest = false } = {}) {
@@ -9096,7 +9290,8 @@ ${callEligible ? `【先决定联系方式】
       );
       let thought = parsed.thought;
       const reasoning = (data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.reasoning_content) || '';
-      if (!thought && reasoning) thought = String(reasoning).trim();
+      let cot = cleanCotText(reasoning) || parsed.cot || '';
+      const cotSource = cleanCotText(reasoning) ? 'model' : (parsed.cot ? 'prompt' : '');
       const paragraphs = parsed.paragraphs;
       if (!paragraphs.length) return false;
 
@@ -9111,26 +9306,28 @@ ${callEligible ? `【先决定联系方式】
       const chatVisible = targetIsActive && pageChat &&
         (pageChat.classList.contains('active') || pageChat.style.display !== 'none');
 
-      const append = (piece, pieceThought, ts, render) => {
+      const append = (piece, pieceThought, ts, render, pieceCot, pieceCotSource) => {
         const idx = history.length;
         history.push({
           role: 'assistant',
           content: piece,
           thought: pieceThought || '',
+          cot: pieceCot || '',
+          cotSource: pieceCotSource || '',
           time: nowStr,
           timestamp: ts,
           maskId: currentMaskId()
         });
         if (targetIsActive) safeSaveChatHistory();
         if (render && typeof renderMessageBubble === 'function') {
-          renderMessageBubble('assistant', piece, nowStr, pieceThought || '', idx);
+          renderMessageBubble('assistant', piece, nowStr, pieceThought || '', idx, pieceCot || '', pieceCotSource || '');
           if (typeof scrollToBottom === 'function') scrollToBottom();
         }
       };
 
       if (isSingle || paragraphs.length <= 1) {
         const one = isSingle ? paragraphs.join('\n') : paragraphs[0];
-        append(one, thought, baseTs, chatVisible);
+        append(one, thought, baseTs, chatVisible, cot, cotSource);
       } else if (chatVisible) {
         await new Promise(resolve => {
           let i = 0;
@@ -9138,7 +9335,7 @@ ${callEligible ? `【先决定联系方式】
             if (i >= paragraphs.length) { resolve(); return; }
             const piece = paragraphs[i];
             if (i === 0 && typeof maybeInsertTimeDivider === 'function') maybeInsertTimeDivider(nowStr, baseTs);
-            append(piece, i === 0 ? thought : '', baseTs + i * 1000, true);
+            append(piece, i === 0 ? thought : '', baseTs + i * 1000, true, i === 0 ? cot : '', i === 0 ? cotSource : '');
             i++;
             if (i < paragraphs.length) setTimeout(next, 750);
             else resolve();
@@ -9146,7 +9343,7 @@ ${callEligible ? `【先决定联系方式】
           next();
         });
       } else {
-        paragraphs.forEach((piece, i) => append(piece, i === 0 ? thought : '', baseTs + i * 1000, false));
+        paragraphs.forEach((piece, i) => append(piece, i === 0 ? thought : '', baseTs + i * 1000, false, i === 0 ? cot : '', i === 0 ? cotSource : ''));
       }
 
       if (!targetIsActive) {
@@ -9308,15 +9505,27 @@ ${uNick}，水喝到了没有？
         if (res.ok) {
           const data = await res.json();
           let botReply = data.choices[0].message.content || (uNick + '，在忙什么呢？');
-          let thought = (data.choices[0].message.reasoning_content || '').trim();
+          const reasoning = (data.choices[0].message.reasoning_content || '').trim();
+          let thought = '';
+          let cot = '';
+          let promptedCot = '';
 
           // 1. 提取 <think> / <thinking> / <thought>
           const thinkMatch = botReply.match(/<(?:thought|think|thinking)>([\s\S]*?)<\/(?:thought|think|thinking)>/i);
           if (thinkMatch) {
-            thought = thinkMatch[1].trim();
+            cot = thinkMatch[1].trim();
             botReply = botReply.replace(/<(?:thought|think|thinking)>[\s\S]*?<\/(?:thought|think|thinking)>/gi, '').trim();
           }
           botReply = botReply.replace(/<\/?(?:think|thinking|thought)>/gi, '').trim();
+
+          // 1.5 提取提示词补写的【思维链】
+          const promptedCotMatch = botReply.match(/[【\[]思维链[】\]]\s*[:：]?\s*([\s\S]*?)(?=\n\s*(?:---|\*\*\*|===)|\n\s*[【\[]心声[】\]]|$)/i);
+          if (promptedCotMatch) {
+            promptedCot = cleanCotText(promptedCotMatch[1]);
+            botReply = botReply.replace(promptedCotMatch[0], '').trim();
+            botReply = botReply.replace(/^\s*(?:---|\*\*\*|===)\s*\n?/, '').trim();
+          }
+          cot = cleanCotText(reasoning || cot || promptedCot);
 
           // 2. 提取 【心声】
           if (botReply.includes('【心声】') || botReply.includes('【绪言心声】') || botReply.includes('[心声]')) {
@@ -9330,12 +9539,26 @@ ${uNick}，水喝到了没有？
               if (parts.length > 1) {
                 thought = parts[0].replace(/^[【\[](?:绪言)?心声[】\]][：:]?\s*/i, '').trim();
                 botReply = parts.slice(1).join('\n').trim();
+              } else {
+                const heartLabel = botReply.match(/[【\[]心声[】\]]\s*[:：]?\s*/);
+                if (heartLabel) {
+                  const afterHeart = botReply.slice(heartLabel.index + heartLabel[0].length).trim();
+                  const firstBreak = afterHeart.search(/\n/);
+                  if (firstBreak > -1) {
+                    thought = afterHeart.slice(0, firstBreak).trim();
+                    botReply = afterHeart.slice(firstBreak).trim();
+                  } else {
+                    thought = afterHeart;
+                    botReply = '';
+                  }
+                }
               }
             }
           }
 
           botReply = botReply.replace(/^(?:---|\*\*\*|===)\s*/, '').trim();
           if (typeof cleanHeartThoughtText === 'function') thought = cleanHeartThoughtText(thought);
+          const cotSource = cleanCotText(reasoning) ? 'model' : (promptedCot || cot ? 'prompt' : '');
 
           // 滤除偶发的现实线下例会幻觉
           botReply = botReply.replace(/把明天院里例会的材料过了一遍[，,]/g, '把终端底层的缓存日志全过了一遍，');
@@ -9356,6 +9579,8 @@ ${uNick}，水喝到了没有？
               role: 'assistant',
               content: botReply,
               thought: thought,
+              cot: cot,
+              cotSource: cotSource,
               time: nowStr,
               timestamp: Date.now(),
               maskId: currentMaskId()
@@ -9366,7 +9591,7 @@ ${uNick}，水喝到了没有？
             const chatPage = document.getElementById('page-chat');
             if (chatPage && chatPage.style.display !== 'none') {
               if (typeof renderMessageBubble === 'function') {
-                renderMessageBubble('assistant', botReply, nowStr, thought, newAiIdx);
+                renderMessageBubble('assistant', botReply, nowStr, thought, newAiIdx, cot, cotSource);
               }
               if (typeof scrollToBottom === 'function') scrollToBottom();
             }
@@ -9381,12 +9606,16 @@ ${uNick}，水喝到了没有？
 
               const piece = paragraphs[pIdx];
               const curThought = (pIdx === 0 ? thought : '');
+              const curCot = (pIdx === 0 ? cot : '');
+              const curCotSource = (pIdx === 0 ? cotSource : '');
               const nowStr = (typeof getNowStr === 'function' ? getNowStr() : '刚刚');
               const newAiIdx = window.appData.chatHistory.length;
               const msgObj = {
                 role: 'assistant',
                 content: piece,
                 thought: curThought,
+                cot: curCot,
+                cotSource: curCotSource,
                 time: nowStr,
                 timestamp: Date.now(),
                 maskId: currentMaskId()
@@ -9396,7 +9625,7 @@ ${uNick}，水喝到了没有？
 
               if (typeof renderMessageBubble === 'function') {
                 if (pIdx === 0) maybeInsertTimeDivider(nowStr, Date.now());
-                renderMessageBubble('assistant', piece, nowStr, curThought, newAiIdx);
+                renderMessageBubble('assistant', piece, nowStr, curThought, newAiIdx, curCot, curCotSource);
               }
               if (typeof scrollToBottom === 'function') scrollToBottom();
 

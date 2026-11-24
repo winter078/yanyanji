@@ -166,7 +166,7 @@
   <link rel="stylesheet" href="css/themes.css?v=2026111001" />
   <link rel="stylesheet" href="css/desktop.css?v=2026111720" />
   <link rel="stylesheet" href="css/notify.css" />
-  <link rel="stylesheet" href="css/wechat.css?v=2026111652" />
+  <link rel="stylesheet" href="css/wechat.css?v=2026112403" />
   <link rel="stylesheet" href="css/call.css?v=2026111649" />
   <link rel="stylesheet" href="css/skin-qq.css?v=2026111022" />
   <link rel="stylesheet" href="css/moments.css?v=2026111652" />
@@ -1898,28 +1898,80 @@
           </div>
         </div>
 
-        <!-- 思维链全中文弹窗 (角色心声系统升级：带小齿轮历史档案流) -->
-        <!-- iOS 毛玻璃底栏思维链抽屉 (1:1 复刻 Screenshot 2: Thought process / Summary) -->
+        <!-- 心声 / 思维链弹窗（有头像时点头像打开；齿轮进入自定义） -->
         <div class="ios-bottom-sheet-mask" id="cot-modal" onclick="closeCotModal()">
-          <div class="ios-bottom-sheet-card" onclick="event.stopPropagation()" style="max-height: 85vh; display: flex; flex-direction: column;">
+          <div class="ios-bottom-sheet-card" onclick="event.stopPropagation()" style="max-height: 88vh; display: flex; flex-direction: column;">
             <div class="ios-bottom-sheet-grabber"></div>
             <div class="ios-bottom-sheet-header" style="position: relative;">
               <button class="ios-sheet-close-circle" onclick="closeCotModal()" title="关闭">✕</button>
               <span class="ios-sheet-title" id="cot-sheet-title" style="display: flex; align-items: center; gap: 6px;">
-                <span>Thought process</span>
+                <span>心声</span>
                 <span id="cot-sheet-subtitle" style="font-size: 11px; font-weight: normal; color: var(--color-text-secondary); background: var(--glass); padding: 2px 7px; border-radius: 999px; display: none;">历史档案</span>
               </span>
-              <button class="ios-sheet-close-circle" id="btn-cot-history" onclick="toggleCotHistoryView()" title="点击切换心声历史档案" style="font-size: 15px; color: var(--color-text-primary); background: var(--glass-strong); border: 1px solid var(--color-border);">⚙️</button>
+              <button class="ios-sheet-close-circle" id="btn-cot-history" onclick="openXinshengSettings()" title="自定义心声样式与提示词" style="font-size: 15px; color: var(--color-text-primary); background: var(--glass-strong); border: 1px solid var(--color-border);">⚙️</button>
             </div>
-            
-            <!-- 视图 1：单条当前心声正文 -->
-            <div class="ios-bottom-sheet-body" id="cot-modal-content" style="display: block; flex: 1; overflow-y: auto;">
-              你在我胸口开了一扇窗，整段整段的心事，全写在这里。
+
+            <!-- 视图 1：当前心声 + 思维链 -->
+            <div class="ios-bottom-sheet-body xinsheng-sheet-body" id="cot-modal-content" style="display: block; flex: 1; overflow-y: auto;">
+              <div class="xinsheng-sheet-hero">
+                <div class="xinsheng-sheet-kicker">THE PART HE DOESN'T SAY OUT LOUD</div>
+                <div class="xinsheng-sheet-hero-title">心声</div>
+                <div class="xinsheng-sheet-hero-sub">头像点开是这里；没有头像时，它会和思维链一起站在消息旁边。</div>
+              </div>
+              <section class="xinsheng-sheet-card xinsheng-sheet-cot" id="cot-reasoning-section">
+                <div class="xinsheng-sheet-card-head">
+                  <span class="xinsheng-sheet-card-title">思维链</span>
+                  <span class="xinsheng-sheet-card-badge" id="cot-reasoning-source">模型</span>
+                </div>
+                <div class="xinsheng-sheet-card-body" id="cot-reasoning-content"></div>
+              </section>
+              <section class="xinsheng-sheet-card xinsheng-sheet-heart" id="cot-heart-section">
+                <div class="xinsheng-sheet-card-head">
+                  <span class="xinsheng-sheet-card-title">心声</span>
+                  <span class="xinsheng-sheet-card-badge">内心</span>
+                </div>
+                <div class="xinsheng-sheet-card-body" id="cot-heart-content"></div>
+              </section>
+              <div class="xinsheng-sheet-foot">自定义：齿轮 → 样式 / 提示词 / 历史</div>
             </div>
 
             <!-- 视图 2：历史心声流列表 -->
             <div class="ios-bottom-sheet-body" id="cot-modal-history" style="display: none; flex: 1; overflow-y: auto; padding: 10px 2px 30px;">
               <div id="cot-history-list" style="display: flex; flex-direction: column; gap: 12px;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 心声自定义设置 -->
+        <div class="ios-bottom-sheet-mask" id="xinsheng-settings-modal" onclick="closeXinshengSettings()">
+          <div class="ios-bottom-sheet-card" onclick="event.stopPropagation()" style="max-height: 90vh; display: flex; flex-direction: column;">
+            <div class="ios-bottom-sheet-grabber"></div>
+            <div class="ios-bottom-sheet-header" style="position: relative;">
+              <button class="ios-sheet-close-circle" onclick="closeXinshengSettings()" title="关闭">✕</button>
+              <span class="ios-sheet-title">自定义心声</span>
+              <span style="width: 28px;"></span>
+            </div>
+            <div class="ios-bottom-sheet-body" style="flex: 1; overflow-y: auto; padding: 12px 2px 24px; white-space: normal;">
+              <div class="xs-settings-tip">样式会立刻作用到「心声」弹窗和消息旁的并排卡片；提示词会拼进角色系统提示词。</div>
+
+              <div class="xs-settings-label">样式预设</div>
+              <div class="xs-settings-presets">
+                <button type="button" data-xs-preset="default" onclick="applyXinshengPreset('default')">默认</button>
+                <button type="button" data-xs-preset="polar" onclick="applyXinshengPreset('polar')">极夜黑白</button>
+                <button type="button" data-xs-preset="mono" onclick="applyXinshengPreset('mono')">纯文字</button>
+              </div>
+
+              <div class="xs-settings-label">心声 CSS</div>
+              <textarea id="xs-css-input" class="xs-settings-textarea" rows="7" spellcheck="false" placeholder="例如：.xinsheng-sheet-heart { background:#0b0b0b; }"></textarea>
+
+              <div class="xs-settings-label">生成提示词（补充要求）</div>
+              <textarea id="xs-prompt-input" class="xs-settings-textarea" rows="5" placeholder="例如：心声更克制，不要用感叹号，不要解释设定。"></textarea>
+
+              <div class="xs-settings-actions">
+                <button type="button" class="xs-settings-secondary" onclick="openCotHistoryFromSettings()">历史心声</button>
+                <button type="button" class="xs-settings-primary" onclick="saveXinshengSettings()">保存</button>
+              </div>
+              <div class="xs-settings-foot">CSS 只允许样式片段，不执行脚本；保存后写入本机。</div>
             </div>
           </div>
         </div>
@@ -6089,7 +6141,7 @@
   <script src="js/wechat/stickers.js?v=2026111150"></script>
   <script src="js/wechat/search-tools.js?v=2026111316"></script>
   <script src="js/wechat/weather-tools.js?v=2026111668"></script>
-  <script src="js/wechat/chat.js?v=2026111663"></script>
+  <script src="js/wechat/chat.js?v=2026112403"></script>
   <script src="js/wechat/voice-input.js?v=2026111591"></script>
   <script src="js/wechat/call.js?v=2026111649"></script>
   <script src="js/wechat/image-gen.js?v=2026111649"></script>

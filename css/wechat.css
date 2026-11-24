@@ -2094,3 +2094,333 @@ body[data-theme="light"] .wechat-tool-pill.sel {
   .msg-voice-bubble .is-playing span { animation: none; }
 }
 
+/* ================= 心声 / 思维链：极夜黑白 ================= */
+:root {
+  --xs-paper: #070707;
+  --xs-panel: #101010;
+  --xs-soft: #171717;
+  --xs-line: #2a2a2a;
+  --xs-ink: #ededed;
+  --xs-muted: #8c8c8c;
+  --xs-accent: #c9c9c9;
+}
+
+.msg-avatar.has-xinsheng {
+  cursor: pointer;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.72), 0 0 18px rgba(255,255,255,.14);
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.msg-avatar.has-xinsheng:active { transform: scale(.94); }
+
+.xinsheng-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  width: 100%;
+  max-width: 330px;
+  margin: 0 0 7px;
+}
+.xinsheng-pair-single { grid-template-columns: minmax(0, 1fr); max-width: 292px; }
+
+.xinsheng-panel {
+  min-width: 0;
+  background: var(--xs-panel);
+  border: 1px solid var(--xs-line);
+  border-radius: 12px;
+  padding: 9px 10px 8px;
+  color: var(--xs-ink);
+  box-shadow: 0 7px 18px rgba(0,0,0,.16);
+  overflow: hidden;
+}
+.xinsheng-panel::before {
+  content: "";
+  display: block;
+  height: 1px;
+  margin: -9px -10px 8px;
+  background: linear-gradient(90deg, rgba(255,255,255,.18), rgba(255,255,255,0));
+}
+.xinsheng-panel-cot::before { background: linear-gradient(90deg, #5c6b7a, rgba(92,107,122,0)); }
+.xinsheng-panel-heart::before { background: linear-gradient(90deg, #8d7c86, rgba(141,124,134,0)); }
+
+.xinsheng-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 6px;
+}
+.xinsheng-panel-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--xs-accent);
+  box-shadow: 0 0 0 2px rgba(255,255,255,.06);
+  flex: 0 0 auto;
+}
+.xinsheng-panel-label {
+  font-size: 9.5px;
+  line-height: 1;
+  letter-spacing: .14em;
+  font-weight: 700;
+  color: #dedede;
+  white-space: nowrap;
+}
+.xinsheng-panel-src {
+  margin-left: auto;
+  font-size: 9px;
+  line-height: 1;
+  color: var(--xs-muted);
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+.xinsheng-panel-body {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--xs-ink);
+  max-height: 128px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+.xinsheng-panel-heart .xinsheng-panel-body {
+  font-style: italic;
+  color: #f2f2f2;
+}
+
+/* 弹窗：一张黑色的“心事纸” */
+.xinsheng-sheet-body {
+  background: var(--xs-paper);
+  border: 1px solid #1d1d1d;
+  border-radius: 18px;
+  margin: 8px 0 4px;
+  padding: 0 12px 14px;
+  color: var(--xs-ink);
+  white-space: normal;
+}
+.xinsheng-sheet-hero { padding: 18px 2px 14px; }
+.xinsheng-sheet-kicker {
+  font-size: 9px;
+  letter-spacing: .19em;
+  color: #777;
+  text-transform: uppercase;
+  line-height: 1.4;
+}
+.xinsheng-sheet-hero-title {
+  margin-top: 7px;
+  font-size: 27px;
+  line-height: 1;
+  letter-spacing: .08em;
+  font-weight: 800;
+  color: #fafafa;
+}
+.xinsheng-sheet-hero-sub {
+  margin-top: 9px;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--xs-muted);
+}
+
+.xinsheng-sheet-card {
+  background: var(--xs-panel);
+  border: 1px solid var(--xs-line);
+  border-radius: 14px;
+  padding: 12px 13px 13px;
+  margin: 9px 0;
+  box-shadow: 0 10px 26px rgba(0,0,0,.14);
+}
+.xinsheng-sheet-cot { border-color: #24303a; }
+.xinsheng-sheet-heart { border-color: #302931; }
+.xinsheng-sheet-card-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 9px;
+}
+.xinsheng-sheet-card-title {
+  font-size: 10.5px;
+  letter-spacing: .13em;
+  font-weight: 700;
+  color: #dedede;
+}
+.xinsheng-sheet-card-badge {
+  margin-left: auto;
+  font-size: 9px;
+  line-height: 1;
+  color: var(--xs-muted);
+  border: 1px solid var(--xs-line);
+  border-radius: 999px;
+  padding: 4px 7px;
+  white-space: nowrap;
+}
+.xinsheng-sheet-card-body {
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--xs-ink);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.xinsheng-sheet-heart .xinsheng-sheet-card-body {
+  font-size: 14px;
+  font-style: italic;
+  color: #f5f5f5;
+}
+.xinsheng-sheet-foot {
+  margin: 14px 2px 0;
+  font-size: 10.5px;
+  letter-spacing: .04em;
+  color: #6f6f6f;
+  text-align: center;
+}
+
+/* 自定义设置 */
+.xs-settings-tip {
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+  margin: 2px 2px 14px;
+}
+.xs-settings-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  color: var(--color-text-primary);
+  margin: 16px 2px 7px;
+}
+.xs-settings-presets { display: flex; gap: 7px; flex-wrap: wrap; }
+.xs-settings-presets button {
+  flex: 1;
+  min-width: 76px;
+  border: 1px solid var(--color-border);
+  background: var(--glass-soft);
+  color: var(--color-text-primary);
+  border-radius: 10px;
+  padding: 9px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.xs-settings-presets button:active { background: var(--glass-strong); }
+.xs-settings-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  min-height: 72px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--glass-soft);
+  color: var(--color-text-primary);
+  padding: 11px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.xs-settings-textarea#xs-prompt-input { font-family: inherit; }
+.xs-settings-actions { display: flex; gap: 9px; margin-top: 20px; }
+.xs-settings-secondary,
+.xs-settings-primary {
+  flex: 1;
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.xs-settings-secondary {
+  border: 1px solid var(--color-border);
+  background: var(--glass-soft);
+  color: var(--color-text-primary);
+}
+.xs-settings-primary {
+  border: 1px solid #111;
+  background: #111;
+  color: #fff;
+}
+.xs-settings-foot {
+  margin: 12px 2px 0;
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+/* 无头像：两枚小胶囊，点一下才展开 */
+.xinsheng-inline {
+  width: 100%;
+  max-width: 300px;
+  margin: 0 0 6px;
+}
+.xinsheng-inline-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.xinsheng-inline-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 23px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(20, 20, 20, .96);
+  border: 1px solid #303030;
+  color: #d9d9d9;
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: .05em;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background .16s ease, border-color .16s ease, transform .16s ease;
+}
+.xinsheng-inline-pill:active { transform: scale(.96); }
+.xinsheng-inline-pill.is-open {
+  background: #202020;
+  border-color: #565656;
+}
+.xinsheng-inline-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #8f8f8f;
+  flex: 0 0 auto;
+}
+.xinsheng-inline-pill-cot .xinsheng-inline-dot { background: #6f8191; }
+.xinsheng-inline-pill-heart .xinsheng-inline-dot { background: #9a818d; }
+.xinsheng-inline-label { color: #e4e4e4; font-weight: 600; }
+.xinsheng-inline-src {
+  color: #7e7e7e;
+  font-size: 8.5px;
+  letter-spacing: 0;
+}
+.xinsheng-inline-chevron {
+  color: #7f7f7f;
+  font-size: 9px;
+  margin-left: 1px;
+  line-height: 1;
+}
+.xinsheng-inline-drawer {
+  display: none;
+  margin-top: 5px;
+  width: 100%;
+  max-width: 282px;
+  box-sizing: border-box;
+  border: 1px solid #242424;
+  border-radius: 10px;
+  background: #0d0d0d;
+  color: #e5e5e5;
+  font-size: 11px;
+  line-height: 1.55;
+  padding: 8px 10px;
+  max-height: 108px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+.xinsheng-inline-drawer.open { display: block; }
+.xinsheng-inline-drawer-heart { font-style: italic; color: #f1f1f1; }
+
+
+

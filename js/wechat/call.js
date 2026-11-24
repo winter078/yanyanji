@@ -400,6 +400,7 @@
     text = text.replace(/<(?:think|thinking|thought)>[\s\S]*$/gi, '');
     text = text.replace(/<\/?(?:think|thinking|thought)>/gi, '');
     text = text.replace(/【心声】[：:]?[\s\S]*?---/g, '');
+    text = text.replace(/【思维链】[：:]?[\s\S]*?---/g, '');
     text = text.replace(/【[^】\n]{1,18}】/g, '');
     text = text.replace(/\[\[SEARCHCARD:\d+\]\]/g, '');
     text = text.replace(/\[IMAGE:[^\]]*\]/g, '[图片]');
