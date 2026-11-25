@@ -4652,7 +4652,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       const currentMsg = (msgIndex !== -1 && typeof appData !== 'undefined' && Array.isArray(appData.chatHistory) && appData.chatHistory[msgIndex]) ? appData.chatHistory[msgIndex] : null;
       const narrationMeta = (currentMsg && currentMsg.narration) ? currentMsg : null;
       const voiceMeta = (currentMsg && currentMsg.voice) ? currentMsg.voice : null;
-      if (narrationMeta) group.classList.add('msg-narration-row');
+      if (narrationMeta || role === 'action') group.classList.add('msg-narration-row');
       if (isTyping) group.classList.add('typing-placeholder');
       // 单人会话里，同角色就是同一个人；群聊的连续发言按 speakerId 在 group-chat.js 里另行判断。
       // 默认“每条一个头像”；只有外观页切到“每轮一个头像”时，才由 CSS 收起同角色连发的后续头像。
@@ -5407,38 +5407,77 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       else if (cleanText.length > 0) {
         const allowAction = appData.chatSettings && appData.chatSettings.enableActionDesc;
         const segments = parseMessageSegments(cleanText);
+        const typingBubble = isTyping || cleanText === '__TYPING__';
 
-        let hasSpeech = false;
-        let speechText = '';
-
-        segments.forEach(seg => {
-          if (seg.type === 'action' && allowAction) {
-            // 独立居中动作描写/氛围卡片
-            const actionCard = document.createElement('div');
-            actionCard.className = 'narration-action-card';
-            actionCard.innerText = seg.text;
-            col.appendChild(actionCard);
-          } else {
-            hasSpeech = true;
-            speechText += (seg.text || '') + ' ';
-          }
-        });
-
-        if (hasSpeech || !allowAction || segments.length === 0) {
+        const appendSpeechBubble = function (text) {
+          const value = String(text == null ? '' : text).trim();
+          if (!value && !typingBubble) return;
           const bubble = document.createElement('div');
           bubble.className = 'msg-bubble-wechat';
-          if (isTyping || cleanText === '__TYPING__') {
+          if (typingBubble) {
             bubble.innerHTML = '<div class="typing-indicator-box"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div>';
           } else {
-            bubble.innerText = speechText.trim() || cleanText;
-          }
-
-          // 普通文字气泡不挂喇叭：角色语音只在语音条和通话里出现。
-
-          if (msgIndex !== -1) {
-            bindBubbleLongPress(bubble, msgIndex);
+            bubble.innerText = value;
+            // 普通文字气泡不挂喇叭：角色语音只在语音条和通话里出现。
+            if (msgIndex !== -1) bindBubbleLongPress(bubble, msgIndex);
           }
           bubbleWrap.appendChild(bubble);
+        };
+
+        const appendActionCard = function (text) {
+          const value = String(text == null ? '' : text).trim();
+          if (!value) return;
+          // 短灰胶囊：夹在台词气泡之间，像边说话边做动作
+          const pieces = (function () {
+            if (value.length <= 22) return [value];
+            const parts = value.split(/[，,。；;]/).map(function (p) { return p.trim(); }).filter(Boolean);
+            if (parts.length <= 1) return [value];
+            const out = [];
+            let buf = '';
+            parts.forEach(function (p) {
+              const next = buf ? (buf + '，' + p) : p;
+              if (next.length > 22 && buf) {
+                out.push(buf);
+                buf = p;
+              } else {
+                buf = next;
+              }
+            });
+            if (buf) out.push(buf);
+            return out.slice(0, 3);
+          })();
+          pieces.forEach(function (piece) {
+            const actionCard = document.createElement('div');
+            actionCard.className = 'narration-action-card';
+            actionCard.innerText = piece;
+            bubbleWrap.appendChild(actionCard);
+          });
+        };
+
+        if (typingBubble) {
+          appendSpeechBubble(cleanText);
+        } else if (role === 'action') {
+          appendActionCard(cleanText);
+        } else if (allowAction && role === 'assistant' && isStandaloneActionLine(cleanText)) {
+          appendActionCard(cleanText);
+        } else if (!allowAction) {
+          appendSpeechBubble(segments.map(function (seg) { return seg.text || ''; }).join(' ') || cleanText);
+        } else {
+          let speechBuffer = '';
+          const flushSpeech = function () {
+            if (speechBuffer.trim()) appendSpeechBubble(speechBuffer);
+            speechBuffer = '';
+          };
+          segments.forEach(function (seg) {
+            if (seg.type === 'action') {
+              flushSpeech();
+              appendActionCard(seg.text);
+            } else {
+              speechBuffer += (seg.text || '') + ' ';
+            }
+          });
+          flushSpeech();
+          if (!bubbleWrap.children.length) appendSpeechBubble(cleanText);
         }
       }
 
@@ -6564,9 +6603,12 @@ ${(() => {
   const customWriting = (s.actionDescWriting || '').trim();
   const lines = [
     '【角色旁白（已开启）】：',
-    '- 每次回复都要在台词之外，至少写一段具体、克制的动作、神态或环境旁白，用 *...* 包裹，单独成行。',
-    '- 旁白写角色此刻在做什么、周围的光线/声音/温度，或角色的细微反应；不要写成台词，不要替 user 决定动作和内心。',
-    '- 旁白和说话会分开展示成灰色卡片，所以不要用旁白重复台词，也不要每句话都加旁白。'
+    '- 每轮写 1–2 段短旁白，不要一次性写一大段，也不要每句话都配；没有动作变化就不写。',
+    '- 每段单独成行，用 *...* 包裹；放在对应台词的前一行或后一行，夹在几条短消息之间，形成“边说话边做动作”的节奏。',
+    '- 不要把动描全部堆在开头：先发 2–3 条短台词，再插一段 *动作*，然后继续台词；如果有第二段，放在后半段。',
+    '- 【格式死命令】动作旁白绝不能写成普通台词（例如“我翻了个身”“把手机换了个手拿”）；必须写成 *我翻了个身* 这样单独一行，否则会被当成说话发出去，不算动描。',
+    '- 只写角色此刻一个具体的小动作、神态或环境变化，不要重复台词，不要替 user 决定动作和内心。',
+    '- 旁白会显示成灰色胶囊，越短越像微信里的随手动作；不要写成小说段落。'
   ];
   if (person === 'second') {
     lines.push('- 人称：旁白用第二人称称呼 user 为“你”，写角色眼中的你和现场。');
@@ -6578,11 +6620,11 @@ ${(() => {
   if (customWriting) {
     lines.push('- 写作要求：' + customWriting);
   } else if (length === 'short') {
-    lines.push('- 写作要求：每条 20–40 字，短促克制，只写一个具体的小动作或一处环境变化。');
+    lines.push('- 写作要求：每条 4–10 字，只写一个动作或一处环境变化。');
   } else if (length === 'long') {
-    lines.push('- 写作要求：每条 80–140 字，可以写完整的动作过程、环境层次和角色细微的情绪变化。');
+    lines.push('- 写作要求：每条 12–24 字，最多两句，写动作过程和一点环境细节，仍然要短。');
   } else {
-    lines.push('- 写作要求：每条 40–80 字，细腻克制：写一个具体的小动作，再带一点光线、声音或温度，情绪藏在动作里。');
+    lines.push('- 写作要求：每条 8–18 字，一个具体小动作，带一点光线、声音或温度。');
   }
   if (s.actionDescContinuePlot) {
     lines.push('- 承接剧情：像线下一样自然带出身边 NPC 或突发事件，把剧情往下推；不要替 user 决定言行。');
@@ -6717,6 +6759,40 @@ ${(() => {
       const rest = rawText.slice(lastIdx).trim();
       if (rest) segments.push({ type: 'speech', text: rest });
       return segments.length > 0 ? segments : [{ type: 'speech', text: rawText }];
+    }
+
+    // 兜底：模型偶尔会把第三人称动描写成普通台词（没加 *），在渲染时识别成灰色胶囊。
+    function isStandaloneActionLine(text) {
+      const s = appData.chatSettings || {};
+      if ((s.actionDescPerson || 'third') !== 'third') return false;
+      const t = String(text == null ? '' : text).trim();
+      if (!t || t.length < 16 || /\*|（|）|\(|\)/.test(t)) return false;
+      if (/[?？]$/.test(t)) return false;
+      const name = appData.botRemark || '角色';
+      return t.indexOf(name) === 0 || t.indexOf('角色') === 0 || t.indexOf('她') === 0 || t.indexOf('他') === 0;
+    }
+
+    // 模型常把动描全堆在开头；发送前把开头连续的动作段挪到第 2 条台词之后，
+    // 让它真的变成“边说边做”，而不是开场先演一段。
+    function interleaveLeadingActions(list) {
+      const out = list.slice();
+      let moved = 0;
+      while (out[0] && out[0].type === 'action') {
+        const action = out.shift();
+        const needSpeech = 2 + moved * 3;
+        let speechSeen = 0;
+        let insertAt = out.length;
+        for (let i = 0; i < out.length; i++) {
+          if (out[i].type === 'speech') speechSeen++;
+          if (speechSeen >= needSpeech) {
+            insertAt = i + 1;
+            break;
+          }
+        }
+        out.splice(insertAt, 0, action);
+        moved++;
+      }
+      return out;
     }
 
     // ================= 修复：上传照片与文字图功能 =================
@@ -8232,6 +8308,9 @@ ${catalog}
           if (presetEnabled('rhythm')) {
             tailRules.push(tailSentenceRule);
           }
+          if (s.enableActionDesc) {
+            tailRules.push('【角色旁白格式死命令】：本轮至少写 1 段、最多 2 段动作旁白，每段必须单独一行用 *...* 包住，夹在台词消息之间；严禁把动作写成普通台词（“我翻了个身”），每段 8–20 字。');
+          }
           tailRules.push('【彻底打破排比回声与死板模板】：严禁连续输出相同句式！严禁演讲式自我感动排比！允许出现单字/极短词（如“？”、“笑死”、“谁敢”），穿插长短句，随性用标点甚至不用标点，像活人一样松弛接话，不许当端着的复读机！');
         }
         if (tailRules.length) {
@@ -8806,6 +8885,9 @@ ${catalog}
             const url = (display && display.url) || (typeof window.findStickerUrlByName === 'function' ? window.findStickerUrlByName(name) : '');
             return !!url;
           });
+          if (appData.chatSettings && appData.chatSettings.enableActionDesc && !(window.__voiceCallMode && !window.__voiceCallMinimized)) {
+            segList = interleaveLeadingActions(segList);
+          }
           if (!searchCardResult.inline) {
             searchCards.forEach(function (card) {
               segList.push({ type: 'searchcard', card: card });

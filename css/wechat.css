@@ -911,21 +911,22 @@ html.kb-open #page-chat .wechat-input-bar-v2 {
 /* ================= 动描/旁白模式独立渲染卡片 ================= */
 .narration-action-card {
   display: block;
-  margin: 12px auto;
+  align-self: center;
+  margin: 4px auto;
   width: fit-content;
-  max-width: 92%;
-  padding: 12px 18px;
-  background: var(--bg-surface);
-  border: 0.5px solid var(--color-border);
-  border-radius: 12px;
+  max-width: 86%;
+  padding: 5px 13px;
+  background: rgba(255, 255, 255, 0.065);
+  border: 0.5px solid rgba(255, 255, 255, 0.075);
+  border-radius: 999px;
   color: var(--color-text-secondary);
-  font-size: 13.5px;
+  font-size: 12.5px;
   letter-spacing: 0.2px;
-  line-height: 1.6;
-  text-align: left;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  line-height: 1.45;
+  text-align: center;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: none;
   box-sizing: border-box;
 }
 
