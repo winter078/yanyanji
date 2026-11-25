@@ -155,6 +155,7 @@
   let hiddenConvIds = [];
   let activeId = '';
   let editingId = '';
+  let draftCharId = '';
   let persistWarned = false;
 
   function loadAll() {
@@ -455,8 +456,9 @@
     chars.push(c);
     persist();
     setActive(c.id);
+    draftCharId = c.id;
     renderContacts();
-    openCharacterEditor(c.id);
+    openCharacterEditor(c.id, { keepDraft: true });
     setTimeout(() => {
       const f = document.getElementById('char-remark-field');
       if (f) { f.focus(); f.select(); }
@@ -553,34 +555,77 @@
     return 'rp';
   }
 
+  function isDraftChar(charId) {
+    return !!charId && draftCharId === charId;
+  }
+
   function updateCharCompanionModeUI(charId) {
     const mode = companionModeOf(charId);
+    const isDraft = isDraftChar(charId);
     const picker = document.getElementById('char-mode-picker');
     if (picker) {
       picker.querySelectorAll('.char-mode-option').forEach(el => {
         el.classList.toggle('selected', el.dataset.mode === mode);
+        el.disabled = !isDraft;
+        el.classList.toggle('is-locked', !isDraft);
       });
     }
     const hint = document.getElementById('char-mode-hint');
     if (hint) {
-      hint.textContent = mode === 'ai'
-        ? '当前：人机恋。他知道自己在小手机里，也能接工具和工作包。创建后也能随时改。'
-        : '当前：纯 RP。他不知道自己是 AI，出戏的记忆会自动隐藏。创建后也能随时改。';
+      if (isDraft) {
+        hint.textContent = '这是新角色卡：选好这段关系的起点，保存后陪伴方式就会锁定。想同时体验两种，保存后再复制一张卡。';
+      } else {
+        hint.textContent = mode === 'ai'
+          ? '当前：人机恋。他知道自己在小手机里，也能接工具和工作包。陪伴方式在创建时定下，之后不能切换；想换请复制一张角色卡。'
+          : '当前：纯 RP。他不知道自己是 AI，出戏的记忆会自动隐藏。陪伴方式在创建时定下，之后不能切换；想换请复制一张角色卡。';
+      }
+    }
+    const duplicateBtn = document.getElementById('char-duplicate-btn');
+    if (duplicateBtn) duplicateBtn.style.display = isDraft ? 'none' : 'flex';
+    const lockBadge = document.getElementById('char-mode-lock-badge');
+    if (lockBadge) {
+      lockBadge.textContent = isDraft ? '创建时可选' : '已锁定';
+      lockBadge.classList.toggle('is-draft', isDraft);
     }
   }
 
   window.setCharCompanionMode = function (mode) {
     const id = editingId;
     if (!id) return;
-    if (!window.MomMode || typeof window.MomMode.set !== 'function') {
-      toast('模式模块还没加载好，刷新一下页面');
+    if (!isDraftChar(id)) {
+      toast('陪伴方式在创建时定下，之后不能切换。想换就复制一张角色卡。');
       return;
     }
     const next = mode === 'ai';
     window.MomMode.set(id, next);
     updateCharCompanionModeUI(id);
-    toast(next ? '已切到人机恋：他知道自己在小手机里' : '已切到纯 RP：他不会再提自己是 AI');
+    toast(next ? '已选人机恋：保存后这张卡就会知道自己在小手机里' : '已选纯 RP：保存后这张卡不会提自己是 AI');
   };
+
+  function duplicateCharacterCard() {
+    const src = find(editingId);
+    if (!src) return;
+    if (isDraftChar(src.id)) {
+      toast('先把这张新卡保存，再复制');
+      return;
+    }
+    const copy = norm(Object.assign({}, src, {
+      id: uid(),
+      name: (src.name || '角色') + ' 副本',
+      relations: (src.relations || []).map(r => ({ to: r.to, label: r.label })),
+      createdAt: Date.now()
+    }), chars.length);
+    chars.push(copy);
+    persist();
+    setActive(copy.id);
+    draftCharId = copy.id;
+    const nextAi = companionModeOf(src.id) !== 'ai';
+    try { if (window.MomMode) window.MomMode.set(copy.id, nextAi); } catch (e) {}
+    renderContacts();
+    openCharacterEditor(copy.id, { keepDraft: true });
+    toast(nextAi ? '已复制一张新卡，陪伴方式预选为人机恋；记忆从零开始' : '已复制一张新卡，陪伴方式预选为纯 RP；记忆从零开始');
+  }
+  window.duplicateCharacterCard = duplicateCharacterCard;
 
   function updateCharVoiceRateLabel(value) {
     const label = document.getElementById('char-voice-rate-label');
@@ -626,10 +671,13 @@
   }
   window.previewCharacterVoice = previewCharacterVoice;
 
-  function openCharacterEditor(id) {
+  function openCharacterEditor(id, opts) {
     openContactsDrawer_close();
     const c = find(id);
     if (!c) return;
+    if (!opts || !opts.keepDraft) {
+      if (draftCharId && draftCharId !== id) draftCharId = '';
+    }
     editingId = id;
     window.__editingCharId = id;
     fillEditor(c);
@@ -640,6 +688,7 @@
   window.fillCharacterEditorById = function (id) {
     const c = find(id);
     if (!c) return;
+    if (draftCharId && draftCharId !== id) draftCharId = '';
     editingId = id;
     window.__editingCharId = id;
     fillEditor(c);
@@ -666,6 +715,16 @@
     const dirEl = document.getElementById('core-directives-field');
     if (dirEl) c.directives = dirEl.value.trim();
     c.relations = readRelations();
+
+    // 陪伴方式只在“这张卡第一次创建/复制出来”时选一次；之后保存角色卡不会改它。
+    if (isDraftChar(c.id)) {
+      const picked = document.querySelector('#char-mode-picker .char-mode-option.selected');
+      const nextAi = !!(picked && picked.dataset.mode === 'ai');
+      try {
+        if (window.MomMode && typeof window.MomMode.set === 'function') window.MomMode.set(c.id, nextAi);
+      } catch (e) {}
+      draftCharId = '';
+    }
 
     const uiEl = document.getElementById('user-info-field');
     if (uiEl && window.appData) {
@@ -694,6 +753,7 @@
     }
     persist();
     editingId = '';
+    if (draftCharId === c.id) draftCharId = '';
     renderContacts();
     renderWechatSessions();
     if (window.renderChatPinUI) window.renderChatPinUI();

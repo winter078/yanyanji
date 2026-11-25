@@ -537,7 +537,7 @@
 
       var state = document.createElement('span');
       state.className = 'workpack-role-state';
-      state.textContent = !aware ? '先开人机恋' : (cb.checked ? '已启用' : '未启用');
+      state.textContent = !aware ? '需人机恋卡' : (cb.checked ? '已启用' : '未启用');
 
       row.appendChild(cb);
       row.appendChild(avatar);

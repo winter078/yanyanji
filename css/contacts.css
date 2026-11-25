@@ -137,6 +137,22 @@ body[data-wx-tab="contacts"] .wechat-status-motto-banner { display: none !import
   font-size: 13px;
   font-weight: 600;
 }
+.wx-btn-duplicate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin-top: 10px;
+  padding: 11px 12px;
+  border-radius: 12px;
+  border: 0.5px solid rgba(148, 163, 184, .3);
+  background: rgba(148, 163, 184, .08);
+  color: var(--color-text-primary);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
 
 /* ---------- toast ---------- */
 #wx-toast {

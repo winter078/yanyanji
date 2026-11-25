@@ -4631,6 +4631,22 @@ html.ios.sb-native .home-dock-bar {
   border-color: rgba(10, 132, 255, 0.24);
 }
 
+.char-mode-lock-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.16);
+  color: var(--color-text-secondary);
+  font-size: 9.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.char-mode-lock-badge.is-draft {
+  background: rgba(10, 132, 255, 0.14);
+  color: #0a84ff;
+}
+
 .char-mode-picker {
   display: flex;
   flex-direction: column;
@@ -4656,6 +4672,16 @@ html.ios.sb-native .home-dock-bar {
 .char-mode-option.selected {
   border-color: rgba(10, 132, 255, 0.6);
   background: rgba(10, 132, 255, 0.1);
+}
+
+.char-mode-option.is-locked {
+  cursor: default;
+}
+.char-mode-option.is-locked:not(.selected) {
+  opacity: 0.52;
+}
+.char-mode-option.is-locked.selected {
+  opacity: 0.9;
 }
 
 .char-mode-icon {
