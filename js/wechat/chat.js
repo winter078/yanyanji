@@ -8,6 +8,62 @@
     var CHAT_ALBUM_AUTO_APPEND_ON_MENTION = true;
     var chatImageSession = { charId: '', userCount: 0, sentCount: 0, lastSentAt: 0 };
 
+    function updateStatusPill(el, state) {
+      if (!el) return;
+      el.style.display = 'block';
+      el.style.borderRadius = '10px';
+      el.style.padding = '8px 12px';
+      el.style.lineHeight = '1.45';
+      if (state === 'success') {
+        el.style.background = 'rgba(7,193,96,.14)';
+        el.style.color = '#07c160';
+      } else if (state === 'error') {
+        el.style.background = 'rgba(255,77,79,.14)';
+        el.style.color = '#ff4d4f';
+      } else {
+        el.style.background = 'rgba(255,193,7,.12)';
+        el.style.color = '#ffc107';
+      }
+    }
+
+    // 纯 RP 的上下文里，不能把过去人机恋说过的“我是 AI / 模型 / 小手机”继续喂给模型，
+    // 否则切回纯 RP 后它会顺着旧话承认自己是 AI。
+    function isSelfAiDisclosure(text) {
+      var s = String(text == null ? '' : text);
+      return /(我(?:确实|就|真的)?是\s*AI|我是\s*AI|AI伴侣|跑在[^\n]{0,24}(?:小)?手机|在[^\n]{0,8}手机里|不是人|一串跑|模型是\s*|DeepSeek|deepseek|算力底座|系统提示|接口|后台|摊牌了)/i.test(s);
+    }
+
+    // 按“连续角色回复”成块过滤：只要一块里有出戏内容，整块都不带给纯 RP，
+    // 避免漏掉“名字挺长吧 / 跑在你手机里 / 不是人”这类上下文碎片。
+    function filterPureRpHistory(history) {
+      var out = [];
+      var block = [];
+      function flush() {
+        if (!block.length) return;
+        var leak = block.some(function (m) { return isSelfAiDisclosure(m && m.content); });
+        if (!leak) out.push.apply(out, block);
+        block = [];
+      }
+      for (var i = 0; i < history.length; i++) {
+        var m = history[i];
+        if (m && m.role === 'assistant') {
+          block.push(m);
+        } else {
+          flush();
+          out.push(m);
+        }
+      }
+      flush();
+      return out;
+    }
+
+    // 纯 RP 连“记忆”里也不能带出人机恋时期的模型/小手机自述。
+    function purgePureRpMemoryText(text) {
+      return String(text == null ? '' : text).split('\n').filter(function (line) {
+        return !/(DeepSeek|deepseek|模型|AI|小手机|接口|后台|系统|程序|算力|反爬|视觉|工具|机时)/.test(line);
+      }).join('\n');
+    }
+
     // 点外链时先在本机里开一层"站内浏览器"：不再直接把页面交给 Safari / 外部 App，
     // 否则 iOS 上切走再回来，当前页会被系统回收成空白
     function escapeAttr(str) {
@@ -6440,17 +6496,23 @@ ${(() => {
   try {
     if (window.getPalaceMemoryTextFor) {
       const scoped = window.getPalaceMemoryTextFor('single', activeId, 7, { query: memoryQuery });
-      return scoped || '这个角色还没有专属记忆存档。';
+      const raw = scoped || '这个角色还没有专属记忆存档。';
+      if (aiAware) return raw;
+      const cleaned = purgePureRpMemoryText(raw).trim();
+      return cleaned || '这个角色还没有专属记忆存档。';
     }
   } catch (e) {}
   const memories = appData.palaceMemories || [];
   if (memories.length === 0) return '暂无早期封存档案。';
   const bigSummaries = memories.filter(m => (m.level || 0) > 0).slice(0, 3);
   const recentCards = memories.filter(m => !m.level).slice(0, 4);
-  return [...bigSummaries, ...recentCards].map(m => {
+  const raw = [...bigSummaries, ...recentCards].map(m => {
     const tierName = m.level === 1 ? '【大总结】' : (m.level >= 2 ? '【大大总结】' : '【记忆存档】');
     return tierName + ' ' + m.title + ' (' + (m.dateStr || '') + '): ' + m.summary + ' [关键词: ' + (m.tags || []).join(' ') + ']';
   }).join('\n\n');
+  if (aiAware) return raw;
+  const cleaned = purgePureRpMemoryText(raw).trim();
+  return cleaned || '暂无早期封存档案。';
 })()}
 
 
@@ -7250,7 +7312,12 @@ ${catalog}
         const scopedHistory = (typeof window.scopeActiveChatHistoryToMask === 'function')
           ? window.scopeActiveChatHistoryToMask(appData.chatHistory || [])
           : (appData.chatHistory || []);
-        const historySlice = scopedHistory.slice(-depth);
+        let historySlice = scopedHistory.slice(-depth);
+        try {
+          if (window.MomMode && typeof window.MomMode.isAiAware === 'function' && !window.MomMode.isAiAware(activeChatCharId())) {
+            historySlice = filterPureRpHistory(historySlice);
+          }
+        } catch (e) {}
         const userMessages = historySlice.filter(m => m.role === 'user' && !m.recalled && !m.hiddenFromAI);
         let targetImageMsg = null;
         let quotedImgData = null;
