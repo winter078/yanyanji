@@ -526,12 +526,16 @@
   function setCallReplyMode(mode) {
     var next = String(mode) === 'voice' ? 'voice' : 'text';
     if (state.replyMode === next) return;
+    if (next === 'voice' && (!window.CharVoice || typeof window.CharVoice.isEnabled !== 'function' || !window.CharVoice.isEnabled())) {
+      state.replyMode = 'text';
+      renderCallReplyMode();
+      toast('角色语音还没接通：去「设置 → 角色语音」选火山、填 Key，再回来点「有声」');
+      return;
+    }
     state.replyMode = next;
     if (next === 'text') {
       clearCallSpeechQueue();
       try { if (window.CharVoice && typeof window.CharVoice.stop === 'function') window.CharVoice.stop(); } catch (e) {}
-    } else if (!window.CharVoice || typeof window.CharVoice.isEnabled !== 'function' || !window.CharVoice.isEnabled()) {
-      toast('语音 Key 还没接通，先显示文字');
     }
     renderCallReplyMode();
   }

@@ -563,6 +563,9 @@
 .call-msg.user .call-msg-meta { text-align: right; }
 
 .call-action-note {
+  align-self: center;
+  width: fit-content;
+  max-width: 100%;
   margin: -2px 0 -3px;
   padding: 8px 11px;
   border: .5px solid rgba(255, 255, 255, .075);
@@ -872,7 +875,9 @@
 }
 .call-record-msg.user .call-record-meta { text-align: right; }
 .call-record-action {
-  margin: 12px 0 4px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 12px auto 4px;
   padding: 8px 12px;
   border: .5px solid rgba(255,255,255,.075);
   border-radius: 10px;
