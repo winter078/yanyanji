@@ -7,10 +7,13 @@
   var LS_COOKIE = 'momo_netease_cookie';
   var LS_NICK = 'momo_netease_nick';
   var LS_UID = 'momo_netease_uid';
+  var LS_PROFILE = 'momo_netease_profile_v1';
 
   var pollTimer = null;
   var currentKey = '';
   var expireAt = 0;
+  var profileFetching = false;
+  var profileLastTryAt = 0;
 
   function getCookie() {
     try { return localStorage.getItem(LS_COOKIE) || ''; } catch (e) { return ''; }
@@ -28,6 +31,95 @@
     return m ? m[1].slice(0, 6) : '';
   }
 
+  function readProfileCache() {
+    try {
+      var raw = localStorage.getItem(LS_PROFILE);
+      var p = raw ? JSON.parse(raw) : null;
+      return p && typeof p === 'object' ? p : null;
+    } catch (e) { return null; }
+  }
+
+  function saveProfileCache(p) {
+    try { localStorage.setItem(LS_PROFILE, JSON.stringify(p)); } catch (e) {}
+  }
+
+  function clearProfileCache() {
+    try { localStorage.removeItem(LS_PROFILE); } catch (e) {}
+  }
+
+  function updateVipBadge() {
+    var badge = document.getElementById('mz-mine-vip');
+    if (!badge) return;
+    var logged = !!getCookie();
+    var p = readProfileCache();
+    var vip = !!(logged && p && p.loggedIn && p.vip);
+    badge.classList.toggle('on', vip);
+    badge.textContent = 'VIP';
+    if (!logged) {
+      badge.title = '登录网易云后显示会员状态';
+    } else if (p && p.loginExpired) {
+      badge.title = '网易云登录已失效，重新扫码后显示';
+    } else if (vip) {
+      badge.title = '网易云' + (p.vipName || '黑胶VIP') + '已生效';
+    } else if (p && p.loggedIn) {
+      badge.title = '当前账号未开通黑胶VIP';
+    } else {
+      badge.title = '正在读取网易云会员状态';
+    }
+  }
+
+  async function refreshProfile(force) {
+    var cookie = getCookie();
+    if (!cookie) {
+      clearProfileCache();
+      updateVipBadge();
+      return;
+    }
+    var cached = readProfileCache();
+    if (!force && cached && cached.loggedIn && Date.now() - Number(cached.checkedAt || 0) < 10 * 60 * 1000) {
+      updateVipBadge();
+      return;
+    }
+    if (profileFetching) return;
+    if (!force && Date.now() - profileLastTryAt < 30 * 1000) return;
+
+    profileFetching = true;
+    profileLastTryAt = Date.now();
+    try {
+      var r = await fetch('/api/music/profile?cb=' + Date.now(), {
+        cache: 'no-store',
+        headers: { 'x-netease-cookie': cookie }
+      });
+      var d = await r.json().catch(function () { return {}; });
+      if (d && d.loggedIn) {
+        saveProfileCache({
+          loggedIn: true,
+          vip: !!d.vip,
+          vipType: d.vipType || 0,
+          vipName: d.vipName || '',
+          nickname: d.nickname || '',
+          avatarUrl: d.avatarUrl || '',
+          checkedAt: Date.now()
+        });
+        if (!getNick() && d.nickname) {
+          try { localStorage.setItem(LS_NICK, d.nickname); } catch (e) {}
+        }
+      } else if (d && d.loginExpired) {
+        saveProfileCache({
+          loggedIn: false,
+          loginExpired: true,
+          vip: false,
+          checkedAt: Date.now()
+        });
+      }
+    } catch (e) {
+      // 网络失败时保留上一次状态，避免把已点亮的 VIP 误判成灰
+    }
+    profileFetching = false;
+    updateVipBadge();
+    refreshCard();
+  }
+
   function refreshCard() {
     var card = document.getElementById('mz-nc-card');
     var nameEl = document.getElementById('mz-nc-name');
@@ -36,12 +128,24 @@
     var outBtn = document.getElementById('mz-nc-out');
     if (!nameEl || !stateEl) return;
     var c = getCookie();
+    var p = readProfileCache();
     if (card) card.className = 'mz-nc-card' + (c ? ' logged' : '');
     if (c) {
-      var nick = getNick();
+      var nick = (p && p.nickname) || getNick();
       nameEl.innerText = nick ? ('已连上：' + nick) : '已连上网易云';
-      stateEl.innerText = '会员歌、你的歌单都能放了';
-      stateEl.className = 'mz-nc-state ok';
+      if (p && p.loginExpired) {
+        stateEl.innerText = '登录已失效，重新扫码后恢复会员歌';
+        stateEl.className = 'mz-nc-state';
+      } else if (p && p.vip) {
+        stateEl.innerText = '黑胶VIP已生效，会员歌都能放';
+        stateEl.className = 'mz-nc-state ok';
+      } else if (p && p.loggedIn) {
+        stateEl.innerText = '账号已连上；会员歌是否可放看账号权限';
+        stateEl.className = 'mz-nc-state ok';
+      } else {
+        stateEl.innerText = '会员歌、你的歌单都能放了';
+        stateEl.className = 'mz-nc-state ok';
+      }
       if (loginBtn) loginBtn.style.display = 'none';
       if (outBtn) outBtn.style.display = '';
     } else {
@@ -51,6 +155,7 @@
       if (loginBtn) loginBtn.style.display = '';
       if (outBtn) outBtn.style.display = 'none';
     }
+    updateVipBadge();
   }
 
   function closeMask() {
@@ -136,6 +241,7 @@
           } catch (e) {}
           setStatus('登录成功，正在刷新…', 'ok');
           refreshCard();
+          refreshProfile(true);
           setTimeout(function () {
             closeMask();
             if (typeof window.mzToast === 'function') window.mzToast('网易云已连上');
@@ -181,14 +287,24 @@
       localStorage.removeItem(LS_NICK);
       localStorage.removeItem(LS_UID);
     } catch (e) {}
+    clearProfileCache();
     refreshCard();
     if (typeof window.mzToast === 'function') window.mzToast('已断开网易云');
   };
 
+  window.mzNeteaseRefreshVip = function () { refreshProfile(true); };
+
   window.mzNeteaseInit = function () {
     refreshCard();
+    refreshProfile();
+    var badge = document.getElementById('mz-mine-vip');
+    if (badge && !badge.__mzVipBound) {
+      badge.__mzVipBound = true;
+      badge.addEventListener('click', function () { refreshProfile(true); });
+    }
     // 老版本可能挂在这，从「我的」页定时对一次状态，避免切页后不显示
     setInterval(refreshCard, 3000);
+    setInterval(function () { refreshProfile(); }, 5 * 60 * 1000);
   };
 
   if (document.readyState === 'loading') {
