@@ -212,9 +212,47 @@
       artifactId: '',
       artifactName: '',
       error: '',
+      retryOf: '',
+      retriedBy: '',
       createdAt: Date.now(),
       updatedAt: Date.now()
     };
+  }
+
+  // 用户从旧任务点“继续/重试”时，聊天层会在输入框里留下一个待接手的标记。
+  // 只有真正生成了新任务，才把旧任务收口；没有生成（比如 Key 没填）就保留旧任务，避免误锁。
+  function takeRetryOrigin(task, charId) {
+    var pending = window.__momPendingRetry;
+    if (!pending || !pending.taskId || !pending.at) return '';
+    if (Date.now() - Number(pending.at) > 120000) {
+      window.__momPendingRetry = null;
+      return '';
+    }
+    if (String(pending.charId || '') !== String(charId || '')) return '';
+    if (String(pending.goal || '').replace(/\s+/g, ' ').trim().slice(0, 90) !== task.goal) return '';
+    window.__momPendingRetry = null;
+    return String(pending.taskId);
+  }
+
+  function markTaskRetried(oldId, newTask) {
+    var map = readTasks();
+    var changed = false;
+    Object.keys(map).forEach(function (charId) {
+      var list = Array.isArray(map[charId]) ? map[charId] : [];
+      list.forEach(function (task) {
+        if (!task || task.id !== oldId) return;
+        if (task.status !== 'error' && task.status !== 'interrupted') return;
+        task.status = 'superseded';
+        task.error = '';
+        task.retriedBy = newTask && newTask.id ? newTask.id : '';
+        task.updatedAt = Date.now();
+        changed = true;
+      });
+    });
+    if (!changed) return;
+    writeTasks(map);
+    try { if (window.refreshWorkTaskLedger) window.refreshWorkTaskLedger(); } catch (e) {}
+    try { if (window.__momUpsertWorkTask) window.__momUpsertWorkTask(getTask(oldId)); } catch (e) {}
   }
 
   function setStep(task, key, status) {
@@ -294,7 +332,10 @@
       imageDropped: imageDropped,
       compareMode: compare
     });
+    var retryOf = takeRetryOrigin(task, charId);
+    if (retryOf) task.retryOf = retryOf;
     emit(task, opts.onUpdate);
+    if (retryOf) markTaskRetried(retryOf, task);
 
     try {
       var made = await window.MomArtifacts.maybeCreate({
@@ -439,6 +480,7 @@
     if (task && task.status === 'done') return { cls: 'done', text: '已完成' };
     if (task && task.status === 'error') return { cls: 'error', text: '失败' };
     if (task && task.status === 'interrupted') return { cls: 'warn', text: '已中断' };
+    if (task && task.status === 'superseded') return { cls: 'superseded', text: '已转新任务' };
     return { cls: 'running', text: '进行中' };
   }
 
@@ -467,7 +509,9 @@
 
     var tasks = allTasks().slice(0, 6);
     if (summaryEl) {
-      var active = tasks.filter(function (t) { return t.status !== 'done'; }).length;
+      var active = tasks.filter(function (t) {
+        return t.status !== 'done' && t.status !== 'superseded';
+      }).length;
       summaryEl.textContent = tasks.length
         ? ('最近 ' + tasks.length + ' 条' + (active ? ' · ' + active + ' 条未完成' : ''))
         : '还没有任务';

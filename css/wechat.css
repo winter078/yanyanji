@@ -1690,6 +1690,7 @@ body[data-theme="light"] .wechat-tool-pill.sel {
 .wechat-work-task.done .wkt-state { color: var(--success-primary, #07c160); }
 .wechat-work-task.error .wkt-state { color: #e5484d; }
 .wechat-work-task.interrupted .wkt-state { color: #f59e0b; }
+.wechat-work-task.superseded .wkt-state { color: var(--text-muted); }
 
 .wkt-title {
   font-size: 14px;

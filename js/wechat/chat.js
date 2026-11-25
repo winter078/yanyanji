@@ -3133,6 +3133,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       if (task && task.status === 'done') return { cls: 'done', text: '已完成' };
       if (task && task.status === 'error') return { cls: 'error', text: '没做成' };
       if (task && task.status === 'interrupted') return { cls: 'interrupted', text: '已中断' };
+      if (task && task.status === 'superseded') return { cls: 'superseded', text: '已转新任务' };
       return { cls: 'running', text: '进行中' };
     }
 
@@ -3279,6 +3280,13 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       const startRetry = function () {
         const input = document.getElementById('chat-input');
         if (!input) return false;
+        // 标记这次输入是旧任务的重试；真正生成新任务后，工作包会把旧任务收口。
+        window.__momPendingRetry = {
+          taskId: task.id,
+          charId: task.charId || activeChatCharId(),
+          goal: task.goal,
+          at: Date.now()
+        };
         input.value = task.goal;
         input.style.height = 'auto';
         try { input.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) {}
