@@ -168,12 +168,14 @@
     var model = modelInfo();
     var cid = charId();
     var tools = toolRows();
+    var toolsKnown = !!(window.MomTools && (typeof window.MomTools.status === 'function' || typeof window.MomTools.list === 'function'));
     var okTools = tools.filter(function (t) { return !!t.ok; });
     var badTools = tools.filter(function (t) { return !t.ok; });
 
     var workPack = workPackInfo();
     var workPackOn = workPack.on;
     var artifactsReady = !!(window.MomArtifacts && typeof window.MomArtifacts.wantsFile === 'function');
+    var docsUnknown = !window.WorkPack || !artifactsReady;
     var docsReady = !!(model.chat.configured && workPackOn && artifactsReady);
     var docsReason = '';
     if (!model.chat.configured) docsReason = '主模型还没配好';
@@ -183,42 +185,46 @@
     else if (!artifactsReady) docsReason = '文件模块没加载';
 
     var searchDetail = '';
-    if (!tools.length) {
-      searchDetail = '工具注册表还没加载';
+    if (!toolsKnown) {
+      searchDetail = '工具注册表没加载，现在读不到';
+    } else if (!tools.length) {
+      searchDetail = '还没有注册任何工具';
     } else if (!okTools.length) {
       searchDetail = '搜索 / 小红书 / 推特 / 天气都还没配';
     } else {
       searchDetail = '可用：' + okTools.map(function (t) { return t.label; }).join(' / ');
       if (badTools.length) searchDetail += '；缺：' + badTools.map(function (t) { return t.label; }).join(' / ');
     }
-    var searchState = okTools.length ? (badTools.length ? 'partial' : 'ready') : 'off';
-    var searchBadge = searchState === 'ready' ? '可用' : (searchState === 'partial' ? '部分' : '未配置');
-    var searchReason = badTools.map(function (t) {
+    var searchState = !toolsKnown ? 'unknown' : (okTools.length ? (badTools.length ? 'partial' : 'ready') : 'off');
+    var searchBadge = !toolsKnown ? '未知' : (searchState === 'ready' ? '可用' : (searchState === 'partial' ? '部分' : '未配置'));
+    var searchReason = !toolsKnown ? '工具注册表没加载' : badTools.map(function (t) {
       return t.label + '：' + (t.reason || '当前不可用');
     }).join('；');
 
-    var imageConfigured = !!safe(function () { return window.isCharacterImageConfigured(); }, false);
-    var imageEnabled = !!(cid && safe(function () { return window.isCharacterImageEnabled(cid); }, false));
-    var imageState = (imageConfigured && imageEnabled) ? 'ready' : 'off';
-    var imageBadge = imageState === 'ready' ? '可用' : (!imageConfigured ? '未配置' : '本角色未开');
-    var imageReason = !imageConfigured ? '生图线路还没配' : (!imageEnabled ? '当前角色没开生图' : '');
+    var imageApi = !!(window.isCharacterImageConfigured && window.isCharacterImageEnabled);
+    var imageConfigured = imageApi && !!safe(function () { return window.isCharacterImageConfigured(); }, false);
+    var imageEnabled = imageApi && !!(cid && safe(function () { return window.isCharacterImageEnabled(cid); }, false));
+    var imageState = !imageApi ? 'unknown' : ((imageConfigured && imageEnabled) ? 'ready' : 'off');
+    var imageBadge = !imageApi ? '未知' : (imageState === 'ready' ? '可用' : (!imageConfigured ? '未配置' : '本角色未开'));
+    var imageReason = !imageApi ? '生图模块没加载，现在读不到' : (!imageConfigured ? '生图线路还没配' : (!imageEnabled ? '当前角色没开生图' : ''));
 
-    var voiceOn = !!safe(function () { return window.CharVoice && window.CharVoice.isEnabled(); }, false);
-    var voiceCfg = safe(function () {
+    var voiceApi = !!window.CharVoice;
+    var voiceOn = voiceApi && !!safe(function () { return window.CharVoice.isEnabled(); }, false);
+    var voiceCfg = voiceApi ? safe(function () {
       return (window.CharVoice && typeof window.CharVoice.getConfig === 'function') ? window.CharVoice.getConfig() : {};
-    }, {});
+    }, {}) : {};
     var voiceConfigured = !!(voiceCfg && ((voiceCfg.provider === 'volc' && voiceCfg.volcKey) || (voiceCfg.provider !== 'volc' && voiceCfg.baseUrl)));
-    var voiceState = voiceOn ? 'ready' : 'off';
-    var voiceBadge = voiceOn ? '已开' : (voiceCfg && voiceCfg.enabled ? '未配置' : '未开启');
-    var voiceReason = voiceOn ? '' : (voiceCfg && voiceCfg.enabled ? '语音线路没配好' : '角色语音没开启');
+    var voiceState = !voiceApi ? 'unknown' : (voiceOn ? 'ready' : 'off');
+    var voiceBadge = !voiceApi ? '未知' : (voiceOn ? '已开' : (voiceCfg && voiceCfg.enabled ? '未配置' : '未开启'));
+    var voiceReason = !voiceApi ? '语音模块没加载，现在读不到' : (voiceOn ? '' : (voiceCfg && voiceCfg.enabled ? '语音线路没配好' : '角色语音没开启'));
 
     var musicModule = !!(window.searchMusicOnline || window.initMusicPlayer);
     var musicCookie = readLS('momo_netease_cookie');
     var musicNick = readLS('momo_netease_nick');
-    var musicState = !musicModule ? 'off' : (musicCookie ? 'ready' : 'partial');
-    var musicBadge = !musicModule ? '未加载' : (musicCookie ? '已登录' : '未登录');
-    var musicDetail = musicCookie && musicNick ? ('网易云 · ' + musicNick) : '网易云 · 搜索 / 播放';
-    var musicReason = musicCookie ? '' : '未登录网易云，会员歌不能播';
+    var musicState = !musicModule ? 'unknown' : (musicCookie ? 'ready' : 'partial');
+    var musicBadge = !musicModule ? '未知' : (musicCookie ? '已登录' : '未登录');
+    var musicDetail = musicModule ? (musicCookie && musicNick ? ('网易云 · ' + musicNick) : '网易云 · 搜索 / 播放') : '音乐模块没加载';
+    var musicReason = !musicModule ? '音乐模块没加载，现在读不到' : (musicCookie ? '' : '未登录网易云，会员歌不能播');
 
     var memoryModule = !!window.MemoryEngine;
     var memoryCount = Array.isArray(a.palaceMemories) ? a.palaceMemories.length : 0;
@@ -227,10 +233,10 @@
     if (!depth || depth < 1) depth = 30;
 
     return [
-      makeCap('docs', '文档', docsReady ? '可用' : '未配置', docsReady ? 'ready' : 'off',
-        docsReady ? 'Word / Excel / PPT' : (docsReason || 'Word / Excel / PPT'), docsReason, 'work'),
-      makeCap('sop', 'SOP / 周报', docsReady ? '可用' : '未配置', docsReady ? 'ready' : 'off',
-        docsReady ? '流程 / 复盘 / 会议纪要' : (docsReason || '流程 / 复盘 / 会议纪要'), docsReason, 'work'),
+      makeCap('docs', '文档', docsUnknown ? '未知' : (docsReady ? '可用' : '未配置'), docsUnknown ? 'unknown' : (docsReady ? 'ready' : 'off'),
+        docsUnknown ? '文件模块没加载，现在读不到' : (docsReady ? 'Word / Excel / PPT' : (docsReason || 'Word / Excel / PPT')), docsUnknown ? '文件模块没加载' : docsReason, 'work'),
+      makeCap('sop', 'SOP / 周报', docsUnknown ? '未知' : (docsReady ? '可用' : '未配置'), docsUnknown ? 'unknown' : (docsReady ? 'ready' : 'off'),
+        docsUnknown ? '文件模块没加载，现在读不到' : (docsReady ? '流程 / 复盘 / 会议纪要' : (docsReason || '流程 / 复盘 / 会议纪要')), docsUnknown ? '文件模块没加载' : docsReason, 'work'),
       makeCap('search', '联网查资料', searchBadge, searchState,
         searchDetail, searchReason, 'utility'),
       makeCap('image', '角色生图', imageBadge, imageState,
@@ -239,8 +245,8 @@
         voiceOn ? '语音合成已开' : (voiceReason || '语音合成'), voiceReason, 'companion'),
       makeCap('music', '音乐', musicBadge, musicState,
         musicDetail, musicReason, 'companion'),
-      makeCap('memory', '记忆 / 上下文', memoryModule ? '可用' : '未加载', memoryModule ? 'ready' : 'off',
-        '记忆 ' + memoryCount + ' 张 · 上下文 ' + depth + ' 条', memoryModule ? '' : '记忆模块没加载', 'companion'),
+      makeCap('memory', '记忆 / 上下文', memoryModule ? '可用' : '未知', memoryModule ? 'ready' : 'unknown',
+        memoryModule ? ('记忆 ' + memoryCount + ' 张 · 上下文 ' + depth + ' 条') : '记忆模块没加载，现在读不到', memoryModule ? '' : '记忆模块没加载', 'companion'),
       makeCap('local', '本地文件 / 终端', '未接入', 'off',
         '本地文件 / 终端 / 浏览器自动化', '需要本地桥接，当前没接入', 'utility')
     ];
@@ -257,7 +263,7 @@
     var workPack = workPackInfo();
     var tasks = taskInfo();
     var user = text(app().userNickname) || text(app().hero && app().hero.userName) || 'user';
-    var build = text(window.__BUILD__) || text(window.__LIVE_BUILD__) || '20261125-0033';
+    var build = text(window.__BUILD__) || text(window.__LIVE_BUILD__) || '20261125-0034';
     var modelLabel = model.chat.known ? model.chat.model : '未选模型';
     var context = '当前：' + (name || '还没选角色') +
       (mask && mask.name ? ' / ' + mask.name : '') +
@@ -307,6 +313,9 @@
     var blocked = c.filter(function (x) { return x.state === 'off'; }).map(function (x) {
       return x.label + (x.reason ? '（' + x.reason + '）' : '');
     });
+    var unknown = c.filter(function (x) { return x.state === 'unknown'; }).map(function (x) {
+      return x.label + (x.reason ? '（' + x.reason + '）' : '');
+    });
     var name = s.identity.charName || '当前角色';
     var lines = [];
     lines.push('【运行事实】这是程序刚读到的真实状态，只用来判断能不能做；不要向 user 复述技术字段，也不要用“系统/接口/模型”解释。');
@@ -331,6 +340,9 @@
     lines.push('能做：' + (ready.length ? ready.join('、') : '暂时没有可用的外部能力') +
       (partial.length ? '；部分可用：' + partial.join('、') : '') + '。');
     lines.push('不能做：' + (blocked.length ? blocked.join('；') : '没有额外限制') + '。');
+    lines.push('现在不确定：' + (unknown.length
+      ? (unknown.join('；') + '。如果 user 问到这些，直接说现在不确定，不要猜。')
+      : '没有不确定的项。'));
     lines.push('本机边界：不能直接读写本地文件，不能执行终端命令，不能控制浏览器；任务只在页面打开时执行。');
     lines.push('能做的就做，不能做的直接说，不要假装。');
     return lines.join('\n');
@@ -340,6 +352,6 @@
     snapshot: snapshot,
     promptBlock: promptBlock,
     refresh: snapshot,
-    build: '20261125-0033'
+    build: '20261125-0034'
   };
 })();

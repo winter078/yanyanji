@@ -123,11 +123,11 @@
     if (!el) return;
     if (typeof state === 'boolean') state = state ? 'ready' : 'off';
     if (!text) {
-      text = state === 'ready' ? '可用' : (state === 'partial' ? '部分' : '未配置');
+      text = state === 'ready' ? '可用' : (state === 'partial' ? '部分' : (state === 'unknown' ? '未知' : '未配置'));
     }
     el.innerText = text;
     el.classList.toggle('ready', state === 'ready');
-    el.classList.toggle('warn', state === 'partial');
+    el.classList.toggle('warn', state === 'partial' || state === 'unknown');
     el.classList.toggle('off', state === 'off' || !state);
   }
 
