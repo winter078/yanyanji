@@ -69,11 +69,13 @@
     var a = app();
     var base = text(a.apiBase);
     var key = text(a.apiKey);
+    var chatModel = text(a.model);
     return {
       chat: {
-        model: text(a.model) || 'deepseek-chat',
+        model: chatModel,
+        known: !!chatModel,
         baseHost: hostOf(base),
-        configured: !!(base && key)
+        configured: !!(base && key && chatModel)
       },
       vision: {
         model: text(a.visionModel),
@@ -121,6 +123,43 @@
         return window.WorkPack.isEnabledForChar(cid);
       }, false)),
       selectedCount: Array.isArray(selected) ? selected.length : 0
+    };
+  }
+
+  function taskStatusText(status) {
+    if (status === 'done') return '已完成';
+    if (status === 'error') return '没做成';
+    if (status === 'interrupted') return '已中断';
+    if (status === 'cancelled') return '已取消';
+    if (status === 'superseded') return '已转新任务';
+    if (status === 'running') return '进行中';
+    return '未知';
+  }
+
+  function taskInfo() {
+    if (!window.WorkPack || typeof window.WorkPack.getTasks !== 'function') {
+      return { known: false, total: 0, running: 0, currentChar: 0, latest: null };
+    }
+    var all = safe(function () { return window.WorkPack.getTasks() || []; }, []);
+    if (!Array.isArray(all)) {
+      return { known: false, total: 0, running: 0, currentChar: 0, latest: null };
+    }
+    var cid = charId();
+    var mine = cid ? all.filter(function (t) { return t && String(t.charId || '') === cid; }) : [];
+    var latest = mine.length ? mine[0] : null;
+    return {
+      known: true,
+      total: all.length,
+      running: all.filter(function (t) { return t && t.status === 'running'; }).length,
+      currentChar: mine.length,
+      currentCharRunning: mine.filter(function (t) { return t && t.status === 'running'; }).length,
+      latest: latest ? {
+        id: latest.id || '',
+        title: text(latest.title).slice(0, 40),
+        status: latest.status || '',
+        statusText: taskStatusText(latest.status),
+        updatedAt: Number(latest.updatedAt || latest.createdAt || 0)
+      } : null
     };
   }
 
@@ -216,13 +255,16 @@
     var tools = toolRows();
     var capabilities = buildCapabilities();
     var workPack = workPackInfo();
+    var tasks = taskInfo();
     var user = text(app().userNickname) || text(app().hero && app().hero.userName) || 'user';
-    var build = text(window.__BUILD__) || text(window.__LIVE_BUILD__) || '20261125-0032';
+    var build = text(window.__BUILD__) || text(window.__LIVE_BUILD__) || '20261125-0033';
+    var modelLabel = model.chat.known ? model.chat.model : '未选模型';
     var context = '当前：' + (name || '还没选角色') +
       (mask && mask.name ? ' / ' + mask.name : '') +
       ' · ' + mode +
       ' · ' + (workPack.on ? '接活已开（工作包 ' + workPack.selectedCount + ' 个角色）' : '接活未开') +
-      '｜模型：' + model.chat.model + (model.chat.configured ? '（已配）' : '（未配）') +
+      '｜模型：' + modelLabel + (model.chat.configured ? '（已配）' : '（未配）') +
+      '｜任务：' + (tasks.known ? (tasks.running ? tasks.running + ' 条进行中' : '没有进行中') : '未知') +
       '｜版本 ' + build;
 
     return {
@@ -231,7 +273,7 @@
       checkedAt: Date.now(),
       instance: {
         page: currentPage(),
-        online: (typeof navigator !== 'undefined' && typeof navigator.onLine === 'boolean') ? navigator.onLine : true
+        online: (typeof navigator !== 'undefined' && typeof navigator.onLine === 'boolean') ? navigator.onLine : null
       },
       identity: {
         charId: cid,
@@ -242,6 +284,7 @@
       },
       model: model,
       workPack: workPack,
+      tasks: tasks,
       tools: tools,
       capabilities: capabilities,
       limits: [
@@ -268,10 +311,23 @@
     var lines = [];
     lines.push('【运行事实】这是程序刚读到的真实状态，只用来判断能不能做；不要向 user 复述技术字段，也不要用“系统/接口/模型”解释。');
     lines.push('现在是 ' + name + (s.identity.maskName ? '（小号：' + s.identity.maskName + '）' : '') + '，' + s.identity.mode + '。');
-    lines.push('主模型：' + s.model.chat.model + (s.model.chat.configured ? '，线路已配置' : '，还没配好') + '。');
+    lines.push('主模型：' + (s.model.chat.known
+      ? (s.model.chat.model + (s.model.chat.configured ? '，线路已配置' : '，还没配好'))
+      : '未知，还没选模型') + '。');
     lines.push('接活资格：' + (s.workPack && s.workPack.on
       ? ('当前角色已加入工作包（共选 ' + s.workPack.selectedCount + ' 个角色），可以接文档 / SOP 任务')
       : '当前角色不在工作包里，不能接文档 / SOP 任务；普通聊天、恋爱、语音、生图这些陪伴能力不受影响') + '。');
+    if (!s.tasks || !s.tasks.known) {
+      lines.push('任务状态：未知，任务模块没加载。');
+    } else if (s.tasks.currentCharRunning) {
+      lines.push('任务状态：这个角色现在有 ' + s.tasks.currentCharRunning + ' 条任务在跑；还没出文件前，不要提前说已经做好。');
+    } else if (s.tasks.running) {
+      lines.push('任务状态：这个角色没有在跑的任务；别的角色有 ' + s.tasks.running + ' 条在进行。');
+    } else if (s.tasks.latest) {
+      lines.push('任务状态：这个角色上次任务《' + s.tasks.latest.title + '》，' + s.tasks.latest.statusText + '。');
+    } else {
+      lines.push('任务状态：这个角色最近没有任务。');
+    }
     lines.push('能做：' + (ready.length ? ready.join('、') : '暂时没有可用的外部能力') +
       (partial.length ? '；部分可用：' + partial.join('、') : '') + '。');
     lines.push('不能做：' + (blocked.length ? blocked.join('；') : '没有额外限制') + '。');
@@ -284,6 +340,6 @@
     snapshot: snapshot,
     promptBlock: promptBlock,
     refresh: snapshot,
-    build: '20261125-0032'
+    build: '20261125-0033'
   };
 })();
