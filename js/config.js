@@ -119,32 +119,54 @@
     try { if (window.refreshAppUpdateUI) window.refreshAppUpdateUI(); } catch (e) {}
   };
 
-  function setToolboxStatus(el, ready) {
+  function setToolboxStatus(el, state, text) {
     if (!el) return;
-    el.innerText = ready ? '可用' : '未配置';
-    el.classList.toggle('ready', !!ready);
-    el.classList.toggle('off', !ready);
+    if (typeof state === 'boolean') state = state ? 'ready' : 'off';
+    if (!text) {
+      text = state === 'ready' ? '可用' : (state === 'partial' ? '部分' : '未配置');
+    }
+    el.innerText = text;
+    el.classList.toggle('ready', state === 'ready');
+    el.classList.toggle('warn', state === 'partial');
+    el.classList.toggle('off', state === 'off' || !state);
+  }
+
+  function renderToolboxItem(cap) {
+    if (!cap || !cap.key) return;
+    var status = document.getElementById('toolbox-' + cap.key + '-status');
+    var desc = document.getElementById('toolbox-' + cap.key + '-desc');
+    if (status) {
+      setToolboxStatus(status, cap.state, cap.badge);
+      status.title = cap.reason || cap.detail || '';
+    }
+    if (desc && cap.detail) desc.textContent = cap.detail;
   }
 
   window.renderToolboxStatus = function() {
+    var snap = null;
+    try {
+      snap = (window.MomSelf && typeof window.MomSelf.snapshot === 'function') ? window.MomSelf.snapshot() : null;
+    } catch (e) { snap = null; }
+
+    var context = document.getElementById('toolbox-context');
+    if (snap) {
+      if (context) context.textContent = snap.context || '';
+      (snap.capabilities || []).forEach(renderToolboxItem);
+      return;
+    }
+
+    // 运行事实层没加载时，保留最粗的兜底，不把旧的四格状态直接清空。
+    if (context) context.textContent = '运行状态还没加载完，先看旧的基础检查。';
     var app = window.appData || {};
     var docReady = !!(String(app.apiKey || '').trim() && String(app.apiBase || '').trim());
-    setToolboxStatus(document.getElementById('toolbox-doc-status'), docReady);
+    setToolboxStatus(document.getElementById('toolbox-docs-status'), docReady);
     setToolboxStatus(document.getElementById('toolbox-sop-status'), docReady);
-
-    var toolCount = 0;
-    try {
-      toolCount = (window.MomTools && typeof window.MomTools.list === 'function')
-        ? (window.MomTools.list() || []).length
-        : 0;
-    } catch (e) { toolCount = 0; }
-    setToolboxStatus(document.getElementById('toolbox-search-status'), toolCount > 0);
-
-    var imageReady = false;
-    try {
-      imageReady = !!(window.isCharacterImageConfigured && window.isCharacterImageConfigured());
-    } catch (e) { imageReady = false; }
-    setToolboxStatus(document.getElementById('toolbox-image-status'), imageReady);
+    setToolboxStatus(document.getElementById('toolbox-search-status'), false);
+    setToolboxStatus(document.getElementById('toolbox-image-status'), false);
+    setToolboxStatus(document.getElementById('toolbox-voice-status'), false);
+    setToolboxStatus(document.getElementById('toolbox-music-status'), false);
+    setToolboxStatus(document.getElementById('toolbox-memory-status'), false);
+    setToolboxStatus(document.getElementById('toolbox-local-status'), false);
   };
 
   function initPluginsCenter() {

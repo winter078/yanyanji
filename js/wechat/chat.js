@@ -7689,6 +7689,16 @@ ${catalog}
           return out.slice(0, maxPayloads);
         };
 
+        // ========== 角色运行状态：先让角色知道这轮真实能做什么 ==========
+        try {
+          if (window.MomSelf && typeof window.MomSelf.promptBlock === 'function') {
+            const selfBlock = window.MomSelf.promptBlock();
+            if (selfBlock) recentMessages.push({ role: 'system', content: selfBlock });
+          }
+        } catch (selfErr) {
+          console.warn('[MomSelf] 运行状态注入失败：', selfErr && selfErr.message ? selfErr.message : selfErr);
+        }
+
         // ========== 工具协同：先让模型判断要不要 搜索 / 小红书 / 天气，真跑完再喂给文件和回复 ==========
         let toolText = '';
         if (window.MomTools && typeof window.MomTools.hasAnyTool === 'function' && window.MomTools.hasAnyTool()) {

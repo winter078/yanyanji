@@ -18,6 +18,11 @@
       available: function () {
         return !!(window.isWebSearchEnabled && window.isWebSearchEnabled() && readLS('momo_tavily_api_key_v1'));
       },
+      reason: function () {
+        if (!window.isWebSearchEnabled || !window.isWebSearchEnabled()) return '搜索开关没打开';
+        if (!readLS('momo_tavily_api_key_v1')) return '缺 Tavily Key';
+        return '';
+      },
       run: function (args) {
         return window.__momRunWebSearch ? window.__momRunWebSearch(args && args.query) : Promise.resolve('');
       }
@@ -29,6 +34,9 @@
       params: '{"url": "完整的小红书链接"}',
       available: function () {
         return !!readLS('momo_xhs_api_key_v1');
+      },
+      reason: function () {
+        return readLS('momo_xhs_api_key_v1') ? '' : '缺小红书 Key';
       },
       run: function (args) {
         return window.__momRunXhsRead ? window.__momRunXhsRead(args && args.url) : Promise.resolve('');
@@ -43,6 +51,12 @@
         return !!readLS('momo_everyinfra_api_key_v1') && !window.__momTwitterQueryTurn &&
           (!window.__momoTwitterEvidenceAt || Date.now() - window.__momoTwitterEvidenceAt > 5 * 60 * 1000);
       },
+      reason: function () {
+        if (!readLS('momo_everyinfra_api_key_v1')) return '缺 EveryInfra Key';
+        if (window.__momTwitterQueryTurn) return '这轮已经查过推特';
+        if (window.__momoTwitterEvidenceAt && Date.now() - window.__momoTwitterEvidenceAt <= 5 * 60 * 1000) return '刚查过推特，稍后可用';
+        return '';
+      },
       run: function (args) {
         return window.__momTwitterEvidence ? window.__momTwitterEvidence(args && args.query) : Promise.resolve('');
       }
@@ -55,6 +69,11 @@
       available: function () {
         return !!(readLS('momo_qweather_key_v1') && readLS('momo_qweather_host_v1'));
       },
+      reason: function () {
+        if (!readLS('momo_qweather_key_v1')) return '缺和风天气 Key';
+        if (!readLS('momo_qweather_host_v1')) return '缺和风天气 Host';
+        return '';
+      },
       run: function (args) {
         return window.__momRunWeather ? window.__momRunWeather(args && args.city) : Promise.resolve('');
       }
@@ -64,6 +83,24 @@
   function enabledTools() {
     return REGISTRY.filter(function (tool) {
       try { return !!tool.available(); } catch (e) { return false; }
+    });
+  }
+
+  function statusList() {
+    return REGISTRY.map(function (tool) {
+      var ok = false;
+      var reason = '';
+      try { ok = !!tool.available(); } catch (e) { ok = false; }
+      if (!ok) {
+        try { reason = tool.reason ? String(tool.reason() || '') : ''; } catch (e2) { reason = ''; }
+        if (!reason) reason = '当前不可用';
+      }
+      return {
+        name: tool.name,
+        label: tool.label,
+        ok: ok,
+        reason: reason
+      };
     });
   }
 
@@ -192,6 +229,7 @@
 
   window.MomTools = {
     list: function () { return enabledTools().map(function (t) { return { name: t.name, label: t.label, description: t.description, params: t.params }; }); },
+    status: statusList,
     hasAnyTool: hasAnyTool,
     promptBlock: promptBlock,
     planAndRun: planAndRun
