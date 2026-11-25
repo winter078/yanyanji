@@ -4625,3 +4625,109 @@ html.ios.sb-native .home-dock-bar {
   margin-bottom: max(env(safe-area-inset-bottom, 0px), 20px) !important;
 }
 
+
+/* ===== 角色卡：陪伴方式（纯 RP / 人机恋） ===== */
+.char-mode-card {
+  border-color: rgba(10, 132, 255, 0.24);
+}
+
+.char-mode-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.char-mode-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--bg-elevated);
+  text-align: left;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.char-mode-option.selected {
+  border-color: rgba(10, 132, 255, 0.6);
+  background: rgba(10, 132, 255, 0.1);
+}
+
+.char-mode-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: rgba(10, 132, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.char-mode-option.selected .char-mode-icon {
+  background: rgba(10, 132, 255, 0.2);
+}
+
+.char-mode-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.char-mode-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1.35;
+}
+
+.char-mode-desc {
+  display: block;
+  margin-top: 3px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+.char-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.16);
+  color: var(--color-text-secondary);
+  font-size: 9.5px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.char-mode-option.selected .char-mode-badge {
+  background: rgba(10, 132, 255, 0.16);
+  color: #0a84ff;
+}
+
+.char-mode-hint {
+  margin-top: 8px;
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+.ai-mode-role-row {
+  cursor: default;
+}
+
+.ai-mode-role-row.is-ai .workpack-role-state {
+  color: var(--success-primary);
+  background: rgba(7, 193, 96, 0.12);
+}

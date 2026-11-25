@@ -263,7 +263,7 @@
     var workPack = workPackInfo();
     var tasks = taskInfo();
     var user = text(app().userNickname) || text(app().hero && app().hero.userName) || 'user';
-    var build = text(window.__BUILD__) || text(window.__LIVE_BUILD__) || '20261125-0035';
+    var build = text(window.__BUILD__) || text(window.__LIVE_BUILD__) || '20261126-0035';
     var aiAware = true;
     try {
       if (window.MomMode && typeof window.MomMode.isAiAware === 'function') {
@@ -360,6 +360,6 @@
     snapshot: snapshot,
     promptBlock: promptBlock,
     refresh: snapshot,
-    build: '20261125-0035'
+    build: '20261126-0035'
   };
 })();

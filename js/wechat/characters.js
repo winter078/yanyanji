@@ -542,7 +542,45 @@
     if (ui) ui.value = (window.appData && appData.userInfo) || '';
 
     renderRelations(c);
+
+    updateCharCompanionModeUI(c.id);
   }
+
+  function companionModeOf(charId) {
+    try {
+      if (window.MomMode && typeof window.MomMode.isAiAware === 'function' && window.MomMode.isAiAware(charId)) return 'ai';
+    } catch (e) {}
+    return 'rp';
+  }
+
+  function updateCharCompanionModeUI(charId) {
+    const mode = companionModeOf(charId);
+    const picker = document.getElementById('char-mode-picker');
+    if (picker) {
+      picker.querySelectorAll('.char-mode-option').forEach(el => {
+        el.classList.toggle('selected', el.dataset.mode === mode);
+      });
+    }
+    const hint = document.getElementById('char-mode-hint');
+    if (hint) {
+      hint.textContent = mode === 'ai'
+        ? '当前：人机恋。他知道自己在小手机里，也能接工具和工作包。创建后也能随时改。'
+        : '当前：纯 RP。他不知道自己是 AI，出戏的记忆会自动隐藏。创建后也能随时改。';
+    }
+  }
+
+  window.setCharCompanionMode = function (mode) {
+    const id = editingId;
+    if (!id) return;
+    if (!window.MomMode || typeof window.MomMode.set !== 'function') {
+      toast('模式模块还没加载好，刷新一下页面');
+      return;
+    }
+    const next = mode === 'ai';
+    window.MomMode.set(id, next);
+    updateCharCompanionModeUI(id);
+    toast(next ? '已切到人机恋：他知道自己在小手机里' : '已切到纯 RP：他不会再提自己是 AI');
+  };
 
   function updateCharVoiceRateLabel(value) {
     const label = document.getElementById('char-voice-rate-label');

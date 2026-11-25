@@ -488,7 +488,7 @@
       return !(window.MomMode && typeof window.MomMode.isAiAware === 'function' && window.MomMode.isAiAware(id));
     });
     if (!kept.length) summary.textContent = '未选择角色';
-    else if (inactive.length) summary.textContent = '已选 ' + kept.length + ' 个 · 其中 ' + inactive.length + ' 个待开启人机恋';
+    else if (inactive.length) summary.textContent = '已选 ' + kept.length + ' 个 · 其中 ' + inactive.length + ' 个未开人机恋';
     else summary.textContent = '已选 ' + kept.length + ' 个角色';
     if (btn) btn.textContent = list.style.display === 'block' ? '收起' : '选择角色';
 
@@ -506,11 +506,14 @@
       var id = String(c.id);
       var row = document.createElement('label');
       row.className = 'workpack-role-row';
+      var aware = !!(window.MomMode && typeof window.MomMode.isAiAware === 'function' && window.MomMode.isAiAware(id));
 
       var cb = document.createElement('input');
       cb.type = 'checkbox';
       cb.value = id;
       cb.checked = kept.indexOf(id) !== -1;
+      cb.disabled = !aware;
+      if (!aware) cb.title = '先在角色卡里开启人机恋';
       cb.addEventListener('change', function () {
         window.toggleWorkPackCharacter(id, cb.checked);
       });
@@ -534,8 +537,7 @@
 
       var state = document.createElement('span');
       state.className = 'workpack-role-state';
-      var aware = !!(window.MomMode && typeof window.MomMode.isAiAware === 'function' && window.MomMode.isAiAware(id));
-      state.textContent = cb.checked ? (aware ? '已启用' : '待开人机恋') : '未启用';
+      state.textContent = !aware ? '先开人机恋' : (cb.checked ? '已启用' : '未启用');
 
       row.appendChild(cb);
       row.appendChild(avatar);
@@ -832,12 +834,13 @@
     var ids = readSelected();
     var id = String(charId || '');
     if (!id) return;
+    if (checked && !(window.MomMode && typeof window.MomMode.isAiAware === 'function' && window.MomMode.isAiAware(id))) {
+      refreshWorkPackUI();
+      return;
+    }
     if (checked && ids.indexOf(id) === -1) ids.push(id);
     if (!checked) ids = ids.filter(function (x) { return x !== id; });
     writeSelected(ids);
-    if (checked && window.MomMode && typeof window.MomMode.set === 'function') {
-      window.MomMode.set(id, true);
-    }
     refreshWorkPackUI();
   };
 

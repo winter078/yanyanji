@@ -5,6 +5,7 @@
 
   var LAYERS = { short: 'short', mid: 'mid', core: 'core' };
   var LAYER_LABEL = { short: '短期片段', mid: '中期总结', core: '核心印记' };
+  var AI_SELF_RE = /\bAI\b|模型|小手机|(?:我(?:确实|就|真的|其实)?(?:是|不是)\s*(?:AI|人工智能|模型|程序|机器人)|我(?:确实|就|真的|其实)?不是人|AI\s*伴侣|跑在[^\n]{0,16}(?:小)?手机|住在[^\n]{0,8}小手机|系统提示|算力底座|DeepSeek|deepseek|摊牌了)/i;
   var AUTO_EVERY = 24;          // 单聊累计 24 条未总结消息后自动沉淀
   var AUTO_COOLDOWN = 10 * 60 * 1000;
   var MAX_SLICE = 60;
@@ -76,6 +77,18 @@
     return LAYERS.short;
   }
 
+  function inferMemoryAwareness(text) {
+    return AI_SELF_RE.test(String(text || '')) ? 'ai' : 'both';
+  }
+
+  function sanitizeRpMemoryText(text) {
+    return String(text || '').split('\n').map(function (line) {
+      if (!line) return '';
+      var sentences = line.match(/[^。！？!?]*[。！？!?]|[^。！？!?]+$/g) || [line];
+      return sentences.filter(function (s) { return s && !AI_SELF_RE.test(s); }).join('').trim();
+    }).filter(Boolean).join('\n').trim();
+  }
+
   function normalizeCard(card) {
     if (!card) return false;
     var changed = false;
@@ -83,6 +96,10 @@
     if (card.pinned && card.layer !== LAYERS.core) { card.layer = LAYERS.core; changed = true; }
     if (!card.importance) {
       card.importance = card.layer === LAYERS.core ? 5 : (card.layer === LAYERS.mid ? 3 : 2);
+      changed = true;
+    }
+    if (!card.awareness) {
+      card.awareness = inferMemoryAwareness(String(card.title || '') + '\n' + String(card.summary || card.content || ''));
       changed = true;
     }
     return changed;
@@ -233,26 +250,40 @@
       .map(function (x) { seen[x.c.id] = true; return x.c; });
   }
 
-  function textOf(card, maxChars) {
-    var summary = String(card.summary || card.content || '').replace(/\s+/g, ' ').trim();
+  function textOf(card, maxChars, mode) {
+    var summary = String(card.summary || card.content || '').trim();
+    if (mode === 'rp') summary = sanitizeRpMemoryText(summary);
+    if (!summary) return '';
+    summary = summary.replace(/\s+/g, ' ').trim();
     var max = maxChars || 260;
     if (summary.length > max) summary = summary.slice(0, max) + '…';
     var date = card.dateStr ? ('（' + card.dateStr + '）') : '';
-    var tags = (Array.isArray(card.tags) && card.tags.length) ? (' [' + card.tags.slice(0, 6).join(' / ') + ']') : '';
-    return '- ' + summary + date + tags;
+    var tags = (Array.isArray(card.tags) && card.tags.length) ? card.tags.slice(0, 6) : [];
+    if (mode === 'rp') tags = tags.filter(function (t) { return !AI_SELF_RE.test(String(t || '')); });
+    var tagText = tags.length ? (' [' + tags.join(' / ') + ']') : '';
+    return '- ' + summary + date + tagText;
   }
 
-  function section(title, cards, maxChars) {
+  function section(title, cards, maxChars, mode) {
     if (!cards || !cards.length) return '';
-    return '【' + title + '】\n' + cards.map(function (c) {
+    var lines = cards.map(function (c) {
+      var text = textOf(c, maxChars, mode);
+      if (!text) return '';
       var owner = c.ownerCharName ? ('·' + c.ownerCharName + '的片段') : '';
-      return textOf(c, maxChars) + owner;
-    }).join('\n');
+      return text + owner;
+    }).filter(Boolean);
+    if (!lines.length) return '';
+    return '【' + title + '】\n' + lines.join('\n');
   }
 
   function recall(scope, targetId, opts) {
     opts = opts || {};
     var all = cardsFor(scope, targetId);
+    if (opts.mode === 'rp') {
+      all = all.filter(function (c) {
+        return !!sanitizeRpMemoryText(String(c.summary || c.content || '')).trim();
+      });
+    }
     var query = opts.query || '';
     var speakerId = opts.speakerId || '';
     var budget = scope === 'group'
@@ -279,18 +310,19 @@
 
   function buildText(scope, targetId, opts) {
     opts = opts || {};
+    var mode = opts.mode === 'rp' ? 'rp' : 'ai';
     var r = recall(scope, targetId, opts);
     var sections = [];
-    sections.push(section('亲笔记录 · 用户亲手写下的重要设定（最高优先级）', r.pen, 320));
+    sections.push(section('亲笔记录 · 用户亲手写下的重要设定（最高优先级）', r.pen, 320, mode));
     if (scope === 'group') {
-      sections.push(section('群视角编年史 · 核心', r.chronicle.core, 300));
-      sections.push(section('群视角编年史 · 中期', r.chronicle.mid, 240));
-      sections.push(section('群视角编年史 · 近期', r.chronicle.short, 220));
-      if (opts.speakerId) sections.push(section('只属于' + charName(opts.speakerId) + '的片段', r.member, 200));
+      sections.push(section('群视角编年史 · 核心', r.chronicle.core, 300, mode));
+      sections.push(section('群视角编年史 · 中期', r.chronicle.mid, 240, mode));
+      sections.push(section('群视角编年史 · 近期', r.chronicle.short, 220, mode));
+      if (opts.speakerId) sections.push(section('只属于' + charName(opts.speakerId) + '的片段', r.member, 200, mode));
     } else {
-      sections.push(section('核心印记 · 我一直认定的事', r.chronicle.core, 320));
-      sections.push(section('中期记忆 · 这段时间的模式', r.chronicle.mid, 260));
-      sections.push(section('短期片段 · 最近发生的事', r.chronicle.short, 220));
+      sections.push(section('核心印记 · 我一直认定的事', r.chronicle.core, 320, mode));
+      sections.push(section('中期记忆 · 这段时间的模式', r.chronicle.mid, 260, mode));
+      sections.push(section('短期片段 · 最近发生的事', r.chronicle.short, 220, mode));
     }
     var body = sections.filter(Boolean).join('\n\n');
     if (!body) return '';
@@ -515,6 +547,7 @@
         summary: result.memory,
         tags: result.keywords.length ? result.keywords : ['自动中期', '私聊'],
         importance: Math.max(3, parseInt(result.importance, 10) || 3),
+        awareness: inferMemoryAwareness(result.memory),
         source: 'auto-mid',
         ownerCharId: '',
         sourceCardIds: picked.map(function (c) { return c.id; }),
@@ -662,6 +695,7 @@
       summary: result.memory,
       tags: result.keywords.length ? result.keywords : ['自动记忆', '私聊'],
       importance: result.importance,
+      awareness: inferMemoryAwareness(result.memory),
       source: 'auto-single',
       ownerCharId: '',
       msgRangeStr: '消息 ' + (start + 1) + '-' + end + ' · 共' + slice.length + '条',
@@ -710,6 +744,8 @@
     cardsFor: cardsFor,
     recall: recall,
     buildText: buildText,
+    sanitizeRpText: sanitizeRpMemoryText,
+    inferAwareness: inferMemoryAwareness,
     maybeAutoSummarizeSingle: maybeAutoSummarizeSingle,
     maybeConsolidateMid: maybeConsolidateMid,
     repairBrokenCards: repairBrokenCards,

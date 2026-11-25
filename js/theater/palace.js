@@ -816,7 +816,19 @@
       );
     }
 
-    function formatPalaceMemoryCards(cards, limit) {
+    function sanitizeRpMemoryText(text) {
+      try {
+        if (window.MemoryEngine && typeof window.MemoryEngine.sanitizeRpText === 'function') {
+          return window.MemoryEngine.sanitizeRpText(text);
+        }
+      } catch (e) {}
+      return String(text || '').split('\n').map(line => {
+        const sentences = line.match(/[^。！？!?]*[。！？!?]|[^。！？!?]+$/g) || [line];
+        return sentences.filter(s => s && !/(\bAI\b|模型|小手机|(?:我是|我确实是|我就是|我其实是)\s*(?:AI|人工智能|模型|程序|机器人)|AI\s*伴侣|DeepSeek|跑在.{0,12}(?:小)?手机|系统提示)/i.test(s)).join('').trim();
+      }).filter(Boolean).join('\n').trim();
+    }
+
+    function formatPalaceMemoryCards(cards, limit, mode) {
       if (!cards || !cards.length) return '';
       const max = Math.max(3, parseInt(limit, 10) || 8);
       const sorted = cards.slice().sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
@@ -824,22 +836,27 @@
       const recent = sorted.filter(c => !c.level).slice(0, Math.max(1, max - big.length));
       return [...big, ...recent].map(c => {
         const tier = c.level === 1 ? '【大总结】' : (c.level >= 2 ? '【大大总结】' : '【记忆存档】');
-        return tier + ' ' + (c.title || '') + ' (' + (c.dateStr || '') + '): ' + (c.summary || c.content || '') +
+        let text = String(c.summary || c.content || '');
+        if (mode === 'rp') text = sanitizeRpMemoryText(text);
+        if (!text) return '';
+        return tier + ' ' + (c.title || '') + ' (' + (c.dateStr || '') + '): ' + text +
           ((c.tags && c.tags.length) ? ' [关键词: ' + c.tags.join(' ') + ']' : '');
-      }).join('\n\n');
+      }).filter(Boolean).join('\n\n');
     }
 
     window.getPalaceCardsFor = getPalaceCardsFor;
     window.getPenCardsFor = getPenCardsFor;
     window.getPalaceMemoryTextFor = function(scope, targetId, limit, opts) {
+      opts = opts || {};
+      const mode = opts.mode === 'rp' ? 'rp' : 'ai';
       try {
         if (window.MemoryEngine && typeof window.MemoryEngine.buildText === 'function') {
-          const engineText = window.MemoryEngine.buildText(scope, targetId, Object.assign({ limit: limit }, opts || {}));
+          const engineText = window.MemoryEngine.buildText(scope, targetId, Object.assign({ limit: limit }, opts));
           if (engineText) return engineText;
         }
       } catch (e) {}
-      const penText = formatPalaceMemoryCards(getPenCardsFor(scope, targetId), 4);
-      const autoText = formatPalaceMemoryCards(getPalaceCardsFor(scope, targetId), limit);
+      const penText = formatPalaceMemoryCards(getPenCardsFor(scope, targetId), 4, mode);
+      const autoText = formatPalaceMemoryCards(getPalaceCardsFor(scope, targetId), limit, mode);
       return [penText, autoText].filter(Boolean).join('\n\n');
     };
 

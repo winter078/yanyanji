@@ -28,9 +28,10 @@
 
     // 纯 RP 的上下文里，不能把过去人机恋说过的“我是 AI / 模型 / 小手机”继续喂给模型，
     // 否则切回纯 RP 后它会顺着旧话承认自己是 AI。
+    var SELF_AI_RE = /\bAI\b|模型|小手机|(?:我(?:确实|就|真的|其实)?(?:是|不是)\s*(?:AI|人工智能|模型|程序|机器人)|我(?:确实|就|真的|其实)?不是人|AI\s*伴侣|跑在[^\n]{0,16}(?:小)?手机|在[^\n]{0,8}小手机里|住在[^\n]{0,8}小手机|DeepSeek|deepseek|算力底座|系统提示|摊牌了)/i;
     function isSelfAiDisclosure(text) {
       var s = String(text == null ? '' : text);
-      return /(我(?:确实|就|真的)?是\s*AI|我是\s*AI|AI伴侣|跑在[^\n]{0,24}(?:小)?手机|在[^\n]{0,8}手机里|不是人|一串跑|模型是\s*|DeepSeek|deepseek|算力底座|系统提示|接口|后台|摊牌了)/i.test(s);
+      return SELF_AI_RE.test(s);
     }
 
     // 按“连续角色回复”成块过滤：只要一块里有出戏内容，整块都不带给纯 RP，
@@ -60,7 +61,7 @@
     // 纯 RP 连“记忆”里也不能带出人机恋时期的模型/小手机自述。
     function purgePureRpMemoryText(text) {
       return String(text == null ? '' : text).split('\n').filter(function (line) {
-        return !/(DeepSeek|deepseek|模型|AI|小手机|接口|后台|系统|程序|算力|反爬|视觉|工具|机时)/.test(line);
+        return !SELF_AI_RE.test(line);
       }).join('\n');
     }
 
@@ -6536,7 +6537,7 @@ ${(() => {
   })();
   try {
     if (window.getPalaceMemoryTextFor) {
-      const scoped = window.getPalaceMemoryTextFor('single', activeId, 7, { query: memoryQuery });
+      const scoped = window.getPalaceMemoryTextFor('single', activeId, 7, { query: memoryQuery, mode: aiAware ? 'ai' : 'rp' });
       const raw = scoped || '这个角色还没有专属记忆存档。';
       if (aiAware) return raw;
       const cleaned = purgePureRpMemoryText(raw).trim();

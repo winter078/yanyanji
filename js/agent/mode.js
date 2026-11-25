@@ -44,16 +44,8 @@
   }
 
   function buildRow(c, checked) {
-    var row = document.createElement('label');
-    row.className = 'workpack-role-row ai-mode-role-row';
-
-    var cb = document.createElement('input');
-    cb.type = 'checkbox';
-    cb.value = String(c.id);
-    cb.checked = checked;
-    cb.addEventListener('change', function () {
-      window.toggleAiModeCharacter(c.id, cb.checked);
-    });
+    var row = document.createElement('div');
+    row.className = 'workpack-role-row ai-mode-role-row' + (checked ? ' is-ai' : '');
 
     var avatar;
     if (c.avatar) {
@@ -76,7 +68,6 @@
     state.className = 'workpack-role-state';
     state.textContent = checked ? '人机恋' : '纯 RP';
 
-    row.appendChild(cb);
     row.appendChild(avatar);
     row.appendChild(name);
     row.appendChild(state);
@@ -104,8 +95,8 @@
       writeMap(map);
     }
 
-    summary.textContent = kept.length ? ('已开启 ' + kept.length + ' 个角色') : '还没有角色进入人机恋';
-    if (btn) btn.textContent = list.style.display === 'block' ? '收起' : '选择角色';
+    summary.textContent = kept.length ? ('人机恋 · ' + kept.length + ' 个角色') : '全部角色都是纯 RP';
+    if (btn) btn.textContent = list.style.display === 'block' ? '收起' : '查看状态';
 
     list.innerHTML = '';
     if (!chars.length) {
@@ -130,10 +121,6 @@
     if (list.style.display === 'block') {
       try { list.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) {}
     }
-  };
-
-  window.toggleAiModeCharacter = function (charId, checked) {
-    setChar(charId, checked);
   };
 
   window.refreshAiModeUI = refreshAiModeUI;
