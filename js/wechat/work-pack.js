@@ -109,6 +109,49 @@
     return null;
   }
 
+  // 任务卡和台账共用：优先读任务里记的文件信息，旧任务再回产物库补。
+  function taskArtifact(task) {
+    if (!task || !task.artifactId) return null;
+    var meta = null;
+    try {
+      if (window.MomArtifacts && typeof window.MomArtifacts.get === 'function') {
+        meta = window.MomArtifacts.get(task.artifactId);
+      }
+    } catch (e) {}
+    return {
+      id: task.artifactId,
+      name: task.artifactName || (meta && meta.name) || '产出文件',
+      kind: task.artifactKind || (meta && meta.kind) || '',
+      size: task.artifactSize || (meta && meta.size) || '',
+      available: !!(meta && meta.spec)
+    };
+  }
+
+  async function downloadTaskArtifact(taskId) {
+    var task = getTask(taskId);
+    var file = taskArtifact(task);
+    if (!file) throw new Error('这条任务还没有产出文件');
+    if (!file.available) throw new Error('这个文件已经从本机清理掉了，重新做一份吧');
+    await window.MomArtifacts.download(file.id);
+    return file;
+  }
+
+  // 取消要按两次才生效：第一次只把按钮变成“确认取消”，4 秒内再点一次才真的取消。
+  function armCancel(taskId) {
+    var id = String(taskId || '');
+    if (!id) return false;
+    var now = Date.now();
+    var armed = window.__momCancelArmed;
+    if (!armed || typeof armed !== 'object') armed = {};
+    window.__momCancelArmed = armed;
+    if (armed[id] && now - Number(armed[id]) < 4000) {
+      delete armed[id];
+      return true;
+    }
+    armed[id] = now;
+    return false;
+  }
+
   function clone(value) {
     try { return JSON.parse(JSON.stringify(value)); } catch (e) { return value; }
   }
@@ -211,6 +254,8 @@
       compareMode: compare,
       artifactId: '',
       artifactName: '',
+      artifactKind: '',
+      artifactSize: '',
       error: '',
       retryOf: '',
       retriedBy: '',
@@ -241,9 +286,11 @@
       var list = Array.isArray(map[charId]) ? map[charId] : [];
       list.forEach(function (task) {
         if (!task || task.id !== oldId) return;
-        if (task.status !== 'error' && task.status !== 'interrupted') return;
+        if (task.status !== 'error' && task.status !== 'interrupted' && task.status !== 'cancelled') return;
         task.status = 'superseded';
         task.error = '';
+        task.cancelledReason = '';
+        task.cancelledAt = 0;
         task.retriedBy = newTask && newTask.id ? newTask.id : '';
         task.updatedAt = Date.now();
         changed = true;
@@ -372,6 +419,8 @@
       setStep(task, 'deliver', 'done');
       task.artifactId = made.id;
       task.artifactName = made.name;
+      task.artifactKind = made.kind || kind;
+      task.artifactSize = made.size || '';
       task.status = 'done';
       emit(task, opts.onUpdate);
       return { task: task, artifact: made, toolText: String(opts.toolText || '') };
@@ -407,6 +456,9 @@
     lastTaskForChar: lastTaskForChar,
     getTasks: allTasks,
     getTask: getTask,
+    taskArtifact: taskArtifact,
+    downloadTaskArtifact: downloadTaskArtifact,
+    armCancel: armCancel,
     cancelTask: cancelTask
   };
 
@@ -520,7 +572,11 @@
     rows.push(['任务 ID', task.id || '']);
     rows.push(['时间', taskTime(task) || '']);
     rows.push(['来源', task.retryOf ? ('从旧任务继续 · ' + task.retryOf) : '直接发起']);
-    if (task.artifactName) rows.push(['产出', task.artifactName]);
+    if (task.artifactName) {
+      var file = taskArtifact(task);
+      var fileMeta = [kindLabel(file && file.kind), file && file.size].filter(Boolean).join(' · ');
+      rows.push(['产出', task.artifactName + (fileMeta ? '（' + fileMeta + '）' : '') + (file && !file.available ? ' · 已清理' : '')]);
+    }
     if (task.cancelledReason) rows.push(['取消', task.cancelledReason]);
     if (task.error) rows.push(['错误', task.error]);
     var steps = Array.isArray(task.steps) ? task.steps : [];
@@ -640,6 +696,42 @@
       row.appendChild(main);
       row.appendChild(stateEl);
 
+      if (task.artifactName) {
+        var file = taskArtifact(task);
+        var fileBtn = document.createElement('div');
+        fileBtn.className = 'work-task-file' + (file && !file.available ? ' missing' : '');
+        fileBtn.setAttribute('role', 'button');
+        fileBtn.setAttribute('tabindex', '0');
+
+        var fileKind = document.createElement('span');
+        fileKind.className = 'work-task-file-kind';
+        fileKind.textContent = file && file.kind === 'xlsx' ? 'XLSX' : file && file.kind === 'pptx' ? 'PPTX' : file && file.kind === 'docx' ? 'DOCX' : 'FILE';
+        var fileBody = document.createElement('span');
+        fileBody.className = 'work-task-file-body';
+        var fileName = document.createElement('span');
+        fileName.className = 'work-task-file-name';
+        fileName.textContent = task.artifactName;
+        var fileMeta = document.createElement('span');
+        fileMeta.className = 'work-task-file-meta';
+        fileMeta.textContent = [kindLabel(file && file.kind), file && file.size, (file && !file.available ? '文件已清理' : '点开下载')].filter(Boolean).join(' · ');
+        fileBody.appendChild(fileName);
+        fileBody.appendChild(fileMeta);
+        fileBtn.appendChild(fileKind);
+        fileBtn.appendChild(fileBody);
+
+        var openFile = function (event) {
+          if (event) { event.preventDefault(); event.stopPropagation(); }
+          downloadTaskArtifact(task.id).catch(function (err) {
+            alert(err && err.message ? err.message : String(err));
+          });
+        };
+        fileBtn.addEventListener('click', openFile);
+        fileBtn.addEventListener('keydown', function (event) {
+          if (event.key === 'Enter' || event.key === ' ') openFile(event);
+        });
+        row.appendChild(fileBtn);
+      }
+
       var actions = document.createElement('div');
       actions.className = 'work-task-actions';
 
@@ -663,12 +755,17 @@
         cancelBtn.addEventListener('click', function (event) {
           event.preventDefault();
           event.stopPropagation();
+          if (!armCancel(task.id)) {
+            cancelBtn.textContent = '确认取消';
+            setTimeout(function () { refreshWorkTaskLedger(); }, 4000);
+            return;
+          }
           cancelTask(task.id);
         });
         actions.appendChild(cancelBtn);
       }
 
-      if ((task.status === 'error' || task.status === 'interrupted') && task.goal) {
+      if ((task.status === 'error' || task.status === 'interrupted' || task.status === 'cancelled') && task.goal) {
         if (task.imageCount) {
           var hint = document.createElement('div');
           hint.className = 'work-task-hint';
@@ -678,7 +775,7 @@
           var retry = document.createElement('button');
           retry.type = 'button';
           retry.className = 'work-task-retry';
-          retry.textContent = '重试';
+          retry.textContent = task.status === 'cancelled' ? '重新做' : '重试';
           retry.addEventListener('click', function (event) {
             event.preventDefault();
             event.stopPropagation();

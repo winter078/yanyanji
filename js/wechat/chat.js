@@ -3166,7 +3166,18 @@ window.syncNarrationModeUI = syncNarrationModeUI;
         ['时间', workTaskTime(task) || ''],
         ['来源', task.retryOf ? ('从旧任务继续 · ' + task.retryOf) : '直接发起']
       ];
-      if (task.artifactName) rows.push(['产出', task.artifactName]);
+      if (task.artifactName) {
+        let fileMeta = '';
+        try {
+          const file = window.WorkPack && typeof window.WorkPack.taskArtifact === 'function'
+            ? window.WorkPack.taskArtifact(task) : null;
+          fileMeta = [
+            (window.MomArtifacts && typeof window.MomArtifacts.kindLabel === 'function') ? window.MomArtifacts.kindLabel(file && file.kind) : '',
+            file && file.size
+          ].filter(Boolean).join(' · ') + (file && !file.available ? ' · 已清理' : '');
+        } catch (e) {}
+        rows.push(['产出', task.artifactName + (fileMeta ? '（' + fileMeta + '）' : '')]);
+      }
       if (task.cancelledReason) rows.push(['取消', task.cancelledReason]);
       if (task.error) rows.push(['错误', task.error]);
       const steps = Array.isArray(task.steps) ? task.steps : [];
@@ -3265,6 +3276,46 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       }
       card.appendChild(steps);
 
+      if (task.artifactName) {
+        const file = window.WorkPack && typeof window.WorkPack.taskArtifact === 'function'
+          ? window.WorkPack.taskArtifact(task) : null;
+        const fileBox = document.createElement('div');
+        fileBox.className = 'wkt-file' + (file && !file.available ? ' missing' : '');
+        fileBox.setAttribute('role', 'button');
+        fileBox.setAttribute('tabindex', '0');
+        const kind = document.createElement('span');
+        kind.className = 'wkt-file-kind';
+        kind.textContent = file && file.kind === 'xlsx' ? 'XLSX' : file && file.kind === 'pptx' ? 'PPTX' : file && file.kind === 'docx' ? 'DOCX' : 'FILE';
+        const body = document.createElement('span');
+        body.className = 'wkt-file-body';
+        const name = document.createElement('span');
+        name.className = 'wkt-file-name';
+        name.textContent = task.artifactName;
+        const meta = document.createElement('span');
+        meta.className = 'wkt-file-meta';
+        meta.textContent = [
+          (window.MomArtifacts && typeof window.MomArtifacts.kindLabel === 'function') ? window.MomArtifacts.kindLabel(file && file.kind) : '',
+          file && file.size,
+          (file && !file.available ? '文件已清理' : '点开下载')
+        ].filter(Boolean).join(' · ');
+        body.appendChild(name);
+        body.appendChild(meta);
+        fileBox.appendChild(kind);
+        fileBox.appendChild(body);
+        const openFile = function (event) {
+          if (event) { event.preventDefault(); event.stopPropagation(); }
+          if (!window.WorkPack || typeof window.WorkPack.downloadTaskArtifact !== 'function') return;
+          window.WorkPack.downloadTaskArtifact(task.id).catch(function (err) {
+            alert(err && err.message ? err.message : String(err));
+          });
+        };
+        fileBox.addEventListener('click', openFile);
+        fileBox.addEventListener('keydown', function (event) {
+          if (event.key === 'Enter' || event.key === ' ') openFile(event);
+        });
+        card.appendChild(fileBox);
+      }
+
       const actions = document.createElement('div');
       actions.className = 'wkt-actions';
 
@@ -3289,6 +3340,13 @@ window.syncNarrationModeUI = syncNarrationModeUI;
         cancel.addEventListener('click', function (event) {
           event.preventDefault();
           event.stopPropagation();
+          if (window.WorkPack && typeof window.WorkPack.armCancel === 'function' && !window.WorkPack.armCancel(task.id)) {
+            cancel.textContent = '确认取消';
+            setTimeout(function () {
+              if (cancel.isConnected) cancel.textContent = '取消';
+            }, 4000);
+            return;
+          }
           if (window.WorkPack && typeof window.WorkPack.cancelTask === 'function') {
             window.WorkPack.cancelTask(task.id);
           }
@@ -3296,7 +3354,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
         actions.appendChild(cancel);
       }
 
-      if ((task.status === 'error' || task.status === 'interrupted') && task.goal) {
+      if ((task.status === 'error' || task.status === 'interrupted' || task.status === 'cancelled') && task.goal) {
         if (task.imageCount) {
           const hint = document.createElement('div');
           hint.className = 'wkt-hint';
@@ -3306,7 +3364,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
           const retry = document.createElement('button');
           retry.type = 'button';
           retry.className = 'wkt-action';
-          retry.textContent = task.status === 'interrupted' ? '继续' : '重试';
+          retry.textContent = task.status === 'cancelled' ? '重新做' : (task.status === 'interrupted' ? '继续' : '重试');
           retry.addEventListener('click', function (event) {
             event.preventDefault();
             event.stopPropagation();
