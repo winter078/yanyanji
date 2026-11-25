@@ -19,9 +19,9 @@
 }
 .chat-call-entry:active { background: rgba(255, 255, 255, .07); }
 
-/* ================= 语音通话（文字转写版） =================
+/* ================= 语音通话（字幕版） =================
    全屏通话层挂在 #phone-screen-root 下。
-   不创建音频文件、不做回放；用户按住说话只取识别文字。 */
+   当前一句字幕 + 最近转写；角色台词交给 CharVoice 朗读，不落录音文件。 */
 
 .call-overlay {
   position: absolute;
@@ -1395,4 +1395,115 @@
   .call-float-avatar { width: 40px; height: 40px; }
 }
 
-
+/* ================= 通话字幕流 =================
+   语音通话不再用聊天气泡：当前一句大字幕、上一句淡出，
+   动作只留一行小字；旧的转写留在 state.transcript，挂断后可回看。 */
+.call-transcript {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 0 22px 8px;
+}
+.call-transcript-inner {
+  min-height: 100%;
+  justify-content: flex-end;
+  gap: 16px;
+  padding: 0;
+}
+.call-msg {
+  justify-content: center;
+  text-align: center;
+}
+.call-msg.has-speaker { align-items: center; }
+.call-msg-speaker {
+  margin: 0 0 3px;
+  font-size: 10px;
+  color: rgba(244, 239, 232, .38);
+}
+.call-msg.assistant .call-bubble {
+  max-width: 94%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: rgba(250, 245, 238, .92);
+  font-size: 18px;
+  line-height: 1.56;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, .72);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.call-msg.assistant.is-current .call-bubble {
+  color: #fff7eb;
+  font-size: 21px;
+  font-weight: 500;
+}
+.call-msg.assistant:not(.is-current) .call-bubble {
+  font-size: 13.5px;
+  opacity: .45;
+}
+.call-msg.user { justify-content: center; }
+.call-msg.user .call-bubble {
+  max-width: 92%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: rgba(244, 239, 232, .38);
+  font-size: 11.5px;
+  line-height: 1.55;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.call-msg.user .call-bubble::before {
+  content: "你 · ";
+  color: rgba(244, 239, 232, .26);
+  letter-spacing: .04em;
+}
+.call-action-note {
+  width: auto;
+  max-width: 82%;
+  margin: 0 auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: rgba(244, 239, 232, .36);
+  font-size: 11px;
+  line-height: 1.7;
+  letter-spacing: .06em;
+}
+.call-subtitle-hidden { display: none !important; }
+.call-speak-btn {
+  display: none;
+  width: 20px;
+  height: 20px;
+  margin: 0 0 0 8px;
+  opacity: .55;
+  vertical-align: -4px;
+}
+.call-msg.assistant.is-current .call-speak-btn { display: inline-flex; }
+.call-speak-btn svg { width: 16px; height: 16px; }
+.call-typing {
+  min-width: 0;
+  padding: 6px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.call-footer-actions {
+  gap: 24px;
+  align-items: center;
+}
+.call-footer-btn.end .call-footer-circle,
+.call-footer-btn.keyboard .call-footer-circle {
+  width: 58px;
+  height: 58px;
+}
+.call-footer-btn.mic .call-footer-circle {
+  width: 74px;
+  height: 74px;
+}

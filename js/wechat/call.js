@@ -393,6 +393,30 @@
     els.transcript.scrollTop = els.transcript.scrollHeight;
   }
 
+  function refreshCallSubtitleFlow() {
+    if (!els.transcriptInner) return;
+    var items = Array.prototype.slice.call(els.transcriptInner.children || []);
+    var msgs = items.filter(function (el) {
+      return el.classList && el.classList.contains('call-msg') && el.id !== 'call-typing-row';
+    });
+    var notes = items.filter(function (el) {
+      return el.classList && el.classList.contains('call-action-note');
+    });
+    // 通话页只留最近几句做字幕，完整记录仍在 state.transcript 里，挂断后可回看。
+    var keepMsgs = msgs.slice(-4);
+    var keepNotes = notes.slice(-3);
+    items.forEach(function (el) {
+      var visible = keepMsgs.indexOf(el) >= 0 || keepNotes.indexOf(el) >= 0;
+      el.classList.toggle('call-subtitle-hidden', !visible);
+      el.classList.remove('is-current');
+    });
+    var lastAssistant = null;
+    for (var i = keepMsgs.length - 1; i >= 0; i--) {
+      if (keepMsgs[i].classList.contains('assistant')) { lastAssistant = keepMsgs[i]; break; }
+    }
+    if (lastAssistant) lastAssistant.classList.add('is-current');
+  }
+
   function cleanReplyText(raw, keepActions) {
     var text = String(raw || '');
     // 思维链、心声与指令标记不进电话气泡
@@ -591,9 +615,9 @@
         var speakBtn = document.createElement('button');
         speakBtn.type = 'button';
         speakBtn.className = 'call-speak-btn';
-        speakBtn.title = '朗读这句';
-        speakBtn.setAttribute('aria-label', '朗读这句台词');
-        speakBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v5.4a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z" fill="currentColor"></path><path d="M5.5 10.8a6.5 6.5 0 0 0 13 0M12 17.3V20M8.8 20h6.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg>';
+        speakBtn.title = '重播这句';
+        speakBtn.setAttribute('aria-label', '重播这句台词');
+        speakBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5l-5 4H4z" fill="currentColor"></path><path d="M16.2 8.6a5.2 5.2 0 0 1 0 6.8M18.6 6.2a8.4 8.4 0 0 1 0 11.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg>';
         speakBtn.onclick = function (e) {
           e.stopPropagation();
           if (!isCallVoiceReady()) { toastCallVoiceUnavailable(); return; }
@@ -608,6 +632,7 @@
           }
         };
         bubble.appendChild(speakBtn);
+        if (isCallVoiceReady()) enqueueCallSpeech(segText, (speaker && speaker.id) || currentCharId());
       }
       if (meta && meta !== '接通' && segIndex === lastTextIndex) {
         var m = document.createElement('div');
@@ -629,6 +654,7 @@
       speakerName: speakerName,
       speakerAvatar: speaker && speaker.avatar ? String(speaker.avatar) : ''
     });
+    refreshCallSubtitleFlow();
     scrollTranscript();
   }
 
@@ -730,7 +756,7 @@
     startTimer();
     setPill('我在听', 'listening');
     setWave(false);
-    setHint('按住话筒说话 · 松手转成文字', false);
+    setHint('按住说话 · 松手发送，TA 接着回', false);
     setMicDisabled(false);
     (replies || []).forEach(function (m, i) {
       appendMessage('assistant', m.content, '');
@@ -1703,7 +1729,7 @@
     if (open) {
       setHint('键盘打字 · 发送后仍按语音显示', true);
     } else {
-      setHint('按住话筒说话 · 松手转成文字', false);
+      setHint('按住说话 · 松手发送，TA 接着回', false);
     }
   }
 
@@ -1734,7 +1760,7 @@
       setPill('我在听', 'listening');
       setWave(false);
       var typingOpen = !!(els.textRow && els.textRow.classList.contains('is-open'));
-      setHint(typingOpen ? '键盘打字 · 发送后仍按语音显示' : '按住话筒说话 · 松手转成文字', typingOpen);
+      setHint(typingOpen ? '键盘打字 · 发送后仍按语音显示' : '按住说话 · 松手发送，TA 接着回', typingOpen);
     }
   }
 
