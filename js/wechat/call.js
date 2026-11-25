@@ -609,7 +609,11 @@
       }
       var bubble = document.createElement('div');
       bubble.className = 'call-bubble';
-      bubble.textContent = segText;
+      var label = document.createElement('span');
+      label.className = 'call-subtitle-label';
+      label.textContent = (role === 'user' ? '你' : (speakerName || botName())) + '：';
+      bubble.appendChild(label);
+      bubble.appendChild(document.createTextNode(segText));
       msg.appendChild(bubble);
       if (role === 'assistant') {
         var speakBtn = document.createElement('button');
