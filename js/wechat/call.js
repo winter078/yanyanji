@@ -598,7 +598,7 @@
         bubble.appendChild(speakBtn);
         enqueueCallSpeech(segText, (speaker && speaker.id) || currentCharId());
       }
-      if (meta && segIndex === lastTextIndex) {
+      if (meta && meta !== '接通' && segIndex === lastTextIndex) {
         var m = document.createElement('div');
         m.className = 'call-msg-meta';
         m.textContent = meta;
@@ -722,7 +722,7 @@
     setHint('按住话筒说话 · 松手转成文字', false);
     setMicDisabled(false);
     (replies || []).forEach(function (m, i) {
-      appendMessage('assistant', m.content, i === 0 ? '接通' : '');
+      appendMessage('assistant', m.content, '');
     });
     if (!window.VoiceInput.isSupported) {
       setHint('当前浏览器不支持语音识别，可以点下面打字', false);
@@ -745,7 +745,7 @@
     setHint('按住话筒说话 · 群里的人会接着聊', false);
     setMicDisabled(false);
     (openings || []).forEach(function (m, i) {
-      appendMessage('assistant', m.content, i === 0 ? '接通' : '', {
+      appendMessage('assistant', m.content, '', {
         id: m.speakerId || '',
         name: m.speakerName || m.name || '',
         avatar: m.speakerAvatar || ''
@@ -1475,7 +1475,7 @@
       return {
         role: m.role,
         text: m.text,
-        meta: m.meta || '',
+        meta: m.meta === '接通' ? '' : (m.meta || ''),
         action: m.action || '',
         segments: (m.segments && m.segments.length) ? m.segments.map(function (s) {
           return { type: s.type === 'action' ? 'action' : 'text', text: String(s.text || '') };
@@ -1560,12 +1560,15 @@
           b.textContent = String(seg.text || '');
           t.appendChild(b);
           if (si === lastSegText) {
-            var mt = document.createElement('div');
-            mt.className = 'call-record-meta';
-            mt.textContent = record && record.groupId
+            var metaText = record && record.groupId
               ? (m.speakerName || (m.role === 'user' ? '你' : '对方'))
               : (m.meta || (m.role === 'user' ? '你' : '对方'));
-            b.appendChild(mt);
+            if (metaText && metaText !== '接通') {
+              var mt = document.createElement('div');
+              mt.className = 'call-record-meta';
+              mt.textContent = metaText;
+              b.appendChild(mt);
+            }
           }
           list.appendChild(t);
         });
@@ -1584,12 +1587,15 @@
       bubble.className = 'call-record-bubble';
       bubble.textContent = String(m.text);
       row.appendChild(bubble);
-      var meta = document.createElement('div');
-      meta.className = 'call-record-meta';
-      meta.textContent = record && record.groupId
+      var metaText = record && record.groupId
         ? (m.speakerName || (m.role === 'user' ? '你' : '对方'))
         : (m.meta || (m.role === 'user' ? '你' : '对方'));
-      bubble.appendChild(meta);
+      if (metaText && metaText !== '接通') {
+        var meta = document.createElement('div');
+        meta.className = 'call-record-meta';
+        meta.textContent = metaText;
+        bubble.appendChild(meta);
+      }
       list.appendChild(row);
     });
     list.scrollTop = 0;
