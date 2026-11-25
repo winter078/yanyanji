@@ -61,6 +61,54 @@
     }
   }
 
+  // 页面一关，内存里的生成就断了；把上次留下的 running 标成“已中断”，
+  // 否则重开页面会永远显示“进行中”。
+  function markInterruptedTasks() {
+    var map = readTasks();
+    var changed = false;
+    Object.keys(map).forEach(function (charId) {
+      var list = Array.isArray(map[charId]) ? map[charId] : [];
+      list.forEach(function (task) {
+        if (!task || task.status !== 'running') return;
+        task.status = 'interrupted';
+        task.error = '页面关闭或刷新，任务停在这里';
+        (task.steps || []).forEach(function (step) {
+          if (step && step.status === 'running') step.status = 'fail';
+        });
+        changed = true;
+      });
+    });
+    if (changed) writeTasks(map);
+  }
+
+  function allTasks() {
+    var map = readTasks();
+    var out = [];
+    Object.keys(map).forEach(function (charId) {
+      var list = Array.isArray(map[charId]) ? map[charId] : [];
+      list.forEach(function (task) {
+        if (!task || !task.id) return;
+        var copy = clone(task);
+        copy.charId = copy.charId || charId;
+        out.push(copy);
+      });
+    });
+    out.sort(function (a, b) {
+      return (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0);
+    });
+    return out;
+  }
+
+  function getTask(taskId) {
+    var id = String(taskId || '');
+    if (!id) return null;
+    var list = allTasks();
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].id === id) return list[i];
+    }
+    return null;
+  }
+
   function clone(value) {
     try { return JSON.parse(JSON.stringify(value)); } catch (e) { return value; }
   }
@@ -177,6 +225,7 @@
 
   function emit(task, onUpdate) {
     saveTask(task);
+    try { if (window.refreshWorkTaskLedger) window.refreshWorkTaskLedger(); } catch (e) {}
     if (typeof onUpdate === 'function') {
       try { onUpdate(clone(task)); } catch (e) {}
     }
@@ -304,7 +353,9 @@
     isEnabledForChar: isEnabledForChar,
     shouldRun: shouldRun,
     run: run,
-    lastTaskForChar: lastTaskForChar
+    lastTaskForChar: lastTaskForChar,
+    getTasks: allTasks,
+    getTask: getTask
   };
 
   // ================= 插件中心：角色多选 =================
@@ -380,8 +431,117 @@
       row.appendChild(state);
       list.appendChild(row);
     });
+    try { refreshWorkTaskLedger(); } catch (e) {}
     try { if (window.refreshAppUpdateUI) window.refreshAppUpdateUI(); } catch (e) {}
   }
+
+  function taskState(task) {
+    if (task && task.status === 'done') return { cls: 'done', text: '已完成' };
+    if (task && task.status === 'error') return { cls: 'error', text: '失败' };
+    if (task && task.status === 'interrupted') return { cls: 'warn', text: '已中断' };
+    return { cls: 'running', text: '进行中' };
+  }
+
+  function taskTime(task) {
+    var ts = Number((task && (task.updatedAt || task.createdAt)) || 0);
+    if (!ts) return '';
+    var d = new Date(ts);
+    var pad = function (n) { return n < 10 ? '0' + n : String(n); };
+    return pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+
+  function charNameById(charId) {
+    var id = String(charId || '');
+    var chars = [];
+    try { chars = (typeof window.getCharacters === 'function') ? (window.getCharacters() || []) : []; } catch (e) { chars = []; }
+    for (var i = 0; i < chars.length; i++) {
+      if (chars[i] && String(chars[i].id || '') === id) return chars[i].name || '未命名角色';
+    }
+    return '角色';
+  }
+
+  function refreshWorkTaskLedger() {
+    var listEl = document.getElementById('work-task-ledger-list');
+    var summaryEl = document.getElementById('work-task-ledger-summary');
+    if (!listEl) return;
+
+    var tasks = allTasks().slice(0, 6);
+    if (summaryEl) {
+      var active = tasks.filter(function (t) { return t.status !== 'done'; }).length;
+      summaryEl.textContent = tasks.length
+        ? ('最近 ' + tasks.length + ' 条' + (active ? ' · ' + active + ' 条未完成' : ''))
+        : '还没有任务';
+    }
+
+    listEl.innerHTML = '';
+    if (!tasks.length) {
+      var empty = document.createElement('div');
+      empty.className = 'work-task-empty';
+      empty.textContent = '工作包角色要文件后，这里会出现任务进度。';
+      listEl.appendChild(empty);
+      return;
+    }
+
+    tasks.forEach(function (task) {
+      var state = taskState(task);
+      var row = document.createElement('div');
+      row.className = 'work-task-row ' + state.cls;
+
+      var main = document.createElement('div');
+      main.className = 'work-task-main';
+
+      var title = document.createElement('div');
+      title.className = 'work-task-title';
+      title.textContent = task.title || '工作包任务';
+
+      var meta = document.createElement('div');
+      meta.className = 'work-task-meta';
+      var steps = Array.isArray(task.steps) ? task.steps : [];
+      var doneSteps = steps.filter(function (s) { return s && (s.status === 'done' || s.status === 'skip'); }).length;
+      meta.textContent = charNameById(task.charId) + ' · ' + (taskTime(task) || '') +
+        (steps.length ? ' · 步骤 ' + doneSteps + '/' + steps.length : '');
+
+      var stateEl = document.createElement('div');
+      stateEl.className = 'work-task-state ' + state.cls;
+      stateEl.textContent = state.text;
+
+      main.appendChild(title);
+      main.appendChild(meta);
+      row.appendChild(main);
+      row.appendChild(stateEl);
+
+      if ((task.status === 'error' || task.status === 'interrupted') && task.goal) {
+        if (task.imageCount) {
+          var hint = document.createElement('div');
+          hint.className = 'work-task-hint';
+          hint.textContent = '带截图的任务要重新发图再试';
+          row.appendChild(hint);
+        } else {
+          var retry = document.createElement('button');
+          retry.type = 'button';
+          retry.className = 'work-task-retry';
+          retry.textContent = '重试';
+          retry.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            if (window.__momRetryWorkTask) window.__momRetryWorkTask(task.id);
+          });
+          row.appendChild(retry);
+        }
+      }
+
+      if (task.error && (task.status === 'error' || task.status === 'interrupted')) {
+        var err = document.createElement('div');
+        err.className = 'work-task-hint error';
+        err.textContent = task.error;
+        row.appendChild(err);
+      }
+
+      listEl.appendChild(row);
+    });
+  }
+
+  window.refreshWorkTaskLedger = refreshWorkTaskLedger;
 
   window.refreshWorkPackUI = refreshWorkPackUI;
 
@@ -407,7 +567,10 @@
 
   function bootWorkPackUI() {
     setTimeout(refreshWorkPackUI, 300);
+    setTimeout(refreshWorkTaskLedger, 300);
   }
+
+  markInterruptedTasks();
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', bootWorkPackUI, { once: true });

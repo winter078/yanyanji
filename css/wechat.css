@@ -1657,6 +1657,10 @@ body[data-theme="light"] .wechat-tool-pill.sel {
   border-color: rgba(229, 72, 77, 0.28);
 }
 
+.wechat-work-task.interrupted {
+  border-color: rgba(245, 158, 11, 0.32);
+}
+
 .wkt-head {
   display: flex;
   align-items: center;
@@ -1685,6 +1689,7 @@ body[data-theme="light"] .wechat-tool-pill.sel {
 .wechat-work-task.running .wkt-state { color: #a855f7; }
 .wechat-work-task.done .wkt-state { color: var(--success-primary, #07c160); }
 .wechat-work-task.error .wkt-state { color: #e5484d; }
+.wechat-work-task.interrupted .wkt-state { color: #f59e0b; }
 
 .wkt-title {
   font-size: 14px;
@@ -1768,6 +1773,26 @@ body[data-theme="light"] .wechat-tool-pill.sel {
   color: var(--text-muted, #9aa0a6);
   background: transparent;
   box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.22);
+}
+
+.wkt-action {
+  border: 1px solid rgba(168, 85, 247, 0.28);
+  border-radius: 999px;
+  background: rgba(168, 85, 247, 0.10);
+  color: #a855f7;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 7px 13px;
+  margin-top: 9px;
+  cursor: pointer;
+}
+
+.wkt-hint {
+  font-size: 10px;
+  line-height: 1.4;
+  color: #b45309;
+  margin-top: 7px;
 }
 
 @keyframes wktPulse {

@@ -3132,12 +3132,17 @@ window.syncNarrationModeUI = syncNarrationModeUI;
     function workTaskState(task) {
       if (task && task.status === 'done') return { cls: 'done', text: '已完成' };
       if (task && task.status === 'error') return { cls: 'error', text: '没做成' };
+      if (task && task.status === 'interrupted') return { cls: 'interrupted', text: '已中断' };
       return { cls: 'running', text: '进行中' };
     }
 
     function renderWorkTaskCard(task, idx) {
       const container = document.getElementById('message-container');
       if (!container || !task || !task.id) return null;
+      // 任务进度以任务台账为准；页面刷新后旧聊天记录里的“进行中”要跟着变成“已中断”。
+      if (window.WorkPack && typeof window.WorkPack.getTask === 'function') {
+        try { task = window.WorkPack.getTask(task.id) || task; } catch (e) {}
+      }
       let card = container.querySelector('[data-work-task-id="' + String(task.id) + '"]');
       if (!card) {
         card = document.createElement('div');
@@ -3204,6 +3209,27 @@ window.syncNarrationModeUI = syncNarrationModeUI;
         card.appendChild(err);
       }
       card.appendChild(steps);
+
+      if ((task.status === 'error' || task.status === 'interrupted') && task.goal) {
+        if (task.imageCount) {
+          const hint = document.createElement('div');
+          hint.className = 'wkt-hint';
+          hint.textContent = '带截图的任务要重新发图再试';
+          card.appendChild(hint);
+        } else {
+          const retry = document.createElement('button');
+          retry.type = 'button';
+          retry.className = 'wkt-action';
+          retry.textContent = task.status === 'interrupted' ? '继续' : '重试';
+          retry.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            if (window.__momRetryWorkTask) window.__momRetryWorkTask(task.id);
+          });
+          card.appendChild(retry);
+        }
+      }
+
       return card;
     }
 
@@ -3236,6 +3262,44 @@ window.syncNarrationModeUI = syncNarrationModeUI;
     }
 
     window.__momUpsertWorkTask = upsertWorkTaskMessage;
+
+    // 任务卡/任务台账上的“重试 / 继续”：把原任务目标放回输入框，再走一遍正常的生成流程。
+    window.__momRetryWorkTask = function (taskId) {
+      let task = null;
+      try {
+        task = (window.WorkPack && typeof window.WorkPack.getTask === 'function')
+          ? window.WorkPack.getTask(taskId) : null;
+      } catch (e) {}
+      if (!task || !task.goal) return false;
+      if (task.imageCount) {
+        alert('这次任务带了截图，重试需要把截图重新发一遍。');
+        return false;
+      }
+
+      const startRetry = function () {
+        const input = document.getElementById('chat-input');
+        if (!input) return false;
+        input.value = task.goal;
+        input.style.height = 'auto';
+        try { input.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) {}
+        if (typeof handleTriggerGenerate === 'function') {
+          handleTriggerGenerate();
+        }
+        return true;
+      };
+
+      // 台账会列出所有角色的任务；如果点的是别的角色，先切到 TA 的聊天再重试。
+      if (task.charId && task.charId !== activeChatCharId()) {
+        if (typeof window.openFriendChat === 'function') {
+          window.openFriendChat(task.charId);
+          setTimeout(startRetry, 350);
+          return true;
+        }
+        alert('这条任务属于别的角色，先切到 TA 的聊天再重试。');
+        return false;
+      }
+      return startRetry();
+    };
 
     // 通话结束后，聊天里只留一条“通话时长”。点它才会出现打开通话记录的入口。
     function renderCallRecordNotice(m) {

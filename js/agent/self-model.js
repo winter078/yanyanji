@@ -217,7 +217,7 @@
     var capabilities = buildCapabilities();
     var workPack = workPackInfo();
     var user = text(app().userNickname) || text(app().hero && app().hero.userName) || 'user';
-    var build = text(window.__BUILD__) || text(window.__LIVE_BUILD__) || '20261125-0028';
+    var build = text(window.__BUILD__) || text(window.__LIVE_BUILD__) || '20261125-0029';
     var context = '当前：' + (name || '还没选角色') +
       (mask && mask.name ? ' / ' + mask.name : '') +
       ' · ' + mode +
@@ -284,6 +284,6 @@
     snapshot: snapshot,
     promptBlock: promptBlock,
     refresh: snapshot,
-    build: '20261125-0028'
+    build: '20261125-0029'
   };
 })();

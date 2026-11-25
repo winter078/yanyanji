@@ -239,8 +239,18 @@ function openMottoEditSheet() {
         if (activeSession) activeSession.style.display = 'flex';
         // 列表预览只认真正的聊天气泡：身份切换提示这类系统胶囊不占预览位。
         let last = history[history.length - 1];
+        let taskPreview = '';
         for (let i = history.length - 1; i >= 0; i--) {
           const m = history[i];
+          if (m && m.workTask && !taskPreview) {
+            const liveTask = (window.WorkPack && typeof window.WorkPack.getTask === 'function')
+              ? (window.WorkPack.getTask(m.workTask.id) || m.workTask)
+              : m.workTask;
+            const st = liveTask.status === 'done' ? '已完成'
+              : (liveTask.status === 'error' ? '失败'
+              : (liveTask.status === 'interrupted' ? '已中断' : '进行中'));
+            taskPreview = '工作包 · ' + (liveTask.title || '任务') + ' · ' + st;
+          }
           if (!m || m.hiddenFromView || m.role === 'system') continue;
           last = m;
           break;
@@ -261,7 +271,7 @@ function openMottoEditSheet() {
             .replace(/[*（(][^*）)]+[*）)]/g, '')
             .replace(/\s+/g, ' ')
             .trim();
-          lastMsgEl.innerText = cleanTxt || '【图片/表情】';
+          lastMsgEl.innerText = cleanTxt || taskPreview || '【图片/表情】';
         }
       } else {
         if (emptyHint) emptyHint.style.display = 'none';
