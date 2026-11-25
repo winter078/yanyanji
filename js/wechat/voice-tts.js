@@ -2,7 +2,7 @@
    两种出声方式：
    - 配了语音接口：走 OpenAI 兼容 /audio/speech，按角色的音色 ID 合成；
    - 没配或接口失败：退回浏览器系统声音，并按角色做不同语速 / 音高。
-   只有用户点播放或试听时才出声，不在后台自动朗读。 */
+   默认只有用户点播放或试听时才出声；通话「自动朗读」需在设置里单独打开。 */
 (function () {
   'use strict';
 
@@ -36,7 +36,8 @@
       apiKey: String(raw.apiKey || '').trim(),
       volcKey: String(raw.volcKey || '').trim(),
       model: String(raw.model || 'gpt-4o-mini-tts').trim(),
-      defaultVoice: String(raw.defaultVoice || '').trim()
+      defaultVoice: String(raw.defaultVoice || '').trim(),
+      callAutoRead: !!raw.callAutoRead
     };
   }
 
@@ -50,7 +51,8 @@
       apiKey: config.apiKey,
       volcKey: config.volcKey,
       model: config.model,
-      defaultVoice: config.defaultVoice
+      defaultVoice: config.defaultVoice,
+      callAutoRead: config.callAutoRead
     };
   }
 
@@ -432,6 +434,7 @@
     var volcKey = document.getElementById('tts-volc-key-input');
     var model = document.getElementById('tts-model-input');
     var voice = document.getElementById('tts-default-voice-input');
+    var callAuto = document.getElementById('tts-call-auto-toggle');
     if (provider) provider.value = config.provider;
     if (on) on.checked = !!config.enabled;
     if (base) base.value = config.baseUrl || '';
@@ -439,6 +442,7 @@
     if (volcKey) volcKey.value = config.volcKey || '';
     if (model) model.value = config.model || '';
     if (voice) voice.value = config.defaultVoice || '';
+    if (callAuto) callAuto.checked = !!config.callAutoRead;
     updateProviderFields();
     if (!config.enabled) setStatus('还没启用。选好接口、填好 Key 后打开开关，角色才能出声。', false);
     else if (config.provider === 'volc' && !config.volcKey) setStatus('启用了，但火山 API Key 还是空的。', false);
@@ -456,6 +460,7 @@
     var volcKey = document.getElementById('tts-volc-key-input');
     var model = document.getElementById('tts-model-input');
     var voice = document.getElementById('tts-default-voice-input');
+    var callAuto = document.getElementById('tts-call-auto-toggle');
     var saved = saveConfig({
       provider: provider ? provider.value : config.provider,
       enabled: !!(on && on.checked),
@@ -463,7 +468,8 @@
       apiKey: key ? key.value : '',
       volcKey: volcKey ? volcKey.value : '',
       model: model ? model.value : '',
-      defaultVoice: voice ? voice.value : ''
+      defaultVoice: voice ? voice.value : '',
+      callAutoRead: !!(callAuto && callAuto.checked)
     });
     if (saved.provider === 'volc') {
       setStatus(saved.enabled ? '已保存：火山豆包；角色卡里填音色 ID' : '已保存，但语音开关关着。', saved.enabled);

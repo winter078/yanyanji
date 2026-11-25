@@ -557,6 +557,13 @@
     toast('角色语音还没接通：去「设置 → 角色语音」选火山、填 Key，再回来点麦克风');
   }
 
+  function isCallAutoReadEnabled() {
+    try {
+      return !!(window.CharVoice && typeof window.CharVoice.getConfig === 'function' &&
+        window.CharVoice.getConfig().callAutoRead);
+    } catch (e) { return false; }
+  }
+
   function setCallReplyMode(mode) {
     var next = String(mode) === 'voice' ? 'voice' : 'text';
     if (state.replyMode === next) return;
@@ -636,7 +643,9 @@
           }
         };
         bubble.appendChild(speakBtn);
-        if (isCallVoiceReady()) enqueueCallSpeech(segText, (speaker && speaker.id) || currentCharId());
+        if (isCallVoiceReady() && isCallAutoReadEnabled()) {
+          enqueueCallSpeech(segText, (speaker && speaker.id) || currentCharId());
+        }
       }
       if (meta && meta !== '接通' && segIndex === lastTextIndex) {
         var m = document.createElement('div');
