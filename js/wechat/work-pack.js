@@ -349,6 +349,12 @@
         silent: true
       });
 
+      // 生成期间用户可能点了“取消”；以任务台账为准，取消后不能再把任务改回已完成。
+      var current = getTask(task.id);
+      if (current && current.status === 'cancelled') {
+        return { task: current, cancelled: true };
+      }
+
       if (!made || made.error) {
         throw new Error((made && made.error) || '没有生成文件');
       }
@@ -370,6 +376,10 @@
       emit(task, opts.onUpdate);
       return { task: task, artifact: made, toolText: String(opts.toolText || '') };
     } catch (err) {
+      var latest = getTask(task.id);
+      if (latest && latest.status === 'cancelled') {
+        return { task: latest, cancelled: true };
+      }
       task.status = 'error';
       task.error = String(err && err.message ? err.message : err);
       if (hasImages) {
@@ -396,7 +406,8 @@
     run: run,
     lastTaskForChar: lastTaskForChar,
     getTasks: allTasks,
-    getTask: getTask
+    getTask: getTask,
+    cancelTask: cancelTask
   };
 
   // ================= 插件中心：角色多选 =================
@@ -481,7 +492,16 @@
     if (task && task.status === 'error') return { cls: 'error', text: '失败' };
     if (task && task.status === 'interrupted') return { cls: 'warn', text: '已中断' };
     if (task && task.status === 'superseded') return { cls: 'superseded', text: '已转新任务' };
+    if (task && task.status === 'cancelled') return { cls: 'cancelled', text: '已取消' };
     return { cls: 'running', text: '进行中' };
+  }
+
+  function stepText(status) {
+    if (status === 'done') return '完成';
+    if (status === 'fail') return '失败';
+    if (status === 'skip') return '跳过';
+    if (status === 'running') return '进行中';
+    return '待开始';
   }
 
   function taskTime(task) {
@@ -490,6 +510,72 @@
     var d = new Date(ts);
     var pad = function (n) { return n < 10 ? '0' + n : String(n); };
     return pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+
+  var ledgerExpanded = {};
+
+  function taskDetailRows(task) {
+    var rows = [];
+    rows.push(['状态', taskState(task).text]);
+    rows.push(['任务 ID', task.id || '']);
+    rows.push(['时间', taskTime(task) || '']);
+    rows.push(['来源', task.retryOf ? ('从旧任务继续 · ' + task.retryOf) : '直接发起']);
+    if (task.artifactName) rows.push(['产出', task.artifactName]);
+    if (task.cancelledReason) rows.push(['取消', task.cancelledReason]);
+    if (task.error) rows.push(['错误', task.error]);
+    var steps = Array.isArray(task.steps) ? task.steps : [];
+    if (steps.length) {
+      rows.push(['步骤', steps.map(function (s) {
+        return (s && s.label ? s.label : '步骤') + '：' + stepText(s && s.status);
+      }).join(' · ')]);
+    }
+    return rows;
+  }
+
+  function appendTaskDetail(row, task) {
+    var detail = document.createElement('div');
+    detail.className = 'work-task-detail';
+    taskDetailRows(task).forEach(function (pair) {
+      var line = document.createElement('div');
+      line.className = 'work-task-detail-row';
+      var label = document.createElement('span');
+      label.className = 'work-task-detail-label';
+      label.textContent = pair[0];
+      var value = document.createElement('span');
+      value.className = 'work-task-detail-value';
+      value.textContent = pair[1];
+      line.appendChild(label);
+      line.appendChild(value);
+      detail.appendChild(line);
+    });
+    row.appendChild(detail);
+  }
+
+  function cancelTask(taskId) {
+    var id = String(taskId || '');
+    if (!id) return false;
+    var map = readTasks();
+    var changed = false;
+    Object.keys(map).forEach(function (charId) {
+      var list = Array.isArray(map[charId]) ? map[charId] : [];
+      list.forEach(function (task) {
+        if (!task || task.id !== id || task.status !== 'running') return;
+        task.status = 'cancelled';
+        task.cancelledReason = '你取消了这次任务';
+        task.error = '';
+        task.cancelledAt = Date.now();
+        task.updatedAt = Date.now();
+        (task.steps || []).forEach(function (step) {
+          if (step && step.status === 'running') step.status = 'pending';
+        });
+        changed = true;
+      });
+    });
+    if (!changed) return false;
+    writeTasks(map);
+    try { if (window.refreshWorkTaskLedger) window.refreshWorkTaskLedger(); } catch (e) {}
+    try { if (window.__momUpsertWorkTask) window.__momUpsertWorkTask(getTask(id)); } catch (e) {}
+    return true;
   }
 
   function charNameById(charId) {
@@ -510,7 +596,7 @@
     var tasks = allTasks().slice(0, 6);
     if (summaryEl) {
       var active = tasks.filter(function (t) {
-        return t.status !== 'done' && t.status !== 'superseded';
+        return t.status !== 'done' && t.status !== 'superseded' && t.status !== 'cancelled';
       }).length;
       summaryEl.textContent = tasks.length
         ? ('最近 ' + tasks.length + ' 条' + (active ? ' · ' + active + ' 条未完成' : ''))
@@ -554,6 +640,34 @@
       row.appendChild(main);
       row.appendChild(stateEl);
 
+      var actions = document.createElement('div');
+      actions.className = 'work-task-actions';
+
+      var detailBtn = document.createElement('button');
+      detailBtn.type = 'button';
+      detailBtn.className = 'work-task-retry secondary';
+      detailBtn.textContent = ledgerExpanded[task.id] ? '收起' : '详情';
+      detailBtn.addEventListener('click', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        ledgerExpanded[task.id] = !ledgerExpanded[task.id];
+        refreshWorkTaskLedger();
+      });
+      actions.appendChild(detailBtn);
+
+      if (task.status === 'running') {
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'work-task-retry danger';
+        cancelBtn.textContent = '取消';
+        cancelBtn.addEventListener('click', function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+          cancelTask(task.id);
+        });
+        actions.appendChild(cancelBtn);
+      }
+
       if ((task.status === 'error' || task.status === 'interrupted') && task.goal) {
         if (task.imageCount) {
           var hint = document.createElement('div');
@@ -570,8 +684,16 @@
             event.stopPropagation();
             if (window.__momRetryWorkTask) window.__momRetryWorkTask(task.id);
           });
-          row.appendChild(retry);
+          actions.appendChild(retry);
         }
+      }
+      row.appendChild(actions);
+
+      if (task.cancelledReason) {
+        var cancelHint = document.createElement('div');
+        cancelHint.className = 'work-task-hint';
+        cancelHint.textContent = task.cancelledReason;
+        row.appendChild(cancelHint);
       }
 
       if (task.error && (task.status === 'error' || task.status === 'interrupted')) {
@@ -580,6 +702,8 @@
         err.textContent = task.error;
         row.appendChild(err);
       }
+
+      if (ledgerExpanded[task.id]) appendTaskDetail(row, task);
 
       listEl.appendChild(row);
     });

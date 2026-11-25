@@ -1691,6 +1691,7 @@ body[data-theme="light"] .wechat-tool-pill.sel {
 .wechat-work-task.error .wkt-state { color: #e5484d; }
 .wechat-work-task.interrupted .wkt-state { color: #f59e0b; }
 .wechat-work-task.superseded .wkt-state { color: var(--text-muted); }
+.wechat-work-task.cancelled .wkt-state { color: var(--text-muted); }
 
 .wkt-title {
   font-size: 14px;
@@ -1776,6 +1777,13 @@ body[data-theme="light"] .wechat-tool-pill.sel {
   box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.22);
 }
 
+.wkt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 9px;
+}
+
 .wkt-action {
   border: 1px solid rgba(168, 85, 247, 0.28);
   border-radius: 999px;
@@ -1785,8 +1793,46 @@ body[data-theme="light"] .wechat-tool-pill.sel {
   font-weight: 600;
   line-height: 1;
   padding: 7px 13px;
-  margin-top: 9px;
+  margin-top: 0;
   cursor: pointer;
+  font-family: inherit;
+}
+
+.wkt-action-secondary {
+  border-color: rgba(148, 163, 184, 0.28);
+  background: rgba(148, 163, 184, 0.10);
+  color: var(--text-muted, #9aa0a6);
+}
+
+.wkt-action-danger {
+  border-color: rgba(229, 72, 77, 0.26);
+  background: rgba(229, 72, 77, 0.08);
+  color: #e5484d;
+}
+
+.wkt-detail {
+  margin-top: 9px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.wkt-detail-row {
+  display: flex;
+  gap: 8px;
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.wkt-detail-label {
+  flex: 0 0 38px;
+  color: var(--text-muted, #9aa0a6);
+}
+
+.wkt-detail-value {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text-secondary, #8a8a93);
+  word-break: break-all;
 }
 
 .wkt-hint {

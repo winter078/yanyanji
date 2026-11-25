@@ -596,6 +596,17 @@
   background: rgba(148, 163, 184, 0.16);
 }
 
+.work-task-state.cancelled {
+  color: var(--color-text-secondary);
+  background: rgba(148, 163, 184, 0.20);
+}
+
+.work-task-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 6px;
+}
+
 .work-task-retry {
   flex-shrink: 0;
   border: 1px solid rgba(168, 85, 247, 0.28);
@@ -608,6 +619,18 @@
   padding: 6px 11px;
   cursor: pointer;
   font-family: inherit;
+}
+
+.work-task-retry.secondary {
+  border-color: rgba(148, 163, 184, 0.28);
+  background: rgba(148, 163, 184, 0.10);
+  color: var(--color-text-secondary);
+}
+
+.work-task-retry.danger {
+  border-color: rgba(229, 72, 77, 0.26);
+  background: rgba(229, 72, 77, 0.08);
+  color: #e5484d;
 }
 
 .work-task-retry:active {
@@ -623,6 +646,31 @@
 
 .work-task-hint.error {
   color: #e5484d;
+}
+
+.work-task-detail {
+  flex-basis: 100%;
+  padding-top: 6px;
+  border-top: 1px solid var(--color-border);
+}
+
+.work-task-detail-row {
+  display: flex;
+  gap: 7px;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.work-task-detail-label {
+  flex: 0 0 42px;
+  color: var(--text-muted);
+}
+
+.work-task-detail-value {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text-secondary);
+  word-break: break-all;
 }
 
 .workpack-role-row {

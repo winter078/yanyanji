@@ -3129,12 +3129,66 @@ window.syncNarrationModeUI = syncNarrationModeUI;
     window.__momToolNotice = { start: startToolNotice, end: endToolNotice };
 
     // ================= 角色工作包任务卡 =================
+    const workTaskExpanded = {};
+
     function workTaskState(task) {
       if (task && task.status === 'done') return { cls: 'done', text: '已完成' };
       if (task && task.status === 'error') return { cls: 'error', text: '没做成' };
       if (task && task.status === 'interrupted') return { cls: 'interrupted', text: '已中断' };
       if (task && task.status === 'superseded') return { cls: 'superseded', text: '已转新任务' };
+      if (task && task.status === 'cancelled') return { cls: 'cancelled', text: '已取消' };
       return { cls: 'running', text: '进行中' };
+    }
+
+    function workTaskStepText(status) {
+      if (status === 'done') return '完成';
+      if (status === 'fail') return '失败';
+      if (status === 'skip') return '跳过';
+      if (status === 'running') return '进行中';
+      return '待开始';
+    }
+
+    function workTaskTime(task) {
+      const ts = Number((task && (task.updatedAt || task.createdAt)) || 0);
+      if (!ts) return '';
+      const d = new Date(ts);
+      const pad = function (n) { return n < 10 ? '0' + n : String(n); };
+      return pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+    }
+
+    function renderWorkTaskDetail(task) {
+      const box = document.createElement('div');
+      box.className = 'wkt-detail';
+      const state = workTaskState(task);
+      const rows = [
+        ['状态', state.text],
+        ['任务 ID', task.id || ''],
+        ['时间', workTaskTime(task) || ''],
+        ['来源', task.retryOf ? ('从旧任务继续 · ' + task.retryOf) : '直接发起']
+      ];
+      if (task.artifactName) rows.push(['产出', task.artifactName]);
+      if (task.cancelledReason) rows.push(['取消', task.cancelledReason]);
+      if (task.error) rows.push(['错误', task.error]);
+      const steps = Array.isArray(task.steps) ? task.steps : [];
+      if (steps.length) {
+        rows.push(['步骤', steps.map(function (s) {
+          return (s && s.label ? s.label : '步骤') + '：' + workTaskStepText(s && s.status);
+        }).join(' · ')]);
+      }
+      rows.forEach(function (pair) {
+        const line = document.createElement('div');
+        line.className = 'wkt-detail-row';
+        const label = document.createElement('span');
+        label.className = 'wkt-detail-label';
+        label.textContent = pair[0];
+        const value = document.createElement('span');
+        value.className = 'wkt-detail-value';
+        value.textContent = pair[1];
+        line.appendChild(label);
+        line.appendChild(value);
+        box.appendChild(line);
+      });
+      return box;
     }
 
     function renderWorkTaskCard(task, idx) {
@@ -3211,6 +3265,37 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       }
       card.appendChild(steps);
 
+      const actions = document.createElement('div');
+      actions.className = 'wkt-actions';
+
+      const detail = document.createElement('button');
+      detail.type = 'button';
+      detail.className = 'wkt-action wkt-action-secondary';
+      detail.textContent = workTaskExpanded[task.id] ? '收起' : '详情';
+      detail.addEventListener('click', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        workTaskExpanded[task.id] = !workTaskExpanded[task.id];
+        renderWorkTaskCard(task, idx);
+        try { scrollChatToBottom && scrollChatToBottom(); } catch (e) {}
+      });
+      actions.appendChild(detail);
+
+      if (task.status === 'running') {
+        const cancel = document.createElement('button');
+        cancel.type = 'button';
+        cancel.className = 'wkt-action wkt-action-danger';
+        cancel.textContent = '取消';
+        cancel.addEventListener('click', function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+          if (window.WorkPack && typeof window.WorkPack.cancelTask === 'function') {
+            window.WorkPack.cancelTask(task.id);
+          }
+        });
+        actions.appendChild(cancel);
+      }
+
       if ((task.status === 'error' || task.status === 'interrupted') && task.goal) {
         if (task.imageCount) {
           const hint = document.createElement('div');
@@ -3227,9 +3312,18 @@ window.syncNarrationModeUI = syncNarrationModeUI;
             event.stopPropagation();
             if (window.__momRetryWorkTask) window.__momRetryWorkTask(task.id);
           });
-          card.appendChild(retry);
+          actions.appendChild(retry);
         }
       }
+
+      card.appendChild(actions);
+      if (task.cancelledReason) {
+        const cancelHint = document.createElement('div');
+        cancelHint.className = 'wkt-hint';
+        cancelHint.textContent = task.cancelledReason;
+        card.appendChild(cancelHint);
+      }
+      if (workTaskExpanded[task.id]) card.appendChild(renderWorkTaskDetail(task));
 
       return card;
     }
@@ -7879,7 +7973,9 @@ ${catalog}
                 if (window.__momUpsertWorkTask) window.__momUpsertWorkTask(task);
               }
             });
-            if (workResult && workResult.artifact) {
+            if (workResult && workResult.cancelled) {
+              recentMessages.push({ role: 'system', content: '【工作包任务已取消】user 刚才取消了这次任务。不要假装完成，也不要把它说成失败；用一句自然的话回应，比如“好，这次先停在这里”。' });
+            } else if (workResult && workResult.artifact) {
               markWorkImagesUsed(workImageInfo);
               pendingArtifactMeta = workResult.artifact;
               recentMessages.push({ role: 'system', content: '【工作包已完成】你刚为user做好了《' + workResult.artifact.name + '》（' + (window.MomArtifacts.kindLabel ? window.MomArtifacts.kindLabel(workResult.artifact.kind) : workResult.artifact.kind) + '，' + workResult.artifact.size + '）。回复里用一句自然的话把文件递给她，例如“给你，拿去用”；不要描述制作过程、技术细节，也不要自己写链接或文件名以外的代码。文件卡片会自动出现在你的回复后面。' + shotDropNote });

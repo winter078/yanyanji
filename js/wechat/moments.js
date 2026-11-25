@@ -249,7 +249,8 @@ function openMottoEditSheet() {
             const st = liveTask.status === 'done' ? '已完成'
               : (liveTask.status === 'error' ? '失败'
               : (liveTask.status === 'interrupted' ? '已中断'
-              : (liveTask.status === 'superseded' ? '已转新任务' : '进行中')));
+              : (liveTask.status === 'superseded' ? '已转新任务'
+              : (liveTask.status === 'cancelled' ? '已取消' : '进行中'))));
             taskPreview = '工作包 · ' + (liveTask.title || '任务') + ' · ' + st;
           }
           if (!m || m.hiddenFromView || m.role === 'system') continue;
