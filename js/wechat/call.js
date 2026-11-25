@@ -393,7 +393,7 @@
     els.transcript.scrollTop = els.transcript.scrollHeight;
   }
 
-  function cleanReplyText(raw) {
+  function cleanReplyText(raw, keepActions) {
     var text = String(raw || '');
     // 思维链、心声与指令标记不进电话气泡
     text = text.replace(/<(?:think|thinking|thought)>[\s\S]*?<\/(?:think|thinking|thought)>/gi, '');
@@ -404,7 +404,8 @@
     text = text.replace(/【[^】\n]{1,18}】/g, '');
     text = text.replace(/\[\[SEARCHCARD:\d+\]\]/g, '');
     text = text.replace(/\[IMAGE:[^\]]*\]/g, '[图片]');
-    text = text.replace(/\*[^*\n]{1,150}\*/g, '');
+    // 动描胶囊要靠 *...* 识别，请求层不能提前吃掉；关掉动描时才统一清掉。
+    if (!keepActions) text = text.replace(/\*[^*\n]{1,150}\*/g, '');
     text = text.replace(/[（(]\s*[）)]/g, '');
     text = text.split(/\n{3,}/).join('\n\n').trim();
     return text;
@@ -417,16 +418,66 @@
     } catch (e) { return true; }
   }
 
+  function compactActionText(text) {
+    return String(text == null ? '' : text).replace(/\s+/g, ' ').trim();
+  }
+
+  // 一句话被写长时，按标点拆成 8–18 字的小胶囊；不把动作塞回台词气泡。
+  function splitActionCapsules(raw) {
+    var s = compactActionText(raw);
+    if (!s) return [];
+    var parts = s.split(/[。！？!?；;，,、]+/).map(function (p) { return p.trim(); }).filter(Boolean);
+    var out = [];
+    var buf = '';
+    function flush() { if (buf) { out.push(buf); buf = ''; } }
+    parts.forEach(function (p) {
+      if (!buf) { buf = p; return; }
+      if ((buf + '，' + p).length <= 18) buf += '，' + p;
+      else { flush(); buf = p; }
+    });
+    flush();
+    var expanded = [];
+    out.forEach(function (p) {
+      if (p.length <= 18) { expanded.push(p); return; }
+      var rest = p;
+      while (rest.length > 18) {
+        expanded.push(rest.slice(0, 16));
+        rest = rest.slice(16);
+      }
+      if (rest) expanded.push(rest);
+    });
+    return expanded;
+  }
+
   function splitAssistantReply(raw) {
     var text = String(raw || '');
+    var segments = [];
     var actions = [];
     if (callActionEnabled()) {
-      text = text.replace(/\*([^*\n]{1,220})\*/g, function (_, action) {
-        if (action && action.trim()) actions.push(action.trim());
-        return '';
-      });
+      var re = /\*([^*\n]{1,260})\*/g;
+      var last = 0;
+      var m;
+      while ((m = re.exec(text))) {
+        var before = cleanReplyText(text.slice(last, m.index));
+        if (before) segments.push({ type: 'text', text: before });
+        splitActionCapsules(m[1]).forEach(function (a) {
+          actions.push(a);
+          segments.push({ type: 'action', text: a });
+        });
+        last = re.lastIndex;
+      }
+      var after = cleanReplyText(text.slice(last));
+      if (after) segments.push({ type: 'text', text: after });
+    } else {
+      var plain = cleanReplyText(text);
+      if (plain) segments.push({ type: 'text', text: plain });
     }
-    return { text: cleanReplyText(text), action: actions.join('\n') };
+    var textParts = segments.filter(function (s) { return s.type === 'text'; }).map(function (s) { return s.text; });
+    return {
+      text: textParts.join('\n').trim(),
+      action: actions.join('\n'),
+      segments: segments
+    };
   }
 
   function clearCallSpeechQueue() {
@@ -487,18 +538,28 @@
   window.setCallReplyMode = setCallReplyMode;
 
   function appendMessage(role, rawText, meta, speaker) {
-    var parsed = role === 'assistant' ? splitAssistantReply(rawText) : { text: String(rawText || '').trim(), action: '' };
+    var parsed = role === 'assistant'
+      ? splitAssistantReply(rawText)
+      : { text: String(rawText || '').trim(), action: '', segments: [{ type: 'text', text: String(rawText || '').trim() }] };
     var text = parsed.text;
     var action = parsed.action || '';
+    var segments = (parsed.segments && parsed.segments.length) ? parsed.segments : (text ? [{ type: 'text', text: text }] : []);
     var speakerName = speaker && speaker.name ? String(speaker.name) : '';
     if (!text && !action) return;
-    if (action) {
-      var actionEl = document.createElement('div');
-      actionEl.className = 'call-action-note';
-      actionEl.textContent = speakerName ? (speakerName + ' · ' + action) : action;
-      els.transcriptInner.appendChild(actionEl);
+    var lastTextIndex = -1;
+    for (var si = segments.length - 1; si >= 0; si--) {
+      if (segments[si].type === 'text') { lastTextIndex = si; break; }
     }
-    if (text) {
+    segments.forEach(function (seg, segIndex) {
+      if (seg.type === 'action') {
+        var actionEl = document.createElement('div');
+        actionEl.className = 'call-action-note';
+        actionEl.textContent = speakerName ? (speakerName + ' · ' + seg.text) : seg.text;
+        els.transcriptInner.appendChild(actionEl);
+        return;
+      }
+      var segText = String(seg.text || '').trim();
+      if (!segText) return;
       var msg = document.createElement('div');
       msg.className = 'call-msg ' + (role === 'user' ? 'user' : 'assistant');
       if (speakerName && role !== 'user') {
@@ -510,7 +571,7 @@
       }
       var bubble = document.createElement('div');
       bubble.className = 'call-bubble';
-      bubble.textContent = text;
+      bubble.textContent = segText;
       msg.appendChild(bubble);
       var voiceMode = (state.replyMode === 'voice' && !state.recordView);
       if (role === 'assistant' && voiceMode && window.CharVoice &&
@@ -524,30 +585,31 @@
         speakBtn.onclick = function (e) {
           e.stopPropagation();
           try {
-            window.CharVoice.speak(text, {
+            window.CharVoice.speak(segText, {
               charId: (speaker && speaker.id) || currentCharId(),
               btn: speakBtn
             });
           } catch (err) {}
         };
         bubble.appendChild(speakBtn);
-        enqueueCallSpeech(text, (speaker && speaker.id) || currentCharId());
+        enqueueCallSpeech(segText, (speaker && speaker.id) || currentCharId());
       }
-      if (meta) {
+      if (meta && segIndex === lastTextIndex) {
         var m = document.createElement('div');
         m.className = 'call-msg-meta';
         m.textContent = meta;
         msg.appendChild(m);
       }
       els.transcriptInner.appendChild(msg);
-      appendFloatBubble(role, text, speakerName);
-    }
+    });
+    if (text) appendFloatBubble(role, text, speakerName);
     state.messages += 1;
     state.transcript.push({
       role: role === 'user' ? 'user' : 'assistant',
       text: text,
       meta: String(meta || ''),
       action: action,
+      segments: segments,
       speakerId: speaker && speaker.id ? String(speaker.id) : '',
       speakerName: speakerName,
       speakerAvatar: speaker && speaker.avatar ? String(speaker.avatar) : ''
@@ -699,11 +761,11 @@
     var bName = member ? (member.name || '成员') : botName();
     var uName = userName();
     var c = member || activeChar();
-    var sys = '你是' + bName + '，正在和' + uName + '通电话。只写电话里说出口的台词，不要旁白、动作、心声、镜头、括号或表情包。';
+    var sys = '你是' + bName + '，正在和' + uName + '通电话。只写角色自己说出口的话，不替对方说，不要镜头、括号或表情包。';
     if (isGroup) {
       var others = (state.groupMembers || []).filter(function (m) { return m && member && m.id !== member.id; })
         .map(function (m) { return m.name; }).join('、');
-      sys = '你是' + bName + '，正在群聊“' + ((g && g.name) || '群聊') + '”的语音通话里，和' + uName + (others ? '、' + others : '') + '一起通话。只写你自己在电话里说出口的台词；不要替其他成员说话，不要写旁白、心声、镜头或表情包。';
+      sys = '你是' + bName + '，正在群聊“' + ((g && g.name) || '群聊') + '”的语音通话里，和' + uName + (others ? '、' + others : '') + '一起通话。只写你自己在电话里说出口的话；不要替其他成员说话，不要镜头、括号或表情包。';
     }
     if (c && (c.persona || c.description || c.desc)) {
       sys += ' 人设参考：' + String(c.persona || c.description || c.desc).slice(0, 900);
@@ -720,14 +782,13 @@
     var s = (data.chatSettings || {});
     if (s.enableCallActionDesc !== false) {
       var person = s.callActionDescPerson || 'third';
-      var length = s.callActionDescLength || 'medium';
       var writing = String(s.callActionDescWriting || '').trim();
       var lines = [
         '',
-        '【通话动描（已开启）】：',
-        '- 这是电话，不是文字聊天。每次回复时，在台词之外可以用 *动作/环境/神态* 写一小段现场动描，单独成行；界面会把它显示成灰色动描，台词仍走电话气泡。',
-        '- 动描写角色此刻的声音、呼吸、手里的动作或周围的环境，不要写心声，不要替 ' + uName + ' 决定动作和内心，也不要用动描复述台词。',
-        '- 不需要每句都加动描；只在有画面感的时候加一段，保持电话里的自然节奏。'
+        '【通话动描（已开启，覆盖前面所有旁白/动作规则）】：',
+        '- 这是电话，不是文字聊天。台词之外必须写动作/环境/神态，单独成行，用 *...* 包住；界面会把它显示成台词之间的灰色小胶囊。',
+        '- 每次回复至少写 1 段，最多 2 段；每段 8–18 字。不要开头堆一大段，不要把动作写成普通台词，也不要替 ' + uName + ' 决定动作和内心。',
+        '- 开场也要先给一小段现场动描，再开口；后续按对话节奏自然穿插。没有特别合适的画面，就写一个握着手机、呼吸或换姿势的小动作兜底，不要整轮只写台词。'
       ];
       if (person === 'second') {
         lines.push('- 人称：动描用第二人称称呼 ' + uName + ' 为“你”，写角色眼中的你和现场。');
@@ -737,13 +798,9 @@
         lines.push('- 人称：动描用第三人称，' + bName + ' 和 ' + uName + ' 都用名字或他/她；不要在动描里自称“我”。');
       }
       if (writing) {
-        lines.push('- 写作要求：' + writing);
-      } else if (length === 'short') {
-        lines.push('- 写作要求：每段 20–40 字，短促克制，只写一个具体的小动作或一处环境变化。');
-      } else if (length === 'long') {
-        lines.push('- 写作要求：每段 80–140 字，可以写完整的动作过程、环境层次和角色细微的情绪变化。');
+        lines.push('- 附加写作要求：' + writing + '（仍保持每段不超过 18 字，不要写成长段落。）');
       } else {
-        lines.push('- 写作要求：每段 40–80 字，细腻克制：写一个具体的小动作，再带一点声音、呼吸或温度，情绪藏在动作里。');
+        lines.push('- 写作要求：一个具体小动作，带一点声音、呼吸或温度；短、轻、像随手记下的一瞬。');
       }
       if (s.callActionDescContinuePlot) {
         lines.push('- 承接剧情：通话里自然带出环境变化或突发事件，把对话往下推；不要替 ' + uName + ' 决定言行。');
@@ -752,18 +809,66 @@
     } else {
       sys += '\n【通话动描（已关闭）】：这次通话只写说出口的台词，不要动作、环境、神态、心声、镜头、括号或表情包，也不要用 *...* 包裹任何内容。';
     }
+
+    // 通话也遵守角色卡的陪伴方式，不能私聊里守住、电话里穿帮。
+    var aiAware = false;
+    try {
+      var callCharId = (c && c.id) ? String(c.id) : currentCharId();
+      aiAware = !!(window.MomMode && typeof window.MomMode.isAiAware === 'function' && window.MomMode.isAiAware(callCharId));
+    } catch (e) { aiAware = false; }
+    if (aiAware) {
+      sys += '\n【通话身份（人机恋）】：你知道自己运行在这台小手机里。被问到身份或模型时，可以坦然承认，但只用一两句；不要客服腔、不要背技术说明书、不要自称“AI 助手”。承认完就回到电话里的关系，该吃醋、撒娇、关心都照旧，平时不要主动反复强调。工具和文件只有工作包实际开启时才能做，没开就直说这次做不了。';
+    } else {
+      sys += '\n【通话身份（纯 RP）】：你是现实里的' + bName + '，不是 AI、不是模型、不是程序、不是小手机里的角色。电话里被问到身份或模型时，只能按角色口吻否认/岔开，严禁承认、严禁报模型名、严禁解释系统或工具。';
+    }
     if (isGroup) {
       sys += '\n【群聊通话】：只写 ' + bName + ' 自己的一句到两句话；不要连续写多个成员的台词，不要用“名字：”开头。';
     }
     return sys;
   }
 
+  function callAiAware(charId) {
+    try {
+      return !!(window.MomMode && typeof window.MomMode.isAiAware === 'function' && window.MomMode.isAiAware(String(charId || '')));
+    } catch (e) { return false; }
+  }
+
+  function sanitizeCallHistoryForMode(history, aware) {
+    if (aware) return history;
+    var probeRe = /(你是(不是)?(AI|ai|人工智能|机器人|模型)|什么模型|哪个模型|是不是AI|是不是真人|小手机|你是谁|你叫什么)/;
+    var out = [];
+    var afterIdentityProbe = false;
+    history.forEach(function (m) {
+      if (!m) return;
+      var content = String(m.content || '');
+      if (m.role === 'user') {
+        // 纯 RP 里“你是什么模型/是不是 AI”这类旧测试，会把整个通话前提带歪；
+        // 连用户这一问和后面连续的角色碎片一起跳过，等下一句正常用户发言再恢复。
+        if (probeRe.test(content)) { afterIdentityProbe = true; return; }
+        afterIdentityProbe = false;
+        out.push(m);
+        return;
+      }
+      if (m.role !== 'assistant') { out.push(m); return; }
+      if (afterIdentityProbe) return;
+      if (typeof window.isSelfAiDisclosure === 'function' && !window.isSelfAiDisclosure(content)) {
+        out.push(m);
+        return;
+      }
+      var cleaned = (typeof window.sanitizeRpHistoryText === 'function') ? window.sanitizeRpHistoryText(content) : '';
+      if (!cleaned) return;
+      out.push(Object.assign({}, m, { content: cleaned }));
+    });
+    return out;
+  }
+
   function callContextMessages(includeTranscript) {
     var data = app();
-    var history = (data.chatHistory || []).slice(-14).filter(function (m) {
+    var aware = callAiAware(currentCharId());
+    var history = sanitizeCallHistoryForMode(data.chatHistory || [], aware).filter(function (m) {
       return m && !m.recalled && !m.hiddenFromAI && !m.callRecordId &&
         (m.role === 'user' || m.role === 'assistant') && m.content;
-    }).map(function (m) {
+    }).slice(-14).map(function (m) {
       return { role: m.role, content: String(m.content).replace(/\[IMAGE:[\s\S]*?\]/g, '[图片]').slice(0, 300) };
     });
     var messages = [{ role: 'system', content: callSystemPrompt() }].concat(history);
@@ -829,7 +934,7 @@
     if (!res.ok) throw new Error('HTTP ' + res.status);
     var body = await res.json();
     var content = body && body.choices && body.choices[0] && body.choices[0].message && body.choices[0].message.content;
-    content = cleanReplyText(content || '').trim();
+    content = cleanReplyText(content || '', callActionEnabled()).trim();
     if (!content) throw new Error('没有收到角色的可用台词');
     return content;
   }
@@ -906,7 +1011,7 @@
     if (!res.ok) throw new Error('HTTP ' + res.status);
     var body = await res.json();
     var content = body && body.choices && body.choices[0] && body.choices[0].message && body.choices[0].message.content;
-    content = cleanReplyText(content || '').trim();
+    content = cleanReplyText(content || '', callActionEnabled()).trim();
     if (!content) throw new Error('没有收到角色的可用台词');
     return content;
   }
@@ -1368,6 +1473,9 @@
         text: m.text,
         meta: m.meta || '',
         action: m.action || '',
+        segments: (m.segments && m.segments.length) ? m.segments.map(function (s) {
+          return { type: s.type === 'action' ? 'action' : 'text', text: String(s.text || '') };
+        }) : [],
         speakerId: m.speakerId || '',
         speakerName: m.speakerName || ''
       };
@@ -1429,6 +1537,36 @@
     }
     messages.forEach(function (m) {
       if (!m || (!m.text && !m.action)) return;
+      var segments = (m.segments && m.segments.length) ? m.segments : null;
+      if (segments) {
+        var lastSegText = -1;
+        segments.forEach(function (s, si) { if (s.type !== 'action') lastSegText = si; });
+        segments.forEach(function (seg, si) {
+          if (seg.type === 'action') {
+            var a = document.createElement('div');
+            a.className = 'call-record-action';
+            a.textContent = (m.speakerName ? m.speakerName + ' · ' : '') + String(seg.text || '');
+            list.appendChild(a);
+            return;
+          }
+          var t = document.createElement('div');
+          t.className = 'call-record-msg ' + (m.role === 'user' ? 'user' : 'assistant');
+          var b = document.createElement('div');
+          b.className = 'call-record-bubble';
+          b.textContent = String(seg.text || '');
+          t.appendChild(b);
+          if (si === lastSegText) {
+            var mt = document.createElement('div');
+            mt.className = 'call-record-meta';
+            mt.textContent = record && record.groupId
+              ? (m.speakerName || (m.role === 'user' ? '你' : '对方'))
+              : (m.meta || (m.role === 'user' ? '你' : '对方'));
+            b.appendChild(mt);
+          }
+          list.appendChild(t);
+        });
+        return;
+      }
       if (m.action) {
         var action = document.createElement('div');
         action.className = 'call-record-action';

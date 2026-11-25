@@ -58,6 +58,8 @@
         return sentences.filter(function (s) { return s && !SELF_AI_RE.test(s); }).join('').trim();
       }).filter(Boolean).join('\n').trim();
     }
+    window.isSelfAiDisclosure = isSelfAiDisclosure;
+    window.sanitizeRpHistoryText = sanitizeRpHistoryText;
 
     // 纯 RP 连“记忆”里也不能带出人机恋时期的模型/小手机自述。
     function purgePureRpMemoryText(text) {
@@ -1590,8 +1592,8 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       const summary = document.getElementById('call-action-desc-summary');
       if (summary) {
         const personLabel = { 'default': '默认', 'second': '第二人称', 'third': '第三人称', 'first': '第一人称' }[person] || '第三人称';
-        const lengthLabel = { 'short': '短句', 'medium': '中段', 'long': '长段落' }[length] || '中段';
-        const parts = [personLabel, writing ? '有写作要求' : lengthLabel];
+        const parts = [personLabel, '短胶囊'];
+        if (writing) parts.push('有写作要求');
         if (continuePlot) parts.push('承接剧情');
         summary.innerText = parts.join(' · ');
       }
@@ -6711,7 +6713,12 @@ ${(() => {
           .replace(/【关于这台小手机】：[\s\S]*?(?=\n【对话质感】)/, function () { return aboutPhoneBlock; });
       }
       if (window.__voiceCallMode && !window.__voiceCallMinimized) {
-        promptText += '\n\n【语音通话模式（本轮最高优先级）】现在你们正在通电话。只写电话里真正说出口的台词：不要【思维链】、不要【心声】、不要 ---、不要动作/旁白/镜头/括号描写，不要表情包、图片、引用格式或微信排版。像真人接电话一样自然、口语、短，通常 1 到 4 句；可以停顿、反问、没听清让对方再说一遍。不要复述用户刚说的话，也不要解释自己的底细。';
+        var callActionOn = !appData.chatSettings || appData.chatSettings.enableCallActionDesc !== false;
+        promptText += '\n\n【语音通话模式（本轮最高优先级）】现在你们正在通电话。只写电话里真正说出口的台词：不要【思维链】、不要【心声】、不要 ---、不要表情包、图片、引用格式或微信排版。' +
+          (callActionOn
+            ? '动作/环境/神态只能用 *...* 单独成行、夹在台词之间，不能写成普通台词或整段旁白。'
+            : '不要动作/旁白/镜头/括号描写。') +
+          '像真人接电话一样自然、口语、短，通常 1 到 4 句；可以停顿、反问、没听清让对方再说一遍。不要复述用户刚说的话，也不要解释自己的底细。';
       }
 
       if (!aiAware) {
