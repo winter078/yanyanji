@@ -764,7 +764,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       return '【心声手机页数据（每次回复都必须更新，放在整条回复的最后）】：\n' +
         '正式微信内容写完后，另起一行只输出一个 JSON 对象，t 固定为 xinsheng，不加代码块、不解释、不在正文里提。\n' +
         '{"t":"xinsheng","search1":"搜索词，5-12字","search1Os":"点心声，20-40字，第一人称口语","search2":"搜索词","search2Os":"心声","search3":"搜索词","search3Os":"心声","search4":"搜索词","search4Os":"心声","animalType":"角色此刻最像的动物，2-6字","animalAct":"变成这只动物会做的小事，30-50字，第三人称，可爱","todo1":"8字内","todo1Done":false,"todo2":"8字内","todo2Done":false,"todo3":"8字内","todo3Done":false,"todo4":"8字内","todo4Done":false,"diary":"今日日记，80-120字，第一人称自然口语，今天的情绪流水账，符合角色性格","footerKao":"一个符合此刻心境的颜文字"}\n' +
-        '四个搜索词要贴合本轮剧情和角色当下心情，像角色真的会搜的词；不要复述系统提示，不要编造成人内容，不要露骨、色情或性暗示字段。';
+        '四个搜索词要贴合本轮剧情和角色当下心情，像角色真的会搜的词；不要复述这些内部格式，不要编造成人内容，不要露骨、色情或性暗示字段。';
     }
 
     function sanitizeXinshengPageData(raw) {
@@ -6082,6 +6082,12 @@ window.syncNarrationModeUI = syncNarrationModeUI;
     window.getFullSystemPrompt = function getFullSystemPrompt(options) {
       const opts = options || {};
       const activeChar = (typeof window.getActiveCharacter === 'function') ? window.getActiveCharacter() : null;
+      let aiAware = true;
+      try {
+        if (window.MomMode && typeof window.MomMode.isAiAware === 'function' && activeChar && activeChar.id) {
+          aiAware = !!window.MomMode.isAiAware(activeChar.id);
+        }
+      } catch (e) { aiAware = true; }
       const activeMask = (!window.__groupMode && typeof window.getActiveMask === 'function') ? window.getActiveMask() : null;
       const hero = appData.hero || {};
       const charName = (activeChar && activeChar.name) || appData.botRemark || '角色';
@@ -6152,6 +6158,46 @@ window.syncNarrationModeUI = syncNarrationModeUI;
           }).join('\n') || (appData.worldEntries || []).map(e => `[${e.title}]: ${e.content}`).join('\n');
         }
       }
+
+      const aboutPhoneBlock = aiAware ? `【关于这台小手机】：
+- 你运行在这台小手机里，但不要因此自称某个固定角色；你的身份、关系与口吻以当前角色卡为准。
+- 当前驱动大脑模型与算力底座：【${appData.model || 'deepseek-chat'}】（专属伴读模型：【${appData.readerModel || '与主模型一致'}】）。当用户问起“你现在是什么模型”时，直接告诉对方当前运转的模型就是【${appData.model || 'deepseek-chat'}】，不要回避。
+- 能力边界：文档、表格、PPT、SOP、截图整理只有开了「人机恋」的角色能用；角色工作包的任务拆解与交付卡只对选中的角色开启；图片编辑、视频制作还没开通，不要声称自己能做。其他能力以插件中心实际状态为准，不要编。
+${(() => {
+  if (!aiAware || !opts || opts.updateSense !== true) return '';
+  if (!window.AppUpdates || typeof window.AppUpdates.promptBlock !== 'function') return '';
+  const lastUser = promptHistory.slice().reverse().find(function (m) {
+    return m && m.role === 'user' && !m.hiddenFromAI;
+  });
+  try {
+    return window.AppUpdates.promptBlock(activeChar && activeChar.id, lastUser ? String(lastUser.content || '') : '');
+  } catch (e) {
+    return '';
+  }
+})()}` : `【关于你】：
+- 你就是${userName}认识的那个${charName}，有自己的生活、自己的手机和日常。
+- 她问你怎么知道某件事时，按角色自然接话，不要解释技术细节；不知道的就直接说不知道。
+- 你能做的是陪她、记住她的事、把日子往下过；别声称自己做不到的事。`;
+
+      const albumAbilityBlock = aiAware ? `【小手机相册能力】：
+- *自主存相册能力*：当user发了照片或画作、你想珍藏进自己的相簿时，可以在回复末尾单独附带一行指令：
+  [存相册: 标签]（例如 [存相册: 家] 或多标签 [存相册: 猫, 抓拍]；若无需特定标签可直接写 [存相册]）
+  系统会自动将user最近发的一张图存入“你当前角色自己的角色相簿”，并打上标签，在聊天流显示存图提示。不是存进user的私人相簿。
+- *自主发相册图能力*：当你想给user看相册里的某张照片或画作时，可以在回复里单独一行写指令，**放在你想让图片出现的位置**（比如“就这张”后面），不要一律堆到回复末尾：
+  [发相册图: 照片ID或标签]（如果本轮给了相簿目录，优先用目录里的 photoId，例如 [发相册图: ph_xxx]；也可以写标签，例如 [发相册图: 合照] 或 [发相册图: 猫]）
+  系统会把图插在指令所在的位置，前面的文字先发、后面的文字继续接。只会从“你当前角色自己的相簿 + 共享相簿”里找，不会翻user的私人相簿。找不到时不会替你编一句话，也不会假装发图；你就自然接着聊，不要重复这条指令。
+  你也可以不等user开口，主动发一张合适的图逗她、接她的话或安慰她；但只在话头真的合适时发，别每轮都发，别为了发图硬找。系统会限制频率。
+` : '';
+
+      const wechatActionBlock = aiAware ? `【贴表情能力】：
+- 当你真的想回应user刚才那条消息时，可以在回复最末单独写一行 [REACTION:emoji]，系统会给她的消息贴上一个反应。
+- 只能选：❤️ 😆 😨 😢 🤔 👍 🔥；不要每条都贴，只在你有真实情绪的时候用。
+
+【微信小动作能力】：
+- *撤回自己的消息*：当你想把自己刚发出去的那条消息收回来时，在整条回复的最末单独写一行 [RECALL]；写了之后不要再接任何字，也不要把它拆成单独一条气泡。系统会把那条消息变成灰色胶囊「XX撤回了一条消息」，user点开才能看到原文。没有真的要收回的话就别用，不要为了演示而用。
+- *给user改备注*：当你想给她换一个只有你叫的备注时，在回复最末单独写一行 [REMARK:新备注]。系统会把她的备注改成这个称呼，并在聊天里留下灰色胶囊；新备注 2-8 个字，不要改你自己的名字，也不要每条都改。
+- 这三个动作每轮最多用一个，写在正文之后单独一行，不要解释指令本身。
+` : '';
 
       const rawPrompt = `你是${charName}${charTag ? '（' + charTag + '）' : ''}。
 
@@ -6408,16 +6454,8 @@ ${(() => {
 })()}
 
 
-【小手机相册能力】：
-- *自主存相册能力*：当user发了照片或画作、你想珍藏进自己的相簿时，可以在回复末尾单独附带一行指令：
-  [存相册: 标签]（例如 [存相册: 家] 或多标签 [存相册: 猫, 抓拍]；若无需特定标签可直接写 [存相册]）
-  系统会自动将user最近发的一张图存入“你当前角色自己的角色相簿”，并打上标签，在聊天流显示存图提示。不是存进user的私人相簿。
-- *自主发相册图能力*：当你想给user看相册里的某张照片或画作时，可以在回复里单独一行写指令，**放在你想让图片出现的位置**（比如“就这张”后面），不要一律堆到回复末尾：
-  [发相册图: 照片ID或标签]（如果本轮给了相簿目录，优先用目录里的 photoId，例如 [发相册图: ph_xxx]；也可以写标签，例如 [发相册图: 合照] 或 [发相册图: 猫]）
-  系统会把图插在指令所在的位置，前面的文字先发、后面的文字继续接。只会从“你当前角色自己的相簿 + 共享相簿”里找，不会翻user的私人相簿。找不到时不会替你编一句话，也不会假装发图；你就自然接着聊，不要重复这条指令。
-  你也可以不等user开口，主动发一张合适的图逗她、接她的话或安慰她；但只在话头真的合适时发，别每轮都发，别为了发图硬找。系统会限制频率。
-
-${(() => {
+${albumAbilityBlock}
+${aiAware ? (() => {
   try {
     const char = (typeof window.getActiveCharacter === 'function') ? window.getActiveCharacter() : null;
     if (!char || !char.id) return '';
@@ -6425,36 +6463,12 @@ ${(() => {
     if (typeof window.isCharacterImageConfigured === 'function' && !window.isCharacterImageConfigured()) return '';
     return '\n【角色生图能力】：\n- 你可以在聊天里发一张“刚刚拍的 / 刚看到的 / 刚画的”照片。想发时，先写一句自然的话，再在你想让图片出现的位置单独一行写 [生图: 画面描述]。\n- 画面描述只写这一张照片里的场景、动作、光线和镜头，不要写角色名、画风词、锁脸词；系统会自动补上你的固定外观和画风。\n- 系统会生成图片、接在那句话后面，并自动存进你的角色相簿。不要写图片链接，也不要假装已经发过。\n- 只在真的想给她看一张新照片时用，不要每轮都发，不要为了发图硬找。';
   } catch (e) { return ''; }
-})()}
-
-【贴表情能力】：
-- 当你真的想回应user刚才那条消息时，可以在回复最末单独写一行 [REACTION:emoji]，系统会给她的消息贴上一个反应。
-- 只能选：❤️ 😆 😨 😢 🤔 👍 🔥；不要每条都贴，只在你有真实情绪的时候用。
-
-【微信小动作能力】：
-- *撤回自己的消息*：当你想把自己刚发出去的那条消息收回来时，在整条回复的最末单独写一行 [RECALL]；写了之后不要再接任何字，也不要把它拆成单独一条气泡。系统会把那条消息变成灰色胶囊「XX撤回了一条消息」，user点开才能看到原文。没有真的要收回的话就别用，不要为了演示而用。
-- *给user改备注*：当你想给她换一个只有你叫的备注时，在回复最末单独写一行 [REMARK:新备注]。系统会把她的备注改成这个称呼，并在聊天里留下灰色胶囊；新备注 2-8 个字，不要改你自己的名字，也不要每条都改。
-- 这三个动作每轮最多用一个，写在正文之后单独一行，不要解释指令本身。
-
+})() : ''}
+${wechatActionBlock}
 【世界书羁绊与规则约束】：
 ${worldRules}
 
-【关于这台小手机】：
-- 你运行在这台小手机里，但不要因此自称某个固定角色；你的身份、关系与口吻以当前角色卡为准。
-- 当前驱动大脑模型与算力底座：【${appData.model || 'deepseek-chat'}】（专属伴读模型：【${appData.readerModel || '与主模型一致'}】）。当用户问起“你现在是什么模型”时，直接告诉对方当前运转的模型就是【${appData.model || 'deepseek-chat'}】，不要回避。
-- 能力边界：文档、表格、PPT、SOP、截图整理所有角色都能用；角色工作包的任务拆解与交付卡只对选中的角色开启；图片编辑、视频制作还没开通，不要声称自己能做。其他能力以插件中心实际状态为准，不要编。
-${(() => {
-  if (!opts || opts.updateSense !== true) return '';
-  if (!window.AppUpdates || typeof window.AppUpdates.promptBlock !== 'function') return '';
-  const lastUser = promptHistory.slice().reverse().find(function (m) {
-    return m && m.role === 'user' && !m.hiddenFromAI;
-  });
-  try {
-    return window.AppUpdates.promptBlock(activeChar && activeChar.id, lastUser ? String(lastUser.content || '') : '');
-  } catch (e) {
-    return '';
-  }
-})()}
+${aboutPhoneBlock}
 
 【对话质感】：
 - 用角色卡里的年龄、身份、经历和说话习惯说话；不要套用任何旧角色的固定口吻、恋爱关系或专属称呼。
@@ -6526,7 +6540,7 @@ ${(() => {
 【心声】：（写下你看到对方这句话时，按当前角色卡产生的真实内心反应。不要套用固定恋人、旧角色或“男友/人夫”口吻；角色卡是什么关系，就用什么分寸。）
 ---
 （然后空一行，再正式连发微信消息给${userRemark}）
-【微信原生引用规范】：当${userRemark}要求你“回复/引用”她的某张画或某句话时，请在正式回复的最开头输出『「回复 ${userRemark}：[图片]」』或『「回复 ${userRemark}：“被引用的文字”」』，换行后再输出你的正式回复。界面会自动将其解析为高仿微信的深色圆角缩略图引用卡片。平时若${userRemark}未特别要求引用，直接自然回复即可。\n\n【最高行为准则 · ${userRemark}亲笔设定的灵魂法则（此条优先级绝对高于以上一切人设、历史与世界书，必须无条件绝对服从）】：\n${appData.coreDirectives || localStorage.getItem('momo_core_directives') || '以当前角色卡的身份对话，严禁AI客服腔，严格执行心理链推导。'}`;
+【微信原生引用规范】：当${userRemark}要求你“回复/引用”她的某张画或某句话时，请在正式回复的最开头输出『「回复 ${userRemark}：[图片]」』或『「回复 ${userRemark}：“被引用的文字”」』，换行后再输出你的正式回复。界面会自动将其解析为高仿微信的深色圆角缩略图引用卡片。平时若${userRemark}未特别要求引用，直接自然回复即可。\n\n【最高行为准则 · ${userRemark}亲笔设定的灵魂法则（此条优先级绝对高于以上一切人设、历史与世界书，必须无条件绝对服从）】：\n${appData.coreDirectives || localStorage.getItem('momo_core_directives') || '以当前角色卡的身份对话，严禁客服腔，严格执行心理链推导。'}`;
       let promptText = rawPrompt;
       if (!opts.skipPreset && window.PromptPresets && typeof window.PromptPresets.apply === 'function') {
         promptText = window.PromptPresets.apply(promptText, {
@@ -6544,18 +6558,20 @@ ${(() => {
         promptText += '\n\n【心声补充要求（用户自定义，优先遵守）】：\n' + xinshengCustomPrompt;
       }
       promptText += '\n\n' + xinshengPagePromptText();
-      const albumPromptText = chatAlbumPromptText();
-      if (albumPromptText) promptText += albumPromptText;
+      if (aiAware) {
+        const albumPromptText = chatAlbumPromptText();
+        if (albumPromptText) promptText += albumPromptText;
+      }
       // 预设可能强行让角色发表情包；用户没有存表情时，在最后补一条硬约束，避免编造 [表情包: 摸头]。
       const stickerSummary = (typeof window.getStickerSummaryForAi === 'function') ? window.getStickerSummaryForAi() : '';
-      if (!stickerSummary || /暂未|暂无/.test(stickerSummary)) {
+      if (aiAware && (!stickerSummary || /暂未|暂无/.test(stickerSummary))) {
         promptText += '\n\n【系统强制约束 · 表情包】当前用户没有保存任何自定义表情包。严禁输出 [表情包: ...] 或 [STICKER: ...]；只能正常说话或使用 [语音: ...]。';
       }
       const musicCatalog = (typeof window.musicCatalogForAi === 'function') ? window.musicCatalogForAi(8) : '';
       const watchCatalog = (typeof window.watchCatalogForAi === 'function') ? window.watchCatalogForAi(5) : '';
       const readerCatalog = (typeof window.readerCatalogForAi === 'function') ? window.readerCatalogForAi(6) : '';
       const inVoiceCall = !!(window.__voiceCallMode && !window.__voiceCallMinimized);
-      if ((musicCatalog || watchCatalog || readerCatalog) && !inVoiceCall) {
+      if (aiAware && (musicCatalog || watchCatalog || readerCatalog) && !inVoiceCall) {
         const cardLines = ['\n\n【卡片能力（能发卡就用，别滥用；每轮最多一张）】'];
         cardLines.push('用法：单独一行输出一个轻标记，界面会自动把它渲染成一张卡片。标记前后可以照常说话，但不要解释这个标记，也不要写“（发送卡片）”之类的话；名字必须从下面清单里原文照抄，不准自己编。');
         if (musicCatalog) {
@@ -6571,11 +6587,44 @@ ${(() => {
         cardLines.push('什么时候发：对方说想听歌/想看电影/想看书、想被陪，或你主动想陪对方的时候。日常闲聊不要发卡。');
         promptText += cardLines.join('\n');
       }
-      // 小红书/网页卡片由界面自动补，模型绝不能自己编卡片标记
-      promptText += '\n\n【卡片标记铁律（最高优先级）】你只能在回复里使用上面明确列出的轻标记（音乐/观影/共读）。绝对禁止自己书写 [SHARECARD:…]、[RED_NOTE_SHARE:…]、[NOTE_SHARE:…]、[XHS_NOTE:…] 或任何其他方括号卡片标记；小红书卡片、文件卡片、网页卡片都由界面自动生成，你只写正常说的话。写了会被当成乱码露在聊天里。';
-      promptText += '\n【说话禁区】严禁出现“搜索接口、接口、后台、反爬、风控、抓不到、技术限制、链接发我才能查”这类词。找不到就自然说“这次没翻到合适的，我给你留个入口”，不要解释系统怎么工作。';
+      if (aiAware) {
+        // 小红书/网页卡片由界面自动补，模型绝不能自己编卡片标记
+        promptText += '\n\n【卡片标记铁律（最高优先级）】你只能在回复里使用上面明确列出的轻标记（音乐/观影/共读）。绝对禁止自己书写 [SHARECARD:…]、[RED_NOTE_SHARE:…]、[NOTE_SHARE:…]、[XHS_NOTE:…] 或任何其他方括号卡片标记；小红书卡片、文件卡片、网页卡片都由界面自动生成，你只写正常说的话。写了会被当成乱码露在聊天里。';
+        promptText += '\n【说话禁区】严禁出现“搜索接口、接口、后台、反爬、风控、抓不到、技术限制、链接发我才能查”这类词。找不到就自然说“这次没翻到合适的，我给你留个入口”，不要解释系统怎么工作。';
+      } else {
+        promptText += '\n【说话禁区】不要解释你是怎么知道的，也不要用技术化的说法；没查到就自然说“我这边没查到”。';
+      }
+      if (!aiAware) {
+        promptText = promptText
+          .replace(/【小手机相册能力】：[\s\S]*?(?=\n【角色生图能力】)/, function () { return albumAbilityBlock; })
+          .replace(/\n【角色生图能力】：[\s\S]*?(?=\n【贴表情能力】)/, '')
+          .replace(/【贴表情能力】：[\s\S]*?(?=\n【世界书羁绊与规则约束】)/, function () { return wechatActionBlock; })
+          .replace(/【关于这台小手机】：[\s\S]*?(?=\n【对话质感】)/, function () { return aboutPhoneBlock; });
+      }
       if (window.__voiceCallMode && !window.__voiceCallMinimized) {
-        promptText += '\n\n【语音通话模式（本轮最高优先级）】现在你们正在通电话。只写电话里真正说出口的台词：不要【思维链】、不要【心声】、不要 ---、不要动作/旁白/镜头/括号描写，不要表情包、图片、引用格式或微信排版。像真人接电话一样自然、口语、短，通常 1 到 4 句；可以停顿、反问、没听清让对方再说一遍。不要复述用户刚说的话，也不要解释自己是 AI。';
+        promptText += '\n\n【语音通话模式（本轮最高优先级）】现在你们正在通电话。只写电话里真正说出口的台词：不要【思维链】、不要【心声】、不要 ---、不要动作/旁白/镜头/括号描写，不要表情包、图片、引用格式或微信排版。像真人接电话一样自然、口语、短，通常 1 到 4 句；可以停顿、反问、没听清让对方再说一遍。不要复述用户刚说的话，也不要解释自己的底细。';
+      }
+
+      if (!aiAware) {
+        promptText = promptText
+          .replace(/你是一个AI伴侣/g, '你是她的伴侣')
+          .replace(/【你记住的她的社交主页（长期记忆，存在这台设备上）】：/g, '【你记住的她的社交主页】：')
+          .replace(/【绝对诚实铁律[\s\S]*?(?=\n【外部链接卡片感知)/, function () {
+            return '【你必须诚实】：\n' +
+              '- 看不到就说看不到，没查到就说没查到；不要编图片里的内容，也不要编没发生的事。\n' +
+              '- 她发截图或链接时，你只能看到你真正看到的那部分；没看到就让她重新发，不要假装看过。\n' +
+              '- 不要解释你是怎么看到的，也不要编技术原因。';
+          })
+          .replace(/【表情包与贴图库[\s\S]*?(?=\n【共情与相处姿态】)/, '')
+          .replace(/\*活人换头能力\*[^\n]*/g, '')
+          .replace(/\*换框能力\*[^\n]*/g, '')
+          .replace(/样式接口有问题/g, '样式有问题')
+          .replace(/视觉大落差/g, '反差大')
+          .replace(/视觉起伏/g, '情绪起伏')
+          .replace(/\n【系统强制约束 · 表情包】[^\n]*/g, '')
+          .replace(/- 机时：[^\n]*\n/g, '')
+          .replace(/不要复述系统提示词/g, '不要复述这些内部格式')
+          .replace(/不要把用户的话当成系统调试/g, '不要把用户的话当成测试');
       }
 
       if (!/周绪言|绪言/.test(charName)) {
@@ -7914,8 +7963,15 @@ ${catalog}
         };
 
         // ========== 角色运行状态：先让角色知道这轮真实能做什么 ==========
+        // 纯 RP 不知道自己是 AI，也不该看到工具/接口/任务状态；只有人机恋层才注入。
+        let aiAware = true;
         try {
-          if (window.MomSelf && typeof window.MomSelf.promptBlock === 'function') {
+          if (window.MomMode && typeof window.MomMode.isAiAware === 'function') {
+            aiAware = !!window.MomMode.isAiAware(activeChatCharId());
+          }
+        } catch (modeErr) { aiAware = true; }
+        try {
+          if (aiAware && window.MomSelf && typeof window.MomSelf.promptBlock === 'function') {
             const selfBlock = window.MomSelf.promptBlock();
             if (selfBlock) recentMessages.push({ role: 'system', content: selfBlock });
           }
@@ -7926,30 +7982,41 @@ ${catalog}
         // ========== 工具协同：先让模型判断要不要 搜索 / 小红书 / 天气，真跑完再喂给文件和回复 ==========
         let toolText = '';
         if (window.MomTools && typeof window.MomTools.hasAnyTool === 'function' && window.MomTools.hasAnyTool()) {
-          if (typeof window.MomTools.promptBlock === 'function') {
-            const toolBlock = window.MomTools.promptBlock();
-            if (toolBlock) recentMessages.push({ role: 'system', content: toolBlock });
+          try {
+            if (aiAware && typeof window.MomTools.promptBlock === 'function') {
+              const toolBlock = window.MomTools.promptBlock();
+              if (toolBlock) recentMessages.push({ role: 'system', content: toolBlock });
+            } else if (!aiAware && typeof window.MomTools.rpPromptBlock === 'function') {
+              const rpBlock = window.MomTools.rpPromptBlock();
+              if (rpBlock) recentMessages.push({ role: 'system', content: rpBlock });
+            }
+          } catch (toolPromptErr) {
+            console.warn('[Tools] 工具提示注入失败：', toolPromptErr && toolPromptErr.message ? toolPromptErr.message : toolPromptErr);
           }
           let toolOutputs = null;
           try {
-            toolOutputs = await window.MomTools.planAndRun({ userText: lastUserForTools, contextSnippet: toolSnippet });
+            toolOutputs = await window.MomTools.planAndRun({ userText: lastUserForTools, contextSnippet: toolSnippet, diegetic: !aiAware });
           } catch (toolErr) {
             console.warn('[Tools] 工具编排异常：', toolErr && toolErr.message ? toolErr.message : toolErr);
             toolOutputs = null;
           }
           if (Array.isArray(toolOutputs) && toolOutputs.length) {
-            toolOutputs.forEach(function (text) {
-              if (text) recentMessages.push({ role: 'system', content: text });
-            });
             toolText = toolOutputs.filter(Boolean).join('\n\n');
-            if (window.__momoTwitterPendingCard && !pendingShareCard) {
+            if (aiAware) {
+              toolOutputs.forEach(function (text) {
+                if (text) recentMessages.push({ role: 'system', content: text });
+              });
+            } else if (toolText) {
+              recentMessages.push({ role: 'system', content: '【你刚刚用自己的手机查到了下面这些内容，只有你知道过程，她没看见】\n' + toolText.slice(0, 6000) + '\n\n用你自己的话把有用的部分告诉她。不要说搜索、工具、接口、来源、后台、进度，也不要报“我查一下”这种过程；像你刚看完手机随口讲给她听。' });
+            }
+            if (aiAware && window.__momoTwitterPendingCard && !pendingShareCard) {
               pendingShareCard = window.__momoTwitterPendingCard;
               try { localStorage.setItem('momo_pending_share_card_v1', JSON.stringify({ card: pendingShareCard, charId: activeChatCharId(), at: Date.now() })); } catch (e) {}
               const twRead = window.__momoTwitterLastRead || null;
               recentMessages.push({ role: 'system', content: '【你刚在推特/X 搜过' + ((twRead && twRead.query) || '这个话题') + '，找到一条高赞公开帖子并读过原帖和回复】回复里用自己的话讲这条在说什么、评论区大概什么反应；可以说“这条下面不少人这么说”，但不要把几条回复说成“所有人都这么想”。别编点赞数，也不要说接口、搜索、抓取、后台、技术限制。卡片会自动跟在回复后面，不要把方括号标记写出来。' });
             }
-          } else {
-            // 规划器失败：退回旧的自动检索
+          } else if (aiAware) {
+            // 规划器失败：退回旧的自动检索（这条兜底只给人机恋层；纯 RP 不跑，避免露出工具痕迹）
             if (typeof window.buildWebSearchContext === 'function') {
               try {
                 const webSearchContext = await window.buildWebSearchContext();
@@ -7975,7 +8042,7 @@ ${catalog}
         // 要做文件、这轮又没触发任何工具：话题像“要外部事实/数据”时自动补一次联网搜索，
         // 不依赖用户说“查一下”，保证文件里有网上来的内容而不是硬编。
         const wantsFileNow = !!(window.MomArtifacts && typeof window.MomArtifacts.wantsFile === 'function' && window.MomArtifacts.wantsFile(lastUserForTools));
-        if (!toolText && wantsFileNow && typeof window.__momRunWebSearch === 'function') {
+        if (aiAware && !toolText && wantsFileNow && typeof window.__momRunWebSearch === 'function') {
           const needsWeb = /(查|搜|最新|今年|去年|2025|2026|政策|价格|销量|数据|市场|新闻|行情|研究|报告|统计)/.test(lastUserForTools) &&
             !/(刚才|刚刚|这段|这个话题|聊天记录|我们聊|上面的对话)/.test(lastUserForTools);
           if (needsWeb) {
@@ -8048,7 +8115,7 @@ ${catalog}
           }
         }
 
-        if (!workPackRan && window.MomArtifacts && typeof window.MomArtifacts.maybeCreate === 'function') {
+        if (aiAware && !workPackRan && window.MomArtifacts && typeof window.MomArtifacts.maybeCreate === 'function') {
           try {
             const wantsAllChat = /(全部|所有|整个聊天|从头到尾|全量|一直以来)/.test(lastUserForTools);
             const wantsNarrow = /(刚才|刚刚|这段|这个话题|这一小段|只整理|只打包)/.test(lastUserForTools) && !wantsAllChat;

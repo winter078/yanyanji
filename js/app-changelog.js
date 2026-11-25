@@ -7,6 +7,15 @@
   // 每次发版在这里加一条人话更新；不要写代码、接口、模型、后台这类词。
   var UPDATES = [
     {
+      build: '20261125-0035',
+      title: '插件中心重排，角色分纯 RP / 人机恋',
+      items: [
+        '插件中心从上到下改成：角色模式、能力状态、角色工作包、最近任务、高级更新日志；能力详情和更新日志默认收起。',
+        '角色模式可以按角色多选：不勾就是纯 RP，勾上才进入人机恋。',
+        '纯 RP 只保留角色自己的记忆、生理期和剧情，不再接工作包、文件生成和工具进度；人机恋保留全部能力。'
+      ]
+    },
+    {
       build: '20261123-0095',
       title: '通话前先选有声还是纯文字',
       items: [
@@ -249,6 +258,7 @@
 
   function promptBlock(charId, userText, opts) {
     var options = opts || {};
+    if (window.MomMode && typeof window.MomMode.isAiAware === 'function' && !window.MomMode.isAiAware(charId)) return '';
     if (!isEnabledForChar(charId)) return '';
     if (window.__groupMode || window.__voiceCallMode) return '';
     var ask = asksUpdate(userText);
@@ -272,7 +282,7 @@
     if (!hasCurrentBuild()) lines.push('- 当前这版的具体说明还没写进日志；只提上面写过的，不要编。');
     lines.push(intro);
     lines.push('你只知道这里列出的更新；没写过的不要编，不确定就说“这版我不太清楚”。');
-    lines.push('【能力边界】文档、表格、PPT、SOP、截图整理所有角色都能用；角色工作包的任务拆解与交付卡只对选中的角色开启；图片编辑、视频制作还没开通，不要声称自己能做。');
+    lines.push('【能力边界】文档、表格、PPT、SOP、截图整理只有开启人机恋的角色能用；角色工作包的任务拆解与交付卡只对选中的角色开启；图片编辑、视频制作还没开通，不要声称自己能做。');
 
     var block = lines.filter(Boolean).join('\n');
     if (block && options.markSeen !== false) markSeen(charId);

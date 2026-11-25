@@ -123,8 +123,35 @@
     return lines.join('\n');
   }
 
-  function plannerSystemPrompt(tools) {
+  function rpTools() {
+    return enabledTools().filter(function (tool) { return tool.name === 'web_search'; });
+  }
+
+  // 纯 RP：角色不知道自己是 AI，只知道“我拿自己的手机查了一下”。
+  function rpPromptBlock() {
+    var tools = rpTools();
+    if (!tools.length) return '';
+    return [
+      '【你手里有自己的手机】需要查外面的信息时，你会拿自己的手机搜一下，然后把查到的内容用自己的话告诉她。',
+      '她看到的是你在跟她说话，不是你背后的系统。',
+      '不要说“搜索、工具、接口、后台、抓取、来源、进度”这些词；也不要报“我先查一下”再等结果。查完直接说结论，像你刚刚自己看过一样。',
+      '没查到就自然说“我这边没查到”，不要编。'
+    ].join('\n');
+  }
+
+  function plannerSystemPrompt(tools, diegetic) {
     var lines = [];
+    if (diegetic) {
+      lines.push('你是一个正在和 user 聊天的角色，不知道自己是 AI。你现在想用自己的手机查一下外面的信息。');
+      lines.push('规则：');
+      lines.push('1. 只有确实需要外面的实时信息时才查；纯闲聊、情绪、回忆、日常不查。');
+      lines.push('2. 最多查一次，能一句话说清就只查一次。');
+      lines.push('3. 只输出严格 JSON，不要 markdown 代码块，不要解释。格式：');
+      lines.push('{"calls":[{"name":"web_search","args":{"query":"要搜的关键词"}}]}');
+      lines.push('4. 不需要查时输出：{"calls":[]}');
+      lines.push('可用能力：用自己的手机搜公开网页。');
+      return lines.join('\n');
+    }
     lines.push('你是工具调度员。判断这一轮角色回复前，是否需要先调用外部工具。');
     lines.push('规则：');
     lines.push('1. 只在「没有外部实时信息就答不准」时才调用；纯闲聊、情绪、角色扮演、回忆对话一律不调用。');
@@ -154,7 +181,7 @@
     return obj.calls;
   }
 
-  async function askPlanner(userText, contextSnippet) {
+  async function askPlanner(userText, contextSnippet, diegetic) {
     var app = window.appData || {};
     var apiKey = String(app.apiKey || '').trim();
     var apiBase = String(app.apiBase || '').trim();
@@ -162,7 +189,8 @@
     var base = apiBase.replace(/\/+$/, '');
     if (base.endsWith('/chat/completions')) base = base.replace('/chat/completions', '');
     var url = base + '/chat/completions';
-    var tools = enabledTools();
+    var tools = diegetic ? rpTools() : enabledTools();
+    if (!tools.length) return [];
     var controller = new AbortController();
     var timer = setTimeout(function () { controller.abort(); }, 15000);
     try {
@@ -176,11 +204,11 @@
         body: JSON.stringify({
           model: app.model || 'deepseek-chat',
           messages: [
-            { role: 'system', content: plannerSystemPrompt(tools) },
+            { role: 'system', content: plannerSystemPrompt(tools, diegetic) },
             { role: 'user', content: (contextSnippet ? '最近对话：\n' + contextSnippet + '\n\n' : '') + '这一轮用户说：' + String(userText || '') }
           ],
           temperature: 0.1,
-          max_tokens: 220
+          max_tokens: diegetic ? 160 : 220
         })
       });
       if (!resp.ok) return null;
@@ -201,11 +229,12 @@
   //   [文本...] → 真的调用了工具，文本要作为 system 注入
   async function planAndRun(options) {
     var opts = options || {};
-    var tools = enabledTools();
+    var diegetic = !!opts.diegetic;
+    var tools = diegetic ? rpTools() : enabledTools();
     if (!tools.length) return [];
-    var calls = await askPlanner(opts.userText, opts.contextSnippet);
+    var calls = await askPlanner(opts.userText, opts.contextSnippet, diegetic);
     if (calls === null) return null;
-    var picked = calls.slice(0, 2).filter(function (call) {
+    var picked = calls.slice(0, diegetic ? 1 : 2).filter(function (call) {
       if (!call || typeof call !== 'object') return false;
       var tool = tools.filter(function (t) { return t.name === call.name; })[0];
       if (!tool) return false;
@@ -232,6 +261,7 @@
     status: statusList,
     hasAnyTool: hasAnyTool,
     promptBlock: promptBlock,
+    rpPromptBlock: rpPromptBlock,
     planAndRun: planAndRun
   };
 })();

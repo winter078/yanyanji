@@ -263,10 +263,17 @@
     var workPack = workPackInfo();
     var tasks = taskInfo();
     var user = text(app().userNickname) || text(app().hero && app().hero.userName) || 'user';
-    var build = text(window.__BUILD__) || text(window.__LIVE_BUILD__) || '20261125-0034';
+    var build = text(window.__BUILD__) || text(window.__LIVE_BUILD__) || '20261125-0035';
+    var aiAware = true;
+    try {
+      if (window.MomMode && typeof window.MomMode.isAiAware === 'function') {
+        aiAware = !!window.MomMode.isAiAware(cid);
+      }
+    } catch (e) { aiAware = true; }
     var modelLabel = model.chat.known ? model.chat.model : '未选模型';
     var context = '当前：' + (name || '还没选角色') +
       (mask && mask.name ? ' / ' + mask.name : '') +
+      ' · ' + (aiAware ? '人机恋' : '纯 RP') +
       ' · ' + mode +
       ' · ' + (workPack.on ? '接活已开（工作包 ' + workPack.selectedCount + ' 个角色）' : '接活未开') +
       '｜模型：' + modelLabel + (model.chat.configured ? '（已配）' : '（未配）') +
@@ -286,7 +293,8 @@
         charName: name || '',
         userName: user,
         maskName: mask && mask.name ? String(mask.name) : '',
-        mode: mode
+        mode: mode,
+        aiAware: aiAware
       },
       model: model,
       workPack: workPack,
@@ -352,6 +360,6 @@
     snapshot: snapshot,
     promptBlock: promptBlock,
     refresh: snapshot,
-    build: '20261125-0034'
+    build: '20261125-0035'
   };
 })();

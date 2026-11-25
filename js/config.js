@@ -108,7 +108,8 @@
   window.toggleCyberPlugin = function(enabled) {
     const content = document.getElementById('plugin-cyber-content');
     const text = document.getElementById('plugin-cyber-status-text');
-    if (content) content.style.display = enabled ? 'block' : 'none';
+    const collapsed = content && content.getAttribute('data-collapsed') === '1';
+    if (content) content.style.display = (enabled && !collapsed) ? 'block' : 'none';
     if (text) {
       text.innerText = enabled ? '已启用' : '已停用';
       text.style.color = enabled ? 'var(--success-primary)' : 'var(--text-muted)';
@@ -117,6 +118,26 @@
       localStorage.setItem('momo_cyber_plugin_enabled', enabled ? 'true' : 'false');
     } catch(e){}
     try { if (window.refreshAppUpdateUI) window.refreshAppUpdateUI(); } catch (e) {}
+  };
+
+  window.togglePluginAdvanced = function() {
+    const content = document.getElementById('plugin-cyber-content');
+    const btn = document.getElementById('plugin-expand-btn');
+    if (!content) return;
+    const collapsed = content.getAttribute('data-collapsed') === '1';
+    content.setAttribute('data-collapsed', collapsed ? '0' : '1');
+    if (btn) btn.innerText = collapsed ? '收起日志' : '展开日志';
+    const toggle = document.getElementById('plugin-cyber-toggle');
+    window.toggleCyberPlugin(!!(toggle && toggle.checked));
+  };
+
+  window.toggleToolboxGrid = function() {
+    const grid = document.getElementById('toolbox-grid');
+    const btn = document.getElementById('toolbox-toggle');
+    if (!grid) return;
+    const show = grid.style.display === 'none' || !grid.style.display;
+    grid.style.display = show ? 'block' : 'none';
+    if (btn) btn.innerText = show ? '收起详细能力' : '查看详细能力';
   };
 
   function setToolboxStatus(el, state, text) {
@@ -178,6 +199,7 @@
       window.toggleCyberPlugin(isEnabled);
     }
     try { window.renderToolboxStatus(); } catch (e) {}
+    try { if (window.refreshAiModeUI) window.refreshAiModeUI(); } catch (e) {}
     try { if (window.refreshWorkPackUI) window.refreshWorkPackUI(); } catch (e) {}
     try { if (window.refreshAppUpdateUI) window.refreshAppUpdateUI(); } catch (e) {}
 
@@ -189,6 +211,7 @@
         if (pageId === 'page-plugins') {
           setTimeout(function() {
             try { window.renderToolboxStatus(); } catch (e) {}
+            try { if (window.refreshAiModeUI) window.refreshAiModeUI(); } catch (e) {}
             try { if (window.refreshWorkPackUI) window.refreshWorkPackUI(); } catch (e) {}
             try { if (window.refreshAppUpdateUI) window.refreshAppUpdateUI(); } catch (e) {}
           }, 80);

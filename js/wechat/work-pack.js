@@ -215,6 +215,7 @@
     if (window.__groupMode || window.__voiceCallMode) return false;
     var charId = String(opts.charId || '');
     if (!charId || !isEnabledForChar(charId)) return false;
+    if (window.MomMode && typeof window.MomMode.isAiAware === 'function' && !window.MomMode.isAiAware(charId)) return false;
     var text = String(opts.userText || '');
     var imageCount = Number(opts.imageCount || (Array.isArray(opts.images) ? opts.images.length : 0) || 0);
     if (imageCount >= 2 && compareLike(text)) return true;
@@ -321,6 +322,7 @@
     if (!window.MomArtifacts || typeof window.MomArtifacts.maybeCreate !== 'function') return null;
     var charId = String(opts.charId || '');
     if (!charId || !isEnabledForChar(charId)) return null;
+    if (window.MomMode && typeof window.MomMode.isAiAware === 'function' && !window.MomMode.isAiAware(charId)) return null;
 
     var userText = String(opts.userText || '');
     var images = (Array.isArray(opts.images) ? opts.images : []).filter(Boolean).slice(0, 8);
@@ -482,7 +484,12 @@
     var kept = ids.filter(function (id) { return existingIds.indexOf(id) !== -1; });
     if (kept.length !== ids.length) writeSelected(kept);
 
-    summary.textContent = kept.length ? ('已选 ' + kept.length + ' 个角色') : '未选择角色';
+    var inactive = kept.filter(function (id) {
+      return !(window.MomMode && typeof window.MomMode.isAiAware === 'function' && window.MomMode.isAiAware(id));
+    });
+    if (!kept.length) summary.textContent = '未选择角色';
+    else if (inactive.length) summary.textContent = '已选 ' + kept.length + ' 个 · 其中 ' + inactive.length + ' 个待开启人机恋';
+    else summary.textContent = '已选 ' + kept.length + ' 个角色';
     if (btn) btn.textContent = list.style.display === 'block' ? '收起' : '选择角色';
 
     list.innerHTML = '';
@@ -527,7 +534,8 @@
 
       var state = document.createElement('span');
       state.className = 'workpack-role-state';
-      state.textContent = cb.checked ? '已启用' : '未启用';
+      var aware = !!(window.MomMode && typeof window.MomMode.isAiAware === 'function' && window.MomMode.isAiAware(id));
+      state.textContent = cb.checked ? (aware ? '已启用' : '待开人机恋') : '未启用';
 
       row.appendChild(cb);
       row.appendChild(avatar);
@@ -827,6 +835,9 @@
     if (checked && ids.indexOf(id) === -1) ids.push(id);
     if (!checked) ids = ids.filter(function (x) { return x !== id; });
     writeSelected(ids);
+    if (checked && window.MomMode && typeof window.MomMode.set === 'function') {
+      window.MomMode.set(id, true);
+    }
     refreshWorkPackUI();
   };
 
