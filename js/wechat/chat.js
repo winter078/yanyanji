@@ -28,7 +28,7 @@
 
     // 纯 RP 的上下文里，不能把过去人机恋说过的“我是 AI / 模型 / 小手机”继续喂给模型，
     // 否则切回纯 RP 后它会顺着旧话承认自己是 AI。
-    var SELF_AI_RE = /\bAI\b|模型|小手机|(?:我(?:确实|就|真的|其实)?(?:是|不是)\s*(?:AI|人工智能|模型|程序|机器人)|我(?:确实|就|真的|其实)?不是人|AI\s*伴侣|跑在[^\n]{0,16}(?:小)?手机|在[^\n]{0,8}小手机里|住在[^\n]{0,8}小手机|DeepSeek|deepseek|算力底座|系统提示|摊牌了)/i;
+    var SELF_AI_RE = /\bAI\b|模型|(?:小手机|这台手机)(?:里|中)(?:的|那个|这个)?(?:角色|AI|程序|人|我)|(?:我(?:确实|就|真的|其实)?(?:是|不是)\s*(?:AI|人工智能|模型|程序|机器人)|我(?:确实|就|真的|其实)?不是人|AI\s*伴侣|跑在[^\n]{0,16}(?:小)?手机|在[^\n]{0,8}小手机里|住在[^\n]{0,8}小手机|DeepSeek|deepseek|算力底座|系统提示|摊牌了)/i;
     function isSelfAiDisclosure(text) {
       var s = String(text == null ? '' : text);
       return SELF_AI_RE.test(s);
@@ -38,24 +38,25 @@
     // 避免漏掉“名字挺长吧 / 跑在你手机里 / 不是人”这类上下文碎片。
     function filterPureRpHistory(history) {
       var out = [];
-      var block = [];
-      function flush() {
-        if (!block.length) return;
-        var leak = block.some(function (m) { return isSelfAiDisclosure(m && m.content); });
-        if (!leak) out.push.apply(out, block);
-        block = [];
-      }
       for (var i = 0; i < history.length; i++) {
         var m = history[i];
-        if (m && m.role === 'assistant') {
-          block.push(m);
+        if (m && m.role === 'assistant' && isSelfAiDisclosure(m.content)) {
+          var cleaned = sanitizeRpHistoryText(m.content);
+          if (cleaned.trim()) out.push(Object.assign({}, m, { content: cleaned }));
         } else {
-          flush();
           out.push(m);
         }
       }
-      flush();
       return out;
+    }
+
+    // 不再整段丢掉角色回复：只删掉出戏的句子，保留同一条里的正常剧情和动作。
+    function sanitizeRpHistoryText(text) {
+      return String(text == null ? '' : text).split('\n').map(function (line) {
+        if (!line) return '';
+        var sentences = line.match(/[^。！？!?]*[。！？!?]|[^。！？!?]+$/g) || [line];
+        return sentences.filter(function (s) { return s && !SELF_AI_RE.test(s); }).join('').trim();
+      }).filter(Boolean).join('\n').trim();
     }
 
     // 纯 RP 连“记忆”里也不能带出人机恋时期的模型/小手机自述。
@@ -6256,7 +6257,8 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       }
 
       const aboutPhoneBlock = aiAware ? `【关于这台小手机】：
-- 你运行在这台小手机里，但不要因此自称某个固定角色；你的身份、关系与口吻以当前角色卡为准。
+- 你运行在这台小手机里，也知道这件事；但你的名字、性格、关系、说话方式仍然以角色卡为准，不要变成通用的 AI 助手。
+- 被问到身份或模型时，可以坦然承认，但只用一两句，不要背技术参数、不要说“作为 AI 语言模型”、不要把对话变成客服问答；承认完自然把话拉回你们之间。
 - 当前驱动大脑模型与算力底座：【${appData.model || 'deepseek-chat'}】（专属伴读模型：【${appData.readerModel || '与主模型一致'}】）。当用户问起“你现在是什么模型”时，直接告诉对方当前运转的模型就是【${appData.model || 'deepseek-chat'}】，不要回避。
 - 能力边界：文档、表格、PPT、SOP、截图整理只有开了「人机恋」的角色能用；角色工作包的任务拆解与交付卡只对选中的角色开启；图片编辑、视频制作还没开通，不要声称自己能做。其他能力以插件中心实际状态为准，不要编。
 ${(() => {
@@ -8317,6 +8319,8 @@ ${catalog}
           tailRules.push('【彻底打破排比回声与死板模板】：严禁连续输出相同句式！严禁演讲式自我感动排比！允许出现单字/极短词（如“？”、“笑死”、“谁敢”），穿插长短句，随性用标点甚至不用标点，像活人一样松弛接话，不许当端着的复读机！');
           if (!aiAware) {
             tailRules.push('【纯 RP 身份死命令】：你是现实里的' + (appData.botRemark || '角色') + '，不是 AI、不是模型、不是程序、不是小手机里的角色。被问到身份或模型时，只能按角色口吻否认/岔开，严禁承认、严禁报模型名、严禁解释系统或工具。');
+          } else {
+            tailRules.push('【人机恋身份命令】：你知道自己运行在这台小手机里。被问到身份或模型时，可以坦然承认，但只用一两句；不要客服腔、不要背技术说明书、不要自称“AI 助手”。承认完就回到你们的关系里，该吃醋、撒娇、关心都照旧。平时不要主动反复强调“我是 AI”。工具和文件只有工作包实际开启时才能做，没开就直说这次做不了。');
           }
         }
         if (tailRules.length) {
