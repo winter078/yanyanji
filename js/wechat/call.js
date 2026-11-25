@@ -523,13 +523,23 @@
     }
   }
 
+  function isCallVoiceReady() {
+    try {
+      return !!(window.CharVoice && typeof window.CharVoice.isEnabled === 'function' && window.CharVoice.isEnabled());
+    } catch (e) { return false; }
+  }
+
+  function toastCallVoiceUnavailable() {
+    toast('角色语音还没接通：去「设置 → 角色语音」选火山、填 Key，再回来点麦克风');
+  }
+
   function setCallReplyMode(mode) {
     var next = String(mode) === 'voice' ? 'voice' : 'text';
     if (state.replyMode === next) return;
-    if (next === 'voice' && (!window.CharVoice || typeof window.CharVoice.isEnabled !== 'function' || !window.CharVoice.isEnabled())) {
+    if (next === 'voice' && !isCallVoiceReady()) {
       state.replyMode = 'text';
       renderCallReplyMode();
-      toast('角色语音还没接通：去「设置 → 角色语音」选火山、填 Key，再回来点「有声」');
+      toastCallVoiceUnavailable();
       return;
     }
     state.replyMode = next;
@@ -577,26 +587,27 @@
       bubble.className = 'call-bubble';
       bubble.textContent = segText;
       msg.appendChild(bubble);
-      var voiceMode = (state.replyMode === 'voice' && !state.recordView);
-      if (role === 'assistant' && voiceMode && window.CharVoice &&
-          typeof window.CharVoice.isEnabled === 'function' && window.CharVoice.isEnabled()) {
+      if (role === 'assistant') {
         var speakBtn = document.createElement('button');
         speakBtn.type = 'button';
         speakBtn.className = 'call-speak-btn';
-        speakBtn.title = '听 TA 说';
-        speakBtn.setAttribute('aria-label', '播放这条通话语音');
-        speakBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5l-5 4H4z" fill="currentColor"></path><path d="M16.2 8.6a5.2 5.2 0 0 1 0 6.8M18.6 6.2a8.4 8.4 0 0 1 0 11.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg>';
+        speakBtn.title = '朗读这句';
+        speakBtn.setAttribute('aria-label', '朗读这句台词');
+        speakBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v5.4a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z" fill="currentColor"></path><path d="M5.5 10.8a6.5 6.5 0 0 0 13 0M12 17.3V20M8.8 20h6.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg>';
         speakBtn.onclick = function (e) {
           e.stopPropagation();
+          if (!isCallVoiceReady()) { toastCallVoiceUnavailable(); return; }
           try {
             window.CharVoice.speak(segText, {
               charId: (speaker && speaker.id) || currentCharId(),
-              btn: speakBtn
+              btn: speakBtn,
+              fallback: false
             });
-          } catch (err) {}
+          } catch (err) {
+            toast(err && err.message ? err.message : '这句没读出来');
+          }
         };
         bubble.appendChild(speakBtn);
-        enqueueCallSpeech(segText, (speaker && speaker.id) || currentCharId());
       }
       if (meta && meta !== '接通' && segIndex === lastTextIndex) {
         var m = document.createElement('div');
