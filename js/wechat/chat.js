@@ -1546,7 +1546,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       const summary = document.getElementById('action-desc-summary');
       if (summary) {
         const personLabel = { 'default': '默认', 'second': '第二人称', 'third': '第三人称', 'first': '第一人称' }[person] || '第三人称';
-        const lengthLabel = { 'short': '短句', 'medium': '中段', 'long': '长段落' }[length] || '中段';
+        const lengthLabel = { 'short': '短短一句', 'medium': '短句', 'long': '稍长一点' }[length] || '短句';
         const parts = [personLabel, writing ? '有写作要求' : lengthLabel];
         if (continuePlot) parts.push('承接剧情');
         if (offline) parts.push('线下');
