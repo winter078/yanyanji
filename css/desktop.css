@@ -289,6 +289,19 @@
   position: relative;
 }
 
+.toolbox-section-label {
+  grid-column: 1 / -1;
+  margin: 4px 2px -2px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+}
+
+.toolbox-section-label:first-child {
+  margin-top: 0;
+}
+
 .toolbox-item {
   min-width: 0;
   background: var(--color-bg-card);

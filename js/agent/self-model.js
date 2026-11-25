@@ -98,14 +98,29 @@
     });
   }
 
-  function makeCap(key, label, badge, state, detail, reason) {
+  function makeCap(key, label, badge, state, detail, reason, group) {
     return {
       key: key,
       label: label,
       badge: badge,
       state: state,
       detail: detail || '',
-      reason: reason || ''
+      reason: reason || '',
+      group: group || 'companion'
+    };
+  }
+
+  function workPackInfo() {
+    var cid = charId();
+    var selected = [];
+    if (window.WorkPack && typeof window.WorkPack.selectedIds === 'function') {
+      selected = safe(function () { return window.WorkPack.selectedIds() || []; }, []);
+    }
+    return {
+      on: !!(cid && window.WorkPack && safe(function () {
+        return window.WorkPack.isEnabledForChar(cid);
+      }, false)),
+      selectedCount: Array.isArray(selected) ? selected.length : 0
     };
   }
 
@@ -117,9 +132,8 @@
     var okTools = tools.filter(function (t) { return !!t.ok; });
     var badTools = tools.filter(function (t) { return !t.ok; });
 
-    var workPackOn = !!(window.WorkPack && cid && safe(function () {
-      return window.WorkPack.isEnabledForChar(cid);
-    }, false));
+    var workPack = workPackInfo();
+    var workPackOn = workPack.on;
     var artifactsReady = !!(window.MomArtifacts && typeof window.MomArtifacts.wantsFile === 'function');
     var docsReady = !!(model.chat.configured && workPackOn && artifactsReady);
     var docsReason = '';
@@ -175,21 +189,21 @@
 
     return [
       makeCap('docs', '文档', docsReady ? '可用' : '未配置', docsReady ? 'ready' : 'off',
-        docsReady ? 'Word / Excel / PPT' : (docsReason || 'Word / Excel / PPT'), docsReason),
+        docsReady ? 'Word / Excel / PPT' : (docsReason || 'Word / Excel / PPT'), docsReason, 'work'),
       makeCap('sop', 'SOP / 周报', docsReady ? '可用' : '未配置', docsReady ? 'ready' : 'off',
-        docsReady ? '流程 / 复盘 / 会议纪要' : (docsReason || '流程 / 复盘 / 会议纪要'), docsReason),
+        docsReady ? '流程 / 复盘 / 会议纪要' : (docsReason || '流程 / 复盘 / 会议纪要'), docsReason, 'work'),
       makeCap('search', '联网查资料', searchBadge, searchState,
-        searchDetail, searchReason),
+        searchDetail, searchReason, 'utility'),
       makeCap('image', '角色生图', imageBadge, imageState,
-        '文生图 / 参考图锁脸', imageReason),
+        '文生图 / 参考图锁脸', imageReason, 'companion'),
       makeCap('voice', '角色语音', voiceBadge, voiceState,
-        voiceOn ? '语音合成已开' : (voiceReason || '语音合成'), voiceReason),
+        voiceOn ? '语音合成已开' : (voiceReason || '语音合成'), voiceReason, 'companion'),
       makeCap('music', '音乐', musicBadge, musicState,
-        musicDetail, musicReason),
+        musicDetail, musicReason, 'companion'),
       makeCap('memory', '记忆 / 上下文', memoryModule ? '可用' : '未加载', memoryModule ? 'ready' : 'off',
-        '记忆 ' + memoryCount + ' 张 · 上下文 ' + depth + ' 条', memoryModule ? '' : '记忆模块没加载'),
+        '记忆 ' + memoryCount + ' 张 · 上下文 ' + depth + ' 条', memoryModule ? '' : '记忆模块没加载', 'companion'),
       makeCap('local', '本地文件 / 终端', '未接入', 'off',
-        '本地文件 / 终端 / 浏览器自动化', '需要本地桥接，当前没接入')
+        '本地文件 / 终端 / 浏览器自动化', '需要本地桥接，当前没接入', 'utility')
     ];
   }
 
@@ -201,15 +215,13 @@
     var mode = sceneMode();
     var tools = toolRows();
     var capabilities = buildCapabilities();
-    var workPackOn = !!(window.WorkPack && cid && safe(function () {
-      return window.WorkPack.isEnabledForChar(cid);
-    }, false));
+    var workPack = workPackInfo();
     var user = text(app().userNickname) || text(app().hero && app().hero.userName) || 'user';
-    var build = text(window.__BUILD__) || text(window.__LIVE_BUILD__) || '20261125-0027';
+    var build = text(window.__BUILD__) || text(window.__LIVE_BUILD__) || '20261125-0028';
     var context = '当前：' + (name || '还没选角色') +
       (mask && mask.name ? ' / ' + mask.name : '') +
       ' · ' + mode +
-      ' · ' + (workPackOn ? '工作包已开' : '工作包未开') +
+      ' · ' + (workPack.on ? '接活已开（工作包 ' + workPack.selectedCount + ' 个角色）' : '接活未开') +
       '｜模型：' + model.chat.model + (model.chat.configured ? '（已配）' : '（未配）') +
       '｜版本 ' + build;
 
@@ -229,6 +241,7 @@
         mode: mode
       },
       model: model,
+      workPack: workPack,
       tools: tools,
       capabilities: capabilities,
       limits: [
@@ -256,6 +269,9 @@
     lines.push('【运行事实】这是程序刚读到的真实状态，只用来判断能不能做；不要向 user 复述技术字段，也不要用“系统/接口/模型”解释。');
     lines.push('现在是 ' + name + (s.identity.maskName ? '（小号：' + s.identity.maskName + '）' : '') + '，' + s.identity.mode + '。');
     lines.push('主模型：' + s.model.chat.model + (s.model.chat.configured ? '，线路已配置' : '，还没配好') + '。');
+    lines.push('接活资格：' + (s.workPack && s.workPack.on
+      ? ('当前角色已加入工作包（共选 ' + s.workPack.selectedCount + ' 个角色），可以接文档 / SOP 任务')
+      : '当前角色不在工作包里，不能接文档 / SOP 任务；普通聊天、恋爱、语音、生图这些陪伴能力不受影响') + '。');
     lines.push('能做：' + (ready.length ? ready.join('、') : '暂时没有可用的外部能力') +
       (partial.length ? '；部分可用：' + partial.join('、') : '') + '。');
     lines.push('不能做：' + (blocked.length ? blocked.join('；') : '没有额外限制') + '。');
@@ -268,6 +284,6 @@
     snapshot: snapshot,
     promptBlock: promptBlock,
     refresh: snapshot,
-    build: '20261125-0027'
+    build: '20261125-0028'
   };
 })();

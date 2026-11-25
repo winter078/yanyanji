@@ -19,7 +19,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <!-- 发布时务必与 js/build.js 的 __LIVE_BUILD__ 保持一致，否则 version-watch 会一直提示“新版已经好了” -->
-  <script>window.__BUILD__="20261125-0027";</script>
+  <script>window.__BUILD__="20261125-0028";</script>
   <script>
     (function () {
       var root = document.documentElement;
@@ -197,7 +197,7 @@
   <link rel="stylesheet" href="css/story-skin.css?v=2026111408" />
   <link rel="stylesheet" href="css/world.css?v=2026111013" />
   <link rel="stylesheet" href="css/themes.css?v=2026111001" />
-  <link rel="stylesheet" href="css/desktop.css?v=20261125-0027" />
+  <link rel="stylesheet" href="css/desktop.css?v=20261125-0028" />
   <link rel="stylesheet" href="css/notify.css" />
   <link rel="stylesheet" href="css/wechat.css?v=20261124-2330" />
   <link rel="stylesheet" href="css/archive.css?v=20261124-2305" />
@@ -394,26 +394,27 @@
           </header>
           <div class="page-generic-body">
             <div style="font-size: 12.5px; color: var(--color-text-secondary); line-height: 1.5; margin-bottom: 12px;">
-              内置工具箱对所有角色通用；角色工作包按角色开启；拓展包按需开启，给角色增加更多玩法。
+              基础陪伴能力所有角色通用；文档 / SOP 接活能力按「角色工作包」开启；拓展包按需开启，给角色增加更多玩法。
             </div>
 
-            <!-- 内置工具箱：所有角色通用 -->
+            <!-- 工具箱：陪伴能力通用，接活能力看工作包 -->
             <div class="toolbox-card">
               <div class="toolbox-head">
                 <div class="toolbox-brand">
                   <div class="toolbox-icon">🧰</div>
                   <div>
                     <div class="toolbox-title">小手机工具箱</div>
-                    <div class="toolbox-subtitle">运行状态 · 所有角色通用</div>
+                    <div class="toolbox-subtitle">当前角色 · 实时能力</div>
                   </div>
                 </div>
-                <span class="toolbox-badge">内置</span>
+                <span class="toolbox-badge">实时</span>
               </div>
 
-              <div class="toolbox-desc">这里显示角色现在真正能用的能力；缺 Key、没开工作包、没登录都会直接写出来。</div>
+              <div class="toolbox-desc">陪伴玩法所有角色都能用；文档 / SOP 这类接活能力，只给工作包勾选的角色。</div>
               <div class="toolbox-context" id="toolbox-context">正在读取当前角色…</div>
 
               <div class="toolbox-grid">
+                <div class="toolbox-section-label">接活能力 · 需要工作包</div>
                 <div class="toolbox-item">
                   <div class="toolbox-item-top">
                     <span class="toolbox-item-name">文档</span>
@@ -428,13 +429,8 @@
                   </div>
                   <div class="toolbox-item-desc" id="toolbox-sop-desc">流程 / 复盘 / 会议纪要</div>
                 </div>
-                <div class="toolbox-item">
-                  <div class="toolbox-item-top">
-                    <span class="toolbox-item-name">联网查资料</span>
-                    <span class="toolbox-status" id="toolbox-search-status">检查中</span>
-                  </div>
-                  <div class="toolbox-item-desc" id="toolbox-search-desc">网页 / 小红书 / 推特 / 天气</div>
-                </div>
+
+                <div class="toolbox-section-label">陪伴能力 · 所有角色</div>
                 <div class="toolbox-item">
                   <div class="toolbox-item-top">
                     <span class="toolbox-item-name">角色生图</span>
@@ -463,6 +459,15 @@
                   </div>
                   <div class="toolbox-item-desc" id="toolbox-memory-desc">记忆卡片 / 聊天上下文</div>
                 </div>
+
+                <div class="toolbox-section-label">通用工具 · 配好就能用</div>
+                <div class="toolbox-item">
+                  <div class="toolbox-item-top">
+                    <span class="toolbox-item-name">联网查资料</span>
+                    <span class="toolbox-status" id="toolbox-search-status">检查中</span>
+                  </div>
+                  <div class="toolbox-item-desc" id="toolbox-search-desc">网页 / 小红书 / 推特 / 天气</div>
+                </div>
                 <div class="toolbox-item">
                   <div class="toolbox-item-top">
                     <span class="toolbox-item-name">本地文件 / 终端</span>
@@ -472,7 +477,7 @@
                 </div>
               </div>
 
-              <div class="toolbox-foot">这里是状态，不是开关；真正能不能接活还要看「角色工作包」有没有勾选这个角色。</div>
+              <div class="toolbox-foot">工作包只决定能不能接活，不会关掉聊天、恋爱、语音这些陪伴能力。</div>
             </div>
 
             <!-- 角色工作包：按角色开启 -->
@@ -8228,7 +8233,7 @@ html.ios .watch-header {
 </style><div id="mom-boot-note"><i></i><span>正在启动</span></div>
 <script>
 (function(){
-  var list = ["js/supabase_sync.js","js/config.js?v=20261125-0027","js/store.js?v=20261123-0075","js/calendar-awareness.js?v=20261123-0075","js/token-monitor.js?v=2026111673","js/storage-center.js?v=2026111671","js/api-presets.js?v=2026111472","js/wechat/image-presets.js?v=2026111649","js/prompt-presets.js?v=20261123-0075","js/notify.js?v=20261122-2858","js/keepalive.js?v=20261120-1205","js/desktop/desktop.js?v=20261124-2223","js/motion.js?v=20261122-2858","js/layout-motion.js?v=20261122-2858","js/sheet-drag.js?v=20261122-2858","js/press.js?v=20261122-2858","js/touch.js?v=20261122-2858","js/desktop/days.js?v=1789904839051","js/desktop/yanyan-cat.js?v=1789925866085","js/desktop/drag-grid.js?v=20261123-0074","js/desktop/app-store.js?v=2026111002","js/wechat/stickers.js?v=20261121-2130","js/wechat/search-tools.js?v=20261122-2858","js/wechat/weather-tools.js?v=20261122-2858","js/wechat/tool-registry.js?v=20261125-0027","js/wechat/artifact-tools.js?v=20261123-0087","js/wechat/chat.js?v=20261125-0027","js/wechat/chat-search.js?v=20261125-0025","js/wechat/voice-tts.js?v=20261123-0092","js/wechat/voice-input.js?v=20261124-2236","js/wechat/call.js?v=20261124-0120","js/wechat/archive.js?v=20261124-2310","js/wechat/image-gen.js?v=2026111649","js/wechat/moments.js?v=2026111660","js/wechat/characters.js?v=20261124-2236","js/wechat/work-pack.js?v=20261123-0087","js/app-changelog.js?v=20261123-0095","js/wechat/group-chat.js?v=20261123-0094","js/media/music.js?v=20261124-2305","js/media/music-ui.js?v=20261123-0072","js/media/music-lyrics.js?v=20261121-0430","js/qrcode.js?v=2026112010","js/media/netease-login.js?v=20261125-0026","js/media/companion.js?v=20261120-2235","js/media/watch.js?v=20261120-2235","js/theater/theater.js?v=20261120-1352","js/theater/palace.js?v=20261125-0010","js/theater/memory-engine.js?v=20261125-0025","js/theater/worldbooks.js?v=2026111571","js/xhs/xhs.js?v=20261121-0415","js/say/say.js?v=20261122-2858","js/keyboard.js?v=20261122-2858","js/media/reader.js?v=20261120-2235","js/desktop/ledger.js?v=20261121-0300","js/desktop/ledger-app.js?v=20261121-0300","js/desktop/health.js?v=20261121-2245","js/image-crop.js?v=20261123-0066","js/desktop/forum.js?v=20261123-0066","js/desktop/avatar-vault.js?v=2026111145","js/wechat/chat-appearance.js?v=2026111652","js/wechat/masks.js?v=2026111654","js/wechat/wordcards.js?v=2026111183","js/desktop/album-store.js?v=2026111433","js/desktop/photos.js?v=2026111457","js/version-watch.js?v=20261121-0150","js/agent/self-model.js?v=20261125-0027","js/app.js?v=20261123-0088"];
+  var list = ["js/supabase_sync.js","js/config.js?v=20261125-0028","js/store.js?v=20261123-0075","js/calendar-awareness.js?v=20261123-0075","js/token-monitor.js?v=2026111673","js/storage-center.js?v=2026111671","js/api-presets.js?v=2026111472","js/wechat/image-presets.js?v=2026111649","js/prompt-presets.js?v=20261123-0075","js/notify.js?v=20261122-2858","js/keepalive.js?v=20261120-1205","js/desktop/desktop.js?v=20261124-2223","js/motion.js?v=20261122-2858","js/layout-motion.js?v=20261122-2858","js/sheet-drag.js?v=20261122-2858","js/press.js?v=20261122-2858","js/touch.js?v=20261122-2858","js/desktop/days.js?v=1789904839051","js/desktop/yanyan-cat.js?v=1789925866085","js/desktop/drag-grid.js?v=20261123-0074","js/desktop/app-store.js?v=2026111002","js/wechat/stickers.js?v=20261121-2130","js/wechat/search-tools.js?v=20261122-2858","js/wechat/weather-tools.js?v=20261122-2858","js/wechat/tool-registry.js?v=20261125-0028","js/wechat/artifact-tools.js?v=20261123-0087","js/wechat/chat.js?v=20261125-0028","js/wechat/chat-search.js?v=20261125-0025","js/wechat/voice-tts.js?v=20261123-0092","js/wechat/voice-input.js?v=20261124-2236","js/wechat/call.js?v=20261124-0120","js/wechat/archive.js?v=20261124-2310","js/wechat/image-gen.js?v=2026111649","js/wechat/moments.js?v=2026111660","js/wechat/characters.js?v=20261124-2236","js/wechat/work-pack.js?v=20261123-0087","js/app-changelog.js?v=20261123-0095","js/wechat/group-chat.js?v=20261123-0094","js/media/music.js?v=20261124-2305","js/media/music-ui.js?v=20261123-0072","js/media/music-lyrics.js?v=20261121-0430","js/qrcode.js?v=2026112010","js/media/netease-login.js?v=20261125-0026","js/media/companion.js?v=20261120-2235","js/media/watch.js?v=20261120-2235","js/theater/theater.js?v=20261120-1352","js/theater/palace.js?v=20261125-0010","js/theater/memory-engine.js?v=20261125-0025","js/theater/worldbooks.js?v=2026111571","js/xhs/xhs.js?v=20261121-0415","js/say/say.js?v=20261122-2858","js/keyboard.js?v=20261122-2858","js/media/reader.js?v=20261120-2235","js/desktop/ledger.js?v=20261121-0300","js/desktop/ledger-app.js?v=20261121-0300","js/desktop/health.js?v=20261121-2245","js/image-crop.js?v=20261123-0066","js/desktop/forum.js?v=20261123-0066","js/desktop/avatar-vault.js?v=2026111145","js/wechat/chat-appearance.js?v=2026111652","js/wechat/masks.js?v=2026111654","js/wechat/wordcards.js?v=2026111183","js/desktop/album-store.js?v=2026111433","js/desktop/photos.js?v=2026111457","js/version-watch.js?v=20261121-0150","js/agent/self-model.js?v=20261125-0028","js/app.js?v=20261123-0088"];
   var note = document.getElementById('mom-boot-note');
   var splash = document.getElementById('mom-splash');
   var splashAt = (window.performance && performance.now) ? performance.now() : Date.now();
