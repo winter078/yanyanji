@@ -141,6 +141,40 @@
     return window.Companion ? window.Companion.displayName(readerCompanion()) : '周绪言';
   }
 
+  function readerCompanionAvatar() {
+    const c = readerCompanion();
+    if (window.Companion) {
+      const av = window.Companion.avatarOf(c);
+      if (av) return av;
+    }
+    // 默认同伴才回落到主角色头像，避免换到没头像的角色时还顶着上一个人的脸
+    return c ? '' : ((window.appData && window.appData.botAvatar) || localStorage.getItem('momo_bot_avatar') || '');
+  }
+
+  // 阅读页里的「角色伴读」卡片：名字、脸、副标题都要跟着当前同伴走
+  function refreshReaderCompanionHeader() {
+    const name = readerCompanionName();
+    const nameEl = document.getElementById('xianguo-together-name');
+    if (nameEl) nameEl.innerText = name;
+
+    const avatarEl = document.getElementById('xianguo-together-avatar');
+    if (avatarEl) {
+      const av = readerCompanionAvatar();
+      if (av) {
+        avatarEl.src = av;
+        avatarEl.style.visibility = '';
+      } else {
+        avatarEl.removeAttribute('src');
+        avatarEl.style.visibility = 'hidden';
+      }
+    }
+
+    const subEl = document.getElementById('xianguo-together-sub');
+    if (subEl && currentActiveBook) {
+      subEl.innerText = name + '和你一起读《' + currentActiveBook.title + '》· 防剧透';
+    }
+  }
+
   function readerChatKey(bookId) {
     return String(bookId) + '::' + (readerCompanionId || '');
   }
@@ -1970,20 +2004,9 @@
 
     const container = document.getElementById('xianguo-reading-container');
     const badge = document.getElementById('xianguo-reading-book-badge');
-    const partnerSub = document.getElementById('xianguo-together-sub');
 
     if (badge) badge.innerText = book.title;
-    if (partnerSub) partnerSub.innerText = '和你一起读《' + book.title + '》· 防剧透';
-
-    const avatarEl = document.getElementById('xianguo-together-avatar');
-    const nameEl = document.getElementById('xianguo-together-name');
-    // 头像与名字跟着当前伴读的人走，换角色就换脸
-    const compCharNow = readerCompanion();
-    const compAvatar = (window.Companion ? window.Companion.avatarOf(compCharNow) : '')
-      || localStorage.getItem('momo_bot_avatar')
-      || (window.appData && window.appData.botAvatar) || '';
-    if (avatarEl && compAvatar) avatarEl.src = compAvatar;
-    if (nameEl) nameEl.innerText = readerCompanionName();
+    refreshReaderCompanionHeader();
 
     if (container) container.style.display = 'flex';
     const editPenEl = document.getElementById('xianguo-read-edit-pen');
@@ -2191,7 +2214,7 @@
     const listEl = document.getElementById('xianguo-together-chat-list');
     if (!listEl) return;
 
-    const botDisplayName = (window.appData && window.appData.botRemark) || '周绪言';
+    const botDisplayName = readerCompanionName();
     const history = getActiveBookChatHistory();
 
     listEl.innerHTML = history.map((m, idx) => {
@@ -2803,7 +2826,7 @@
     btn.title = '陪你读的人：' + name;
     btn.innerHTML = av
       ? '<img src="' + av + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">'
-      : '伴';
+      : (String(name).charAt(0) || '伴');
   }
 
   window.openReaderCompanionPicker = function() {
@@ -2824,6 +2847,7 @@
     readerCompanionId = id;
     try { localStorage.setItem('momo_reader_companion', readerCompanionId); } catch(e) {}
     refreshReaderCompanionUI();
+    refreshReaderCompanionHeader();
     if (currentActiveBook) {
       // 换人就把对话流切到这位的记录上（各自独立，不串台）
       renderTogetherChatMessages();
