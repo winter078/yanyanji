@@ -178,13 +178,15 @@ ${worldBookPrompt}
       charId: '',
       scenario: '盛夏午后画室，百叶窗斑驳阳光下，绪言端来温水，替手酸的user揉按手腕...',
       autoOutline: true,
-      contextDepth: 30
+      contextDepth: 30,
+      offlineSource: 'online'
     }));
 
     function selectStoryOption(key, val, el) {
       appData.storySettings[key] = val;
       el.parentElement.querySelectorAll('.story-pill-option').forEach(b => b.classList.remove('active'));
       el.classList.add('active');
+      if (key === 'offlineSource') syncStoryOfflineSourceUI();
     }
 
     function selectStoryStyle(name, el) {
@@ -302,6 +304,24 @@ ${worldBookPrompt}
       applyStorySkinUI(saved);
     }
 
+    function syncStoryOfflineSourceUI() {
+      const s = appData.storySettings || {};
+      const source = s.offlineSource === 'clean' ? 'clean' : 'online';
+      const buttons = document.querySelectorAll ? document.querySelectorAll('#group-offline-source .story-pill-option') : [];
+      for (let i = 0; i < buttons.length; i++) {
+        const value = buttons[i].getAttribute('data-offline-source');
+        const on = value === source;
+        buttons[i].classList.toggle('active', on);
+        buttons[i].setAttribute('aria-pressed', on ? 'true' : 'false');
+      }
+      const tip = document.getElementById('story-offline-source-tip');
+      if (tip) {
+        tip.textContent = source === 'online'
+          ? '会读取线上聊天沉淀的总结/记忆宫殿，带着已经发生的关系进入剧场。'
+          : '只读角色人设、世界书和酒馆预设，不读线上总结与聊天记录，像酒馆一样干净开局。';
+      }
+    }
+
     function syncStoryOutlineUI() {
       const s = appData.storySettings || {};
       const scenario = document.getElementById('story-scenario-text');
@@ -331,6 +351,7 @@ ${worldBookPrompt}
       const interval = document.getElementById('story-summary-interval');
       if (interval) interval.value = s.summaryInterval || 8;
       syncStoryWbSummary();
+      syncStoryOfflineSourceUI();
     }
 
     function resolveTheaterCharId() {
@@ -1294,6 +1315,22 @@ ${worldBookPrompt}
     setTimeout(bootRpBookStageBar, 0);
     document.addEventListener('DOMContentLoaded', bootRpBookStageBar);
 
+    function buildTheaterOnlineMemoryText() {
+      const charId = resolveTheaterCharId() || (theaterCharacter() && theaterCharacter().id) || '';
+      if (!charId) return '';
+      try {
+        if (typeof window.getPalaceMemoryTextFor === 'function') {
+          return window.getPalaceMemoryTextFor('single', charId, 8, { mode: 'rp' }) || '';
+        }
+        if (window.MemoryEngine && typeof window.MemoryEngine.buildText === 'function') {
+          return window.MemoryEngine.buildText('single', charId, { limit: 8, mode: 'rp' }) || '';
+        }
+      } catch (e) {
+        console.warn('[剧场] 读取线上总结失败：', e && e.message ? e.message : e);
+      }
+      return '';
+    }
+
     function buildTheaterPrompt(extraInstruction = '') {
       const s = appData.storySettings || {};
       const c = appData.rpConfig || {};
@@ -1310,6 +1347,16 @@ ${worldBookPrompt}
       if (theaterBuiltinEnabled('worldbook')) {
         const worldText = theaterWorldbookText();
         if (worldText) parts.push('### 世界书背景：\n' + worldText);
+      }
+      const offlineSource = s.offlineSource === 'clean' ? 'clean' : 'online';
+      if (offlineSource === 'online') {
+        const onlineMemory = buildTheaterOnlineMemoryText();
+        parts.push('### 线下起点（承接线上）：\n' +
+          (onlineMemory
+            ? onlineMemory + '\n\n以上是线上聊天沉淀下来的前情，只作为关系基础；剧场从当前场景继续，不要照搬线上原话，也不要声称“看过聊天记录”。'
+            : '线上目前没有可继承的总结记忆。请只根据角色人设、世界书与当前剧情开始，不要凭空编造线上发生过的事。'));
+      } else {
+        parts.push('### 线下起点（独立开局）：\n只使用角色人设、世界书和酒馆预设，不读取、不引用、不暗示线上聊天、线上总结或记忆宫殿里的内容。角色对过去的了解只来自当前角色设定和本场已经演过的剧情。');
       }
       if (theaterBuiltinEnabled('theater_narrative')) {
         const styleText = String(s.stylePrompt || '').replace(/周绪言/g, charName).replace(/绪言/g, charName);
