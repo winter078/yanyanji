@@ -52,7 +52,7 @@
         '</div>' +
       '</div>';
     var anchor = theme.querySelector('#region-skin-card');
-    if (anchor) theme.insertBefore(card, anchor); else theme.appendChild(card);
+    if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(card, anchor); else theme.appendChild(card);
     card.querySelector('#toggle-desktop-shell').addEventListener('click', function () {
       try { localStorage.setItem(KEY, isOn() ? '0' : '1'); } catch (e) {}
       syncUI();
