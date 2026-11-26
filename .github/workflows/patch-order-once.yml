@@ -1,0 +1,24 @@
+name: patch-order-once
+
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-order-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch prompt preset order behavior
+        run: python tools/_patch_order.py
+      - name: Commit patch
+        run: |
+          git config user.name "momo-bot"
+          git config user.email "momo-bot@users.noreply.github.com"
+          git add js/prompt-presets.js
+          git commit -m "fix: 酒馆导入不再默认关闭自定义条目"
+          git push origin HEAD:main
