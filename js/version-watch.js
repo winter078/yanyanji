@@ -76,21 +76,3 @@
   }
   setInterval(check, 60000);
 })();
-
-/* 桌面全屏热修加载器：等 phone.html / base.css 的正式改动上线后会自动跳过。 */
-(function () {
-  if (window.__deskFullLoaded) return;
-  var s = document.createElement('script');
-  s.src = 'js/desk-full.js?v=20261127-0047b';
-  s.async = false;
-  (document.head || document.documentElement).appendChild(s);
-})();
-
-/* 手机端顶栏黑边热修：页面铺到屏幕物理顶部，头部自己用 47 安全区避开状态栏。 */
-(function () {
-  if (document.getElementById('desk-full-mobile-edge')) return;
-  var st = document.createElement('style');
-  st.id = 'desk-full-mobile-edge';
-  st.textContent = '@media (max-width: 600px) { html.standalone .phone-screen, html.ios .phone-screen { padding-top: 0 !important; } html.ios .view-container, html.standalone .view-container { top: 0 !important; } }';
-  (document.head || document.documentElement).appendChild(st);
-})();
