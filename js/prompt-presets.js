@@ -3,6 +3,7 @@
   const K_PRESETS = 'momo_prompt_presets_v1';
   const K_ACTIVE = 'momo_prompt_active_preset_v1';
   const K_SCENE = 'momo_prompt_scene_v1';
+  const K_BINDINGS = 'momo_prompt_target_bindings_v1';
 
   const SCENES = {
     chat: { label: '线上聊天', short: '聊天', note: '线上读取 24 条微信底座 + 自定义板块；从酒馆预设导入时只提取文风，不整包吞舞台设定。' },
@@ -360,6 +361,7 @@
 
   let activeIds = readActiveIds();
   let currentScene = normalizeScope(localStorage.getItem(K_SCENE) || 'chat');
+  let forcedPresetId = '';
   let editingEntryId = '';
   let searchQuery = '';
   let sortMode = false;
@@ -477,8 +479,103 @@
     return presets.find(function(p) { return p.id === id; }) || null;
   }
 
+  function readTargetBindings() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(K_BINDINGS) || '{}');
+      return {
+        single: (raw && raw.single && typeof raw.single === 'object') ? raw.single : {},
+        group: (raw && raw.group && typeof raw.group === 'object') ? raw.group : {}
+      };
+    } catch (e) {
+      return { single: {}, group: {} };
+    }
+  }
+
+  function writeTargetBindings(bindings) {
+    try {
+      localStorage.setItem(K_BINDINGS, JSON.stringify({
+        single: bindings.single || {},
+        group: bindings.group || {}
+      }));
+    } catch (e) {}
+  }
+
+  function bindingPresetId(kind, targetId) {
+    const map = readTargetBindings();
+    const bucket = kind === 'group' ? map.group : map.single;
+    return String(bucket[String(targetId || '')] || '');
+  }
+
+  function setTargetBinding(kind, targetId, presetId) {
+    const k = kind === 'group' ? 'group' : 'single';
+    const id = String(targetId || '');
+    if (!id) return false;
+    const bindings = readTargetBindings();
+    if (presetId) {
+      const preset = getPreset(presetId);
+      if (!preset || preset.scope !== 'chat') return false;
+      bindings[k][id] = presetId;
+    } else {
+      delete bindings[k][id];
+    }
+    writeTargetBindings(bindings);
+    return true;
+  }
+
+  function currentTargetId(kind) {
+    if (kind === 'group') {
+      return String(window.__groupSettingsId || window.__groupMode || '');
+    }
+    try {
+      if (typeof window.getActiveChatCharId === 'function') {
+        return String(window.getActiveChatCharId() || '');
+      }
+    } catch (e) {}
+    return '';
+  }
+
+  function renderBindingSelect(kind, selectId, noteId) {
+    const sel = document.getElementById(selectId);
+    if (!sel) return;
+    const targetId = currentTargetId(kind);
+    const chatPresets = presets.filter(function(p) { return p.scope === 'chat'; });
+    const globalPreset = activePreset('chat');
+    const chosen = targetId ? bindingPresetId(kind, targetId) : '';
+    const valid = chosen && chatPresets.some(function(p) { return p.id === chosen; });
+    sel.innerHTML = '<option value="">跟随线上聊天默认' +
+      (globalPreset ? '（' + escapeHtml(globalPreset.name || '未命名预设') + '）' : '') +
+      '</option>' +
+      chatPresets.map(function(p) {
+        return '<option value="' + escapeHtml(p.id) + '">' + escapeHtml(p.name || '未命名预设') + '</option>';
+      }).join('');
+    sel.value = valid ? chosen : '';
+    sel.disabled = !targetId;
+    const note = noteId ? document.getElementById(noteId) : null;
+    if (note) {
+      if (!targetId) {
+        note.textContent = '先打开一个角色或群聊，再选预设。';
+      } else {
+        const activeName = valid
+          ? (getPreset(chosen) || {}).name
+          : (globalPreset ? globalPreset.name : '未设置');
+        note.textContent = '当前实际使用：' + (activeName || '未设置') +
+          (valid ? ' · 只对这个' + (kind === 'group' ? '群聊' : '角色') + '生效' : ' · 跟随全局默认') +
+          '。改完下一轮回复生效，不动角色卡和聊天记录。';
+      }
+    }
+  }
+
+  function renderTargetBindings() {
+    renderBindingSelect('single', 'chat-preset-binding-select', 'chat-preset-binding-note');
+    renderBindingSelect('group', 'group-preset-binding-select', 'group-preset-binding-note');
+  }
+
   function activePreset(scope) {
     const scene = normalizeScope(scope || currentScene);
+    if (forcedPresetId) {
+      const forced = getPreset(forcedPresetId);
+      if (forced && forced.scope === scene) return forced;
+    }
     const found = presets.find(function(p) { return p.id === activeIds[scene] && p.scope === scene; });
     return found || presets.find(function(p) { return p.scope === scene; }) || null;
   }
@@ -729,22 +826,30 @@
   function apply(base, context) {
     const ctx = context || {};
     const scope = normalizeScope(ctx.scope || 'chat');
-    const preset = activePreset(scope);
-    if (!preset) return base;
-    const text = reorderBuiltinSections(String(base || ''), scope, preset);
-    const custom = (preset.entries || []).filter(function(entry) {
-      return entry.kind === 'custom' && entryRole(entry) === 'system' &&
-        (entryPosition(entry) === 'head' || entryPosition(entry) === 'tail');
-    });
-    const before = buildCustomText(custom.filter(function(e) { return entryPosition(e) === 'head'; }));
-    const after = buildCustomText(custom.filter(function(e) { return entryPosition(e) !== 'head'; }));
-    let result = [before.join('\n\n'), text, after.join('\n\n')].filter(Boolean).join('\n\n');
-    result = result
-      .replace(/\{\{char\}\}/g, ctx.charName || '角色')
-      .replace(/\{\{user\}\}/g, ctx.userRemark || ctx.userName || 'user')
-      .replace(/\{\{user_name\}\}/g, ctx.userName || 'user')
-      .replace(/\{\{lastUserMessage\}\}/g, ctx.lastUserMessage || '');
-    return result;
+    const previousForcedId = forcedPresetId;
+    const targetKind = ctx.targetKind === 'group' ? 'group' : (ctx.targetKind === 'single' ? 'single' : '');
+    const boundId = ctx.presetId || (targetKind && ctx.targetId ? bindingPresetId(targetKind, ctx.targetId) : '');
+    forcedPresetId = boundId || '';
+    try {
+      const preset = activePreset(scope);
+      if (!preset) return base;
+      const text = reorderBuiltinSections(String(base || ''), scope, preset);
+      const custom = (preset.entries || []).filter(function(entry) {
+        return entry.kind === 'custom' && entryRole(entry) === 'system' &&
+          (entryPosition(entry) === 'head' || entryPosition(entry) === 'tail');
+      });
+      const before = buildCustomText(custom.filter(function(e) { return entryPosition(e) === 'head'; }));
+      const after = buildCustomText(custom.filter(function(e) { return entryPosition(e) !== 'head'; }));
+      let result = [before.join('\n\n'), text, after.join('\n\n')].filter(Boolean).join('\n\n');
+      result = result
+        .replace(/\{\{char\}\}/g, ctx.charName || '角色')
+        .replace(/\{\{user\}\}/g, ctx.userRemark || ctx.userName || 'user')
+        .replace(/\{\{user_name\}\}/g, ctx.userName || 'user')
+        .replace(/\{\{lastUserMessage\}\}/g, ctx.lastUserMessage || '');
+      return result;
+    } finally {
+      forcedPresetId = previousForcedId;
+    }
   }
 
   function renderSelect() {
@@ -1420,6 +1525,7 @@
     renderSelect();
     renderEntries();
     renderPresetMeta();
+    renderTargetBindings();
   }
 
   function captureForm() {
@@ -2005,7 +2111,19 @@
     save: savePreset,
     remove: deletePreset,
     importText: importFromText,
-    exportFile: exportPreset
+    exportFile: exportPreset,
+    binding: bindingPresetId,
+    setBinding: setTargetBinding,
+    renderBindings: renderTargetBindings
+  };
+
+  window.renderChatPresetBindings = renderTargetBindings;
+  window.setChatPresetBinding = function(kind, presetId) {
+    const targetId = currentTargetId(kind === 'group' ? 'group' : 'single');
+    if (!targetId) return false;
+    if (!setTargetBinding(kind === 'group' ? 'group' : 'single', targetId, presetId || '')) return false;
+    renderTargetBindings();
+    return true;
   };
 
   window.switchPromptPreset = function(id) { switchTo(id); };

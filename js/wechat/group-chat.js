@@ -1050,7 +1050,20 @@
       '- 动作指令每轮最多一个（换头像 / 贴反应 / 撤回 / 备注任选其一），写在正文后面单独一行，不要解释指令本身。',
       '- 输出 JSON，不要解释：{"messages":["第一条","第二条"]}'
     ];
-    return parts.filter(Boolean).join('\n\n');
+    const sys = parts.filter(Boolean).join('\n\n');
+    if (window.PromptPresets && typeof window.PromptPresets.apply === 'function') {
+      try {
+        return window.PromptPresets.apply(sys, {
+          scope: 'chat',
+          targetKind: 'group',
+          targetId: g.id,
+          charName: card.name,
+          userName: meName(g),
+          userRemark: myRemark
+        });
+      } catch (e) {}
+    }
+    return sys;
   }
 
   async function askCharacter(g, card, count) {
@@ -1577,6 +1590,7 @@
     memberQuery = '';
     fillSettings(g);
     renderGroupPinUI(g);
+    if (typeof window.renderChatPresetBindings === 'function') window.renderChatPresetBindings();
     openPage('page-group-setting');
   };
 

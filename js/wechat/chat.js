@@ -1511,6 +1511,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       if (typeof updateProactiveStatusUI === 'function') updateProactiveStatusUI();
       if (typeof window.renderChatPinUI === 'function') window.renderChatPinUI();
       if (typeof renderTimeGapUI === 'function') renderTimeGapUI();
+      if (typeof window.renderChatPresetBindings === 'function') window.renderChatPresetBindings();
     }
 
     function syncActionDescAdvancedUI() {
@@ -1866,6 +1867,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       } catch (e) {}
       return localStorage.getItem('momo_active_char') || '';
     }
+    window.getActiveChatCharId = activeChatCharId;
 
     function cloneChatMessages(list) {
       return Array.isArray(list) ? list.map(m => Object.assign({}, m)) : [];
@@ -6678,6 +6680,8 @@ ${(() => {
       if (!opts.skipPreset && window.PromptPresets && typeof window.PromptPresets.apply === 'function') {
         promptText = window.PromptPresets.apply(promptText, {
           scope: 'chat',
+          targetKind: 'single',
+          targetId: (typeof activeChatCharId === 'function' ? activeChatCharId() : ''),
           charName: charName,
           userName: userName,
           userRemark: userRemark
