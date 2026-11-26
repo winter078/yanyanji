@@ -424,6 +424,7 @@
     ensureScenePreset('chat');
     ensureScenePreset('theater');
     ensureScenePreset('forum');
+    unlockChatBuiltinsOnce();
     renderSettings();
   }
 
