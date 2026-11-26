@@ -345,14 +345,25 @@
 
 .wb-filter-row {
   display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
   gap: 7px;
+  min-height: 32px;
   margin: 12px 0 7px;
+  padding: 2px 0 5px;
   overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x proximity;
+  scroll-padding-left: 1px;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
   scrollbar-width: none;
 }
 .wb-filter-row::-webkit-scrollbar { display: none; }
 .wb-chip {
-  flex: none;
+  flex: 0 0 auto;
+  scroll-snap-align: start;
   padding: 6px 10px;
   border-radius: 999px;
   border: 1px solid var(--wb-line);
@@ -373,14 +384,24 @@
 
 .wb-people-row {
   display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
   gap: 6px;
+  min-height: 34px;
   overflow-x: auto;
-  padding-bottom: 2px;
+  overflow-y: hidden;
+  padding: 2px 0 6px;
+  scroll-snap-type: x proximity;
+  scroll-padding-left: 1px;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
   scrollbar-width: none;
 }
 .wb-people-row::-webkit-scrollbar { display: none; }
 .wb-person {
-  flex: none;
+  flex: 0 0 auto;
+  scroll-snap-align: start;
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -392,6 +413,7 @@
   font-size: 9px;
   cursor: pointer;
   white-space: nowrap;
+  box-sizing: border-box;
 }
 .wb-person .av {
   width: 19px;

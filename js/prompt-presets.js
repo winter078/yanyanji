@@ -557,13 +557,24 @@
     const globalPreset = activePreset('chat');
     const chosen = targetId ? bindingPresetId(kind, targetId) : '';
     const valid = chosen && chatPresets.some(function(p) { return p.id === chosen; });
-    sel.innerHTML = '<option value="">跟随线上聊天默认' +
-      (globalPreset ? '（' + escapeHtml(globalPreset.name || '未命名预设') + '）' : '') +
-      '</option>' +
-      chatPresets.map(function(p) {
-        return '<option value="' + escapeHtml(p.id) + '">' + escapeHtml(p.name || '未命名预设') + '</option>';
-      }).join('');
-    sel.value = valid ? chosen : '';
+    const chosenPreset = valid ? getPreset(chosen) : null;
+    const displayName = valid
+      ? ((chosenPreset && chosenPreset.name) || '未命名预设')
+      : ('跟随线上聊天默认' + (globalPreset ? '（' + (globalPreset.name || '未命名预设') + '）' : ''));
+    if (sel.tagName === 'SELECT') {
+      // 兼容旧版页面（full.html 等）还在用原生下拉；手机版已换成会换行的按钮。
+      sel.innerHTML = '<option value="">跟随线上聊天默认' +
+        (globalPreset ? '（' + escapeHtml(globalPreset.name || '未命名预设') + '）' : '') +
+        '</option>' +
+        chatPresets.map(function(p) {
+          return '<option value="' + escapeHtml(p.id) + '">' + escapeHtml(p.name || '未命名预设') + '</option>';
+        }).join('');
+      sel.value = valid ? chosen : '';
+    } else {
+      sel.innerHTML = '<span style="flex: 1; min-width: 0; white-space: normal; overflow-wrap: anywhere; word-break: break-word; line-height: 1.45;">' + escapeHtml(displayName) + '</span>'
+        + '<span style="flex-shrink: 0; font-size: 14px; color: var(--color-text-secondary);">›</span>';
+      sel.title = displayName;
+    }
     sel.disabled = !targetId;
     const note = noteId ? document.getElementById(noteId) : null;
     if (note) {
@@ -583,6 +594,42 @@
   function renderTargetBindings() {
     renderBindingSelect('single', 'chat-preset-binding-select', 'chat-preset-binding-note');
     renderBindingSelect('group', 'group-preset-binding-select', 'group-preset-binding-note');
+  }
+
+  function openChatPresetPicker(kind) {
+    const modal = document.getElementById('chat-preset-picker-modal');
+    const list = document.getElementById('chat-preset-picker-list');
+    const title = document.getElementById('chat-preset-picker-title');
+    const targetId = currentTargetId(kind);
+    if (!modal || !list || !targetId) return;
+    const k = kind === 'group' ? 'group' : 'single';
+    const chatPresets = presets.filter(function(p) { return p.scope === 'chat'; });
+    const globalPreset = activePreset('chat');
+    const chosen = bindingPresetId(k, targetId);
+    const valid = chosen && chatPresets.some(function(p) { return p.id === chosen; });
+    const currentId = valid ? chosen : '';
+    if (title) title.textContent = k === 'group' ? '选择群聊预设' : '选择聊天预设';
+
+    const options = [{
+      id: '',
+      label: '跟随线上聊天默认' + (globalPreset ? '（' + (globalPreset.name || '未命名预设') + '）' : '')
+    }].concat(chatPresets.map(function(p) {
+      return { id: p.id, label: p.name || '未命名预设' };
+    }));
+
+    list.innerHTML = options.map(function(item) {
+      const on = String(item.id) === String(currentId);
+      return '<button type="button" onclick="applyChatPresetPick(\'' + k + '\', \'' + escapeHtml(item.id) + '\')" style="display: flex; width: 100%; align-items: flex-start; gap: 8px; padding: 11px 12px; border-radius: 12px; border: 1px solid ' + (on ? 'rgba(7,193,96,0.45)' : 'var(--color-border)') + '; background: ' + (on ? 'rgba(7,193,96,0.08)' : 'var(--bg-base)') + '; color: var(--color-text-primary); text-align: left; cursor: pointer; box-sizing: border-box;">'
+        + '<span style="flex: 1; min-width: 0; font-size: 12.5px; line-height: 1.5; white-space: normal; overflow-wrap: anywhere; word-break: break-word;">' + escapeHtml(item.label) + '</span>'
+        + (on ? '<span style="flex-shrink: 0; color: #07c160; font-size: 14px; font-weight: 800; line-height: 1.4;">✓</span>' : '')
+        + '</button>';
+    }).join('');
+    modal.style.display = 'flex';
+  }
+
+  function closeChatPresetPicker() {
+    const modal = document.getElementById('chat-preset-picker-modal');
+    if (modal) modal.style.display = 'none';
   }
 
   function activePreset(scope) {
@@ -958,7 +1005,7 @@
         const stateText = groupState === 'on' ? '全部开' : (groupState === 'off' ? '全部关' : '部分');
         const stateColor = groupState === 'on' ? '#07c160' : (groupState === 'off' ? 'var(--color-text-secondary)' : '#fbbf24');
         const stateIcon = groupState === 'on' ? '✓' : (groupState === 'off' ? '○' : '−');
-        html += '<button type="button" onclick="togglePromptGroup(\'' + groupId + '\')" title="点击整组开/关；搜索时只作用于当前筛选结果" aria-label="' + escapeHtml(group.label + '，' + stateText + '，点击整组切换') + '" style="display: flex; width: 100%; align-items: center; gap: 6px; margin: 10px 2px 2px; padding: 5px 0 4px; position: sticky; top: 0; z-index: 2; background: var(--bg-elevated); border: 0; color: inherit; cursor: pointer; text-align: left; touch-action: manipulation;">' +
+        html += '<button type="button" onclick="togglePromptGroup(\'' + groupId + '\')" title="点击整组开/关；搜索时只作用于当前筛选结果" aria-label="' + escapeHtml(group.label + '，' + stateText + '，点击整组切换') + '" style="display: flex; width: 100%; align-items: center; gap: 6px; margin: 16px 2px 6px; padding: 0; background: transparent; border: 0; color: inherit; cursor: pointer; text-align: left; touch-action: manipulation;">' +
           '<span style="width: 7px; height: 7px; border-radius: 50%; background: ' + group.color + '; flex-shrink: 0;"></span>' +
           '<span style="font-size: 11px; font-weight: 800; color: var(--color-text-primary);">' + escapeHtml(group.label) + '</span>' +
           '<span style="font-size: 9.5px; color: var(--color-text-secondary);">' + enabledInGroup + '/' + items.length + '</span>' +
@@ -988,14 +1035,14 @@
             'ondragover="promptEntryDragOver(event)" ' +
             'ondrop="promptEntryDrop(event, \'' + escapeHtml(entry.id) + '\')" ' +
             'ondragend="promptEntryDragEnd(event)" ' +
-            'style="display: flex; gap: 6px; align-items: flex-start; padding: 9px 0; border-top: 0.5px solid var(--color-border); cursor: grab;">' +
+            'style="display: flex; gap: 8px; align-items: center; margin: 8px 0; padding: 12px 10px; border: 0.5px solid var(--color-border); border-radius: 12px; background: var(--bg-elevated); cursor: grab; box-sizing: border-box;">' +
             '<span title="拖动排序" style="flex-shrink: 0; font-size: 12px; line-height: 1.6; color: var(--color-text-secondary); cursor: grab; user-select: none; opacity: 0.75;">⠿</span>' +
             (multiSelect
               ? '<input type="checkbox" ' + (isSelected ? 'checked' : '') + ' onchange="togglePromptSelection(\'' + escapeHtml(entry.id) + '\', this.checked)" style="flex-shrink: 0; width: 15px; height: 15px; margin: 2px 0 0; accent-color: var(--info-primary); cursor: pointer;" />'
               : '') +
             '<div style="flex: 1; min-width: 0;">' +
-              '<div style="display: flex; align-items: center; gap: 5px; min-width: 0;">' +
-                '<span style="font-size: 12px; font-weight: 700; color: var(--color-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">' + escapeHtml(entry.title) + '</span>' +
+              '<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 5px; row-gap: 3px; min-width: 0;">' +
+                '<span style="flex: 1 1 auto; min-width: 0; font-size: 13px; line-height: 1.35; font-weight: 700; color: var(--color-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">' + escapeHtml(entry.title) + '</span>' +
                 '<span style="font-size: 9px; color: ' + (entry.kind === 'builtin' ? '#22d3ee' : '#a78bfa') + '; background: ' + (entry.kind === 'builtin' ? 'rgba(34,211,238,0.1)' : 'rgba(167,139,250,0.1)') + '; border-radius: 4px; padding: 1px 4px; flex-shrink: 0;">' + (entry.kind === 'builtin' ? '内置' : '自定义') + '</span>' +
                 (builtin ? '<span style="font-size: 9px; color: #fbbf24; background: rgba(251,191,36,0.1); border: 0.5px solid rgba(251,191,36,0.24); border-radius: 4px; padding: 1px 4px; flex-shrink: 0;">锁定</span>' : '') +
                 (entry.exclusiveGroup ? '<span style="font-size: 9px; color: #f472b6; background: rgba(244,114,182,0.1); border-radius: 4px; padding: 1px 4px; flex-shrink: 0;">互斥·' + escapeHtml(entry.exclusiveGroup) + '</span>' : '') +
@@ -2140,6 +2187,12 @@
     if (!setTargetBinding(kind === 'group' ? 'group' : 'single', targetId, presetId || '')) return false;
     renderTargetBindings();
     return true;
+  };
+  window.openChatPresetPicker = function(kind) { openChatPresetPicker(kind); };
+  window.closeChatPresetPicker = function() { closeChatPresetPicker(); };
+  window.applyChatPresetPick = function(kind, presetId) {
+    const ok = window.setChatPresetBinding(kind, presetId || '');
+    if (ok) closeChatPresetPicker();
   };
 
   window.switchPromptPreset = function(id) { switchTo(id); };
