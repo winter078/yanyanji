@@ -810,6 +810,115 @@
   text-align: center;
 }
 
+/* 生活记录权限 */
+#life-write-role-list {
+  display: block;
+}
+
+.life-write-role-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--color-border);
+  box-sizing: border-box;
+}
+
+.life-write-role-row:last-child {
+  border-bottom: 0;
+}
+
+.life-write-role-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.life-write-chips {
+  display: flex;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.life-write-chip {
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-secondary);
+  border-radius: 9px;
+  padding: 3px 8px;
+  font-size: 10.5px;
+  line-height: 1.3;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.life-write-chip.on {
+  color: #c084fc;
+  border-color: rgba(192, 132, 252, 0.45);
+  background: rgba(168, 85, 247, 0.13);
+}
+
+.life-write-card {
+  max-width: 340px;
+}
+
+.life-write-summary {
+  margin-top: 8px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--color-text-primary);
+}
+
+.life-write-form {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.life-write-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+.life-write-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--color-border);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-text-primary);
+  border-radius: 10px;
+  padding: 8px 9px;
+  font-size: 12.5px;
+  font-family: inherit;
+  outline: none;
+}
+
+.life-write-input:focus {
+  border-color: rgba(192, 132, 252, 0.55);
+}
+
+.life-write-textarea {
+  resize: vertical;
+  min-height: 84px;
+  line-height: 1.55;
+}
+
+.life-write-hint {
+  margin-top: 10px;
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
 .workpack-foot {
   font-size: 11px;
   color: var(--text-muted);

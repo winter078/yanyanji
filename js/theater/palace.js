@@ -861,15 +861,17 @@
     };
 
     function getVisiblePalaceCards() {
+      var list;
       if (currentPalaceTab === 'wechat') {
         if (!currentPalaceWechatTarget) ensurePalaceWechatTarget();
-        return getPalaceCardsFor(currentPalaceWechatScope, currentPalaceWechatTarget);
-      }
-      if (currentPalaceTab === 'pen') {
+        list = getPalaceCardsFor(currentPalaceWechatScope, currentPalaceWechatTarget);
+      } else if (currentPalaceTab === 'pen') {
         if (!currentPalaceWechatTarget) ensurePalaceWechatTarget();
-        return getPenCardsFor(currentPalaceWechatScope, currentPalaceWechatTarget);
+        list = getPenCardsFor(currentPalaceWechatScope, currentPalaceWechatTarget);
+      } else {
+        list = (appData.palaceMemories || []).filter(c => c.category === currentPalaceTab);
       }
-      return (appData.palaceMemories || []).filter(c => c.category === currentPalaceTab);
+      return (list || []).filter(c => c && c.status !== 'archived');
     }
 
     window.palaceAddGroupCard = function(g, text, source, options) {

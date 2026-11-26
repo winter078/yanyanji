@@ -1023,3 +1023,58 @@ window.getLedgerSummaryForAi = function (opts) {
     return '【记账本】：读取失败。';
   }
 };
+
+// 被人机恋角色确认后写入：只接受整理好的字段，不替用户改旧账
+window.ledgerApplyRecord = function (input) {
+  const o = input || {};
+  const type = o.type === 'income' ? 'income' : 'expense';
+  const amount = Math.round((Number(o.amount) || 0) * 100) / 100;
+  if (!amount || amount <= 0) return { ok: false, reason: 'amount' };
+
+  const dateText = String(o.date || '').slice(0, 10);
+  const ds = /^\d{4}-\d{2}-\d{2}$/.test(dateText) ? dateText : lgTodayStr();
+  const now = new Date();
+  const timePart = ds === lgTodayStr()
+    ? lgPad(now.getHours()) + ':' + lgPad(now.getMinutes())
+    : '12:00';
+
+  const cats = getAllLedgerCategories();
+  let catId = String(o.catId || '');
+  if (!cats.some(function (c) { return c.id === catId; })) {
+    const hint = String(o.category || '').trim();
+    const found = cats.filter(function (c) {
+      return hint && (c.name === hint || c.id === hint || (c.name && c.name.indexOf(hint) >= 0));
+    })[0];
+    catId = found ? found.id : (type === 'income' ? 'income_other' : 'shopping');
+  }
+
+  const accounts = lgLoadAccounts();
+  let accountId = String(o.accountId || 'wechat');
+  if (!accounts.some(function (a) { return a.id === accountId; })) accountId = 'wechat';
+
+  const rec = {
+    id: 'rec_life_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+    type: type,
+    catId: catId,
+    title: String(o.title || '').trim().slice(0, 40) || lgCatById(catId).name,
+    amount: amount,
+    date: ds + ' ' + timePart,
+    ts: new Date(ds.replace(/-/g, '/') + ' ' + timePart).getTime(),
+    accountId: accountId
+  };
+  const list = loadLedgerRecords();
+  list.push(rec);
+  saveLedgerRecords(list);
+  try { renderLedgerApp(); } catch (e) {}
+  return { ok: true, record: rec, catName: lgCatById(catId).name };
+};
+
+window.ledgerUndoRecord = function (id) {
+  if (!id) return false;
+  const list = loadLedgerRecords();
+  const next = list.filter(function (r) { return r && r.id !== id; });
+  if (next.length === list.length) return false;
+  saveLedgerRecords(next);
+  try { renderLedgerApp(); } catch (e) {}
+  return true;
+};

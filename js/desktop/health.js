@@ -618,6 +618,43 @@
     hpRenderAll();
   }
 
+  // 给人机恋角色主动写经期用：只记录明确日期，不做推断，不诊断。
+  function lifeDate(input) {
+    var m = String(input || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return todayStr();
+    return m[1] + '-' + m[2] + '-' + m[3];
+  }
+
+  window.healthApplyPeriodStart = function (date, note) {
+    var c = getCycle();
+    var ds = lifeDate(date);
+    if (c.starts.indexOf(ds) >= 0) return { ok: false, reason: 'exists', date: ds };
+    c.starts.push(ds);
+    c.starts.sort();
+    var log = c.logs[ds] || {};
+    log.flow = log.flow || 'normal';
+    if (note) log.note = String(note).slice(0, 80);
+    c.logs[ds] = log;
+    saveCycle(c);
+    try { hpRenderAll(); } catch (e) {}
+    return { ok: true, date: ds, label: fmtCN(ds) };
+  };
+
+  window.healthUndoPeriodStart = function (date) {
+    var c = getCycle();
+    var ds = lifeDate(date);
+    if (c.starts.indexOf(ds) < 0) return false;
+    c.starts = c.starts.filter(function (s) { return s !== ds; });
+    if (c.ends && c.ends[ds]) delete c.ends[ds];
+    if (c.logs && c.logs[ds]) {
+      delete c.logs[ds].flow;
+      if (!Object.keys(c.logs[ds]).length) delete c.logs[ds];
+    }
+    saveCycle(c);
+    try { hpRenderAll(); } catch (e) {}
+    return true;
+  };
+
   // ---------- 交互：点日历某一天，补记 / 改日期 ----------
   var cyclePickDay = '';
 

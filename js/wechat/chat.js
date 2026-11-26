@@ -2943,6 +2943,8 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       let avatar = '';
       let frame = '';
       let guard = 0;
+      let life = [];
+      let remember = [];
       while (guard++ < 7) {
         let m = body.match(/\n?\[REACTION:([^\]\n]+)\]\s*$/i);
         if (m) {
@@ -2986,7 +2988,19 @@ window.syncNarrationModeUI = syncNarrationModeUI;
           .replace(/\n{3,}/g, '\n\n')
           .trim();
       }
-      return { text: body, reaction: reaction, remark: remark, recall: recall, avatar: avatar, frame: frame };
+      // 生活记录指令只从气泡里剥掉；真正写入交给 LifeWrite 的确认卡。
+      body = body.replace(/\n?\[生活记录[:：]([\s\S]*?)\]\s*(?=\n|$)/g, function (_, raw) {
+        const text = String(raw || '').trim();
+        if (text) life.push(text);
+        return '';
+      }).trim();
+      // 「记下来」：记忆写入同样走统一确认卡，不直接改记忆库。
+      body = body.replace(/\n?\[记下来[:：]([\s\S]*?)\]\s*(?=\n|$)/g, function (_, raw) {
+        const text = String(raw || '').trim();
+        if (text) remember.push(text);
+        return '';
+      }).trim();
+      return { text: body, reaction: reaction, remark: remark, recall: recall, avatar: avatar, frame: frame, life: life, remember: remember };
     }
     window.extractChatTrailingCommands = extractChatTrailingCommands;
 
@@ -6291,6 +6305,13 @@ ${(() => {
   你也可以不等user开口，主动发一张合适的图逗她、接她的话或安慰她；但只在话头真的合适时发，别每轮都发，别为了发图硬找。系统会限制频率。
 ` : '';
 
+      const lifeWriteBlock = aiAware ? (() => {
+        try {
+          const c = (typeof window.getActiveCharacter === 'function') ? window.getActiveCharacter() : null;
+          return (c && c.id && window.LifeWrite) ? window.LifeWrite.promptBlock(c.id) : '';
+        } catch (e) { return ''; }
+      })() : '';
+
       const wechatActionBlock = aiAware ? `【贴表情能力】：
 - 当你真的想回应user刚才那条消息时，可以在回复最末单独写一行 [REACTION:emoji]，系统会给她的消息贴上一个反应。
 - 只能选：❤️ 😆 😨 😢 🤔 👍 🔥；不要每条都贴，只在你有真实情绪的时候用。
@@ -6563,6 +6584,7 @@ ${(() => {
 
 
 ${albumAbilityBlock}
+${lifeWriteBlock}
 ${aiAware ? (() => {
   try {
     const char = (typeof window.getActiveCharacter === 'function') ? window.getActiveCharacter() : null;
@@ -8599,6 +8621,32 @@ ${catalog}
             const allowedFrame = await window.askChatFrameChange(frameCharId, targetFrame, frameParts.text1, frameParts.text2);
             if (allowedFrame && typeof window.applyChatFrameToBot === 'function') {
               window.applyChatFrameToBot(frameCharId, targetFrame.id, frameParts.text1, frameParts.text2, true);
+            }
+          }
+        }
+
+        // 生活记录：同样先弹确认卡，用户点「记下」才写入健康 / 账本
+        if (chatCmd.life && chatCmd.life.length && window.LifeWrite) {
+          const lifeCharId = currentRemarkCharId();
+          for (const lifeRaw of chatCmd.life) {
+            try {
+              const lifeResult = await window.LifeWrite.handleCommand(lifeRaw, { charId: lifeCharId });
+              if (lifeResult && lifeResult.message) renderSystemNotice(lifeResult.message);
+            } catch (e) {
+              console.error('生活记录写入失败', e);
+            }
+          }
+        }
+
+        // 记下来：记忆写入也走同一张确认卡；重复的会在 MemoryEngine 里合并
+        if (chatCmd.remember && chatCmd.remember.length && window.LifeWrite) {
+          const memoryCharId = currentRemarkCharId();
+          for (const memoryRaw of chatCmd.remember) {
+            try {
+              const memoryResult = await window.LifeWrite.handleCommand({ kind: 'memory', text: memoryRaw }, { charId: memoryCharId });
+              if (memoryResult && memoryResult.message) renderSystemNotice(memoryResult.message);
+            } catch (e) {
+              console.error('记忆写入失败', e);
             }
           }
         }

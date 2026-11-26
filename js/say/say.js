@@ -2208,4 +2208,44 @@ var ME_BG = ['paper', 'moss', 'clay', 'indigo', 'ink'];
   });
   setTimeout(bindGestures, 300);
   window.__sayBind = bindGestures;
+
+  // 人机恋角色写日记：只写到 user 最近一页纸的底下，不覆盖她的正文
+  window.sayApplyCharNote = function (opts) {
+    var o = opts || {};
+    var text = String(o.text || '').trim().slice(0, 500);
+    var charId = String(o.charId || '');
+    if (!text || !charId) return { ok: false, reason: 'empty' };
+    var list = (data.entries || []).slice().sort(function (a, b) {
+      var at = (parseInt(b.created, 10) || 0) - (parseInt(a.created, 10) || 0);
+      if (at) return at;
+      return String(b.date || '').localeCompare(String(a.date || ''));
+    });
+    var entry = list[0];
+    if (!entry) return { ok: false, reason: 'no-entry' };
+    var name = String(o.charName || '').trim() || '他';
+    var reply = {
+      id: 'rep_life_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5),
+      name: name,
+      charId: charId,
+      text: text,
+      at: Date.now(),
+      kind: 'page'
+    };
+    pushReply(entry, reply);
+    if (!saveData()) return { ok: false, reason: 'save' };
+    try { renderSheet(); } catch (e) {}
+    return { ok: true, entryId: entry.id, reply, date: entry.date || '' };
+  };
+
+  window.sayUndoCharNote = function (entryId, replyId) {
+    if (!entryId || !replyId) return false;
+    var entry = (data.entries || []).filter(function (e) { return e && e.id === entryId; })[0];
+    if (!entry || !Array.isArray(entry.replies)) return false;
+    var before = entry.replies.length;
+    entry.replies = entry.replies.filter(function (r) { return r && r.id !== replyId; });
+    if (entry.replies.length === before) return false;
+    if (!saveData()) return false;
+    try { renderSheet(); } catch (e) {}
+    return true;
+  };
 })();

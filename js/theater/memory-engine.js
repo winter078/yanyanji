@@ -119,6 +119,7 @@
     return cards.filter(function (c) {
       if (!c || c.category !== 'wechat') return false;
       if (c.consolidatedInto) return false;
+      if (c.status === 'archived') return false;
       var s = c.chatScope || 'single';
       return s === scope && String(c.targetId || '') === String(targetId || '');
     });
@@ -735,6 +736,120 @@
     return true;
   }
 
+  function memoryDateStr() {
+    var d = new Date();
+    return d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate() + ' ' +
+      String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  }
+
+  function memoryTextKey(text) {
+    return String(text || '').toLowerCase().replace(/[\s，。！？,.!?;；:：“”"'‘’（）()【】\[\]]/g, '');
+  }
+
+  function findSimilarMemory(scope, targetId, text) {
+    var candidates = cardsFor(scope, targetId);
+    var key = memoryTextKey(text);
+    for (var i = 0; i < candidates.length; i++) {
+      var card = candidates[i];
+      var oldText = String(card.summary || card.content || '').trim();
+      if (!oldText) continue;
+      if (memoryTextKey(oldText) === key) return { card: card, score: 1, exact: true };
+    }
+    var textVec = textVector(text);
+    var best = null;
+    candidates.forEach(function (card) {
+      var oldText = String(card.summary || card.content || '').trim();
+      if (!oldText) return;
+      var score = cosineSimilarity(textVec, textVector(oldText));
+      if (!best || score > best.score) best = { card: card, score: score, exact: false };
+    });
+    return (best && best.score >= 0.9) ? best : null;
+  }
+
+  function remember(opts) {
+    var o = opts || {};
+    var scope = o.scope === 'group' ? 'group' : 'single';
+    var targetId = String(o.targetId || '');
+    var text = String(o.text || '').trim().slice(0, 500);
+    if (!targetId || !text) return { ok: false, reason: 'empty' };
+    var targetName = o.targetName || charName(targetId);
+    var similar = findSimilarMemory(scope, targetId, text);
+    if (similar) {
+      var existing = similar.card;
+      if (!similar.exact) {
+        var oldText = String(existing.summary || existing.content || '').trim();
+        if (text.length > oldText.length && oldText.indexOf(text) < 0) {
+          existing.summary = oldText + '；' + text;
+        }
+      }
+      existing.updatedAt = Date.now();
+      existing.hitCount = (parseInt(existing.hitCount, 10) || 1) + 1;
+      existing.status = 'active';
+      existing.tags = Array.from(new Set((existing.tags || []).concat(o.tags || []).filter(Boolean))).slice(0, 12);
+      saveStore();
+      try { if (window.renderPalaceMemories) window.renderPalaceMemories(); } catch (e) {}
+      return { ok: true, action: 'merged', card: existing, score: similar.score };
+    }
+
+    var cards = cardsFor(scope, targetId);
+    var count = cards.length + 1;
+    var card = {
+      id: 'mem_manual_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+      category: 'wechat',
+      chatScope: scope,
+      targetId: targetId,
+      targetName: targetName,
+      level: 0,
+      layer: LAYERS.short,
+      pinned: false,
+      title: '记下来 ' + count,
+      dateStr: memoryDateStr(),
+      summary: text,
+      tags: (o.tags && o.tags.length ? o.tags : ['手动记忆']).slice(0, 12),
+      importance: 3,
+      awareness: inferMemoryAwareness(text),
+      source: 'manual-chat',
+      status: 'active',
+      visibility: o.visibility || 'private',
+      ownerCharId: scope === 'single' ? targetId : '',
+      msgRangeStr: '手动记下',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      hitCount: 1
+    };
+    store().unshift(card);
+    saveStore();
+    try { if (window.renderPalaceMemories) window.renderPalaceMemories(); } catch (e) {}
+    return { ok: true, action: 'created', card: card };
+  }
+
+  function updateMemory(cardId, patch) {
+    var card = store().filter(function (c) { return c && c.id === cardId; })[0];
+    if (!card) return false;
+    var p = patch || {};
+    if (p.summary != null) card.summary = String(p.summary).trim().slice(0, 500);
+    if (p.title != null) card.title = String(p.title).trim().slice(0, 60);
+    if (Array.isArray(p.tags)) card.tags = p.tags.slice(0, 12);
+    if (p.importance != null) card.importance = Math.max(1, Math.min(5, parseInt(p.importance, 10) || 3));
+    if (p.pinned != null) return setCore(cardId, !!p.pinned);
+    card.updatedAt = Date.now();
+    normalizeCard(card);
+    saveStore();
+    try { if (window.renderPalaceMemories) window.renderPalaceMemories(); } catch (e) {}
+    return true;
+  }
+
+  function archiveMemory(cardId, reason) {
+    var card = store().filter(function (c) { return c && c.id === cardId; })[0];
+    if (!card) return false;
+    card.status = 'archived';
+    card.archivedAt = Date.now();
+    card.archiveReason = String(reason || '').slice(0, 80);
+    saveStore();
+    try { if (window.renderPalaceMemories) window.renderPalaceMemories(); } catch (e) {}
+    return true;
+  }
+
   window.MemoryEngine = {
     LAYERS: LAYERS,
     LAYER_LABEL: LAYER_LABEL,
@@ -751,6 +866,9 @@
     repairBrokenCards: repairBrokenCards,
     isBrokenMemoryCard: isBrokenMemoryCard,
     setCore: setCore,
+    remember: remember,
+    updateMemory: updateMemory,
+    archiveMemory: archiveMemory,
     _debug: { store: store, queryTerms: queryTerms, pointerFor: pointerFor }
   };
 
