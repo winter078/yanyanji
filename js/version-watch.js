@@ -81,7 +81,7 @@
 (function () {
   if (window.__deskFullLoaded) return;
   var s = document.createElement('script');
-  s.src = 'js/desk-full.js?v=20261127-0047a';
+  s.src = 'js/desk-full.js?v=20261127-0047b';
   s.async = false;
   (document.head || document.documentElement).appendChild(s);
 })();
