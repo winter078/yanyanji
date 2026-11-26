@@ -7,7 +7,7 @@
   var K_BOX_NAME = 'momo_world_box_name';
   var ALL = '*';
   var PALETTE = ['#7d8fae', '#7d927f', '#b08086', '#a493c9', '#64827e', '#8d7b62'];
-  var MAX_WORLD_CHARS = 9000;
+  var MAX_WORLD_CHARS = 30000;
 
   var books = [];
   var state = { filter: 'all', person: '', listOpen: false };
@@ -817,10 +817,6 @@
     var priv = !!($('input-entry-private') && $('input-entry-private').checked);
     if (!title) { toast('给这条起个名字'); return; }
     if (!content) { toast('正文还没写'); return; }
-    if (!keywords.length && !constant) {
-      toast('至少写一个关键词，或者把这条设为常驻');
-      return;
-    }
 
     var now = Date.now();
     if (editingEntryId) {
@@ -927,17 +923,16 @@
         if (e.enabled === false) continue;
         if (e.private && mode === 'group') continue;
         if (typeof opts.entryFilter === 'function' && !opts.entryFilter(b, e)) continue;
-        if (!e.constant && !keywordHit(e.keywords, text)) continue;
         var line = '[' + b.title + ' · ' + e.title + ']: ' + (e.content || '');
         if (seen + line.length > MAX_WORLD_CHARS) {
-          out.push('（世界书较长，后面的条目已省略）');
-          return out.length ? '【世界书 · 按当前场景与关键词筛选】\n' + out.join('\n') : '';
+          out.push('（世界书超过 3 万字，后面的条目已省略；可在世界书里关掉不需要的条目）');
+          return out.length ? '【世界书 · 全量】\n' + out.join('\n') : '';
         }
         out.push(line);
         seen += line.length + 1;
       }
     }
-    return out.length ? '【世界书 · 按当前场景与关键词筛选】\n' + out.join('\n') : '';
+    return out.length ? '【世界书 · 全量】\n' + out.join('\n') : '';
   }
 
   // 兼容旧地方读扁平数组：把老 worldEntries 映射成一本合成书，别让剧场突然空白

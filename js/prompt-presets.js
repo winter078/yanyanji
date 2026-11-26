@@ -333,6 +333,7 @@
       description: typeof preset.description === 'string' ? preset.description.trim().slice(0, 240) : '',
       source: typeof preset.source === 'string' && preset.source ? preset.source : 'manual',
       tags: normalizeTagList(preset.tags),
+      builtinsUnlockedOnce: preset.builtinsUnlockedOnce === true,
       entries: entries,
       createdAt: Number(preset.createdAt) || Number(preset.updatedAt) || Date.now(),
       updatedAt: Number(preset.updatedAt) || Date.now()
@@ -390,6 +391,26 @@
   ensureScenePreset('chat');
   ensureScenePreset('theater');
   ensureScenePreset('forum');
+  // 旧版酒馆导入默认关过一批内置；这里只迁移一次。
+  function unlockChatBuiltinsOnce() {
+    let changed = false;
+    presets.forEach(function(preset) {
+      if (preset.scope !== 'chat') return;
+      if (preset.builtinsUnlockedOnce) return;
+      (preset.entries || []).forEach(function(entry) {
+        if (entry.kind !== 'builtin') return;
+        if (entry.enabled !== false) return;
+        entry.enabled = true;
+        changed = true;
+      });
+      preset.builtinsUnlockedOnce = true;
+      changed = true;
+    });
+    if (changed) {
+      localStorage.setItem(K_PRESETS, JSON.stringify(presets));
+    }
+  }
+  unlockChatBuiltinsOnce();
 
   // 溢出库读完后再读一次，避免启动早期只拿到 localStorage 的旧预设。
   function reloadFromStorage() {
@@ -1845,20 +1866,7 @@
       name: styleOnly ? (baseName + ' · 线上文风') : baseName,
       entries: []
     }, targetScope);
-    // 酒馆预设自带 system/main/jailbreak；线上保留小手机身份、关系、时间、记忆和底线底座，只默认关掉容易抢文风的内置。
-    const KEEP_BUILTINS = {
-      character_setting: true,
-      relationship: true,
-      user_profile: true,
-      time: true,
-      memory: true,
-      honesty: true,
-      taboos: true,
-      core: true
-    };
-    preset.entries.forEach(function(entry) {
-      if (entry.kind === 'builtin' && targetScope === 'chat') entry.enabled = KEEP_BUILTINS[entry.id] === true;
-    });
+    // 导入时不再替用户关闭任何内置。
     const order = sillyTavernOrder(raw);
     const orderMap = {};
     const orderIndex = {};
@@ -1902,6 +1910,7 @@
     preset.version = raw.version == null ? '' : String(raw.version).trim().slice(0, 20);
     preset.description = String(raw.description || raw.comment || '').trim().slice(0, 240);
     preset.tags = normalizeTagList(styleOnly ? ['酒馆文风'] : ['酒馆导入']);
+    preset.builtinsUnlockedOnce = true;
     return preset;
   }
 
