@@ -1,0 +1,31 @@
+name: sync-prompt-once
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: contains(github.event.head_commit.message, '[sync-prompt]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download changed files
+        run: |
+          set -euo pipefail
+          curl -fsSL "https://aka.doubaocdn.com/s/pLl2bqE8pM" -o js/prompt-presets.js
+          curl -fsSL "https://aka.doubaocdn.com/s/rk3aVogaqe" -o js/theater/worldbooks.js
+          curl -fsSL "https://aka.doubaocdn.com/s/J1FgGv1sMq" -o phone.html
+          curl -fsSL "https://aka.doubaocdn.com/s/nPiXoDdW8r" -o js/build.js
+      - name: Commit and push
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/sync-prompt-once.yml
+          git add phone.html js/build.js js/prompt-presets.js js/theater/worldbooks.js
+          git commit -m "fix: unlock chat presets and inject full worldbook"
+          git push origin HEAD:main
