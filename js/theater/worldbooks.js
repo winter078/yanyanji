@@ -252,70 +252,59 @@
     return '--c1:' + c1 + ';--c2:' + shade(c1, -0.24) + ';--bc1:' + c1 + ';--bc2:' + shade(c1, -0.24) + ';--bl:' + c1 + ';';
   }
 
-  function envelope(book, front, layout) {
+  function bookCard(book) {
     var c = colorVars(book);
-    var pos = 'left:' + layout.left + 'px;top:' + layout.top + 'px;width:' + layout.width + 'px;height:' + layout.height + 'px;transform:rotate(' + layout.rotate + 'deg);' + c;
-    if (!front) {
-      return '<div class="wb-env behind" style="' + pos + '" onclick="openBookDetail(\'' + esc(book.id) + '\')">'
-        + '<div class="wb-stamp">' + esc(initialOf(book.title)) + '</div>'
-        + '<div class="wb-env-title">' + esc(book.title) + '</div>'
-        + '<div class="wb-env-to">收件人 <b>' + esc(recipientLabel(book)) + '</b></div>'
-        + '</div>';
-    }
     var tag = isGlobal(book) ? 'GLOBAL · 所有角色' : (recipientIds(book).length > 1 ? '共享 ' + recipientIds(book).length + ' 人' : '指定给 ' + charName(recipientIds(book)[0]));
     var meta = (book.entries || []).length + ' 条 · ' + constCount(book) + ' 常驻';
     var priv = privateCount(book);
     if (priv) meta += ' · ' + priv + ' 私密';
     var desc = book.desc || '还没有写简介。';
-    return '<div class="wb-env front" style="' + pos + '" onclick="openBookDetail(\'' + esc(book.id) + '\')">'
+    var safeTitle = esc(book.title || '未命名');
+    return '<div class="wb-env card" style="' + c + '" data-book-id="' + esc(book.id) + '" onclick="openBookDetail(\'' + esc(book.id) + '\')" title="' + safeTitle + ' · ' + esc(recipientLabel(book)) + '">'
       + '<div class="wb-stamp">' + esc(initialOf(book.title)) + '</div>'
-      + '<div class="wb-env-title">' + esc(book.title) + '</div>'
+      + '<div class="wb-env-title">' + safeTitle + '</div>'
       + '<div class="wb-env-to">收件人 <b>' + esc(recipientLabel(book)) + '</b></div>'
       + '<div class="wb-env-desc">' + br(desc) + '</div>'
       + '<div class="wb-env-tag">' + esc(tag) + '</div>'
       + '<div class="wb-env-meta">' + esc(meta) + '</div>'
+      + '<div class="wb-env-open" aria-hidden="true">›</div>'
       + '</div>';
-  }
-
-  function layoutStack(n) {
-    var front = { left: 66, top: 128, width: 220, height: 154, rotate: 0 };
-    if (n <= 1) return { behind: [], front: front };
-    var behind;
-    if (n === 2) {
-      behind = [{ left: 8, top: 64, width: 128, height: 150, rotate: -4 }];
-    } else if (n === 3) {
-      behind = [
-        { left: 6, top: 62, width: 116, height: 146, rotate: -5 },
-        { left: 212, top: 76, width: 116, height: 142, rotate: 4 }
-      ];
-    } else {
-      behind = [
-        { left: 2, top: 55, width: 104, height: 136, rotate: -6 },
-        { left: 180, top: 66, width: 104, height: 136, rotate: 2 },
-        { left: 258, top: 58, width: 96, height: 132, rotate: 6 }
-      ];
-    }
-    return { behind: behind, front: front };
   }
 
   function renderStack(list) {
     var tray = $('world-book-stack');
     if (!tray) return;
     if (!list.length) {
+      tray.__wbListKey = '';
       tray.innerHTML = '<div class="wb-empty"><div class="stamp-big">✉</div><div>书箱还是空的。<br>新建一本，先寄给一个角色。</div></div>';
       return;
     }
-    var n = list.length;
-    var layout = layoutStack(n);
-    var html = '';
-    layout.behind.forEach(function (pos, i) {
-      if (list[i + 1]) html += envelope(list[i + 1], false, pos);
-    });
-    html += envelope(list[0], true, layout.front);
-    if (n > 4) {
-      html += '<div class="wb-stack-more" onclick="toggleWorldBookList()">还有 ' + (n - 4) + ' 本 · 查看全部</div>';
+    var listKey = list.map(function (b) { return b.id; }).join('|');
+    var keepScroll = tray.__wbListKey === listKey ? tray.scrollLeft : 0;
+    tray.__wbListKey = listKey;
+    tray.innerHTML = list.map(bookCard).join('');
+    if (!tray.__wbSwipeBound) {
+      tray.__wbSwipeBound = true;
+      var startX = 0, startY = 0, moved = false;
+      tray.addEventListener('touchstart', function (e) {
+        var t = e.touches && e.touches[0];
+        startX = t ? t.clientX : 0;
+        startY = t ? t.clientY : 0;
+        moved = false;
+      }, { passive: true });
+      tray.addEventListener('touchmove', function (e) {
+        var t = e.touches && e.touches[0];
+        if (!t) return;
+        if (Math.abs(t.clientX - startX) > 10 || Math.abs(t.clientY - startY) > 10) moved = true;
+      }, { passive: true });
+      tray.addEventListener('click', function (e) {
+        if (!moved) return;
+        moved = false;
+        e.preventDefault();
+        e.stopPropagation();
+      }, true);
     }
-    tray.innerHTML = html;
+    try { tray.scrollLeft = keepScroll; } catch (e) {}
   }
 
   function renderFilters() {
@@ -1098,8 +1087,32 @@
     var out = list.map(function (b, i) {
       return importBook(b, i, fileName || '导入世界书', list.length);
     }).filter(function (b) { return b && b.entries && b.entries.length; });
-    if (!out.length) throw new Error('没认出这本书的条目，需要 entries / worldBooks 或 SillyTavern 世界书 JSON');
+    if (!out.length) throw new Error('没认出这本书的条目。世界书需要 entries / worldBooks；如果是 .nuopreset 或带 blocks / prompts 的聊天预设，请去「聊天设定 → 提示词预设」导入');
     return out;
+  }
+
+  function chatPresetKind(raw) {
+    if (!isEntryObject(raw)) return '';
+    if (raw.__nuojijiChatPreset === true && Array.isArray(raw.blocks)) return 'nuojiji';
+    if (Array.isArray(raw.blocks) && (raw.mode || raw.params || raw.regexRules)) return 'nuojiji';
+    if (Array.isArray(raw.prompts)) return 'sillytavern';
+    return '';
+  }
+
+  function routeChatPresetImport(text, fileName, kind) {
+    var label = kind === 'sillytavern' ? '酒馆聊天预设' : '糯叽机聊天预设';
+    if (!window.PromptPresets || typeof window.PromptPresets.importText !== 'function') {
+      toast('这是' + label + '，不是世界书。去「聊天设定 → 提示词预设 → 导入」就能用');
+      return true;
+    }
+    if (!window.confirm('这个文件是' + label + '，不是世界书。\n\n世界书只认 entries / worldBooks，所以刚才会导入失败。\n\n点「确定」按聊天预设导入到「线上聊天」；点「取消」先不导入。')) return true;
+    try {
+      var count = window.PromptPresets.importText(text, fileName, 'chat', { skipConfirm: true });
+      if (count) toast('已按聊天预设导入 ' + count + ' 套到线上聊天');
+    } catch (e) {
+      toast('聊天预设导入失败：' + ((e && e.message) || '文件格式不对'));
+    }
+    return true;
   }
 
   function openWorldBookImport() {
@@ -1119,7 +1132,16 @@
     var reader = new FileReader();
     reader.onload = function () {
       try {
-        var imported = parseWorldBookText(reader.result, file.name);
+        var text = String(reader.result || '');
+        var raw = null;
+        try { raw = JSON.parse(text.replace(/^\uFEFF/, '')); } catch (e) {}
+        var presetKind = chatPresetKind(raw);
+        if (presetKind) {
+          routeChatPresetImport(text, file.name, presetKind);
+          input.value = '';
+          return;
+        }
+        var imported = parseWorldBookText(text, file.name);
         var names = imported.map(function (b) { return '《' + b.title + '》'; }).join('、');
         if (!window.confirm('识别到 ' + imported.length + ' 本世界书：' + names + '\n\n导入后会追加到你的书箱，收件人默认所有角色，之后可以自己改。')) {
           input.value = '';

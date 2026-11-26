@@ -160,26 +160,32 @@
 
 .wb-tray {
   position: relative;
-  height: 326px;
-  overflow: hidden;
+  height: 252px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 16px 18px 26px;
+  scroll-snap-type: x mandatory;
+  scroll-padding-left: 18px;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, .025), transparent 26%),
     radial-gradient(120% 100% at 50% 0%, rgba(125, 143, 174, .12), transparent 64%),
     #17141c;
 }
-.wb-tray::after {
-  content: "";
-  position: absolute;
-  left: 16px;
-  right: 16px;
-  bottom: 14px;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .12), transparent);
-}
+.wb-tray::-webkit-scrollbar { display: none; }
 
 .wb-env {
-  position: absolute;
-  padding: 11px 12px;
+  position: relative;
+  flex: 0 0 164px;
+  width: 164px;
+  height: 206px;
+  box-sizing: border-box;
+  padding: 12px;
   border-radius: 9px 12px 12px 9px;
   color: #f5efe4;
   background: linear-gradient(145deg, var(--c1, #7d8fae), var(--c2, #52617a));
@@ -188,6 +194,7 @@
   overflow: hidden;
   cursor: pointer;
   user-select: none;
+  scroll-snap-align: center;
   transition: transform .18s ease, box-shadow .18s ease;
 }
 .wb-env::before {
@@ -199,79 +206,75 @@
   height: 100%;
   background: rgba(255, 255, 255, .16);
 }
-.wb-env:active { transform: scale(.975) rotate(0deg) !important; }
+.wb-env:active { transform: scale(.975); }
 .wb-env:hover { box-shadow: 0 18px 30px rgba(0, 0, 0, .34), inset 0 1px 0 rgba(255, 255, 255, .2); }
-
-.wb-env.front { z-index: 9; }
-.wb-env.behind { z-index: 2; opacity: .94; }
 
 .wb-stamp {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 28px;
-  height: 28px;
+  top: 9px;
+  right: 9px;
+  width: 26px;
+  height: 26px;
   border: 1px dashed rgba(255, 255, 255, .54);
   border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: Georgia, "Songti SC", "SimSun", serif;
-  font-size: 11px;
+  font-size: 10px;
   color: rgba(255, 255, 255, .86);
   transform: rotate(5deg);
 }
 
 .wb-env-title {
   position: absolute;
-  top: 14px;
+  top: 12px;
   left: 12px;
-  right: 44px;
+  right: 40px;
   font-family: Georgia, "Songti SC", "SimSun", serif;
-  font-size: 17px;
+  font-size: 14px;
   font-weight: 700;
   line-height: 1.2;
-  white-space: nowrap;
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
-}
-.wb-env.behind .wb-env-title {
-  top: 13px;
-  right: 20px;
-  font-size: 10.5px;
-  letter-spacing: 0;
 }
 .wb-env-to {
   position: absolute;
-  top: 47px;
+  top: 52px;
   left: 12px;
   right: 12px;
-  font-size: 8px;
+  font-size: 7.5px;
   letter-spacing: .02em;
   color: rgba(245, 239, 228, .68);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.wb-env-to b { color: #fff; font-size: 10px; font-weight: 650; }
-.wb-env.behind .wb-env-to { top: 36px; font-size: 7.5px; }
-.wb-env.behind .wb-env-to b { font-size: 8.5px; }
+.wb-env-to b { color: #fff; font-size: 9px; font-weight: 650; }
 
 .wb-env-desc {
   position: absolute;
-  top: 66px;
+  top: 69px;
   left: 12px;
   right: 12px;
   font-family: Georgia, "Songti SC", "SimSun", serif;
-  font-size: 9px;
+  font-size: 8.5px;
   line-height: 1.55;
   color: rgba(245, 239, 228, .62);
   white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .wb-env-tag {
   position: absolute;
   left: 12px;
-  bottom: 22px;
+  bottom: 31px;
+  max-width: calc(100% - 24px);
   padding: 2px 5px;
   border: 1px solid rgba(255, 255, 255, .26);
   border-radius: 4px;
@@ -279,31 +282,37 @@
   letter-spacing: .08em;
   color: rgba(255, 255, 255, .72);
   background: rgba(0, 0, 0, .12);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .wb-env-meta {
   position: absolute;
   left: 12px;
-  bottom: 8px;
-  right: 12px;
-  font-size: 8px;
+  bottom: 10px;
+  right: 34px;
+  font-size: 7.8px;
   color: rgba(245, 239, 228, .52);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
-.wb-stack-more {
+.wb-env-open {
   position: absolute;
-  right: 10px;
-  bottom: 10px;
-  z-index: 12;
-  padding: 5px 7px;
-  border: 1px solid rgba(255, 255, 255, .18);
-  border-radius: 6px;
-  background: rgba(20, 18, 25, .72);
-  color: rgba(255, 255, 255, .62);
-  font-size: 8px;
-  cursor: pointer;
+  right: 9px;
+  bottom: 7px;
+  width: 19px;
+  height: 19px;
+  border: 1px solid rgba(255, 255, 255, .24);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  line-height: 1;
+  color: rgba(255, 255, 255, .78);
+  background: rgba(0, 0, 0, .12);
+  pointer-events: none;
 }
 
 .wb-empty {
