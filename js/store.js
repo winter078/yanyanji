@@ -34,6 +34,11 @@ let appData = null;
       Storage.prototype.setItem = function(key, value) {
         try {
           const result = nativeSetItem.call(this, key, value);
+          // 溢出库还没读完时，先只写原生这一份，绝不能删掉 IndexedDB 里更新的副本：
+          // 否则刷新刚开始时某个模块用旧值回写一次，就会把最新记录永久抹掉。
+          if (isLocalStorage(this) && window.__momoOverflowHydrated !== true) {
+            return result;
+          }
           // 这次原生写入成功了，清掉同名的旧溢出副本，避免下次读到旧内容。
           if (isLocalStorage(this) && Object.prototype.hasOwnProperty.call(window.momoOverflowCache, key)) {
             delete window.momoOverflowCache[key];

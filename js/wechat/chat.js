@@ -1836,6 +1836,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
     // ================= 聊天记录全量固化与防溢出储存器 (绝对不丢任何一条记录) =================
     const CHAT_HISTORY_MAP_KEY = 'momo_chat_histories';
     const CHAT_HISTORY_SCOPED_FLAG = 'momo_chat_history_scoped_v1';
+    const CHAT_BACKUP_KEY = 'momo_chat_history_backup_v2';
     let chatHistoryOwnerId = '';
 
     function readChatHistoryMap() {
@@ -1853,19 +1854,71 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       catch (e) { console.warn('按角色聊天记录写入失败:', e); }
     }
 
+    // 最近一段聊天单独留一份轻量备份：只存文字，最多 120 条。
+    // 主记录被空值/旧值覆盖时，聊天页能直接把这段捞回来。
+    function readChatBackups() {
+      try {
+        const obj = JSON.parse(localStorage.getItem(CHAT_BACKUP_KEY) || '{}');
+        if (obj && typeof obj === 'object' && obj.slots && typeof obj.slots === 'object') return obj;
+      } catch (e) {}
+      return { v: 1, slots: {} };
+    }
+
+    function lightweightHistory(list, limit) {
+      return (Array.isArray(list) ? list : []).slice(-(limit || 120)).map(function (m) {
+        const c = Object.assign({}, m);
+        delete c.media;
+        if (c.content === '[IMAGE]') c.content = '[图片]';
+        return c;
+      });
+    }
+
+    function recordChatBackup(charId, list) {
+      if (!charId || !Array.isArray(list) || !list.length) return;
+      try {
+        const store = readChatBackups();
+        const prev = store.slots[charId];
+        const next = lightweightHistory(list, 120);
+        // 新记录比旧备份短、而且明显不是同一段时，不收缩备份，保留更完整的那份。
+        if (prev && Array.isArray(prev.history) && prev.history.length > next.length &&
+            historyLooksDifferent(prev.history, next)) return;
+        store.slots[charId] = { at: Date.now(), history: next };
+        const ids = Object.keys(store.slots).sort(function (a, b) {
+          return (store.slots[b].at || 0) - (store.slots[a].at || 0);
+        });
+        ids.slice(3).forEach(function (id) { delete store.slots[id]; });
+        localStorage.setItem(CHAT_BACKUP_KEY, JSON.stringify(store));
+      } catch (e) { console.warn('聊天轻量备份写入失败:', e); }
+    }
+
+    window.clearChatHistoryBackup = function (charId) {
+      try {
+        const store = readChatBackups();
+        if (charId) delete store.slots[charId];
+        else store.slots = {};
+        localStorage.setItem(CHAT_BACKUP_KEY, JSON.stringify(store));
+      } catch (e) {}
+    };
+
     // 全局镜像 momo_chat_history 是谁的记录，必须留一个标记，切角色/迁移时才不会认错主人。
     function stampMirrorOwner(charId) {
       try { localStorage.setItem('momo_chat_history_owner', charId || ''); } catch (e) {}
     }
 
     function activeChatCharId() {
+      // 刷新时以落盘的 active_char 为准，不能让世界书那边“找不到角色就回第一个”
+      // 的兜底把聊天页切到另一个空槽位。
+      try {
+        const saved = localStorage.getItem('momo_active_char') || '';
+        if (saved) return saved;
+      } catch (e) {}
       try {
         if (window.WB && typeof window.WB.activeCharId === 'function') {
           const id = window.WB.activeCharId();
           if (id) return id;
         }
       } catch (e) {}
-      return localStorage.getItem('momo_active_char') || '';
+      return '';
     }
     window.getActiveChatCharId = activeChatCharId;
 
@@ -1969,6 +2022,157 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       }
     };
 
+    function cleanRecoveryList(list) {
+      return (Array.isArray(list) ? list : []).filter(function (m) {
+        if (!m) return false;
+        const t = String(m.content || '');
+        return !(m.role === 'assistant' && t.length < 80 && t.includes('我在呢') && t.includes('弹弹琴'));
+      });
+    }
+
+    function chatOwnerName(id) {
+      try {
+        const list = (typeof window.getCharacters === 'function') ? window.getCharacters() : [];
+        const hit = (list || []).filter(function (c) { return c && c.id === id; })[0];
+        if (hit) return hit.name || hit.remark || id;
+      } catch (e) {}
+      return id || '未知角色';
+    }
+
+    // 扫描本机还留着的几类兜底：轻量备份、其它角色槽位、全局镜像、迁移前备份、紧急快照。
+    window.momCollectChatRecovery = function (activeId) {
+      const out = [];
+      const seen = {};
+      const add = function (source, ownerId, list, at, reason) {
+        const clean = cleanRecoveryList(list);
+        if (!clean.length) return;
+        const first = clean[0] || {};
+        const last = clean[clean.length - 1] || {};
+        const sig = clean.length + '|' + String(first.id || first.time || '') + '|' +
+          String(last.content || '').slice(0, 24);
+        if (seen[sig]) return;
+        seen[sig] = true;
+        out.push({
+          source: source,
+          ownerId: ownerId || '',
+          ownerName: chatOwnerName(ownerId || ''),
+          sameOwner: !!activeId && ownerId === activeId,
+          at: Number(at) || 0,
+          reason: reason || '',
+          preview: String(last.content || '').replace(/\s+/g, ' ').slice(0, 38),
+          history: clean
+        });
+      };
+
+      try {
+        const store = readChatBackups();
+        if (activeId && store.slots[activeId]) {
+          add('backup', activeId, store.slots[activeId].history, store.slots[activeId].at, '刷新前的轻量备份');
+        }
+      } catch (e) {}
+
+      try {
+        const map = readChatHistoryMap();
+        Object.keys(map || {}).forEach(function (id) {
+          if (id !== activeId) add('map', id, map[id], 0, '另一个角色的聊天槽位');
+        });
+      } catch (e) {}
+
+      try {
+        const raw = localStorage.getItem('momo_chat_history') || '';
+        const mirror = raw && raw !== '[]' ? JSON.parse(raw) : [];
+        const owner = localStorage.getItem('momo_chat_history_owner') || '';
+        if (owner !== activeId) add('mirror', owner, mirror, 0, '全局镜像里的一段记录');
+      } catch (e) {}
+
+      try {
+        const pre = JSON.parse(localStorage.getItem('momo_chat_pre_scope_backup') || '{}');
+        if (pre && pre.history) add('pre_scope', pre.migrateTo || pre.recordedOwner || '', pre.history,
+          pre.at, '分角色升级前的整段备份');
+      } catch (e) {}
+
+      try {
+        const snaps = JSON.parse(localStorage.getItem('momo_chat_emergency_snapshots') || '[]');
+        (Array.isArray(snaps) ? snaps : []).forEach(function (s) {
+          if (s && s.data) add('snapshot', s.charId || '', s.data, 0,
+            '紧急快照' + (s.reason ? '：' + s.reason : ''));
+        });
+      } catch (e) {}
+
+      out.sort(function (a, b) {
+        if (a.sameOwner !== b.sameOwner) return a.sameOwner ? -1 : 1;
+        if (b.history.length !== a.history.length) return b.history.length - a.history.length;
+        return (b.at || 0) - (a.at || 0);
+      });
+      return out.slice(0, 3);
+    };
+
+    window.momRestoreChatRecovery = function (index) {
+      const list = window.__momChatRecoveryList || [];
+      const item = list[index];
+      if (!item || !Array.isArray(item.history) || !item.history.length) return;
+      const targetId = activeChatCharId();
+      if (!targetId) return;
+      const from = item.sameOwner ? '当前角色' : ('「' + item.ownerName + '」');
+      if (!confirm('找回这段聊天记录？\n\n来源：' + from + '\n条数：' + item.history.length +
+          ' 条\n最后一句：' + (item.preview || '（无文字）') +
+          '\n\n会写回当前角色「' + chatOwnerName(targetId) + '」。')) return;
+      try {
+        chatHistoryOwnerId = targetId;
+        window.setChatHistoryForChar(targetId, item.history);
+        appData.chatHistory = cloneChatMessages(item.history);
+        try {
+          localStorage.setItem('momo_chat_history', JSON.stringify(buildStorageHistory(appData.chatHistory)));
+        } catch (e0) {}
+        stampMirrorOwner(targetId);
+        recordChatBackup(targetId, item.history);
+        loadChatHistory();
+        if (typeof window.renderWechatSessions === 'function') window.renderWechatSessions();
+      } catch (e) {
+        alert('找回失败：' + (e && e.message ? e.message : e));
+      }
+    };
+
+    function renderChatRecoveryCard(activeId) {
+      const container = document.getElementById('message-container') || msgContainer;
+      if (!container) return;
+      const list = window.momCollectChatRecovery(activeId);
+      if (!list.length) return;
+      // 当前角色本来就有空槽位，说明是刚被主动清空/删空的；
+      // 这时不要拿别的角色的记录来打扰。只有本角色自己的备份，或槽位彻底缺失时才提示。
+      let hasActiveSlot = false;
+      try { hasActiveSlot = Object.prototype.hasOwnProperty.call(readChatHistoryMap(), activeId); } catch (e) {}
+      if (!list.some(function (x) { return x.sameOwner; }) && hasActiveSlot) return;
+      window.__momChatRecoveryList = list;
+      const card = document.createElement('div');
+      card.className = 'mom-chat-recovery';
+      const title = document.createElement('div');
+      title.className = 'mom-chat-recovery-title';
+      title.textContent = '这段聊天没读出来，本机还留着一份';
+      const detail = document.createElement('div');
+      detail.className = 'mom-chat-recovery-detail';
+      const first = list[0];
+      detail.textContent = '「' + (first.sameOwner ? chatOwnerName(activeId) : first.ownerName) + '」' +
+        first.history.length + ' 条 · ' + first.reason +
+        (first.preview ? ' · “' + first.preview + '”' : '');
+      const actions = document.createElement('div');
+      actions.className = 'mom-chat-recovery-actions';
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'mom-chat-recovery-btn';
+      btn.textContent = '找回这段';
+      btn.onclick = function () { window.momRestoreChatRecovery(0); };
+      const more = document.createElement('span');
+      more.className = 'mom-chat-recovery-note';
+      more.textContent = list.length > 1 ? ('另有 ' + (list.length - 1) + ' 份备份') : '不会动角色卡和记忆';
+      actions.appendChild(btn);
+      actions.appendChild(more);
+      card.appendChild(title);
+      card.appendChild(detail);
+      card.appendChild(actions);
+      container.appendChild(card);
+    }
+
     window.switchChatHistoryToActiveChar = function (targetId, renderNow) {
       const id = targetId || activeChatCharId();
       if (!id) return;
@@ -2012,11 +2216,21 @@ window.syncNarrationModeUI = syncNarrationModeUI;
         const activeId = ensureChatHistoryScoped();
         const ownerId = chatHistoryOwnerId || activeId;
         const cleanHistoryForStorage = buildStorageHistory(appData.chatHistory);
+        const allowEmptyThisSave = window.__momAllowEmptyChatSave === true;
 
         // 每个角色一份，同时保留全局镜像给旧模块/同步服务兜底。
         if (ownerId) {
           const map = readChatHistoryMap();
           const oldList = map[ownerId];
+          // 刷新/切页时如果 appData 还没读回来就被某个模块保存了一次，
+          // 这里绝不允许空数组把已有的整段记录擦掉。
+          if (!cleanHistoryForStorage.length && Array.isArray(oldList) && oldList.length && !allowEmptyThisSave) {
+            pushEmergencySnapshot('空记录试图覆盖旧记录，已拦截', oldList, ownerId);
+            appData.chatHistory = cloneChatMessages(oldList);
+            chatHistoryOwnerId = ownerId;
+            console.warn('🛡️ 已拦截一次空聊天记录覆盖，保留', oldList.length, '条');
+            return false;
+          }
           // 防串号兜底：如果这个槽位已有的记录和本次要写的完全不是同一段，且旧记录更多，
           // 先把旧记录存进紧急快照，绝不静默覆盖。
           if (Array.isArray(oldList) && oldList.length > 0 &&
@@ -2024,12 +2238,14 @@ window.syncNarrationModeUI = syncNarrationModeUI;
               oldList.length > cleanHistoryForStorage.length) {
             pushEmergencySnapshot('覆盖前保留原记录', oldList, ownerId);
           }
+          recordChatBackup(ownerId, cleanHistoryForStorage);
           map[ownerId] = cleanHistoryForStorage;
           writeChatHistoryMap(map);
           chatHistoryOwnerId = ownerId;
         }
         localStorage.setItem('momo_chat_history', JSON.stringify(cleanHistoryForStorage));
         stampMirrorOwner(ownerId);
+        window.__momAllowEmptyChatSave = false;
         if (typeof syncWechatMainPreview === 'function') {
           syncWechatMainPreview();
         }
@@ -3831,7 +4047,11 @@ window.syncNarrationModeUI = syncNarrationModeUI;
           return;
         }
         appData.chatHistory.splice(idx, 1);
+        window.__momAllowEmptyChatSave = appData.chatHistory.length === 0;
         safeSaveChatHistory();
+        if (!appData.chatHistory.length) {
+          try { window.clearChatHistoryBackup(activeChatCharId()); } catch (e1) {}
+        }
         loadChatHistory();
       }
     }
@@ -3988,7 +4208,11 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       }
       if (confirm(`确认删除选中的 ${selectedMsgIndices.size} 条消息？`)) {
         appData.chatHistory = appData.chatHistory.filter((_, idx) => !selectedMsgIndices.has(idx));
+        window.__momAllowEmptyChatSave = appData.chatHistory.length === 0;
         safeSaveChatHistory();
+        if (!appData.chatHistory.length) {
+          try { window.clearChatHistoryBackup(activeChatCharId()); } catch (e1) {}
+        }
         exitMultiSelectMode();
         loadChatHistory();
       }
@@ -5722,6 +5946,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
 
       lastWechatBadgeTimeMs = 0;
       if (appData.chatHistory.length === 0) {
+        renderChatRecoveryCard(activeId);
         renderWechatTimeDivider(getNowStr(), Date.now());
       } else {
         appData.chatHistory.forEach((m, idx) => {
@@ -9440,7 +9665,9 @@ ${catalog}
         window.saveChatSnapshot('清空所有聊天记录前自动备份');
       }
       appData.chatHistory = [];
+      window.__momAllowEmptyChatSave = true;
       safeSaveChatHistory();
+      try { window.clearChatHistoryBackup(activeChatCharId()); } catch (e0) {}
       loadChatHistory();
       if (typeof window.renderWechatSessions === 'function') window.renderWechatSessions();
     }

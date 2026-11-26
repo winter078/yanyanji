@@ -175,7 +175,16 @@
       id && arr.indexOf(id) === i
     );
     activeId = localStorage.getItem(K_ACTIVE) || '';
-    if (!chars.some(c => c.id === activeId)) activeId = chars[0] ? chars[0].id : '';
+    if (!chars.some(c => c.id === activeId)) {
+      // 角色表如果因为存储溢出只读回了旧版，别急着把 active 改成第一个角色：
+      // 先看这个 id 下面还有没有聊天记录，有就先保住，等溢出库读完再校正。
+      let keepForHistory = false;
+      try {
+        const map = JSON.parse(localStorage.getItem('momo_chat_histories') || '{}');
+        keepForHistory = !!(activeId && Array.isArray(map[activeId]) && map[activeId].length);
+      } catch (e) {}
+      if (!keepForHistory) activeId = chars[0] ? chars[0].id : '';
+    }
     persist();
   }
 
@@ -1520,6 +1529,44 @@
   window.openRelationGraph = openRelationGraph;
   window.renderRelationGraph = renderRelationGraph;
   window.wxToast = toast;
+
+  // 溢出库读完后再校正一次：启动早期可能只读到了 localStorage 里的旧角色表。
+  // 这里只更新内存和界面，不反向写盘，避免把 IndexedDB 里的新表又盖掉。
+  window.momoReloadCharactersFromStorage = function () {
+    let changed = false;
+    const savedChars = readJSON(K_CHARS, null);
+    if (Array.isArray(savedChars) && savedChars.length) {
+      const nextChars = savedChars.map(norm);
+      if (JSON.stringify(nextChars) !== JSON.stringify(chars)) { chars = nextChars; changed = true; }
+    }
+    const savedGroups = readJSON(K_GROUPS, []);
+    if (Array.isArray(savedGroups)) {
+      const nextGroups = savedGroups.map(normGroup);
+      if (JSON.stringify(nextGroups) !== JSON.stringify(groups)) { groups = nextGroups; changed = true; }
+    }
+    const savedTrash = readJSON(K_TRASH, []);
+    if (Array.isArray(savedTrash)) trash = savedTrash.map(norm);
+    activeId = localStorage.getItem(K_ACTIVE) || '';
+    if (!chars.some(c => c.id === activeId)) {
+      let keepForHistory = false;
+      try {
+        const map = JSON.parse(localStorage.getItem('momo_chat_histories') || '{}');
+        keepForHistory = !!(activeId && Array.isArray(map[activeId]) && map[activeId].length);
+      } catch (e) {}
+      if (!keepForHistory) activeId = chars[0] ? chars[0].id : '';
+    }
+    friends = (readJSON(K_FRIENDS, []) || []).filter((id, i, arr) =>
+      id && arr.indexOf(id) === i && find(id)
+    );
+    pinnedIds = (readJSON(K_PINS, []) || []).filter((id, i, arr) => id && arr.indexOf(id) === i);
+    hiddenConvIds = (readJSON(K_HIDDEN, []) || []).filter((id, i, arr) => id && arr.indexOf(id) === i);
+    if (changed) {
+      if (chars[0]) applyActiveToGlobals(find(activeId) || chars[0]);
+      try { renderWechatSessions(); } catch (e) {}
+      try { renderContacts(); } catch (e) {}
+    }
+    return changed;
+  };
 
   loadAll();
   seedDemoGroup();

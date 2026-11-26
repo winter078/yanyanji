@@ -2706,5 +2706,49 @@ body[data-theme="light"] .wechat-tool-pill.sel {
 .xinsheng-inline-drawer.open { display: block; }
 .xinsheng-inline-drawer-heart { font-style: italic; color: #f1f1f1; }
 
+/* 聊天记录缺失时的找回卡：只在当前聊天为空、本机仍有备份时出现 */
+.mom-chat-recovery {
+  margin: 10px 12px 4px;
+  padding: 11px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(214, 158, 46, 0.32);
+  background: linear-gradient(180deg, rgba(255, 248, 230, 0.96), rgba(255, 243, 214, 0.9));
+  color: #5c4520;
+  box-shadow: 0 4px 14px rgba(120, 86, 20, 0.08);
+}
+.mom-chat-recovery-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.mom-chat-recovery-detail {
+  margin-top: 5px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: rgba(92, 69, 32, 0.78);
+  word-break: break-word;
+}
+.mom-chat-recovery-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 9px;
+}
+.mom-chat-recovery-btn {
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 13px;
+  background: #b8821f;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.mom-chat-recovery-btn:active { transform: scale(0.98); }
+.mom-chat-recovery-note {
+  font-size: 10.5px;
+  color: rgba(92, 69, 32, 0.62);
+}
+
 
 

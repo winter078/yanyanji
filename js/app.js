@@ -6,6 +6,12 @@
       // localStorage 满时，聊天记录会转存到 IndexedDB；启动必须先等它读完，
       // 否则新标签页会把“溢出里的最新记录”当成空记录。
       try { if (window.momoOverflowReady) await window.momoOverflowReady; } catch (e) {}
+      // 角色表/群聊也可能被转进 IndexedDB；读完后再校正一次，避免刷新时只用了旧表。
+      try {
+        if (typeof window.momoReloadCharactersFromStorage === 'function') {
+          window.momoReloadCharactersFromStorage();
+        }
+      } catch (e) {}
       // appData 在 store.js 里是同步初始化的，溢出键可能当时还没读回来；
       // 这里补读一次记忆宫殿，避免刷新后把已有记忆卡当成空列表。
       try {
