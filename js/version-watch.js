@@ -86,11 +86,11 @@
   (document.head || document.documentElement).appendChild(s);
 })();
 
-/* 手机端顶栏黑边热修：让壁纸直接铺到屏幕物理顶部，标题栏自己留安全区。 */
+/* 手机端顶栏黑边热修：页面铺到屏幕物理顶部，头部自己用 47 安全区避开状态栏。 */
 (function () {
   if (document.getElementById('desk-full-mobile-edge')) return;
   var st = document.createElement('style');
   st.id = 'desk-full-mobile-edge';
-  st.textContent = '@media (max-width: 600px) { html.standalone .phone-screen, html.ios .phone-screen { padding-top: 0 !important; } }';
+  st.textContent = '@media (max-width: 600px) { html.standalone .phone-screen, html.ios .phone-screen { padding-top: 0 !important; } html.ios .view-container, html.standalone .view-container { top: 0 !important; } }';
   (document.head || document.documentElement).appendChild(st);
 })();
