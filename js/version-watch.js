@@ -76,3 +76,12 @@
   }
   setInterval(check, 60000);
 })();
+
+/* 桌面全屏热修加载器：等 phone.html / base.css 的正式改动上线后会自动跳过。 */
+(function () {
+  if (window.__deskFullLoaded) return;
+  var s = document.createElement('script');
+  s.src = 'js/desk-full.js?v=20261127-0047a';
+  s.async = false;
+  (document.head || document.documentElement).appendChild(s);
+})();
