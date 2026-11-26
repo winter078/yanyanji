@@ -955,7 +955,7 @@
   }
 
   function importFileName(fileName) {
-    var s = String(fileName || '').replace(/^.*[\\\/]/, '').replace(/\.(json|json5|txt)$/i, '').trim();
+    var s = String(fileName || '').replace(/^.*[\\\/]/, '').replace(/\.(json|json5|txt|md|docx)$/i, '').trim();
     return s || '导入世界书';
   }
 
@@ -1082,13 +1082,417 @@
   }
 
   function parseWorldBookText(text, fileName) {
-    var raw = JSON.parse(String(text || '').replace(/^\uFEFF/, ''));
+    var clean = String(text || '').replace(/^\uFEFF/, '');
+    var raw;
+    try {
+      raw = JSON.parse(clean);
+    } catch (e) {
+      if (!/^\s*[\{\[]/.test(clean)) {
+        return parsePlainDocWorldBook(clean, fileName);
+      }
+      throw e;
+    }
     var list = unwrapImport(raw, fileName || '导入世界书');
     var out = list.map(function (b, i) {
       return importBook(b, i, fileName || '导入世界书', list.length);
     }).filter(function (b) { return b && b.entries && b.entries.length; });
     if (!out.length) throw new Error('没认出这本书的条目。世界书需要 entries / worldBooks；如果是 .nuopreset 或带 blocks / prompts 的聊天预设，请去「聊天设定 → 提示词预设」导入');
     return out;
+  }
+
+  // ---------- Word 文档（.docx）读取：标题 / 表格 / 关键词行 / 空行分条 ----------
+  function docxLocalName(node) {
+    return String((node && (node.localName || node.nodeName)) || '').replace(/^.*:/, '').toLowerCase();
+  }
+
+  function docxParagraphText(p) {
+    var out = '';
+    (function walk(node) {
+      if (!node) return;
+      for (var i = 0; i < node.childNodes.length; i++) {
+        var ch = node.childNodes[i];
+        if (ch.nodeType !== 1) continue;
+        var name = docxLocalName(ch);
+        if (name === 't') out += ch.textContent || '';
+        else if (name === 'tab') out += '\t';
+        else if (name === 'br' || name === 'cr') out += '\n';
+        else if (name !== 'ppr' && name !== 'rpr' && name !== 'deltext') walk(ch);
+      }
+    })(p);
+    return out.replace(/\u00a0/g, ' ')
+      .replace(/[ \t]+\n/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }
+
+  function docxParagraphLevel(p) {
+    var pPr = p.getElementsByTagName('w:pPr')[0];
+    if (!pPr) return 0;
+    var style = pPr.getElementsByTagName('w:pStyle')[0];
+    var val = style ? String(style.getAttribute('w:val') || style.getAttribute('val') || '') : '';
+    var levelMatch = val.match(/(?:heading|标题|head)(?:\s|_)*([1-6])/i) || val.match(/^([1-6])$/);
+    if (levelMatch) return parseInt(levelMatch[1], 10);
+    if (/^(title|标题)$/i.test(val)) return 1;
+    var outline = pPr.getElementsByTagName('w:outlineLvl')[0];
+    var outlineVal = outline ? parseInt(outline.getAttribute('w:val') || outline.getAttribute('val'), 10) : NaN;
+    if (!isNaN(outlineVal) && outlineVal >= 0 && outlineVal < 6) return outlineVal + 1;
+    return 0;
+  }
+
+  function docxTableRows(tbl) {
+    var rows = [];
+    var trs = tbl.getElementsByTagName('w:tr');
+    for (var i = 0; i < trs.length; i++) {
+      var cells = [];
+      var tcs = trs[i].getElementsByTagName('w:tc');
+      for (var j = 0; j < tcs.length; j++) {
+        var texts = [];
+        var ps = tcs[j].getElementsByTagName('w:p');
+        for (var k = 0; k < ps.length; k++) {
+          var t = docxParagraphText(ps[k]);
+          if (t) texts.push(t);
+        }
+        cells.push(texts.join('\n').trim());
+      }
+      rows.push(cells);
+    }
+    return rows;
+  }
+
+  function docxXmlToBlocks(xml) {
+    var dom = new DOMParser().parseFromString(String(xml || ''), 'application/xml');
+    if (dom.getElementsByTagName('parsererror')[0]) throw new Error('Word 文档结构读不出来');
+    var body = dom.getElementsByTagName('w:body')[0] || dom.documentElement;
+    var blocks = [];
+    for (var i = 0; i < body.childNodes.length; i++) {
+      var node = body.childNodes[i];
+      if (!node || node.nodeType !== 1) continue;
+      var name = docxLocalName(node);
+      if (name === 'p') {
+        var text = docxParagraphText(node);
+        if (text) blocks.push({ type: 'p', text: text, level: docxParagraphLevel(node) });
+        else blocks.push({ type: 'blank' });
+      } else if (name === 'tbl') {
+        var rows = docxTableRows(node);
+        if (rows.length) blocks.push({ type: 'table', rows: rows });
+      }
+    }
+    return blocks;
+  }
+
+  function cleanDocxTitle(text) {
+    return String(text || '')
+      .replace(/^#+\s*/, '')
+      .replace(/^【\s*/, '')
+      .replace(/】\s*$/, '')
+      .replace(/[《》]/g, '')
+      .replace(/^\s*\d+\s*[.、．]\s*/, '')
+      .trim();
+  }
+
+  function splitDocxKeys(text) {
+    var raw = String(text || '').replace(/^(?:关键词|关键字|触发词|键词|keys?|triggers?)\s*[:：]\s*/i, '');
+    return raw.split(/[\n,，、;；|]+/).map(function (s) {
+      return s.trim().replace(/^[-*·\s]+|[-*·\s]+$/g, '').replace(/^["“”']+|["“”']+$/g, '');
+    }).filter(function (s) { return s && s.length <= 40; });
+  }
+
+  function docxTitleLine(text) {
+    var t = String(text || '').trim();
+    var m = t.match(/^【\s*([^】]{1,60})\s*】$/);
+    if (m) return cleanDocxTitle(m[1]);
+    m = t.match(/^(?:标题|条目|词条|条目名|名称|人物名|地名|组织名|物品名|事件名)\s*[:：]\s*(\S.{0,79})$/);
+    if (m) return cleanDocxTitle(m[1]);
+    m = t.match(/^第[一二三四五六七八九十百\d]+[条章]\s*[:：、]\s*(\S.{0,79})$/);
+    if (m) return cleanDocxTitle(m[1]);
+    return '';
+  }
+
+  function docxBookTitle(blocks, fileName) {
+    var explicitTitle = '';
+    var h1Texts = [];
+    var h2Count = 0;
+    blocks.forEach(function (b) {
+      if (b.type !== 'p') return;
+      var text = String(b.text || '').trim();
+      if (!text) return;
+      var m = text.match(/^(?:世界书|书名|世界书名|book)\s*[:：]\s*(.+)$/i);
+      if (m && !explicitTitle) explicitTitle = cleanDocxTitle(m[1]);
+      if (b.level === 1) h1Texts.push(cleanDocxTitle(text));
+      if (b.level >= 2) h2Count++;
+    });
+    if (explicitTitle) return explicitTitle.slice(0, 40);
+    if (h1Texts.length && h2Count > 0) return h1Texts[0].slice(0, 40);
+    return importFileName(fileName);
+  }
+
+  function docxEntriesFromTables(blocks) {
+    var entries = [];
+    blocks.forEach(function (block) {
+      if (block.type !== 'table') return;
+      var rows = block.rows.filter(function (row) {
+        return row && row.some(function (cell) { return String(cell || '').trim(); });
+      });
+      if (!rows.length) return;
+      var header = rows[0].map(function (cell) {
+        return String(cell || '').replace(/\s+/g, '').toLowerCase();
+      });
+      var titleIdx = -1, keyIdx = -1, contentIdx = -1;
+      header.forEach(function (cell, i) {
+        if (contentIdx < 0 && /内容|正文|描述|设定|解释|content|text|description|setting/.test(cell)) contentIdx = i;
+        else if (keyIdx < 0 && /关键词|关键字|触发词|键词|key|trigger/.test(cell)) keyIdx = i;
+        else if (titleIdx < 0 && /标题|名称|词条|条目|title|name/.test(cell)) titleIdx = i;
+      });
+      var hasHeader = contentIdx >= 0 && (titleIdx >= 0 || keyIdx >= 0);
+      if (!hasHeader) {
+        if (rows[0].length >= 3) { titleIdx = 0; keyIdx = 1; contentIdx = 2; }
+        else if (rows[0].length === 2) { titleIdx = 0; contentIdx = 1; }
+        else return;
+      }
+      for (var i = hasHeader ? 1 : 0; i < rows.length; i++) {
+        var row = rows[i] || [];
+        var title = titleIdx >= 0 ? String(row[titleIdx] || '') : '';
+        var keys = keyIdx >= 0 ? splitDocxKeys(row[keyIdx] || '') : [];
+        var content = contentIdx >= 0 ? String(row[contentIdx] || '') : '';
+        if (!content.trim()) {
+          var rest = [];
+          for (var j = 0; j < row.length; j++) {
+            if (j !== titleIdx && j !== keyIdx) rest.push(row[j]);
+          }
+          content = rest.join('\n');
+        }
+        content = content.trim();
+        if (!content) continue;
+        title = cleanDocxTitle(title);
+        if (!title || /^\d+$/.test(title)) {
+          title = cleanDocxTitle(content.split('\n')[0]).slice(0, 40) || ('条目 ' + (entries.length + 1));
+        }
+        entries.push({
+          title: title.slice(0, 60),
+          keywords: keys,
+          content: content,
+          constant: keys.length ? false : true
+        });
+      }
+    });
+    return entries;
+  }
+
+  function docxEntriesFromParagraphs(blocks, bookTitle) {
+    var entries = [];
+    var current = null;
+    var pendingTitle = '';
+    function flush() {
+      if (!current) return;
+      var content = current.lines.join('\n').trim();
+      if (content) {
+        entries.push({
+          title: (current.title || content.split('\n')[0]).slice(0, 60),
+          keywords: current.keys,
+          content: content
+        });
+      }
+      current = null;
+    }
+    blocks.forEach(function (b) {
+      if (b.type !== 'p') return;
+      var text = String(b.text || '').trim();
+      if (!text) return;
+      var level = b.level || 0;
+      if (level > 0) {
+        var heading = cleanDocxTitle(text);
+        if (!heading) return;
+        if (level === 1 && bookTitle && !current && !entries.length &&
+            heading === cleanDocxTitle(bookTitle)) return;
+        flush();
+        pendingTitle = '';
+        current = { title: heading, keys: [], lines: [] };
+        return;
+      }
+      if (!current && /^(?:世界书|书名|世界书名|book)\s*[:：]/i.test(text)) return;
+      var titleLine = docxTitleLine(text);
+      if (titleLine) {
+        flush();
+        pendingTitle = '';
+        current = { title: titleLine, keys: [], lines: [] };
+        return;
+      }
+      var keyMatch = text.match(/^(?:关键词|关键字|触发词|键词|keys?|triggers?)\s*[:：]\s*(.+)$/i);
+      if (keyMatch) {
+        if (!current && pendingTitle) {
+          current = { title: pendingTitle, keys: [], lines: [] };
+          pendingTitle = '';
+        }
+        if (current) current.keys = splitDocxKeys(keyMatch[1]);
+        return;
+      }
+      var contentMatch = text.match(/^(?:内容|正文|描述|设定|词条内容|详细设定)\s*[:：]\s*([\s\S]*)$/);
+      if (contentMatch) {
+        if (!current && pendingTitle) {
+          current = { title: pendingTitle, keys: [], lines: [] };
+          pendingTitle = '';
+        }
+        if (current && contentMatch[1].trim()) current.lines.push(contentMatch[1].trim());
+        return;
+      }
+      if (current) {
+        current.lines.push(text);
+        return;
+      }
+      // 有些文档不用标题样式，只在一行短名字后面接「关键词 / 内容」。
+      if (text.length <= 80 && !/[。！？!?；;]$/.test(text)) pendingTitle = cleanDocxTitle(text);
+    });
+    flush();
+    return entries;
+  }
+
+  function docxEntriesFromBlankBlocks(blocks) {
+    var groups = [];
+    var group = [];
+    function flush() {
+      if (group.length) { groups.push(group); group = []; }
+    }
+    blocks.forEach(function (b) {
+      if (b.type === 'table' || b.type === 'blank') flush();
+      else if (b.type === 'p' && String(b.text || '').trim()) group.push(String(b.text).trim());
+    });
+    flush();
+
+    var entries = [];
+    groups.forEach(function (groupLines) {
+      var lines = groupLines.join('\n').split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+      if (!lines.length) return;
+      var title = '';
+      var keys = [];
+      var contentLines = [];
+      lines.forEach(function (line, i) {
+        var keyMatch = line.match(/^(?:关键词|关键字|触发词|键词|keys?|triggers?)\s*[:：]\s*(.+)$/i);
+        if (keyMatch) { keys = splitDocxKeys(keyMatch[1]); return; }
+        var contentMatch = line.match(/^(?:内容|正文|描述|设定|词条内容|详细设定)\s*[:：]\s*([\s\S]*)$/);
+        if (contentMatch) { if (contentMatch[1].trim()) contentLines.push(contentMatch[1].trim()); return; }
+        if (i === 0 && !title) { title = cleanDocxTitle(line); return; }
+        contentLines.push(line);
+      });
+      if (!contentLines.length) contentLines = [lines[0]];
+      if (!title) title = cleanDocxTitle(lines[0]).slice(0, 40);
+      var content = contentLines.join('\n').trim();
+      if (!content) return;
+      entries.push({ title: title.slice(0, 60), keywords: keys, content: content });
+    });
+    return entries;
+  }
+
+  function buildWorldBookFromBlocks(blocks, fileName, desc, label) {
+    var bookTitle = docxBookTitle(blocks, fileName);
+    var entries = docxEntriesFromParagraphs(blocks, bookTitle);
+    var tableEntries = docxEntriesFromTables(blocks);
+    // 同一份文档可能既用标题分条、又在后面补表格：两边都收，按标题+正文去重。
+    var merged = [];
+    var seen = {};
+    entries.concat(tableEntries).forEach(function (entry) {
+      var key = String(entry.title || '') + '|' + String(entry.content || '').slice(0, 80).replace(/\s+/g, '');
+      if (seen[key]) return;
+      seen[key] = true;
+      merged.push(entry);
+    });
+    entries = merged;
+    if (!entries.length) entries = docxEntriesFromBlankBlocks(blocks);
+    if (!entries.length) {
+      var all = blocks.filter(function (b) { return b.type === 'p'; })
+        .map(function (b) { return b.text; }).join('\n\n').trim();
+      if (all) entries = [{ title: bookTitle, keywords: [], content: all }];
+    }
+    if (!entries.length) throw new Error('这个' + (label || '文档') + '里没认出词条。可以按「标题 / 关键词： / 内容」分条，或用表格分列');
+    var book = importBook({
+      title: bookTitle,
+      desc: desc,
+      entries: entries
+    }, 0, fileName || '导入世界书', 1);
+    if (!book || !book.entries || !book.entries.length) throw new Error('这个' + (label || '文档') + '里没有可用的词条内容');
+    return book;
+  }
+
+  function parseDocxWorldBook(xml, fileName) {
+    return [buildWorldBookFromBlocks(docxXmlToBlocks(xml), fileName, '从 Word 文档导入', 'Word 文档')];
+  }
+
+  function plainTextToBlocks(text) {
+    var lines = String(text || '').replace(/\r\n?/g, '\n').split('\n');
+    var blocks = [];
+    lines.forEach(function (line) {
+      var t = line.trim();
+      if (!t) { blocks.push({ type: 'blank' }); return; }
+      var heading = t.match(/^(#{1,6})\s+(.+)$/);
+      if (heading) {
+        blocks.push({ type: 'p', text: heading[2], level: heading[1].length });
+      } else {
+        blocks.push({ type: 'p', text: t, level: 0 });
+      }
+    });
+    return blocks;
+  }
+
+  function parsePlainDocWorldBook(text, fileName) {
+    return [buildWorldBookFromBlocks(plainTextToBlocks(text), fileName, '从文本文档导入', '文档')];
+  }
+
+  function ensureDocxZip() {
+    if (window.JSZip && typeof window.JSZip.loadAsync === 'function') {
+      return Promise.resolve(window.JSZip);
+    }
+    return new Promise(function (resolve, reject) {
+      var old = document.getElementById('docx-zip-loader');
+      if (old) old.parentNode.removeChild(old);
+      var script = document.createElement('script');
+      script.id = 'docx-zip-loader';
+      script.src = 'js/vendor/jszip.min.js?v=20261126-0046a';
+      script.onload = function () {
+        if (window.JSZip && typeof window.JSZip.loadAsync === 'function') resolve(window.JSZip);
+        else reject(new Error('Word 解析组件没初始化成功'));
+      };
+      script.onerror = function () { reject(new Error('Word 解析组件加载失败，检查网络后重试')); };
+      document.head.appendChild(script);
+    });
+  }
+
+  function importDocxWorldBook(file, input) {
+    toast('正在读取 Word 文档…');
+    ensureDocxZip().then(function (JSZip) {
+      return JSZip.loadAsync(file);
+    }).then(function (zip) {
+      var docFile = zip.file('word/document.xml');
+      if (!docFile) {
+        var found = zip.file(/word\/document\.xml$/i);
+        docFile = found && found[0];
+      }
+      if (!docFile) throw new Error('这个 docx 里没找到正文');
+      return docFile.async('string');
+    }).then(function (xml) {
+      if (String(xml || '').length > 16 * 1024 * 1024) throw new Error('Word 正文太大，先删掉图片或精简一下再导');
+      finishWorldBookImport(parseDocxWorldBook(xml, file.name), file, input);
+    }).catch(function (e) {
+      toast('Word 导入失败：' + ((e && e.message) || '文件读不出来'));
+      if (input) input.value = '';
+    });
+  }
+
+  function finishWorldBookImport(imported, file, input) {
+    try {
+      if (!imported || !imported.length) throw new Error('没有可导入的词条');
+      var total = imported.reduce(function (sum, b) { return sum + ((b.entries && b.entries.length) || 0); }, 0);
+      var names = imported.map(function (b) { return '《' + b.title + '》'; }).join('、');
+      if (!window.confirm('识别到 ' + imported.length + ' 本世界书：' + names + '\n共 ' + total + ' 条词条。\n\n导入后会追加到你的书箱，收件人默认所有角色，之后可以自己改。')) return;
+      loadBooks();
+      imported.forEach(function (b) { books.push(b); });
+      saveBooks();
+      renderWorldBookshelf();
+      if (imported.length === 1) openBookDetail(imported[0].id);
+      toast('已导入 ' + imported.length + ' 本世界书，共 ' + total + ' 条词条');
+    } catch (e) {
+      toast('导入失败：' + ((e && e.message) || '文件格式不对'));
+    } finally {
+      if (input) input.value = '';
+    }
   }
 
   function chatPresetKind(raw) {
@@ -1124,9 +1528,15 @@
   function handleWorldBookImportFile(input) {
     var file = input && input.files && input.files[0];
     if (!file) return;
-    if (file.size > 8 * 1024 * 1024) {
-      toast('这个文件超过 8MB，先精简一下再导');
+    var isDocx = /\.docx$/i.test(file.name) || /wordprocessingml/i.test(String(file.type || ''));
+    var maxBytes = (isDocx ? 20 : 8) * 1024 * 1024;
+    if (file.size > maxBytes) {
+      toast('这个文件超过 ' + (maxBytes / 1024 / 1024) + 'MB，先精简一下再导');
       input.value = '';
+      return;
+    }
+    if (isDocx) {
+      importDocxWorldBook(file, input);
       return;
     }
     var reader = new FileReader();
@@ -1141,21 +1551,9 @@
           input.value = '';
           return;
         }
-        var imported = parseWorldBookText(text, file.name);
-        var names = imported.map(function (b) { return '《' + b.title + '》'; }).join('、');
-        if (!window.confirm('识别到 ' + imported.length + ' 本世界书：' + names + '\n\n导入后会追加到你的书箱，收件人默认所有角色，之后可以自己改。')) {
-          input.value = '';
-          return;
-        }
-        loadBooks();
-        imported.forEach(function (b) { books.push(b); });
-        saveBooks();
-        renderWorldBookshelf();
-        if (imported.length === 1) openBookDetail(imported[0].id);
-        toast('已导入 ' + imported.length + ' 本世界书');
+        finishWorldBookImport(parseWorldBookText(text, file.name), file, input);
       } catch (e) {
         toast('导入失败：' + ((e && e.message) || '文件格式不对'));
-      } finally {
         input.value = '';
       }
     };

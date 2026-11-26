@@ -2980,8 +2980,8 @@
               </div>
               <div class="wb-filter-row" id="world-filter-row"></div>
               <div style="display:flex; justify-content:flex-end; padding:2px 16px 12px;">
-                <button type="button" onclick="openWorldBookImport()" style="border:1px dashed var(--color-border); background:transparent; color:var(--color-text-secondary); border-radius:10px; padding:7px 12px; font-size:12px; font-family:inherit; cursor:pointer;">⇩ 导入别人的世界书</button>
-                <input type="file" id="world-book-import-input" accept=".json,.txt" style="display:none" onchange="handleWorldBookImportFile(this)" />
+                <button type="button" onclick="openWorldBookImport()" title="支持 Word .docx、JSON、txt" style="border:1px dashed var(--color-border); background:transparent; color:var(--color-text-secondary); border-radius:10px; padding:7px 12px; font-size:12px; font-family:inherit; cursor:pointer;">⇩ 导入别人的世界书</button>
+                <input type="file" id="world-book-import-input" accept=".json,.txt,.md,.docx,application/json,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style="display:none" onchange="handleWorldBookImportFile(this)" />
               </div>
               <div class="wb-people-row" id="world-people-row"></div>
               <div class="wb-share-note" id="world-share-note"></div>
@@ -6101,7 +6101,7 @@
   <script src="js/theater/theater.js?v=2026111421"></script>
   <script src="js/theater/palace.js?v=2026111121"></script>
   <script src="js/theater/memory-engine.js?v=2026111122"></script>
-  <script src="js/theater/worldbooks.js?v=2026111571"></script>
+  <script src="js/theater/worldbooks.js?v=20261126-0046e"></script>
   <script src="js/xhs/xhs.js?v=2026111010"></script>
   <script src="js/app.js?v=2026111342"></script>
 
