@@ -216,6 +216,17 @@
     };
   }
 
+  // 溢出库读完后再读一次，避免启动早期只拿到 localStorage 的旧生图预设。
+  function reloadFromStorage() {
+    const loaded = safeParse(localStorage.getItem(K_PRESETS), null);
+    if (Array.isArray(loaded) && loaded.length) presets = loaded.map(normalizePreset);
+    activeId = localStorage.getItem(K_ACTIVE) || activeId;
+    if (!presets.some(function (p) { return p.id === activeId; })) {
+      activeId = presets[0] ? presets[0].id : '';
+    }
+    renderSettings();
+  }
+
   function renderSettings() {
     renderSelect();
     fillForm(activeId);
@@ -226,6 +237,7 @@
     active: function () { const p = activePreset(); return p ? Object.assign({}, p) : null; },
     activeId: function () { return activeId; },
     resolve: resolve,
+    reloadFromStorage: reloadFromStorage,
     renderSettings: renderSettings,
     captureForm: captureForm,
     switchTo: switchTo,

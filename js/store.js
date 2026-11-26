@@ -168,7 +168,9 @@ let appData = null;
     });
 
     // 智能无缝合并新版人机恋世界书（若用户本地缺失则自动增量补全，绝不冲刷用户自定义内容）
-    (function syncAdaptedWorldBooks() {
+    // 不能在这里立刻执行：启动早期溢出缓存还没读完，会拿到旧书单并写回。
+    // 等 window.momoOverflowReady 完成后再由 app.js 调用。
+    window.momoSyncAdaptedWorldBooks = function syncAdaptedWorldBooks() {
       try {
         const defaultBooks = [];
         let local = [];
@@ -208,7 +210,7 @@ let appData = null;
           if (appData) appData.worldBooks = local;
         }
       } catch(e){}
-    })();
+    };
 
     // 微博 App 已整套下架：顺手清掉它遗留的本地缓存，避免旧数据继续占位
     (function clearRemovedWeiboCache() {
@@ -284,6 +286,71 @@ let appData = null;
       worldEntries: JSON.parse(localStorage.getItem('momo_world_entries') || '[]'),
       palaceMemories: JSON.parse(localStorage.getItem('momo_palace_memories') || '[]'),
       chatHistory: JSON.parse(localStorage.getItem('momo_chat_history') || '[]')
+    };
+
+    function momoReadLSJson(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (raw === null || raw === '') return fallback;
+        return JSON.parse(raw);
+      } catch (e) { return fallback; }
+    }
+
+    // 启动时机问题：appData 是同步建的，但溢出库 IndexedDB 是异步读的。
+    // localStorage 满的时候，新写入落在 IndexedDB，appData 却还是旧值；
+    // 读完溢出库后必须把内存里的整套数据重读一遍，否则刷新就会“回到没改之前”。
+    window.momoReloadAppDataFromStorage = function () {
+      if (!appData) return null;
+      const readText = function (key, fallback) {
+        const v = localStorage.getItem(key);
+        return v === null ? fallback : v;
+      };
+      appData.apiBase = readText('momo_api_base', '') || 'https://api.deepseek.com/v1';
+      appData.apiKey = readText('momo_api_key', appData.apiKey || '');
+      appData.model = readText('momo_api_model', '') || 'deepseek-chat';
+      appData.userNickname = readText('momo_user_nick', '') || appData.userNickname || 'user';
+      appData.visionModel = readText('momo_api_vision_model', appData.visionModel || '');
+      appData.readerModel = readText('momo_api_reader_model', appData.readerModel || '');
+      appData.botAvatar = readText('momo_bot_avatar', appData.botAvatar || '');
+      appData.botRemark = readText('momo_bot_remark', '') || appData.botRemark || '角色';
+      appData.charPrompt = readText('momo_char_prompt_text', '') || appData.charPrompt || DEFAULT_CHAR_PROMPT;
+      appData.userInfo = readText('momo_user_info_text', '') || appData.userInfo || DEFAULT_USER_INFO;
+      const globalBg = readText('momo_global_bg', '') || readText('momo_bg_url', '');
+      appData.globalBg = globalBg || appData.globalBg || '';
+      appData.chatBg = readText('momo_chat_bg', appData.chatBg || '');
+      appData.chatDim = readText('momo_chat_dim', '') || appData.chatDim || '58';
+      appData.heroBanner = readText('momo_hero_banner', appData.heroBanner || '');
+      appData.heroAvatar = readText('momo_hero_avatar', appData.heroAvatar || '');
+      appData.artSquare = readText('momo_art_square', appData.artSquare || '');
+
+      const heroRaw = localStorage.getItem('momo_hero_data');
+      if (heroRaw) {
+        try {
+          const parsed = JSON.parse(heroRaw);
+          appData.hero = (typeof normalizeHeroData === 'function') ? normalizeHeroData(parsed) : (parsed || appData.hero);
+        } catch (e) {}
+      }
+
+      const chatSettings = momoReadLSJson('momo_chat_settings', null);
+      if (chatSettings && typeof chatSettings === 'object') appData.chatSettings = chatSettings;
+      const storySettings = momoReadLSJson('momo_story_settings', null);
+      if (storySettings && typeof storySettings === 'object') appData.storySettings = storySettings;
+      const rpConfig = momoReadLSJson('momo_rp_config', null);
+      if (rpConfig && typeof rpConfig === 'object') appData.rpConfig = rpConfig;
+      const rpHistory = momoReadLSJson('momo_rp_history', null);
+      if (Array.isArray(rpHistory)) appData.rpHistory = rpHistory;
+
+      const stickers = momoReadLSJson('momo_stickers', null);
+      if (Array.isArray(stickers)) appData.stickers = stickers;
+      const worldBooks = momoReadLSJson('momo_world_books', null);
+      if (Array.isArray(worldBooks)) appData.worldBooks = worldBooks;
+      const worldEntries = momoReadLSJson('momo_world_entries', null);
+      if (Array.isArray(worldEntries)) appData.worldEntries = worldEntries;
+      const palaceMemories = momoReadLSJson('momo_palace_memories', null);
+      if (Array.isArray(palaceMemories)) appData.palaceMemories = palaceMemories;
+      const chatHistory = momoReadLSJson('momo_chat_history', null);
+      if (Array.isArray(chatHistory)) appData.chatHistory = chatHistory;
+      return appData;
     };
 
 

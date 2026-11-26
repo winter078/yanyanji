@@ -232,6 +232,12 @@
     catch (e) { console.warn('头像框素材保存失败', e); }
   }
 
+  // 启动早期如果只读到 localStorage 的旧头像框，这里让缓存失效并重读。
+  window.momoReloadChatFrames = function () {
+    uploadedFramesCache = null;
+    return getImportedFrames();
+  };
+
   function allChatFrames() {
     return BUILTIN_FRAMES.concat(getImportedFrames());
   }

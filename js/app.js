@@ -6,6 +6,39 @@
       // localStorage 满时，聊天记录会转存到 IndexedDB；启动必须先等它读完，
       // 否则新标签页会把“溢出里的最新记录”当成空记录。
       try { if (window.momoOverflowReady) await window.momoOverflowReady; } catch (e) {}
+      // 不止聊天记录：主题、预设、壁纸、世界书等整套设置都可能在 IndexedDB 里。
+      // 溢出库读完后统一重读一遍，再重画界面，避免刷新后全部回到旧值。
+      try { if (typeof window.momoReloadAppDataFromStorage === 'function') window.momoReloadAppDataFromStorage(); } catch (e) {}
+      try { if (typeof window.momoSyncAdaptedWorldBooks === 'function') window.momoSyncAdaptedWorldBooks(); } catch (e) {}
+      try { if (typeof window.WB !== 'undefined' && typeof window.WB.reload === 'function') window.WB.reload(); } catch (e) {}
+      try {
+        if (window.ApiPresets && typeof window.ApiPresets.reloadFromStorage === 'function') window.ApiPresets.reloadFromStorage();
+      } catch (e) {}
+      try {
+        if (window.PromptPresets && typeof window.PromptPresets.reloadFromStorage === 'function') window.PromptPresets.reloadFromStorage();
+      } catch (e) {}
+      try {
+        if (window.ImagePresets && typeof window.ImagePresets.reloadFromStorage === 'function') window.ImagePresets.reloadFromStorage();
+      } catch (e) {}
+      try {
+        if (typeof window.setThemeMode === 'function') {
+          window.setThemeMode(localStorage.getItem('momo_theme_mode') || 'dark');
+        }
+      } catch (e) {}
+      try {
+        if (typeof window.momoReloadChatLook === 'function') window.momoReloadChatLook();
+        else if (typeof window.applyChatLook === 'function') window.applyChatLook(false);
+      } catch (e) {}
+      try { if (typeof window.renderRegionSkins === 'function') window.renderRegionSkins(); } catch (e) {}
+      try { if (typeof window.renderThemePresetsUI === 'function') window.renderThemePresetsUI(); } catch (e) {}
+      try { if (typeof window.applyChatWall === 'function') window.applyChatWall(); } catch (e) {}
+      try { if (typeof window.applyChatDim === 'function') window.applyChatDim(); } catch (e) {}
+      try { if (typeof window.renderChatPhotos === 'function') window.renderChatPhotos(); } catch (e) {}
+      try { if (typeof window.renderChatColors === 'function') window.renderChatColors(); } catch (e) {}
+      try { if (typeof window.renderChatBubbleCss === 'function') window.renderChatBubbleCss(); } catch (e) {}
+      try { if (typeof window.syncSkinPackUI === 'function') window.syncSkinPackUI(); } catch (e) {}
+      try { if (typeof window.momoReloadChatFrames === 'function') window.momoReloadChatFrames(); } catch (e) {}
+      try { if (typeof window.applyChatAppearance === 'function') window.applyChatAppearance(); } catch (e) {}
       // 角色表/群聊也可能被转进 IndexedDB；读完后再校正一次，避免刷新时只用了旧表。
       try {
         if (typeof window.momoReloadCharactersFromStorage === 'function') {

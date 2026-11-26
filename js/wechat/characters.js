@@ -1534,6 +1534,7 @@
   // 这里只更新内存和界面，不反向写盘，避免把 IndexedDB 里的新表又盖掉。
   window.momoReloadCharactersFromStorage = function () {
     let changed = false;
+    const previousActiveId = activeId;
     const savedChars = readJSON(K_CHARS, null);
     if (Array.isArray(savedChars) && savedChars.length) {
       const nextChars = savedChars.map(norm);
@@ -1560,8 +1561,9 @@
     );
     pinnedIds = (readJSON(K_PINS, []) || []).filter((id, i, arr) => id && arr.indexOf(id) === i);
     hiddenConvIds = (readJSON(K_HIDDEN, []) || []).filter((id, i, arr) => id && arr.indexOf(id) === i);
-    if (changed) {
-      if (chars[0]) applyActiveToGlobals(find(activeId) || chars[0]);
+    if (changed || previousActiveId !== activeId) {
+      const activeChar = find(activeId);
+      if (activeChar) applyActiveToGlobals(activeChar);
       try { renderWechatSessions(); } catch (e) {}
       try { renderContacts(); } catch (e) {}
     }

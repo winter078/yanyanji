@@ -391,6 +391,21 @@
   ensureScenePreset('theater');
   ensureScenePreset('forum');
 
+  // 溢出库读完后再读一次，避免启动早期只拿到 localStorage 的旧预设。
+  function reloadFromStorage() {
+    const loaded = safeParse(localStorage.getItem(K_PRESETS), null);
+    if (Array.isArray(loaded) && loaded.length) {
+      presets = loaded.map(function(p) { return normalizePreset(p, p.scope); });
+    }
+    activeIds = readActiveIds();
+    currentScene = normalizeScope(localStorage.getItem(K_SCENE) || 'chat');
+    cachedPromptChars = null;
+    ensureScenePreset('chat');
+    ensureScenePreset('theater');
+    ensureScenePreset('forum');
+    renderSettings();
+  }
+
   function entryGroup(entry) {
     if (!entry) return 'custom';
     const builtin = entry.kind === 'builtin' ? builtinForScope(entry.id, currentScene) : null;
@@ -2102,6 +2117,7 @@
     apply: apply,
     injectMessages: injectMessages,
     entryInjection: entryInjection,
+    reloadFromStorage: reloadFromStorage,
     renderSettings: renderSettings,
     captureForm: captureForm,
     switchTo: switchTo,

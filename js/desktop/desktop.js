@@ -867,12 +867,18 @@ function renderThemePresetsUI() {
     window.setThemeMode = function(mode) {
       const ids = window.MOMO_THEME_IDS || ['light', 'dark'];
       const targetMode = ids.indexOf(mode) >= 0 ? mode : 'light';
+      let savedMode = '';
+      try { savedMode = localStorage.getItem('momo_theme_mode') || ''; } catch (e) {}
       document.documentElement.setAttribute('data-theme', targetMode);
       document.body.setAttribute('data-theme', targetMode);
       const rootScreen = document.getElementById('phone-screen-root');
       if (rootScreen) rootScreen.setAttribute('data-theme', targetMode);
 
-      localStorage.setItem('momo_theme_mode', targetMode);
+      // 启动时会用旧主题再“应用”一次；如果值没变就不要回写，
+      // 否则会把 IndexedDB 里的新主题当成旧值覆盖掉。
+      if (savedMode !== targetMode) {
+        localStorage.setItem('momo_theme_mode', targetMode);
+      }
 
       ids.forEach(function(id) {
         const btn = document.getElementById('theme-btn-' + id);
@@ -1213,7 +1219,7 @@ function renderThemePresetsUI() {
       return base;
     }
 
-    window.applyChatLook = function() {
+    window.applyChatLook = function(persist) {
       if (!chatLook) chatLook = readChatLook();
       var p = CHAT_STYLE_PRESETS[chatLook.preset] || CHAT_STYLE_PRESETS.plain;
       var radiusVar = chatLook.avatarShape === 'square' ? '10px' : '50%';
@@ -1250,11 +1256,19 @@ function renderThemePresetsUI() {
       if (cpPreviewEl) cpPreviewEl.setAttribute('data-avatar-mode', chatLook.avatarMode);
       window.syncChatLookUI();
       if (typeof window.scheduleChatBubbleRefit === 'function') window.scheduleChatBubbleRefit();
-      try { localStorage.setItem(CHAT_LOOK_KEY, JSON.stringify(chatLook)); } catch (e) {}
+      if (persist !== false) {
+        try { localStorage.setItem(CHAT_LOOK_KEY, JSON.stringify(chatLook)); } catch (e) {}
+      }
       // 全局外观只做兜底：已经按角色存过外观时，用当前角色那一份覆盖回来
-      if (typeof window.applyChatAppearance === 'function') {
+      if (persist !== false && typeof window.applyChatAppearance === 'function') {
         try { window.applyChatAppearance(); } catch (e2) {}
       }
+    };
+
+    // 溢出库读完后再重读一次聊天外观；只应用，不再把旧值写回。
+    window.momoReloadChatLook = function() {
+      chatLook = readChatLook();
+      window.applyChatLook(false);
     };
 
     window.syncChatLookUI = function() {
@@ -2626,7 +2640,7 @@ function renderThemePresetsUI() {
     (function initRegionSkins() {
       window.renderRegionSkins();
       window.applyChatDim();
-      window.applyChatLook();
+      window.applyChatLook(false);
       window.renderChatBubbleCss();
       window.applyChatWall();
       // 壁纸 style 也是 append 到 body 末尾的；如果当前有整套皮肤，让它再压一次，

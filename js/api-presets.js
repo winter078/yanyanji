@@ -93,6 +93,26 @@
     localStorage.setItem(K_ROUTES, JSON.stringify(routes));
   }
 
+  // 溢出库读完后再读一次，避免启动早期只拿到 localStorage 的旧预设。
+  function reloadFromStorage() {
+    const loadedPresets = safeParse(localStorage.getItem(K_PRESETS), null);
+    if (Array.isArray(loadedPresets) && loadedPresets.length) {
+      presets = loadedPresets.map(normalizePreset);
+    }
+    activeId = localStorage.getItem(K_ACTIVE) || activeId;
+    if (!presets.some(p => p.id === activeId)) activeId = presets[0] ? presets[0].id : '';
+    const loadedRoutes = safeParse(localStorage.getItem(K_ROUTES), null);
+    routes = (loadedRoutes && typeof loadedRoutes === 'object') ? loadedRoutes : {};
+    if (!routes.memory || typeof routes.memory !== 'object') routes.memory = { presetId: '', model: '', enabled: true };
+    ROUTE_KEYS.forEach(key => {
+      if (!routes[key] || typeof routes[key] !== 'object') {
+        routes[key] = { presetId: '', model: '', enabled: key === 'memory' };
+      }
+    });
+    if (routes.memory.enabled === false) routes.memory.enabled = true;
+    renderSettings();
+  }
+
   function getPreset(id) {
     return presets.find(p => p.id === id) || null;
   }
@@ -324,6 +344,7 @@
     activeId: () => activeId,
     getRoutes: () => JSON.parse(JSON.stringify(routes)),
     resolve: resolve,
+    reloadFromStorage: reloadFromStorage,
     renderSettings: renderSettings,
     fillSettingsForm: fillSettingsForm,
     captureForm: captureForm,
