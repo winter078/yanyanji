@@ -8,6 +8,60 @@ let appData = null;
     const MOMO_OVERFLOW_DB_NAME = 'MomoOverflowDB';
     window.momoOverflowCache = {};
 
+    // 这些键不再放 5MB 的 localStorage，直接以 IndexedDB 为主存储。
+    // 值仍然同步缓存在 momoOverflowCache 里，现有模块继续用 localStorage.getItem 读取。
+    const MOMO_PRIMARY_KEY_LIST = [
+      'momo_chat_history',
+      'momo_chat_histories',
+      'momo_chat_emergency_snapshots',
+      'momo_chat_pre_scope_backup',
+      'momo_characters',
+      'momo_chat_groups',
+      'momo_world_books',
+      'momo_world_entries',
+      'momo_palace_memories',
+      'momo_theme_presets',
+      'momo_global_bg',
+      'momo_bg_url',
+      'momo_chat_bg',
+      'momo_hero_banner',
+      'momo_hero_avatar',
+      'momo_art_square',
+      'momo_stickers',
+      'momo_chat_appearances_v1',
+      'momo_chat_frames_v1',
+      'momo_region_skins',
+      'momo_skin_pack',
+      'momo_api_presets_v1',
+      'momo_prompt_presets_v1',
+      'momo_prompt_target_bindings_v1',
+      'momo_image_presets_v1',
+      'momo_avatar_vault',
+      'momo_vault_list_momo_v2'
+    ];
+    const MOMO_PRIMARY_KEY_PREFIXES = [
+      'momo_vault_',
+      'momo_avatar_',
+      'momo_album_',
+      'momo_photo_',
+      'momo_moment_'
+    ];
+    window.momoIdbPrimaryKeys = {};
+    MOMO_PRIMARY_KEY_LIST.forEach(function(key) { window.momoIdbPrimaryKeys[key] = true; });
+
+    function momoIsPrimaryStorageKey(key, value) {
+      if (!key || String(key).indexOf('momo_') !== 0) return false;
+      key = String(key);
+      if (window.momoIdbPrimaryKeys[key]) return true;
+      if (Object.prototype.hasOwnProperty.call(window.momoOverflowCache || {}, key)) return true;
+      for (let i = 0; i < MOMO_PRIMARY_KEY_PREFIXES.length; i++) {
+        if (key.indexOf(MOMO_PRIMARY_KEY_PREFIXES[i]) === 0) return true;
+      }
+      // 以后新增的大块图片/长记录不用再手动登记，超过 50KB 自动转 IndexedDB。
+      return typeof value === 'string' && value.length >= 50000;
+    }
+    window.momoIsPrimaryStorageKey = momoIsPrimaryStorageKey;
+
     (function installMomoStorageOverflowPatch() {
       const PREFIX = '__momo_ls_overflow__:';
       const nativeGetItem = Storage.prototype.getItem;
@@ -32,6 +86,18 @@ let appData = null;
       };
 
       Storage.prototype.setItem = function(key, value) {
+        // IndexedDB 主存储：大块内容不再写 localStorage，避免再次把 5MB 抽屉塞满。
+        if (isLocalStorage(this) && momoIsPrimaryStorageKey(key, value)) {
+          const primaryText = String(value);
+          window.momoIdbPrimaryKeys[String(key)] = true;
+          window.momoOverflowCache[key] = primaryText;
+          try { nativeRemoveItem.call(this, key); } catch (e) {}
+          momoWriteOverflowValue(key, primaryText).catch(function() {
+            // IndexedDB 写失败时退回 localStorage，至少保住这一次的数据。
+            try { nativeSetItem.call(window.localStorage, key, primaryText); } catch (e) {}
+          });
+          return;
+        }
         try {
           const result = nativeSetItem.call(this, key, value);
           // 溢出库还没读完时，先只写原生这一份，绝不能删掉 IndexedDB 里更新的副本：
@@ -83,6 +149,8 @@ let appData = null;
 
       window.momoStorageOverflowPrefix = PREFIX;
       window.momoNativeLocalStorageSetItem = nativeSetItem;
+      window.momoNativeLocalStorageGetItem = nativeGetItem;
+      window.momoNativeLocalStorageRemoveItem = nativeRemoveItem;
       window.momoNativeLocalStorageClear = nativeClear;
       window.momoGetStorageOverflowKeys = function() {
         const keys = Object.keys(window.momoOverflowCache || {});
@@ -124,6 +192,50 @@ let appData = null;
       });
     }
 
+    // 把旧 localStorage 里的大块数据搬到 IndexedDB 主存储。
+    // 先把所有键都写成功，最后才删除 localStorage 原值；中途失败不会丢数据。
+    async function momoMigratePrimaryStorage() {
+      if (!window.indexedDB) return { migrated: 0, removed: 0, skipped: true };
+      const native = window.localStorage;
+      const nativeGet = window.momoNativeLocalStorageGetItem;
+      const nativeRemove = window.momoNativeLocalStorageRemoveItem;
+      if (!nativeGet || !nativeRemove) return { migrated: 0, removed: 0, skipped: true };
+
+      const candidates = [];
+      for (let i = 0; i < native.length; i++) {
+        const key = native.key(i);
+        if (!key) continue;
+        let value = null;
+        try { value = nativeGet.call(native, key); } catch (e) { continue; }
+        if (value === null) continue;
+        if (!momoIsPrimaryStorageKey(key, value)) continue;
+        window.momoIdbPrimaryKeys[key] = true;
+        candidates.push({ key: key, nativeValue: value });
+      }
+      if (!candidates.length) return { migrated: 0, removed: 0 };
+
+      let migrated = 0;
+      for (const item of candidates) {
+        // 如果内存缓存里已有更新的值（溢出副本），以缓存为准；否则用 localStorage 原值。
+        const latest = Object.prototype.hasOwnProperty.call(window.momoOverflowCache, item.key)
+          ? window.momoOverflowCache[item.key]
+          : item.nativeValue;
+        await momoWriteOverflowValue(item.key, latest);
+        window.momoOverflowCache[item.key] = String(latest);
+        migrated++;
+      }
+
+      let removed = 0;
+      for (const item of candidates) {
+        try {
+          nativeRemove.call(native, item.key);
+          removed++;
+        } catch (e) {}
+      }
+      return { migrated: migrated, removed: removed };
+    }
+    window.momoMigratePrimaryStorage = momoMigratePrimaryStorage;
+
     function momoWriteOverflowValue(key, value) {
       return momoOpenOverflowDB().then(function(db) {
         return new Promise(function(resolve, reject) {
@@ -160,7 +272,10 @@ let appData = null;
 
     window.momoOverflowReady = momoReadAllOverflowValues().then(function(rows) {
       rows.forEach(function(row) {
-        if (row && typeof row.key === 'string') window.momoOverflowCache[row.key] = String(row.value);
+        if (!row || typeof row.key !== 'string') return;
+        // 启动前如果已经有模块写过更新的值，不要被旧存档盖回去。
+        if (Object.prototype.hasOwnProperty.call(window.momoOverflowCache, row.key)) return;
+        window.momoOverflowCache[row.key] = String(row.value);
       });
       window.__momoOverflowHydrated = true;
     }).catch(function() {
@@ -169,7 +284,7 @@ let appData = null;
 
     // 智能无缝合并新版人机恋世界书（若用户本地缺失则自动增量补全，绝不冲刷用户自定义内容）
     // 不能在这里立刻执行：启动早期溢出缓存还没读完，会拿到旧书单并写回。
-    // 等 window.momoOverflowReady 完成后再由 app.js 调用。
+    // 等 momoBootReady 完成主存储迁移后，再统一调用。
     window.momoSyncAdaptedWorldBooks = function syncAdaptedWorldBooks() {
       try {
         const defaultBooks = [];
@@ -354,9 +469,30 @@ let appData = null;
     };
 
 
-    
 
-
+    // 等 IndexedDB 读完 -> 迁移旧 localStorage -> 重读 appData -> 合并世界书。
+    // 页面脚本加载器会等这个 Promise，之后再加载各功能模块。
+    window.momoBootReady = (window.momoOverflowReady || Promise.resolve()).then(async function () {
+      try {
+        if (typeof window.momoMigratePrimaryStorage === 'function') {
+          await window.momoMigratePrimaryStorage();
+        }
+      } catch (e) {
+        console.warn('[存储] 迁到 IndexedDB 失败，本次保留 localStorage 原数据', e);
+      }
+      try {
+        if (typeof window.momoReloadAppDataFromStorage === 'function') {
+          window.momoReloadAppDataFromStorage();
+        }
+      } catch (e) {}
+      try {
+        if (typeof window.momoSyncAdaptedWorldBooks === 'function') {
+          window.momoSyncAdaptedWorldBooks();
+        }
+      } catch (e) {}
+      window.__momoPrimaryReady = true;
+      return true;
+    });
 
     // 【我】人设应用数据与同步
     function openMeProfile() {
@@ -995,6 +1131,16 @@ let appData = null;
       }
     }
 
+    function momoClearOverflowSessionStorage() {
+      try {
+        const prefix = window.momoStorageOverflowPrefix || '__momo_ls_overflow__:';
+        for (let i = window.sessionStorage.length - 1; i >= 0; i--) {
+          const key = window.sessionStorage.key(i);
+          if (key && key.indexOf(prefix) === 0) window.sessionStorage.removeItem(key);
+        }
+      } catch (e) {}
+    }
+
     // 导入恢复数据（兼容旧版备份，支持 localStorage + IndexedDB）
     async function importFullBackup(e) {
       const file = e.target.files && e.target.files[0];
@@ -1045,6 +1191,8 @@ let appData = null;
 
           window.momoNativeLocalStorageClear.call(localStorage);
           await momoClearOverflowDB();
+          window.momoOverflowCache = {};
+          momoClearOverflowSessionStorage();
           let count = 0;
           let overflowCount = 0;
 
@@ -1059,6 +1207,15 @@ let appData = null;
             .sort(function(a, b) { return a.value.length - b.value.length; });
 
           for (const entry of entries) {
+            // 新的主存储键直接写 IndexedDB，不再塞回 localStorage。
+            if (momoIsPrimaryStorageKey(entry.key, entry.value)) {
+              window.momoIdbPrimaryKeys[entry.key] = true;
+              window.momoOverflowCache[entry.key] = entry.value;
+              await momoWriteOverflowValue(entry.key, entry.value);
+              overflowCount++;
+              count++;
+              continue;
+            }
             try {
               // 绕过自动溢出补丁，先尝试真正的 localStorage 写入，失败才转入 IndexedDB。
               window.momoNativeLocalStorageSetItem.call(localStorage, entry.key, entry.value);
@@ -1087,6 +1244,8 @@ let appData = null;
           try {
             window.momoNativeLocalStorageClear.call(localStorage);
             await momoClearOverflowDB();
+            window.momoOverflowCache = {};
+            momoClearOverflowSessionStorage();
             Object.keys(previousData).forEach(function(k) {
               localStorage.setItem(k, previousData[k]);
             });

@@ -5,9 +5,12 @@
       bootInitStarted = true;
       // localStorage 满时，聊天记录会转存到 IndexedDB；启动必须先等它读完，
       // 否则新标签页会把“溢出里的最新记录”当成空记录。
-      try { if (window.momoOverflowReady) await window.momoOverflowReady; } catch (e) {}
+      try {
+        if (window.momoBootReady) await window.momoBootReady;
+        else if (window.momoOverflowReady) await window.momoOverflowReady;
+      } catch (e) {}
       // 不止聊天记录：主题、预设、壁纸、世界书等整套设置都可能在 IndexedDB 里。
-      // 溢出库读完后统一重读一遍，再重画界面，避免刷新后全部回到旧值。
+      // 读完主存储后统一重读一遍，再重画界面，避免刷新后全部回到旧值。
       try { if (typeof window.momoReloadAppDataFromStorage === 'function') window.momoReloadAppDataFromStorage(); } catch (e) {}
       try { if (typeof window.momoSyncAdaptedWorldBooks === 'function') window.momoSyncAdaptedWorldBooks(); } catch (e) {}
       try { if (typeof window.WB !== 'undefined' && typeof window.WB.reload === 'function') window.WB.reload(); } catch (e) {}
