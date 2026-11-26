@@ -1895,7 +1895,7 @@
       if (styleOnly && !isSillyTavernStyleEntry(row)) return;
       const entry = importedCustomEntry(row.item, row.index, fallbackName);
       if (!entry) return;
-      if (order) entry.enabled = orderMap[row.key] === true;
+      // order 里的 enabled 不再替用户默认关闭；导入后先全部打开。
       if (styleOnly) entry.hint = '从酒馆预设提取的文风条目';
       preset.entries.push(entry);
       importedCount += 1;
