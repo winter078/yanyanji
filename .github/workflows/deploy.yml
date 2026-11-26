@@ -1,3 +1,5 @@
+# deploy: 2026-11-27 提示词全量注入
+
 name: Deploy to Cloudflare Pages
 
 on:
