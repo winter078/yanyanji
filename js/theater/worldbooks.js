@@ -771,6 +771,14 @@
     else renderWorldBookshelf();
   }
 
+  function deleteCurrentBook() {
+    if (!currentBookId) {
+      toast('先打开一本书');
+      return;
+    }
+    deleteBook(currentBookId);
+  }
+
   // ---------- 条目 ----------
   function openCreateEntryModal() {
     if (!currentBookId) { toast('先打开一本书'); return; }
@@ -1164,6 +1172,7 @@
   window.closeCreateBookModal = closeCreateBookModal;
   window.saveCreateBook = saveCreateBook;
   window.deleteBook = deleteBook;
+  window.deleteCurrentBook = deleteCurrentBook;
   window.openCreateEntryModal = openCreateEntryModal;
   window.openEditEntryModal = openEditEntryModal;
   window.closeCreateEntryModal = closeCreateEntryModal;
