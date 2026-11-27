@@ -353,6 +353,11 @@
     if (input.dataset.cropBusy === '1') return;
     input.dataset.cropBusy = '1';
     var results = [];
+    // 表情编辑器本身就是一个高层弹窗；裁剪层如果压在它下面，按钮会被遮罩挡住。
+    // 选图期间先把编辑器收起来，裁完再原样放回来，预览会由 handleImportSticker 填好。
+    var stickerEditor = input.id === 'input-sticker-pic' ? document.getElementById('modal-sticker-editor') : null;
+    var stickerEditorWasOpen = !!(stickerEditor && getComputedStyle(stickerEditor).display !== 'none');
+    if (stickerEditorWasOpen) stickerEditor.style.display = 'none';
     try {
       for (var i = 0; i < files.length; i++) {
         var url = await window.momoCropImage(files[i], cropOptsFor(input, i, files.length));
@@ -386,6 +391,11 @@
       console.warn('[crop] 处理失败', err);
       try { input.value = ''; } catch (e) {}
     } finally {
+      if (stickerEditorWasOpen) {
+        stickerEditor.style.display = 'flex';
+        var sheet = stickerEditor.querySelector('.hero-modal-sheet');
+        if (sheet) sheet.scrollTop = 0;
+      }
       delete input.dataset.cropBusy;
     }
   }
@@ -398,6 +408,8 @@
     if (input.dataset && input.dataset.cropPass === '1') { delete input.dataset.cropPass; return; }
     if (!imageAccept(input)) return;
     if (!input.files || !input.files.length) return;
+    // 表情包允许 GIF；裁剪会把动图压成 JPEG，所以动图直接交给表情编辑器处理。
+    if (input.id === 'input-sticker-pic' && input.files[0] && input.files[0].type === 'image/gif') return;
     e.preventDefault();
     e.stopPropagation();
     if (e.stopImmediatePropagation) e.stopImmediatePropagation();
