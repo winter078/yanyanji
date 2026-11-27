@@ -7960,13 +7960,13 @@ ${catalog}
           const latestIsDouyin = /(抖音|douyin)/i.test(latestLine) && !/(小红书|小某书|红书)/i.test(latestLine);
           const xhsLine = latestIsDouyin ? '' : (recentUserLines.filter(function (t) { return /(小红书|小某书|红书)/.test(t); })[0] || '');
           const wantsXhs = !!xhsLine && /(发|分享|给|来|推|甩|整|搜|找|查|主页|笔记|帖子|ID|id)/.test(xhsLine) &&
-            !/(怎么|如何|为什么)/.test(xhsLine);
+            !/(怎么|如何|为什么|不发|不想发|不用|不要|别|算了|没兴趣|关我)/.test(xhsLine);
           // 主页绑定：她从小红书 App 复制一次主页长链接，之后就能直接发「她的主页」卡片
           const boundNow = (typeof window.__momBindXhsProfile === 'function')
             ? window.__momBindXhsProfile(recentUserLines[0] || '') : null;
           const savedProfile = (typeof window.__momGetXhsProfile === 'function') ? window.__momGetXhsProfile() : null;
           const wantsProfile = !!xhsLine && /(主页|她的帖子|她的笔记|她发的帖子|她发的笔记|小红书号|\bID\b|\bid\b)/.test(xhsLine) &&
-            !/(怎么|如何|为什么)/.test(xhsLine);
+            !/(怎么|如何|为什么|不用|不要|别|算了|没兴趣|关我)/.test(xhsLine);
           if (wantsXhs || wantsProfile || boundNow) window.__momXhsQueryTurn = true;
           // 她直接喊你记住的那个博主名字（比如“粉毛爱妻”），也当主页请求处理
           const matchedIdProfile = (function () {
@@ -8139,7 +8139,7 @@ ${catalog}
           const douyinLine = recentUserLines.filter(function (t) { return /(抖音|douyin)/i.test(t); })[0] || '';
           const wantsDouyin = !!douyinLine && !xhsLine && !douyinLink &&
             /(发|分享|给|来|推|甩|整|搜|找|查|看|刷|视频)/.test(douyinLine) &&
-            !/(怎么|如何|为什么|教程|运营|账号怎么做)/.test(douyinLine) &&
+            !/(怎么|如何|为什么|教程|运营|账号怎么做|不看|不刷|不喜欢|没兴趣|不用|不要|别|算了)/.test(douyinLine) &&
             !/(douyin\.com|v\.douyin\.com|iesdouyin)/i.test(douyinLine);
           if (wantsDouyin) {
             const douyinTopic = (function () {
@@ -8179,7 +8179,7 @@ ${catalog}
 
           // GitHub：她随口说“要是 xxx 有插件/开源项目就好了”时，去找真实仓库、读 README 和 Issue，再发卡。
           const githubLine = recentUserLines.filter(function (t) {
-            return /(github|GitHub|开源|插件|轮子|现成)/i.test(t);
+            return /(github|GitHub|开源)/i.test(t);
           })[0] || '';
           const wantsGithub = !!githubLine &&
             /(要是|如果|有没有|有.*就好|找|搜|查|推荐|帮我|能不能|可以|插件|轮子|开源|现成)/.test(githubLine) &&
@@ -8569,7 +8569,7 @@ ${catalog}
         const wantsFileNow = !!(window.MomArtifacts && typeof window.MomArtifacts.wantsFile === 'function' && window.MomArtifacts.wantsFile(lastUserForTools));
         if (aiAware && !toolText && wantsFileNow && typeof window.__momRunWebSearch === 'function') {
           const needsWeb = /(查|搜|最新|今年|去年|2025|2026|政策|价格|销量|数据|市场|新闻|行情|研究|报告|统计)/.test(lastUserForTools) &&
-            !/(刚才|刚刚|这段|这个话题|聊天记录|我们聊|上面的对话)/.test(lastUserForTools);
+            !/(刚才|刚刚|这段|这个话题|聊天记录|我们聊|上面的对话|表情包|贴纸|角色卡|歌单|书架|阅读记录|相册)/.test(lastUserForTools);
           if (needsWeb) {
             const autoQuery = String(lastUserForTools || '')
               .replace(/(帮我|给我|替我|麻烦|请|能不能|可以|查一下|搜一下|搜索|整理成|汇总成|总结成|做成|生成|做一份|写一份|列一份|一份|一个|文档|表格|报告|Word|word|Excel|excel|PPT|ppt|幻灯片|演示文稿)/g, ' ')

@@ -202,7 +202,16 @@
 
   function shouldSearch(text) {
     if (!text || text.length < 2) return false;
-    return /(联网|搜索|搜一下|帮我搜|查一下|帮我查|查查|最新|实时|新闻|热搜|网页|网址|链接|https?:\/\/|小红书|xhslink)/i.test(text);
+    var t = String(text).replace(/检查/g, '检');
+    // 兜底检索也只在“这句话本身明确要外部信息”时跑。
+    // 不再因为出现“链接/网页/网址”这种词就自动搜，避免聊天里随口一提也烧额度。
+    if (/https?:\/\/|xiaohongshu\.com|xhslink\.com|douyin\.com|twitter\.com|x\.com/i.test(t)) return true;
+    if (/(聊天记录|表情包|贴纸|角色卡|人设|设定|设置|本地|收藏|歌单|书架|阅读记录|记忆|对话|相册|照片)/.test(t) &&
+      !/(联网|网上|网页|新闻|热搜|搜索|百度|谷歌|实时)/.test(t)) return false;
+    if (/(搜一下|搜搜|搜索|帮我搜|替我搜|去搜|查一下|查查|帮我查|替我查|联网|上网查|网上查|查资料|找资料)/i.test(t)) return true;
+    if (/(新闻|热搜|汇率|股价|比分|上映|航班|天气预报|气温|下雨|下雪)/i.test(t)) return true;
+    if (/(最新|实时|今天|现在).*(新闻|消息|价格|多少钱|汇率|股价|比分|天气|气温|政策|发布|上映|航班|排名|数据|行情)/i.test(t)) return true;
+    return false;
   }
 
   function timeoutFetch(url, options, timeoutMs) {
