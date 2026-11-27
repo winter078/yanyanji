@@ -4866,6 +4866,40 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       return wrap;
     }
 
+    // 一轮回复会被拆成多条气泡；心声、思维链和心声页只存在第一条上。
+    // 渲染时向本轮开头回找，让这一轮里的每个角色头像都能打开同一份心声。
+    function resolveRoundHeartMeta(msgIndex, role, thought, cot, cotSource) {
+      const meta = {
+        thought: thought || '',
+        cot: cot || '',
+        cotSource: cotSource || '',
+        heartPage: null
+      };
+      if (role !== 'assistant' || msgIndex < 0 || !Array.isArray(appData.chatHistory)) return meta;
+
+      const history = appData.chatHistory;
+      const current = history[msgIndex];
+      if (current && current.heartPage) meta.heartPage = current.heartPage;
+
+      let first = msgIndex;
+      while (first > 0) {
+        const prev = history[first - 1];
+        if (!prev || prev.role === 'user' || prev.role === 'system' || prev.recalled) break;
+        first--;
+      }
+
+      for (let i = first; i <= msgIndex; i++) {
+        const item = history[i];
+        if (!item) continue;
+        if (!meta.thought && item.thought) meta.thought = item.thought;
+        if (!meta.cot && item.cot) meta.cot = item.cot;
+        if (!meta.cotSource && item.cotSource) meta.cotSource = item.cotSource;
+        if (!meta.heartPage && item.heartPage) meta.heartPage = item.heartPage;
+        if (meta.thought && meta.cot && meta.heartPage) break;
+      }
+      return meta;
+    }
+
     function renderMessageBubble(role, text, time = getNowStr(), thought = '', msgIndex = -1, cot = '', cotSource = '', mediaData = null, isTyping = false) {
       if (role === 'system' || (typeof text === 'string' && text.startsWith('[SYSTEMHINT:'))) {
         let hintText = typeof text === 'string' ? text : '';
@@ -4894,6 +4928,10 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       const group = document.createElement('div');
       group.className = `msg-group ${role === 'user' ? 'user' : 'bot'}`;
       const currentMsg = (msgIndex !== -1 && typeof appData !== 'undefined' && Array.isArray(appData.chatHistory) && appData.chatHistory[msgIndex]) ? appData.chatHistory[msgIndex] : null;
+      const roundHeartMeta = resolveRoundHeartMeta(msgIndex, role, thought, cot, cotSource);
+      thought = roundHeartMeta.thought;
+      cot = roundHeartMeta.cot;
+      cotSource = roundHeartMeta.cotSource;
       const narrationMeta = (currentMsg && currentMsg.narration) ? currentMsg : null;
       const voiceMeta = (currentMsg && currentMsg.voice) ? currentMsg.voice : null;
       if (narrationMeta || role === 'action') group.classList.add('msg-narration-row');
@@ -4929,9 +4967,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       const avatar = document.createElement('div');
       avatar.className = 'msg-avatar';
       const hasBotAvatarImage = !!(role === 'assistant' && appData.botAvatar);
-      const msgHeartPage = (msgIndex >= 0 && Array.isArray(appData.chatHistory) && appData.chatHistory[msgIndex])
-        ? (appData.chatHistory[msgIndex].heartPage || null)
-        : null;
+      const msgHeartPage = roundHeartMeta.heartPage;
       const activeAppearanceCharId = (typeof currentRemarkCharId === 'function') ? currentRemarkCharId() : '';
       if (role === 'user') {
         // 每条消息按“发这条时用的那个身份”显示头像/名字：旧记录不会跟着当前小号改名。
