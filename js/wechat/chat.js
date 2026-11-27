@@ -10023,27 +10023,34 @@ ${catalog}
       const listContainer = document.getElementById('worldbook-switch-list');
       if (!listContainer) return;
       const cfg = getWbConfig();
-      const books = appData.worldBooks || [];
+      const allBooks = appData.worldBooks || [];
+      const isChatScope = window.__wbModalScope !== 'theater';
+      let activeChar = null;
+      let activeCharId = '';
+      try {
+        activeChar = (typeof window.getActiveCharacter === 'function') ? window.getActiveCharacter() : null;
+        activeCharId = (activeChar && activeChar.id) || (window.WB && window.WB.activeCharId ? window.WB.activeCharId() : '') || '';
+      } catch (e) {}
+      // 聊天设定只显示“当前角色能用的书”：全局书 + 指定给 Ta 的书。
+      // 给谁、怎么归类，统一在世界书 App 里做，这里只负责开关。
+      const books = allBooks.filter(function (b) {
+        if (!isChatScope || !activeCharId) return true;
+        if (!b || !Array.isArray(b.recipients) || !b.recipients.length || b.recipients.indexOf('*') !== -1) return true;
+        return b.recipients.indexOf(activeCharId) !== -1;
+      });
       const q = (query || '').toLowerCase().trim();
 
       const customToggle = document.getElementById('toggle-wb-custom');
       if (customToggle) customToggle.classList.toggle('active', !!cfg.custom);
 
       let html = '';
-      const tagOf = function (b) {
-        return String((b && b.category) || '').trim() || '未分类';
-      };
-      const ownerOf = function (b) {
-        try {
-          return (window.WB && typeof window.WB.recipientLabel === 'function')
-            ? window.WB.recipientLabel(b)
-            : '所有角色';
-        } catch (e) { return '所有角色'; }
-      };
       const wbEsc = function (s) {
         return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
           return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
         });
+      };
+      const isGlobalBook = function (b) {
+        return !b || !Array.isArray(b.recipients) || !b.recipients.length || b.recipients.indexOf('*') !== -1;
       };
       const visible = books.filter(function (b) {
         if (q && !b.title.toLowerCase().includes(q) && !(b.entries || []).some(e => e.title.toLowerCase().includes(q))) {
@@ -10051,22 +10058,11 @@ ${catalog}
         }
         return true;
       }).sort(function (a, b) {
-        const oa = ownerOf(a), ob = ownerOf(b);
-        if (oa === ob) return 0;
-        if (oa === '所有角色') return -1;
-        if (ob === '所有角色') return 1;
-        return oa.localeCompare(ob, 'zh');
+        const ga = isGlobalBook(a), gb = isGlobalBook(b);
+        if (ga !== gb) return ga ? -1 : 1;
+        return String(a.title || '').localeCompare(String(b.title || ''), 'zh');
       });
-      const ownerCounts = {};
-      visible.forEach(function (b) { const o = ownerOf(b); ownerCounts[o] = (ownerCounts[o] || 0) + 1; });
-      let lastOwner = '';
       visible.forEach(b => {
-        const owner = ownerOf(b);
-        const tag = tagOf(b);
-        if (owner !== lastOwner) {
-          lastOwner = owner;
-          html += `<div style="display:flex; align-items:center; gap:6px; margin:12px 2px 1px; font-size:12px; font-weight:600; color:var(--text-secondary);"><span>给 ${wbEsc(owner)}</span><span style="font-weight:400; opacity:.55;">${ownerCounts[owner]} 本</span></div>`;
-        }
         const bConf = cfg.books[b.id] || { enabled: true, disabledEntries: [] };
         const isEnabled = bConf.enabled !== false;
         const entries = b.entries || [];
@@ -10082,7 +10078,7 @@ ${catalog}
                     <span style="font-size: 15px; font-weight: 600; color: var(--text-primary);">${b.title}</span>
                     <span class="text-muted" style="font-size: 11px; background: var(--bg-base); padding: 1px 5px; border-radius: 4px;">${window.WB ? window.WB.recipientLabel(b) : '名册'}</span>
                   </div>
-                  <span class="text-secondary" style="font-size: 12px;">${entries.length} 个条目${tag !== '未分类' ? ' · ' + wbEsc(tag) : ''}</span>
+                  <span class="text-secondary" style="font-size: 12px;">${entries.length} 个条目 · ${isGlobalBook(b) ? '全局书' : '指定给 Ta'}</span>
                 </div>
               </div>
 
@@ -10107,17 +10103,21 @@ ${catalog}
                     </div>
                   `;
                 }).join('')}
-                <div style="display:flex; gap:8px; padding-top:6px;">
-                  <button type="button" style="flex:1; padding:7px 8px; border-radius:9px; border:1px solid var(--border-default); background:var(--bg-surface); color:var(--text-secondary); font-size:12px; cursor:pointer;" onclick="event.stopPropagation(); openEditBookModal('${b.id}')">修改 / 给谁</button>
-                  <button type="button" style="flex:1; padding:7px 8px; border-radius:9px; border:1px solid rgba(155,85,93,.28); background:rgba(155,85,93,.06); color:#b06a72; font-size:12px; cursor:pointer;" onclick="event.stopPropagation(); deleteBookFromWbModal('${b.id}')">删除这本书</button>
-                </div>
               </div>
             ` : ''}
           </div>
         `;
       });
 
-      listContainer.innerHTML = html || '<div style="color: var(--text-muted); font-size: 13px; text-align: center; padding: 20px;">未搜索到匹配的世界书</div>';
+      const charLabel = wbEsc((activeChar && (activeChar.name || activeChar.remark)) || '当前角色');
+      const head = (isChatScope && activeCharId)
+        ? `<div style="font-size:11.5px; line-height:1.5; color:var(--text-muted); padding:2px 2px 8px;">只看 <b style="color:var(--text-secondary);">${charLabel}</b> 能用的书 · ${visible.length} 本</div>`
+        : '';
+      const foot = `<div style="margin:14px 2px 4px; padding:10px 12px; border-radius:12px; background:var(--bg-base); border:1px solid var(--border-default); font-size:11.5px; line-height:1.55; color:var(--text-muted);">
+        这里只负责开关 ${charLabel} 用哪些书。给谁、分类、删除，都去桌面「世界书」App 改。
+        <button type="button" onclick="closeWorldBookModal(); openPage('page-world')" style="display:block; width:100%; margin-top:8px; padding:8px 10px; border-radius:9px; border:1px solid var(--border-default); background:var(--bg-surface); color:var(--text-secondary); font-size:12px; cursor:pointer;">去「世界书」App 分类 / 改收件人 →</button>
+      </div>`;
+      listContainer.innerHTML = (visible.length ? head + html + foot : `<div style="color: var(--text-muted); font-size: 13px; text-align: center; padding: 20px;">${charLabel} 还没有能用的世界书</div>` + foot);
     }
 
 
