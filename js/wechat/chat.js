@@ -6967,7 +6967,7 @@ ${(() => {
   } else {
     linesRule = '本次回复请连发 6 到 10 条真实微信短消息。';
   }
-  return linesRule + '\n【真实微信极致随性感（彻底打破死板对称，绝对禁止同一种句式重复！）】：\n1. 【极度随性的标点】：想用逗号就用逗号，想用问号叹号就用，想完全不带标点直接敲回车就直接发！严禁每一句话都刻意塞逗号，随心所欲。\n2. 【不可预测的长短落差与视觉起伏】：\n   - 有时候连发两个极短的词（如“？”、“笑死”、“不是吧”）；\n   - 有时候突然冒出一句带逗号的自然长句；\n   - 有时候随手甩半句话，下一条再补完；\n   - 严禁连续两条消息使用一模一样的句式或相近字数！\n3. 【真实生活流淌，拒绝查户口】：接住用户的梗，按当前角色卡的性格自然回应，不要反复提喝水、手酸、草稿这种模板套话，像真实的人一样松弛互动。';
+  return linesRule + '\n【条数是拆分上限，不是内容上限】：这一轮想说的话必须完整说完，不能为了凑条数或怕超条数把后半段砍掉；系统会把你多出来的短句合并进上限内。\n【真实微信极致随性感（彻底打破死板对称，绝对禁止同一种句式重复！）】：\n1. 【极度随性的标点】：想用逗号就用逗号，想用问号叹号就用，想完全不带标点直接敲回车就直接发！严禁每一句话都刻意塞逗号，随心所欲。\n2. 【不可预测的长短落差与视觉起伏】：\n   - 有时候连发两个极短的词（如“？”、“笑死”、“不是吧”）；\n   - 有时候突然冒出一句带逗号的自然长句；\n   - 有时候随手甩半句话，下一条再补完；\n   - 严禁连续两条消息使用一模一样的句式或相近字数！\n3. 【真实生活流淌，拒绝查户口】：接住用户的梗，按当前角色卡的性格自然回应，不要反复提喝水、手酸、草稿这种模板套话，像真实的人一样松弛互动。';
 })()}
 
 ${(() => {
@@ -9207,7 +9207,15 @@ ${catalog}
           }
 
           const rawSegments = parseMessageSegments(protectedBotReply);
-          const maxAllowedCount = (appData.chatSettings && appData.chatSettings.maxEnabled) ? (appData.chatSettings.maxCount || 16) : 20;
+          const configuredMaxCount = (appData.chatSettings && appData.chatSettings.maxEnabled)
+            ? Math.max(1, parseInt(appData.chatSettings.maxCount, 10) || 16)
+            : Infinity;
+          const minAllowedCount = (appData.chatSettings && appData.chatSettings.minEnabled)
+            ? Math.max(1, parseInt(appData.chatSettings.minCount, 10) || 10)
+            : 0;
+          const maxAllowedCount = isFinite(configuredMaxCount)
+            ? Math.max(minAllowedCount, configuredMaxCount)
+            : Infinity;
           let segList = [];
 
           // 智能拆分短句辅助函数：如果某一行很长且有明确句子标点，拆分成独立气泡
@@ -9228,8 +9236,75 @@ ${catalog}
             return res;
           }
 
-          // 把正文里的名片占位符按原位置展开：前面的话、名片、后面的话，不再统一堆到末尾
+          // 条数上限不是“砍掉后面的内容”，而是把整轮回复合并进上限内；
+          // 低于最低条数时，再把长句按句末标点拆开，保证内容完整。
+          function fitSpeechSegments(list, minCount, maxCount) {
+            const countSpeech = function () {
+              return list.filter(function (x) { return x && x.type === 'speech'; }).length;
+            };
+            const canMergeSpeech = function (item) {
+              if (!item || item.type !== 'speech') return false;
+              const text = String(item.text || '').trim();
+              if (!text) return false;
+              if (/^\[(?:STICKER|表情包|表情|IMAGE|语音)/.test(text)) return false;
+              if (text.indexOf('[[VOICE') >= 0) return false;
+              return true;
+            };
+
+            while (isFinite(maxCount) && countSpeech() > maxCount) {
+              let bestIdx = -1;
+              let bestLen = Infinity;
+              for (let i = 0; i < list.length - 1; i++) {
+                const a = list[i];
+                const b = list[i + 1];
+                if (!canMergeSpeech(a) || !canMergeSpeech(b)) continue;
+                const combined = String(a.text || '').length + String(b.text || '').length;
+                if (combined < bestLen) { bestLen = combined; bestIdx = i; }
+              }
+              if (bestIdx < 0) break;
+              const a = list[bestIdx];
+              const b = list[bestIdx + 1];
+              a.text = String(a.text || '').replace(/\s*$/, '') + '\n' + String(b.text || '').replace(/^\s*/, '');
+              list.splice(bestIdx + 1, 1);
+            }
+
+            let guard = 0;
+            while (minCount > 0 && countSpeech() < minCount && guard++ < 80) {
+              let bestIdx = -1;
+              let bestLen = 0;
+              for (let i = 0; i < list.length; i++) {
+                const item = list[i];
+                if (!canMergeSpeech(item)) continue;
+                const text = String(item.text || '').trim();
+                if (text.length < 6 || /^\s*「?回复/.test(text)) continue;
+                if (!/[。！？!?]/.test(text)) continue;
+                if (text.length > bestLen) { bestLen = text.length; bestIdx = i; }
+              }
+              if (bestIdx < 0) break;
+              const text = String(list[bestIdx].text || '').trim();
+              let cut = -1;
+              const mid = Math.floor(text.length / 2);
+              const re = /[。！？!?]+/g;
+              let match;
+              while ((match = re.exec(text)) !== null) {
+                const pos = match.index + match[0].length;
+                if (pos <= 0 || pos >= text.length) continue;
+                if (cut < 0 || Math.abs(pos - mid) < Math.abs(cut - mid)) cut = pos;
+              }
+              if (cut < 0) break;
+              const left = text.slice(0, cut).trim();
+              const right = text.slice(cut).trim();
+              if (!left || !right) break;
+              list.splice(bestIdx, 1,
+                { type: 'speech', text: left },
+                { type: 'speech', text: right }
+              );
+            }
+            return list;
+          }
+
           function pushTextWithCards(text, prefixFirst) {
+            // 把正文里的名片占位符按原位置展开：前面的话、名片、后面的话，不再统一堆到末尾
             const tokenRe = /\[\[SEARCHCARD:(\d+)\]\]/g;
             let last = 0;
             let m;
@@ -9242,9 +9317,7 @@ ${catalog}
                 finalPiece = headerPending + '\n' + finalPiece;
                 headerPending = '';
               }
-              if (segList.filter(x => x.type === 'speech').length < maxAllowedCount) {
-                segList.push({ type: 'speech', text: finalPiece });
-              }
+              segList.push({ type: 'speech', text: finalPiece });
             };
             const cleanPiece = function (piece) {
               return String(piece || '').replace(/^[：:，。；、\-—（）()]+|[：:，。；、\-—（）()]+$/g, '').trim();
@@ -9282,6 +9355,8 @@ ${catalog}
             }
           });
           if (segList.length === 0) segList = [{ type: 'speech', text: restoreVoiceTokens(protectedBotReply) }];
+          // 先把完整正文按条数区间收拢，再交给发送队列；绝不在这里丢内容。
+          segList = fitSpeechSegments(segList, minAllowedCount, maxAllowedCount);
           segList.forEach(function(item) {
             if (item && item.type !== 'searchcard' && typeof item.text === 'string') {
               item.text = restoreVoiceTokens(item.text);
