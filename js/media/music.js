@@ -260,13 +260,24 @@
     } catch(e) {}
   }
 
-  // 旧版本只存前 100 首，后面的红心只剩 ID、没有歌。
-  // 这里按红心 ID 里的网易云数字 id 批量补回元信息；只补库，不自动播放。
-  async function repairMissingFavorites() {
-    const missing = favoriteSongIds.filter(id => !allSongs.some(s => s.id === id));
+  // 旧版本只存前 100 首，后面的红心/歌单只剩 ID、没有歌。
+  // 这里把「我喜欢」和所有自定义歌单里缺失的网易云歌曲一起补回元信息；
+  // 只补库，不自动播放，也不改动歌单顺序。
+  async function repairMissingLibraryRefs() {
+    const known = new Set(allSongs.map(s => String(s.id)));
+    const missingSet = new Set();
+    const collect = function (id) {
+      const sid = String(id || '');
+      if (sid && !known.has(sid)) missingSet.add(sid);
+    };
+    favoriteSongIds.forEach(collect);
+    customPlaylists.forEach(function (folder) {
+      (folder.songIds || []).forEach(collect);
+    });
+    const missing = Array.from(missingSet);
     const neIds = missing
-      .filter(id => /^ne-\d+$/.test(String(id)))
-      .map(id => String(id).slice(3));
+      .filter(id => /^ne-\d+$/.test(id))
+      .map(id => id.slice(3));
     if (!neIds.length) return;
 
     try {
@@ -309,7 +320,7 @@
       saveSongs();
       renderPlaylistDrawer();
     } catch(e) {
-      console.warn('Repair favorites err:', e);
+      console.warn('Repair missing library refs err:', e);
     }
   }
 
@@ -1015,8 +1026,8 @@
       const folder = customPlaylists.find(f => f.id === currentViewingFolderId);
       if (folder) {
         if (folderBar) folderBar.style.display = 'flex';
-        if (folderTitle) folderTitle.innerText = '歌单：' + folder.name + ' (' + (folder.songIds || []).length + ')';
         displaySongs = (folder.songIds || []).map(id => allSongs.find(s => s.id === id)).filter(Boolean);
+        if (folderTitle) folderTitle.innerText = '歌单：' + folder.name + ' (' + displaySongs.length + ')';
       }
     } else {
       if (folderBar) folderBar.style.display = 'none';
@@ -1257,7 +1268,7 @@
 
     // 恢复上次的歌单、红心和歌单夹；不要替用户选中或播放任何歌
     // （本文件是启动器异步加载的，DOMContentLoaded 可能已经错过，见文件末尾）
-    await repairMissingFavorites();
+    await repairMissingLibraryRefs();
     updatePlayModeUI();
   };
 
