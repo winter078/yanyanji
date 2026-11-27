@@ -3971,7 +3971,7 @@
       const days = rdCountDays(null, null);
       const done = rdCountFinished();
       statEl.innerHTML =
-        '<div class="rd-me-stat"><div class="rd-me-stat-num">' + (total >= 60 ? Math.round(total / 60) + 'h' : total + 'm') + '</div><div class="rd-me-stat-label">累计时长</div></div>' +
+        '<div class="rd-me-stat"><div class="rd-me-stat-num">' + (total >= 60 ? Math.round(total / 60) + 'h' : Math.max(0, Math.round(total)) + 'm') + '</div><div class="rd-me-stat-label">累计时长</div></div>' +
         '<div class="rd-me-stat"><div class="rd-me-stat-num">' + days + '</div><div class="rd-me-stat-label">读过几天</div></div>' +
         '<div class="rd-me-stat"><div class="rd-me-stat-num">' + done + '</div><div class="rd-me-stat-label">读完的书</div></div>';
     }
