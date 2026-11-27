@@ -348,6 +348,7 @@ let appData = null;
         var n = localStorage.getItem('momo_user_nick');
         return n || 'user';
       })(),
+      userNetName: localStorage.getItem('momo_user_net_name') || '',
       visionModel: localStorage.getItem('momo_api_vision_model') || '',
       readerModel: localStorage.getItem('momo_api_reader_model') || '',
       hero: (function(){
@@ -357,6 +358,7 @@ let appData = null;
       })(),
       botAvatar: localStorage.getItem('momo_bot_avatar') || '',
       botRemark: localStorage.getItem('momo_bot_remark') || '角色',
+      botNetName: localStorage.getItem('momo_bot_net_name') || '',
       chatSettings: JSON.parse(localStorage.getItem('momo_chat_settings') || JSON.stringify({
         minEnabled: true,
         minCount: 10,
@@ -424,10 +426,12 @@ let appData = null;
       appData.apiKey = readText('momo_api_key', appData.apiKey || '');
       appData.model = readText('momo_api_model', '') || 'deepseek-chat';
       appData.userNickname = readText('momo_user_nick', '') || appData.userNickname || 'user';
+      appData.userNetName = readText('momo_user_net_name', appData.userNetName || '');
       appData.visionModel = readText('momo_api_vision_model', appData.visionModel || '');
       appData.readerModel = readText('momo_api_reader_model', appData.readerModel || '');
       appData.botAvatar = readText('momo_bot_avatar', appData.botAvatar || '');
       appData.botRemark = readText('momo_bot_remark', '') || appData.botRemark || '角色';
+      appData.botNetName = readText('momo_bot_net_name', appData.botNetName || '');
       appData.charPrompt = readText('momo_char_prompt_text', '') || appData.charPrompt || DEFAULT_CHAR_PROMPT;
       appData.userInfo = readText('momo_user_info_text', '') || appData.userInfo || DEFAULT_USER_INFO;
       const globalBg = readText('momo_global_bg', '') || readText('momo_bg_url', '');
@@ -504,6 +508,7 @@ let appData = null;
     function syncMeProfileUI() {
       const h = appData.hero;
       document.getElementById('me-name-input').value = h.userName || 'user';
+      document.getElementById('me-netname-input').value = appData.userNetName || '';
       document.getElementById('me-nick-input').value = appData.userNickname || 'user';
       document.getElementById('me-handle-input').value = h.userHandle || '@紫毛爱妻';
       document.getElementById('me-tag-input').value = h.userTag || '妻紫';
@@ -534,6 +539,7 @@ let appData = null;
     function saveMeProfile() {
       if (!appData.hero) appData.hero = normalizeHeroData(null);
       appData.hero.userName = document.getElementById('me-name-input').value.trim() || 'user';
+      appData.userNetName = document.getElementById('me-netname-input').value.trim().slice(0, 20);
       appData.userNickname = document.getElementById('me-nick-input').value.trim() || 'user';
       appData.hero.userHandle = document.getElementById('me-handle-input').value.trim() || '@紫毛爱妻';
       appData.hero.userTag = document.getElementById('me-tag-input').value.trim() || '妻紫';
@@ -562,6 +568,7 @@ let appData = null;
 
       localStorage.setItem('momo_hero_data', JSON.stringify(appData.hero));
       localStorage.setItem('momo_user_nick', appData.userNickname);
+      localStorage.setItem('momo_user_net_name', appData.userNetName || '');
       localStorage.setItem('momo_my_appearance', myAppearance);
       localStorage.setItem('momo_user_info_text', myHabits);
       if (birthday) {

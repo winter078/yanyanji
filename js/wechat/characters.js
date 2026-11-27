@@ -52,6 +52,7 @@
     return {
       id: c.id || uid(),
       name: c.name || '未命名角色',
+      netName: String(c.netName || '').trim().slice(0, 20),
       avatar: c.avatar || '',
       tag: c.tag || '',
       intro: c.intro || '',
@@ -306,11 +307,13 @@
   function applyActiveToGlobals(c) {
     if (!c || !window.appData) return;
     appData.botRemark = c.name || '角色';
+    appData.botNetName = c.netName || c.name || '角色';
     appData.botAvatar = c.avatar || '';
     appData.charPrompt = c.prompt || '';
     appData.coreDirectives = c.directives || '';
     try {
       localStorage.setItem('momo_bot_remark', appData.botRemark);
+      localStorage.setItem('momo_bot_net_name', appData.botNetName);
       localStorage.setItem('momo_bot_avatar', appData.botAvatar);
       localStorage.setItem('momo_char_prompt_text', appData.charPrompt);
       localStorage.setItem('momo_core_directives', appData.coreDirectives);
@@ -530,6 +533,8 @@
     if (prev) prev.src = avatarOf(c);
     const remark = document.getElementById('char-remark-field');
     if (remark) remark.value = c.name;
+    const netName = document.getElementById('char-netname-field');
+    if (netName) netName.value = c.netName || '';
     const tag = document.getElementById('wx-char-tag-field');
     if (tag) tag.value = c.tag || '';
     const intro = document.getElementById('wx-char-intro-field');
@@ -708,8 +713,11 @@
     if (!c) return;
     const nameEl = document.getElementById('char-remark-field');
     const name = (nameEl && nameEl.value.trim()) || '未命名角色';
+    const netNameEl = document.getElementById('char-netname-field');
+    const netName = netNameEl ? netNameEl.value.trim().slice(0, 20) : '';
     const prev = document.getElementById('char-avatar-preview');
     c.name = name;
+    if (netNameEl) c.netName = netName;
     c.avatar = (prev && prev.src && prev.src.indexOf('data:') === 0) ? prev.src : (c.avatar || '');
     const tagEl = document.getElementById('wx-char-tag-field');
     if (tagEl) c.tag = tagEl.value.trim();

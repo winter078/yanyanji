@@ -435,6 +435,79 @@
     window.userRemarkForActiveChar = userRemarkForActiveChar;
     window.baseUserNickname = baseUserNickname;
 
+    // 引用卡片只认「网名」：个人资料 / 角色卡各有一个独立字段，
+    // 不拿角色平时叫用户的昵称列表，也不拿聊天备注名来当引用署名。
+    function activeCharacterForQuote() {
+      try {
+        return (typeof window.getActiveCharacter === 'function') ? window.getActiveCharacter() : null;
+      } catch (e) { return null; }
+    }
+
+    function userNetNameForQuote(item) {
+      if (!window.__groupMode) {
+        var active = activeCharacterForQuote();
+        var mask = null;
+        if (item && item.maskId && active && Array.isArray(active.masks)) {
+          mask = active.masks.filter(function (m) { return m && m.id === item.maskId; })[0] || null;
+        }
+        if (!mask && !item && typeof window.getActiveMask === 'function') {
+          try { mask = window.getActiveMask(); } catch (e) { mask = null; }
+        }
+        if (mask && mask.name) return String(mask.name).trim();
+      }
+      var explicit = String(appData.userNetName || localStorage.getItem('momo_user_net_name') || '').trim();
+      if (explicit) return explicit;
+      var main = String((appData.hero && appData.hero.userName) || '').trim();
+      if (main && main !== 'user') return main;
+      var base = String(baseUserNickname() || '').trim();
+      return (base.split(/[，,、/]/)[0] || 'user').trim() || 'user';
+    }
+
+    function characterNetNameForQuote(item) {
+      var active = activeCharacterForQuote();
+      if (active) return String(active.netName || active.name || '').trim() || '角色';
+      if (item && item.name) return String(item.name).trim();
+      return String(appData.botNetName || appData.botRemark || '角色').trim() || '角色';
+    }
+
+    function quoteSenderMatchesUser(sender) {
+      var s = String(sender || '').replace(/\s+/g, '');
+      if (!s) return false;
+      var names = [
+        userNetNameForQuote(),
+        baseUserNickname(),
+        userRemarkForActiveChar(),
+        (appData.hero && appData.hero.userName) || ''
+      ];
+      var base = String(baseUserNickname() || '');
+      base.split(/[，,、/]/).forEach(function (part) {
+        if (part.trim()) names.push(part.trim());
+      });
+      return names.some(function (name) {
+        var n = String(name || '').replace(/\s+/g, '');
+        return n && (s === n || s.indexOf(n) >= 0);
+      });
+    }
+
+    function quoteSenderMatchesCharacter(sender) {
+      var s = String(sender || '').replace(/\s+/g, '');
+      if (!s) return false;
+      var active = activeCharacterForQuote();
+      var names = [
+        appData.botRemark || '',
+        appData.botNetName || '',
+        (active && active.name) || '',
+        (active && active.netName) || ''
+      ];
+      return names.some(function (name) {
+        var n = String(name || '').replace(/\s+/g, '');
+        return n && (s === n || s.indexOf(n) >= 0);
+      });
+    }
+
+    window.userNetNameForQuote = userNetNameForQuote;
+    window.characterNetNameForQuote = characterNetNameForQuote;
+
     function triggerChatFileUpload() {
       togglePlusDrawer();
       const el = document.getElementById('input-chat-file');
@@ -3945,7 +4018,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
         // 回复 / 引用 (支持文字与图片多模态引用)
         const sender = g
           ? (item.role === 'user' ? '我' : (item.name || '角色'))
-          : ((item.role === 'user') ? userRemarkForActiveChar() : (appData.botRemark || '角色'));
+          : ((item.role === 'user') ? userNetNameForQuote(item) : characterNetNameForQuote(item));
         let isImg = false;
         let imgSrc = '';
 
@@ -5060,7 +5133,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
           if (qContent.startsWith('[IMAGE:') && qContent.endsWith(']')) {
             parsedQuote = { sender: textQuoteMatch[1].trim(), isImage: true, imgSrc: qContent.slice(7, -1) };
           } else if (qContent === '[图片]' || qContent.includes('[图片]') || qContent.includes('图片') || qContent.includes('画作')) {
-            const resolvedImg = findLastImageFromHistory(textQuoteMatch[1].includes(baseUserNickname()) ? 'user' : 'assistant');
+            const resolvedImg = findLastImageFromHistory(quoteSenderMatchesUser(textQuoteMatch[1]) ? 'user' : 'assistant');
             if (resolvedImg) {
               parsedQuote = { sender: textQuoteMatch[1].trim(), isImage: true, imgSrc: resolvedImg };
             } else {
@@ -5073,7 +5146,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
         } else if (plainQuoteMatch) {
           let qContent = plainQuoteMatch[2].trim();
           if (qContent === '[图片]' || qContent.includes('[图片]') || qContent.includes('图片') || qContent.includes('画作')) {
-            const resolvedImg = findLastImageFromHistory(plainQuoteMatch[1].includes(baseUserNickname()) ? 'user' : 'assistant');
+            const resolvedImg = findLastImageFromHistory(quoteSenderMatchesUser(plainQuoteMatch[1]) ? 'user' : 'assistant');
             if (resolvedImg) {
               parsedQuote = { sender: plainQuoteMatch[1].trim(), isImage: true, imgSrc: resolvedImg };
             } else {
@@ -5084,8 +5157,17 @@ window.syncNarrationModeUI = syncNarrationModeUI;
           }
           cleanText = plainQuoteMatch[3].trim();
         } else if (mdQuoteMatch) {
-          parsedQuote = { sender: (role === 'user' ? (appData.botRemark || '角色') : baseUserNickname()), isImage: false, text: mdQuoteMatch[1].trim() };
+          parsedQuote = { sender: (role === 'user' ? characterNetNameForQuote() : userNetNameForQuote()), isImage: false, text: mdQuoteMatch[1].trim() };
           cleanText = mdQuoteMatch[2].trim();
+        }
+      }
+
+      // 旧记录或模型仍写成昵称列表时，统一改成引用网名，避免引用卡片署名又长又乱。
+      if (parsedQuote) {
+        if (role === 'assistant' && quoteSenderMatchesUser(parsedQuote.sender)) {
+          parsedQuote.sender = userNetNameForQuote();
+        } else if (role === 'user' && quoteSenderMatchesCharacter(parsedQuote.sender)) {
+          parsedQuote.sender = characterNetNameForQuote();
         }
       }
 
@@ -6471,6 +6553,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       const charIntro = (activeChar && activeChar.intro) || '';
       const userName = (activeMask && activeMask.name) || hero.userName || 'user';
       const userRemark = (activeMask && (activeMask.remark || activeMask.name)) || userRemarkForActiveChar() || userName;
+      const quoteUserName = userNetNameForQuote();
       const myAppearance = activeMask
         ? (activeMask.appearance || '（用户未填写外貌）')
         : (localStorage.getItem('momo_my_appearance') || '（用户未填写外貌）');
@@ -6936,7 +7019,7 @@ ${(() => {
 【心声】：（写下你看到对方这句话时，按当前角色卡产生的真实内心反应。不要套用固定恋人、旧角色或“男友/人夫”口吻；角色卡是什么关系，就用什么分寸。）
 ---
 （然后空一行，再正式连发微信消息给${userRemark}）
-【微信原生引用规范】：当${userRemark}要求你“回复/引用”她的某张画或某句话时，请在正式回复的最开头输出『「回复 ${userRemark}：[图片]」』或『「回复 ${userRemark}：“被引用的文字”」』，换行后再输出你的正式回复。界面会自动将其解析为高仿微信的深色圆角缩略图引用卡片。平时若${userRemark}未特别要求引用，直接自然回复即可。\n\n【最高行为准则 · ${userRemark}亲笔设定的灵魂法则（此条优先级绝对高于以上一切人设、历史与世界书，必须无条件绝对服从）】：\n${appData.coreDirectives || localStorage.getItem('momo_core_directives') || '以当前角色卡的身份对话，严禁客服腔，严格执行心理链推导。'}`;
+【微信原生引用规范】：当${userRemark}要求你“回复/引用”她的某张画或某句话时，请在正式回复的最开头输出『「回复 ${quoteUserName}：[图片]」』或『「回复 ${quoteUserName}：“被引用的文字”」』，换行后再输出你的正式回复。引用卡片署名固定用她的网名「${quoteUserName}」，不要写昵称列表，也不要用平时的爱称代替。界面会自动将其解析为高仿微信的深色圆角缩略图引用卡片。平时若${userRemark}未特别要求引用，直接自然回复即可。\n\n【最高行为准则 · ${userRemark}亲笔设定的灵魂法则（此条优先级绝对高于以上一切人设、历史与世界书，必须无条件绝对服从）】：\n${appData.coreDirectives || localStorage.getItem('momo_core_directives') || '以当前角色卡的身份对话，严禁客服腔，严格执行心理链推导。'}`;
       let promptText = rawPrompt;
       if (!opts.skipPreset && window.PromptPresets && typeof window.PromptPresets.apply === 'function') {
         promptText = window.PromptPresets.apply(promptText, {
@@ -8928,9 +9011,9 @@ ${catalog}
           if (!botReply.startsWith('「回复') && !botReply.startsWith('回复')) {
             const lastImg = findLastImageFromHistory('user');
             if (lastImg) {
-              botReply = '「回复 ' + baseUserNickname() + '：[IMAGE:' + lastImg + ']」\n' + botReply;
+              botReply = '「回复 ' + userNetNameForQuote() + '：[IMAGE:' + lastImg + ']」\n' + botReply;
             } else {
-              botReply = '「回复 ' + baseUserNickname() + '：[图片]」\n' + botReply;
+              botReply = '「回复 ' + userNetNameForQuote() + '：[图片]」\n' + botReply;
             }
           }
         }
