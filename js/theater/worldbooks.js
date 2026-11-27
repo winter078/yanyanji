@@ -402,7 +402,7 @@
       var c = b.color || PALETTE[0];
       return '<button class="wb-all-row" onclick="openBookDetail(\'' + esc(b.id) + '\')">'
         + '<span class="stamp" style="background:' + c + '">' + esc(initialOf(b.title)) + '</span>'
-        + '<span class="copy"><span class="name">' + esc(b.title) + '</span><span class="meta">' + esc(b.category || '未分类') + ' · ' + esc(recipientLabel(b)) + ' · ' + (b.entries || []).length + ' 条</span></span>'
+        + '<span class="copy"><span class="name">' + esc(b.title) + '</span><span class="meta">' + esc(recipientLabel(b)) + ' · ' + (b.entries || []).length + ' 条' + ((b.category && b.category !== '未分类') ? ' · ' + esc(b.category) : '') + '</span></span>'
         + '<span class="arrow">›</span></button>';
     }).join('');
   }
@@ -534,7 +534,7 @@
     var title = $('book-detail-header-title');
     if (title) title.textContent = b.title;
     var sub = $('book-detail-sub');
-    if (sub) sub.textContent = '世界书 · 第 ' + index + ' 本 · ' + (b.category || '未分类');
+    if (sub) sub.textContent = '世界书 · 第 ' + index + ' 本 · 给 ' + recipientLabel(b);
 
     var env = $('book-envelope-back');
     if (env) {

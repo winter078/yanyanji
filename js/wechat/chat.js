@@ -10030,8 +10030,15 @@ ${catalog}
       if (customToggle) customToggle.classList.toggle('active', !!cfg.custom);
 
       let html = '';
-      const catOf = function (b) {
+      const tagOf = function (b) {
         return String((b && b.category) || '').trim() || '未分类';
+      };
+      const ownerOf = function (b) {
+        try {
+          return (window.WB && typeof window.WB.recipientLabel === 'function')
+            ? window.WB.recipientLabel(b)
+            : '所有角色';
+        } catch (e) { return '所有角色'; }
       };
       const wbEsc = function (s) {
         return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -10044,20 +10051,21 @@ ${catalog}
         }
         return true;
       }).sort(function (a, b) {
-        const ca = catOf(a), cb = catOf(b);
-        if (ca === cb) return 0;
-        if (ca === '未分类') return 1;
-        if (cb === '未分类') return -1;
-        return ca.localeCompare(cb, 'zh');
+        const oa = ownerOf(a), ob = ownerOf(b);
+        if (oa === ob) return 0;
+        if (oa === '所有角色') return -1;
+        if (ob === '所有角色') return 1;
+        return oa.localeCompare(ob, 'zh');
       });
-      const catCounts = {};
-      visible.forEach(function (b) { const c = catOf(b); catCounts[c] = (catCounts[c] || 0) + 1; });
-      let lastCat = '';
+      const ownerCounts = {};
+      visible.forEach(function (b) { const o = ownerOf(b); ownerCounts[o] = (ownerCounts[o] || 0) + 1; });
+      let lastOwner = '';
       visible.forEach(b => {
-        const category = catOf(b);
-        if (category !== lastCat) {
-          lastCat = category;
-          html += `<div style="display:flex; align-items:center; gap:6px; margin:12px 2px 1px; font-size:12px; font-weight:600; color:var(--text-secondary);"><span>${wbEsc(category)}</span><span style="font-weight:400; opacity:.55;">${catCounts[category]} 本</span></div>`;
+        const owner = ownerOf(b);
+        const tag = tagOf(b);
+        if (owner !== lastOwner) {
+          lastOwner = owner;
+          html += `<div style="display:flex; align-items:center; gap:6px; margin:12px 2px 1px; font-size:12px; font-weight:600; color:var(--text-secondary);"><span>给 ${wbEsc(owner)}</span><span style="font-weight:400; opacity:.55;">${ownerCounts[owner]} 本</span></div>`;
         }
         const bConf = cfg.books[b.id] || { enabled: true, disabledEntries: [] };
         const isEnabled = bConf.enabled !== false;
@@ -10074,7 +10082,7 @@ ${catalog}
                     <span style="font-size: 15px; font-weight: 600; color: var(--text-primary);">${b.title}</span>
                     <span class="text-muted" style="font-size: 11px; background: var(--bg-base); padding: 1px 5px; border-radius: 4px;">${window.WB ? window.WB.recipientLabel(b) : '名册'}</span>
                   </div>
-                  <span class="text-secondary" style="font-size: 12px;">${entries.length} 个条目</span>
+                  <span class="text-secondary" style="font-size: 12px;">${entries.length} 个条目${tag !== '未分类' ? ' · ' + wbEsc(tag) : ''}</span>
                 </div>
               </div>
 
@@ -10100,7 +10108,7 @@ ${catalog}
                   `;
                 }).join('')}
                 <div style="display:flex; gap:8px; padding-top:6px;">
-                  <button type="button" style="flex:1; padding:7px 8px; border-radius:9px; border:1px solid var(--border-default); background:var(--bg-surface); color:var(--text-secondary); font-size:12px; cursor:pointer;" onclick="event.stopPropagation(); openEditBookModal('${b.id}')">修改 / 分类</button>
+                  <button type="button" style="flex:1; padding:7px 8px; border-radius:9px; border:1px solid var(--border-default); background:var(--bg-surface); color:var(--text-secondary); font-size:12px; cursor:pointer;" onclick="event.stopPropagation(); openEditBookModal('${b.id}')">修改 / 给谁</button>
                   <button type="button" style="flex:1; padding:7px 8px; border-radius:9px; border:1px solid rgba(155,85,93,.28); background:rgba(155,85,93,.06); color:#b06a72; font-size:12px; cursor:pointer;" onclick="event.stopPropagation(); deleteBookFromWbModal('${b.id}')">删除这本书</button>
                 </div>
               </div>
