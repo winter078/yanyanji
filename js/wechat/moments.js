@@ -9,7 +9,7 @@ function openMottoEditSheet() {
   });
 }
 
-// 微信朋友圈生态、聊天中约 25 条检查发圈与绪言秒赞秒评
+// 微信朋友圈生态、聊天中约 15 条检查发圈与绪言秒赞秒评
     // ================= 微信四大底栏与朋友圈核心逻辑 =================
     let currentWechatTab = 'chats';
     let momentsDeleteMode = false;
@@ -60,10 +60,11 @@ function openMottoEditSheet() {
     if (!appData.wechatMotto) {
       appData.wechatMotto = localStorage.getItem('momo_wechat_motto') || '能永遠糾纏在一起嗎 頭髮 命運 你和我';
     }
-    // 聊天计步器：聊天中每约 25 条检查一次，一场聊天最多发一条
+    // 聊天计步器：聊天中每约 15 条检查一次，一场聊天最多发一条；计数跨重进保留
     let chatMessageTurnCounter = parseInt(localStorage.getItem('momo_chat_turn_counter') || '0', 10);
     const MOMENT_TURN_STATE_KEY = 'momo_moment_turn_state_v1';
-    const MOMENT_AUTO_CHECK_EVERY = 25;
+    const MOMENT_CHAT_COUNT_KEY = 'momo_moment_chat_count_v1';
+    const MOMENT_AUTO_CHECK_EVERY = 15;
     // 同一角色两次动态之间至少间隔 2 小时
     const MOMENT_MIN_GAP_MS = 2 * 60 * 60 * 1000;
     let momentChatSession = { charId: '', sessionId: '', count: 0, posted: false };
@@ -95,12 +96,26 @@ function openMottoEditSheet() {
       writeMomentTurnStateMap(map);
     }
 
+    function readMomentChatCounts() {
+      try {
+        const raw = localStorage.getItem(MOMENT_CHAT_COUNT_KEY);
+        const parsed = raw ? JSON.parse(raw) : {};
+        return (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : {};
+      } catch (e) { return {}; }
+    }
+
+    function writeMomentChatCounts(map) {
+      try { localStorage.setItem(MOMENT_CHAT_COUNT_KEY, JSON.stringify(map || {})); } catch (e) {}
+    }
+
     function resetMomentChatSession(charId) {
       const key = charId || 'default';
+      const counts = readMomentChatCounts();
       momentChatSession = {
         charId: key,
         sessionId: 'ms_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6),
-        count: 0,
+        // 计数跨“退出聊天再进来”保留，不然永远攒不到检查阈值。
+        count: Number(counts[key]) || 0,
         posted: false
       };
     }
@@ -1376,7 +1391,7 @@ ${catalogText || '（角色相簿和共享相簿里暂时没有图片，photoIds
       }
     }
 
-    // 聊天中每约 25 条检查一次：有话题发话题型，没有就发自发型；一场聊天最多一条
+    // 聊天中每约 15 条检查一次：有话题发话题型，没有就发自发型；一场聊天最多一条
     function checkAndTriggerMomentOnChat() {
       const activeChar = (typeof window.getActiveCharacter === 'function') ? window.getActiveCharacter() : null;
       const charId = (activeChar && activeChar.id) || 'default';
@@ -1385,10 +1400,16 @@ ${catalogText || '（角色相簿和共享相簿里暂时没有图片，photoIds
       }
 
       momentChatSession.count++;
+      const counts = readMomentChatCounts();
+      counts[charId] = momentChatSession.count;
+      writeMomentChatCounts(counts);
       if (momentChatSession.posted) return;
       if (momentChatSession.count < MOMENT_AUTO_CHECK_EVERY) return;
 
       momentChatSession.count = 0;
+      const resetCounts = readMomentChatCounts();
+      resetCounts[charId] = 0;
+      writeMomentChatCounts(resetCounts);
       const st = getMomentCharState(charId);
       const latest = Math.max(Number(st.lastMomentAt) || 0, momentLatestForChar(charId, (activeChar && activeChar.name) || ''));
       if (Date.now() - latest < MOMENT_MIN_GAP_MS) return;

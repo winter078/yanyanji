@@ -289,11 +289,16 @@ let appData = null;
       try {
         const defaultBooks = [];
         let local = [];
+        let deletedIds = [];
         try { local = JSON.parse(localStorage.getItem('momo_world_books') || '[]'); } catch(e){}
+        try { deletedIds = JSON.parse(localStorage.getItem('momo_world_books_deleted') || '[]'); } catch(e){}
+        if (!Array.isArray(deletedIds)) deletedIds = [];
         let updated = false;
         const languageBook = {"id":"book_language_norm","title":"语言规范与随性呼吸律","desc":"微信真实长短落差、反机械对称、生活化接招与标点自由最高法则","color":"#10b981","scope":"all","recipients":["*"],"entries":[{"id":"entry_visual_contrast","constant":true,"title":"微信长短大落差与标点随性律","content":"【最高执行铁律 · 微信打字大落差与标点随性】：\n1. 绝对禁止等长切片！严禁连续发送多条 6~9 字的匀称气泡（如禁止：心跳正常/信号满格/随叫随到 这种流水线排比）。\n2. 视觉大落差原则（必须有大起大落）：\n   - 极短气泡（2~4字）：如“嗯？”、“不过”、“行吧”、“？”、“等等”，像随手甩出的小反应；\n   - 饱满长气泡（20~30字，带逗号）：必须有充满生活细节、符合角色关系的长句（如：“这雨说下就下，伞也不带，等会儿别真淋透了才想起来找我”）；\n   - 中等短句：顺茬调侃接话。\n3. 标点彻底自由随性：想用逗号就用，想用问号就用，想不带标点直接回车就直接发，严禁一个状态持续到底。"},{"id":"entry_anti_robot_test","constant":true,"title":"生活化接招与反打工人机械回应","content":"【绝对禁止客服测试腔 · 自然生活化反应】：\n1. 不要把用户的话当成系统调试！哪怕用户只发了单个词“test”、“在吗”、“1”、“。”，也绝对禁止回复“收到/信号满格/最高优先级插队/样式接口有问题你随时指挥/江总工请过目”这种死板打工腔！\n2. 遇到简短词或测试词时的正确反应：\n   - 按角色本人的性格自然接一句，不要套固定暧昧模板。\n3. 永远按当前角色卡的身份、关系和分寸回应，不要客服腔，也不要把所有角色都演成同一个人。"}]};
         const existsLang = local.some(b => b.id === languageBook.id || b.title === languageBook.title);
-        if (!existsLang) {
+        if (deletedIds.indexOf(languageBook.id) !== -1) {
+          // 用户主动删过这本，就别在启动时又补回来。
+        } else if (!existsLang) {
           local.unshift(languageBook); // 放在最前面，最高优先级生效！
           updated = true;
         } else {
@@ -307,6 +312,7 @@ let appData = null;
         }
         
         defaultBooks.forEach(defBook => {
+          if (deletedIds.indexOf(defBook.id) !== -1) return;
           const idx = local.findIndex(b => b.id === defBook.id || b.title === defBook.title);
           if (idx !== -1) {
             // 如果是关系姿态或情绪深度新书，始终保持最新定义

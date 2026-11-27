@@ -3451,6 +3451,22 @@ window.syncNarrationModeUI = syncNarrationModeUI;
         refreshToolSelMarks();
         refreshToolSelBar();
       });
+      // 工具胶囊也挂一个直接删除键，不用先点进多选模式再找底部删除。
+      const close = document.createElement('span');
+      close.setAttribute('role', 'button');
+      close.setAttribute('tabindex', '0');
+      close.title = '删掉这条工具提示';
+      close.textContent = '×';
+      close.style.cssText = 'margin-left:6px;opacity:.38;font-size:12px;line-height:1;cursor:pointer;pointer-events:auto;';
+      const hide = function (e) {
+        if (e) { e.preventDefault(); e.stopPropagation(); }
+        m.hiddenFromView = true;
+        try { safeSaveChatHistory(); } catch (err) {}
+        loadChatHistory();
+      };
+      close.addEventListener('click', hide);
+      close.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') hide(e); });
+      pill.appendChild(close);
       div.appendChild(pill);
       container.appendChild(div);
       return div;
@@ -5812,6 +5828,12 @@ window.syncNarrationModeUI = syncNarrationModeUI;
             const actionCard = document.createElement('div');
             actionCard.className = 'narration-action-card';
             actionCard.innerText = piece;
+            // 旁白胶囊也要能长按/右键，否则只有台词气泡能删，整条只有旁白的回复就删不掉。
+            if (msgIndex !== -1) {
+              actionCard.setAttribute('data-msg-idx', msgIndex);
+              actionCard.title = '长按或右键：编辑 / 删除';
+              bindBubbleLongPress(actionCard, msgIndex);
+            }
             bubbleWrap.appendChild(actionCard);
           });
         };
@@ -6585,7 +6607,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       const promptHistory = (typeof window.scopeActiveChatHistoryToMask === 'function')
         ? window.scopeActiveChatHistoryToMask(appData.chatHistory || [])
         : (appData.chatHistory || []);
-      const wbConfig = (typeof getWbConfig === 'function') ? getWbConfig() : null;
+      const wbConfig = (typeof getWbConfig === 'function') ? getWbConfig('chat') : null;
 
       let worldRules = '';
       if (!opts.skipWorld) {
@@ -9870,8 +9892,8 @@ ${catalog}
 
 
     // ================= 1:1 复刻图2：世界书独立开关与条目管控系统 =================
-    function getWbConfig() {
-      const scope = window.__wbModalScope === 'theater' ? 'theater' : 'chat';
+    function getWbConfig(scopeOverride) {
+      const scope = scopeOverride === 'theater' ? 'theater' : (scopeOverride === 'chat' ? 'chat' : (window.__wbModalScope === 'theater' ? 'theater' : 'chat'));
       const prop = scope === 'theater' ? 'storyWbConfig' : 'chatWbConfig';
       const key = scope === 'theater' ? 'momo_story_wb_config' : 'momo_chat_wb_config';
       if (!appData[prop]) {
@@ -9883,12 +9905,9 @@ ${catalog}
         appData[prop] = { custom: true, books: {} };
       }
       if (!appData[prop].books) appData[prop].books = {};
-      // 默认全开
+      // 默认全开；用户关过的书不要再被任何默认逻辑强行改回开启。
       (appData.worldBooks || []).forEach(b => {
         if (!appData[prop].books[b.id]) {
-          appData[prop].books[b.id] = { enabled: true, disabledEntries: [] };
-        } else if (b.id === 'book_language_norm') {
-          appData[prop].books[b.id].enabled = true;
           appData[prop].books[b.id] = { enabled: true, disabledEntries: [] };
         }
       });
@@ -9931,6 +9950,30 @@ ${catalog}
       window.__wbModalScope = 'chat';
     }
 
+    function deleteBookFromWbModal(bookId) {
+      const id = String(bookId || '');
+      if (!id) return;
+      const before = (appData.worldBooks || []).length;
+      if (typeof window.deleteBook === 'function') {
+        window.deleteBook(id);
+      } else {
+        const b = (appData.worldBooks || []).find(x => x && x.id === id);
+        if (!b || !window.confirm('删除《' + (b.title || '这本书') + '》？里面的词条也会一起删掉。')) return;
+        appData.worldBooks = (appData.worldBooks || []).filter(x => !x || x.id !== id);
+        try { localStorage.setItem('momo_world_books', JSON.stringify(appData.worldBooks)); } catch (e) {}
+        try {
+          const ids = JSON.parse(localStorage.getItem('momo_world_books_deleted') || '[]');
+          if (ids.indexOf(id) === -1) ids.push(id);
+          localStorage.setItem('momo_world_books_deleted', JSON.stringify(ids));
+        } catch (e) {}
+      }
+      // 用户点了取消，数量不会变；变了才重绘弹窗，避免取消后也闪一下。
+      if ((appData.worldBooks || []).length !== before) {
+        renderWorldBookModalList();
+      }
+    }
+    window.deleteBookFromWbModal = deleteBookFromWbModal;
+
     function toggleWbCustomSetting() {
       const cfg = getWbConfig();
       cfg.custom = !cfg.custom;
@@ -9950,6 +9993,10 @@ ${catalog}
     function toggleWbBookSwitch(bookId, e) {
       if (e) e.stopPropagation();
       const cfg = getWbConfig();
+      // 用户手动动过任何一本书，就视为要用“单独自定义”，否则开关只改 UI、提示词根本不看。
+      cfg.custom = true;
+      const customToggle = document.getElementById('toggle-wb-custom');
+      if (customToggle) customToggle.classList.add('active');
       if (!cfg.books[bookId]) cfg.books[bookId] = { enabled: true, disabledEntries: [] };
       cfg.books[bookId].enabled = !cfg.books[bookId].enabled;
       saveWbConfig();
@@ -9959,6 +10006,9 @@ ${catalog}
     function toggleWbEntrySwitch(bookId, entryId, e) {
       if (e) e.stopPropagation();
       const cfg = getWbConfig();
+      cfg.custom = true;
+      const customToggle = document.getElementById('toggle-wb-custom');
+      if (customToggle) customToggle.classList.add('active');
       if (!cfg.books[bookId]) cfg.books[bookId] = { enabled: true, disabledEntries: [] };
       const dis = cfg.books[bookId].disabledEntries || [];
       const idx = dis.indexOf(entryId);
@@ -9980,9 +10030,34 @@ ${catalog}
       if (customToggle) customToggle.classList.toggle('active', !!cfg.custom);
 
       let html = '';
-      books.forEach(b => {
+      const catOf = function (b) {
+        return String((b && b.category) || '').trim() || '未分类';
+      };
+      const wbEsc = function (s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+          return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+        });
+      };
+      const visible = books.filter(function (b) {
         if (q && !b.title.toLowerCase().includes(q) && !(b.entries || []).some(e => e.title.toLowerCase().includes(q))) {
-          return;
+          return false;
+        }
+        return true;
+      }).sort(function (a, b) {
+        const ca = catOf(a), cb = catOf(b);
+        if (ca === cb) return 0;
+        if (ca === '未分类') return 1;
+        if (cb === '未分类') return -1;
+        return ca.localeCompare(cb, 'zh');
+      });
+      const catCounts = {};
+      visible.forEach(function (b) { const c = catOf(b); catCounts[c] = (catCounts[c] || 0) + 1; });
+      let lastCat = '';
+      visible.forEach(b => {
+        const category = catOf(b);
+        if (category !== lastCat) {
+          lastCat = category;
+          html += `<div style="display:flex; align-items:center; gap:6px; margin:12px 2px 1px; font-size:12px; font-weight:600; color:var(--text-secondary);"><span>${wbEsc(category)}</span><span style="font-weight:400; opacity:.55;">${catCounts[category]} 本</span></div>`;
         }
         const bConf = cfg.books[b.id] || { enabled: true, disabledEntries: [] };
         const isEnabled = bConf.enabled !== false;
@@ -10024,6 +10099,10 @@ ${catalog}
                     </div>
                   `;
                 }).join('')}
+                <div style="display:flex; gap:8px; padding-top:6px;">
+                  <button type="button" style="flex:1; padding:7px 8px; border-radius:9px; border:1px solid var(--border-default); background:var(--bg-surface); color:var(--text-secondary); font-size:12px; cursor:pointer;" onclick="event.stopPropagation(); openEditBookModal('${b.id}')">修改 / 分类</button>
+                  <button type="button" style="flex:1; padding:7px 8px; border-radius:9px; border:1px solid rgba(155,85,93,.28); background:rgba(155,85,93,.06); color:#b06a72; font-size:12px; cursor:pointer;" onclick="event.stopPropagation(); deleteBookFromWbModal('${b.id}')">删除这本书</button>
+                </div>
               </div>
             ` : ''}
           </div>

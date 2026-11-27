@@ -4,6 +4,7 @@
   'use strict';
 
   var K_BOOKS = 'momo_world_books';
+  var K_DELETED = 'momo_world_books_deleted';
   var K_BOX_NAME = 'momo_world_box_name';
   var ALL = '*';
   var PALETTE = ['#7d8fae', '#7d927f', '#b08086', '#a493c9', '#64827e', '#8d7b62'];
@@ -35,6 +36,21 @@
   }
 
   function app() { return window.appData || {}; }
+
+  // 删掉的书留一个墓碑，避免启动时“智能补全默认世界书”又把它塞回来。
+  function deletedBookIds() {
+    try {
+      var raw = JSON.parse(localStorage.getItem(K_DELETED) || '[]');
+      return Array.isArray(raw) ? raw : [];
+    } catch (e) { return []; }
+  }
+
+  function markBookDeleted(id) {
+    if (!id) return;
+    var ids = deletedBookIds();
+    if (ids.indexOf(id) === -1) ids.push(id);
+    try { localStorage.setItem(K_DELETED, JSON.stringify(ids)); } catch (e) {}
+  }
 
   function chars() {
     try {
@@ -129,6 +145,7 @@
     out.id = b.id || ('book_' + Date.now() + Math.random().toString(36).slice(2, 5));
     out.title = b.title || '未命名书';
     out.desc = b.desc || '';
+    out.category = String(b.category || '').trim() || '未分类';
     out.color = b.color || PALETTE[index % PALETTE.length];
     out.scope = b.scope || 'all';
     out.note = b.note || '';
@@ -167,7 +184,9 @@
         })
       }];
     }
-    books = raw.map(normalizeBook);
+    books = raw.map(normalizeBook).filter(function (b) {
+      return deletedBookIds().indexOf(b.id) === -1;
+    });
     app().worldBooks = books;
     try { localStorage.setItem(K_BOOKS, JSON.stringify(books)); } catch (e) {}
   }
@@ -383,7 +402,7 @@
       var c = b.color || PALETTE[0];
       return '<button class="wb-all-row" onclick="openBookDetail(\'' + esc(b.id) + '\')">'
         + '<span class="stamp" style="background:' + c + '">' + esc(initialOf(b.title)) + '</span>'
-        + '<span class="copy"><span class="name">' + esc(b.title) + '</span><span class="meta">' + esc(recipientLabel(b)) + ' · ' + (b.entries || []).length + ' 条</span></span>'
+        + '<span class="copy"><span class="name">' + esc(b.title) + '</span><span class="meta">' + esc(b.category || '未分类') + ' · ' + esc(recipientLabel(b)) + ' · ' + (b.entries || []).length + ' 条</span></span>'
         + '<span class="arrow">›</span></button>';
     }).join('');
   }
@@ -515,7 +534,7 @@
     var title = $('book-detail-header-title');
     if (title) title.textContent = b.title;
     var sub = $('book-detail-sub');
-    if (sub) sub.textContent = '世界书 · 第 ' + index + ' 本';
+    if (sub) sub.textContent = '世界书 · 第 ' + index + ' 本 · ' + (b.category || '未分类');
 
     var env = $('book-envelope-back');
     if (env) {
@@ -668,6 +687,8 @@
     ['input-book-title', 'input-book-desc', 'input-book-note', 'input-book-initial-entry'].forEach(function (id) {
       var el = $(id); if (el) el.value = '';
     });
+    var catInput = $('input-book-category');
+    if (catInput) catInput.value = '未分类';
     recipientDraft = [ALL];
     colorDraft = PALETTE[books.length % PALETTE.length];
     renderRecipientPicker();
@@ -687,6 +708,7 @@
     if (title) title.textContent = '修改这本书';
     var bt = $('input-book-title'); if (bt) bt.value = b.title || '';
     var bd = $('input-book-desc'); if (bd) bd.value = b.desc || '';
+    var bc = $('input-book-category'); if (bc) bc.value = b.category || '未分类';
     var bn = $('input-book-note'); if (bn) bn.value = b.note || '';
     recipientDraft = isGlobal(b) ? [ALL] : recipientIds(b).slice();
     if (!recipientDraft.length) recipientDraft = [ALL];
@@ -707,6 +729,7 @@
     var title = ($('input-book-title') && $('input-book-title').value || '').trim();
     if (!title) { toast('先给这本书起个名字'); return; }
     var desc = ($('input-book-desc') && $('input-book-desc').value || '').trim();
+    var category = ($('input-book-category') && $('input-book-category').value || '').trim() || '未分类';
     var note = ($('input-book-note') && $('input-book-note').value || '').trim();
     var initial = ($('input-book-initial-entry') && $('input-book-initial-entry').value || '').trim();
     var recipients = recipientDraft.slice();
@@ -718,6 +741,7 @@
       if (!b) return;
       b.title = title;
       b.desc = desc;
+      b.category = category;
       b.note = note;
       b.recipients = recipients;
       b.color = colorDraft;
@@ -734,6 +758,7 @@
       id: 'book_' + now + Math.random().toString(36).slice(2, 5),
       title: title,
       desc: desc,
+      category: category,
       note: note,
       color: colorDraft,
       recipients: recipients,
@@ -754,6 +779,7 @@
     var b = findBook(id);
     if (!b) return;
     if (!window.confirm('删除《' + b.title + '》？里面的词条也会一起删掉。')) return;
+    markBookDeleted(id);
     books = books.filter(function (x) { return x.id !== id; });
     saveBooks();
     if (currentBookId === id) backToBookshelf();
