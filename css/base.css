@@ -4757,3 +4757,6 @@ html.ios.sb-native .home-dock-bar {
   color: var(--success-primary);
   background: rgba(7, 193, 96, 0.12);
 }
+
+/* 单聊头部只显示角色名称，隐藏“关系 · 正在连线”副标题；群聊仍保留人数信息。 */
+#page-chat:not([data-chat-group="on"]) .wechat-sub-hint { display: none !important; }
