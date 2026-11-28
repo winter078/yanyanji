@@ -247,10 +247,53 @@ window.findStickerUrlByName = function(name) {
   return item ? item.url : null;
 };
 
-// 聊天上下文里只送文字：名称 / 分类 / 说明，绝不把 base64 或图片 URL 喂给模型。
-window.stickerContentToAiText = function(content) {
+// 上下文里的表情包只给模型看“名称/分类/说明”，用【表情包记录】标明这是系统标注，不是台词。
+function stickerAiMeta(name, category, note) {
+  const cleanName = String(name || '未知表情').trim() || '未知表情';
+  const cat = String(category || '').trim();
+  const extra = String(note || '').trim();
+  return '【表情包记录：' + cleanName + (cat ? '（' + cat + '）' : '') + (extra ? '｜' + extra : '') + '】';
+}
+
+// 兼容模型把上下文里的标注当成台词照抄：把「表情包：xxx」/【表情包记录：xxx】统一还原成标准可渲染标签。
+window.normalizeStickerMarkup = function(content) {
   const raw = String(content || '');
   if (!raw) return raw;
+  return raw.replace(/[\[【「『“]\s*(?:系统标注[·・:：]?\s*)?(?:表情包记录|表情包|表情)\s*[：:]\s*([^\]】」』”\n]+?)\s*[\]】」』”]/g, function(_, name) {
+    const clean = String(name || '').trim();
+    return clean ? ('\n[表情包: ' + clean + ']\n') : '';
+  });
+};
+
+// 渲染用：把正文里夹着的表情包标签拆出来，前面的话仍是文字气泡，表情单独成像。
+window.splitStickerInlineParts = function(content) {
+  const raw = String(content || '');
+  if (!raw) return [];
+  const re = /[\[【「『“]\s*(?:系统标注[·・:：]?\s*)?(?:表情包记录|表情包|表情)\s*[：:]\s*([^\]】」』”\n]+?)\s*[\]】」』”]/g;
+  const parts = [];
+  let last = 0;
+  let m;
+  while ((m = re.exec(raw)) !== null) {
+    const before = raw.slice(last, m.index).replace(/[ \t]+$/, '').trim();
+    if (before) parts.push({ type: 'text', text: before });
+    const name = String(m[1] || '').trim();
+    if (name) parts.push({ type: 'sticker', name: name });
+    last = m.index + m[0].length;
+  }
+  const after = raw.slice(last).trim();
+  if (after) parts.push({ type: 'text', text: after });
+  return parts.length ? parts : [{ type: 'text', text: raw }];
+};
+
+// 聊天上下文里只送文字：名称 / 分类 / 说明，绝不把 base64 或图片 URL 喂给模型。
+window.stickerContentToAiText = function(content) {
+  let raw = String(content || '');
+  if (!raw) return raw;
+
+  // 旧记录/旧格式：模型曾经把「表情包：xxx」直接当正文存下来，喂给模型前也标成系统记录。
+  raw = raw.replace(/[「“]\s*(?:表情包记录|表情包|表情)\s*[：:]\s*([^」”\n]+?)\s*[」”]/g, function(_, name) {
+    return stickerAiMeta(name);
+  });
 
   return raw
     .replace(/\[STICKER:([^\]]*)\]/g, function(_, body) {
@@ -260,21 +303,21 @@ window.stickerContentToAiText = function(content) {
         const parts = body.split('|');
         name = parts.slice(1).join('|');
         const item = findStickerById(parts[0]) || findStickerByName(name);
-        if (item) return '「表情包：' + item.name + '（' + item.category + '）' + (item.note ? '｜' + item.note : '') + '」';
-        return '「表情包：' + (name || '未知表情') + '」';
+        if (item) return stickerAiMeta(item.name, item.category, item.note);
+        return stickerAiMeta(name);
       }
       if (body.includes(':') && /^(https?:|data:image)/.test(body.split(':').slice(1).join(':'))) {
         name = body.split(':')[0];
         url = body.split(':').slice(1).join(':');
       }
       const item = findStickerByName(name) || (url ? { name: name, category: '', note: '' } : null);
-      if (!item) return '「表情包：' + (name || '未知表情') + '」';
-      return '「表情包：' + item.name + (item.category ? '（' + item.category + '）' : '') + (item.note ? '｜' + item.note : '') + '」';
+      if (!item) return stickerAiMeta(name);
+      return stickerAiMeta(item.name, item.category, item.note);
     })
     .replace(/\[(?:表情包|表情):([^\]]*)\]/g, function(_, name) {
       const item = findStickerByName(name);
-      if (!item) return '「表情包：' + (name || '未知表情') + '」';
-      return '「表情包：' + item.name + (item.category ? '（' + item.category + '）' : '') + (item.note ? '｜' + item.note : '') + '」';
+      if (!item) return stickerAiMeta(name);
+      return stickerAiMeta(item.name, item.category, item.note);
     });
 };
 

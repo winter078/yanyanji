@@ -5787,8 +5787,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
         const segments = parseMessageSegments(cleanText);
         const typingBubble = isTyping || cleanText === '__TYPING__';
 
-        const appendSpeechBubble = function (text) {
-          const value = String(text == null ? '' : text).trim();
+        const appendPlainSpeechBubble = function (value) {
           if (!value && !typingBubble) return;
           const bubble = document.createElement('div');
           bubble.className = 'msg-bubble-wechat';
@@ -5800,6 +5799,43 @@ window.syncNarrationModeUI = syncNarrationModeUI;
             if (msgIndex !== -1) bindBubbleLongPress(bubble, msgIndex);
           }
           bubbleWrap.appendChild(bubble);
+        };
+        const appendInlineStickerBubble = function (name) {
+          const marker = '[表情包: ' + String(name || '').trim() + ']';
+          const display = (typeof window.getStickerDisplay === 'function') ? window.getStickerDisplay(marker) : null;
+          const sName = (display && display.name) || String(name || '').trim();
+          const sUrl = (display && display.url) || (typeof window.findStickerUrlByName === 'function' ? window.findStickerUrlByName(sName) : null);
+          if (!sUrl) return;
+          const stickerBubble = document.createElement('div');
+          stickerBubble.className = 'msg-sticker-bubble';
+          stickerBubble.style.cssText = 'max-width: 140px; max-height: 140px; background: transparent; padding: 0; box-shadow: none; cursor: pointer; display: inline-block;';
+          const img = document.createElement('img');
+          img.src = sUrl;
+          img.alt = sName;
+          img.title = sName;
+          img.setAttribute('referrerpolicy', 'no-referrer');
+          img.style.cssText = 'width: 100%; height: 100%; object-fit: contain; display: block; border-radius: 8px; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.35));';
+          img.onclick = function () {
+            if (typeof openFullImageModal === 'function') openFullImageModal(sUrl);
+          };
+          stickerBubble.appendChild(img);
+          if (msgIndex !== -1) bindBubbleLongPress(stickerBubble, msgIndex);
+          bubbleWrap.appendChild(stickerBubble);
+        };
+        const appendSpeechBubble = function (text) {
+          const value = String(text == null ? '' : text).trim();
+          if (!value && !typingBubble) return;
+          if (typingBubble) {
+            appendPlainSpeechBubble(value);
+            return;
+          }
+          const parts = (typeof window.splitStickerInlineParts === 'function')
+            ? window.splitStickerInlineParts(value)
+            : [{ type: 'text', text: value }];
+          parts.forEach(function (part) {
+            if (part.type === 'text') appendPlainSpeechBubble(part.text);
+            else appendInlineStickerBubble(part.name);
+          });
         };
 
         const appendActionCard = function (text) {
@@ -6833,7 +6869,7 @@ ${(() => {
   }
   return '暂无贴图库。';
 })()}
-*注：这套表情包是用户自己存的，所有角色共用；你只认「名称 / 分类 / 说明」这行文字，不需要看图片本身。如果上面显示暂无自定义表情包，本轮就不要发任何 [表情包:...]；有清单时，想发就在短句回复里单独发一条形如 [表情包: 表情名字]（必须写清单里存在的名字，例如 [表情包: 兔兔生气]），系统会自动把对应图片渲染出来。不要编造清单里没有的表情，也不要描述图片长什么样。*
+*注：这套表情包是用户自己存的，所有角色共用；你只认「名称 / 分类 / 说明」这行文字，不需要看图片本身。如果上面显示暂无自定义表情包，本轮就不要发任何 [表情包:...]；有清单时，想发就在短句回复里单独发一条形如 [表情包: 表情名字]（必须写清单里存在的名字，例如 [表情包: 兔兔生气]），系统会自动把对应图片渲染出来。上下文里出现的【表情包记录：名称】只是系统给你看的阅读标注，绝对不要照抄成台词，也不要写成「表情包：名称」或把标签塞进句子里。不要编造清单里没有的表情，也不要描述图片长什么样。*
 
 
 
@@ -9217,7 +9253,10 @@ ${catalog}
 
           // 预设可能让角色输出 [语音: “...”]；当前没有语音渲染，先把整段保护成一个文本气泡，避免被标点拆碎。
           const voiceTokens = [];
-          const protectedBotReply = String(botReply || '').replace(/\[语音[：:][\s\S]*?\]/g, function(match) {
+          const normalizedBotReply = (typeof window.normalizeStickerMarkup === 'function')
+            ? window.normalizeStickerMarkup(botReply)
+            : botReply;
+          const protectedBotReply = String(normalizedBotReply || '').replace(/\[语音[：:][\s\S]*?\]/g, function(match) {
             const index = voiceTokens.length;
             voiceTokens.push(match.replace(/\n+/g, ' ').trim());
             return '[[VOICE' + index + ']]';
@@ -10712,6 +10751,9 @@ ${catalog}
     }
 
     botReply = botReply.replace(/^(?:---|\*\*\*|===)\s*/, '').trim();
+    if (typeof window.normalizeStickerMarkup === 'function') {
+      botReply = window.normalizeStickerMarkup(botReply);
+    }
     if (typeof cleanHeartThoughtText === 'function') thought = cleanHeartThoughtText(thought);
     const paragraphs = botReply.split(/\n+/).map(p => p.trim()).filter(Boolean);
     return { thought, cot: cleanCotText(cot), paragraphs: paragraphs.length ? paragraphs : [botReply].filter(Boolean), heartPage: heartPage };
@@ -11156,6 +11198,9 @@ ${uNick}，水喝到了没有？
           }
 
           botReply = botReply.replace(/^(?:---|\*\*\*|===)\s*/, '').trim();
+          if (typeof window.normalizeStickerMarkup === 'function') {
+            botReply = window.normalizeStickerMarkup(botReply);
+          }
           if (typeof cleanHeartThoughtText === 'function') thought = cleanHeartThoughtText(thought);
           const cotSource = cleanCotText(reasoning) ? 'model' : (promptedCot || cot ? 'prompt' : '');
 
