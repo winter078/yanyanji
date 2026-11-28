@@ -10017,9 +10017,9 @@ ${catalog}
       const keep = Math.max(0, total - delCount);
       previewEl.style.color = '';
       if (!merged.length) {
-        previewEl.textContent = '还没有填写要删除的区间。';
+        previewEl.textContent = '还没有填写要清理的区间。';
       } else {
-        previewEl.innerHTML = '将删除 <b>' + delCount + '</b> 条，保留 <b>' + keep + '</b> 条。重叠的区间会自动合并。';
+        previewEl.innerHTML = '将清理 <b>' + delCount + '</b> 条，保留 <b>' + keep + '</b> 条。重叠的区间会自动合并。';
       }
     }
 
@@ -10124,7 +10124,7 @@ ${catalog}
       }
       const merged = mergeChatDeleteRanges(parsed.ranges);
       if (!merged.length) {
-        alert('先填一个要删除的条数区间，例如从第 1 条到第 80 条。');
+        alert('先填一个要清理的条数区间，例如从第 1 条到第 80 条。');
         return;
       }
       const ctx = chatDeleteRangeContext(chatDeleteRangeState.scope);
@@ -10146,7 +10146,7 @@ ${catalog}
       const keep = Math.max(0, ctx.visible.length - delCount);
       const targetName = '「' + ctx.name + '」';
 
-      if (!confirm('删除' + targetName + '的所选区间？\n\n将删除 ' + delCount + ' 条，保留 ' + keep + ' 条。\n只删聊天记录，不会动角色卡和记忆；删除前会先自动备份。')) return;
+      if (!confirm('清理' + targetName + '的所选区间？\n\n将清理 ' + delCount + ' 条，保留 ' + keep + ' 条。\n只清理聊天记录，不会动角色卡和记忆；清理前会先自动备份。')) return;
 
       if (ctx.scope === 'group') {
         const g = ctx.group;
@@ -10179,7 +10179,7 @@ ${catalog}
         if (typeof window.renderWechatSessions === 'function') window.renderWechatSessions();
         if (typeof window.renderContacts === 'function') window.renderContacts();
         window.closeChatDeleteRangeModal();
-        if (typeof window.wxToast === 'function') window.wxToast('已删除 ' + delCount + ' 条，保留 ' + keep + ' 条');
+        if (typeof window.wxToast === 'function') window.wxToast('已清理 ' + delCount + ' 条，保留 ' + keep + ' 条');
         return;
       }
 
@@ -10202,7 +10202,7 @@ ${catalog}
       loadChatHistory();
       if (typeof window.renderWechatSessions === 'function') window.renderWechatSessions();
       window.closeChatDeleteRangeModal();
-      if (typeof window.wxToast === 'function') window.wxToast('已删除 ' + delCount + ' 条，保留 ' + keep + ' 条');
+      if (typeof window.wxToast === 'function') window.wxToast('已清理 ' + delCount + ' 条，保留 ' + keep + ' 条');
     };
 
     window.clearAllChatFromRangeModal = function () {
