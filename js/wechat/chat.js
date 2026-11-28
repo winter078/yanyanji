@@ -5794,7 +5794,7 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       // 普通文本气泡与动描旁白分离渲染 (支持user与绪言双向动描拆解)
       else if (cleanText.length > 0) {
         const allowAction = appData.chatSettings && appData.chatSettings.enableActionDesc;
-        const segments = parseMessageSegments(cleanText);
+        const segments = parseMessageSegments(cleanText, role);
         const typingBubble = isTyping || cleanText === '__TYPING__';
 
         const appendPlainSpeechBubble = function (value) {
@@ -7187,16 +7187,22 @@ ${(() => {
       return promptText;
     }
 
-    function parseMessageSegments(rawText) {
+    function parseMessageSegments(rawText, role) {
       const allowAction = appData.chatSettings && appData.chatSettings.enableActionDesc;
+      const isUserMessage = role === 'user';
       if (!allowAction) {
-        // 剥离所有动作与旁白
-        const pure = rawText.replace(/\*[^*]+\*/g, '').replace(/（[^）]+）/g, '').replace(/\([^)]+\)/g, '').trim();
+        // 剥离所有动作与旁白；但用户自己打的括号是正文，不能一起吞掉。
+        const pure = isUserMessage
+          ? rawText.replace(/\*[^*]+\*/g, '').trim()
+          : rawText.replace(/\*[^*]+\*/g, '').replace(/（[^）]+）/g, '').replace(/\([^)]+\)/g, '').trim();
         return pure ? [{ type: 'speech', text: pure }] : [{ type: 'speech', text: rawText }];
       }
 
       const segments = [];
-      const regex = /(\*[^*]+\*|（[^）]{3,}）|\([^)\n]{3,}\))/g;
+      // 用户消息里的圆括号保持原文显示；只有 *...* 才当作动描拆出来。
+      const regex = isUserMessage
+        ? /(\*[^*]+\*)/g
+        : /(\*[^*]+\*|（[^）]{3,}）|\([^)\n]{3,}\))/g;
       let lastIdx = 0;
       let match;
       while ((match = regex.exec(rawText)) !== null) {
