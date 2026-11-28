@@ -4654,20 +4654,40 @@ window.syncNarrationModeUI = syncNarrationModeUI;
       return true;
     }
 
-    // ===== 多图叠放：同一个人连着发的图收成一摞，可「展开 / 收起」=====
+    // ===== 多图叠放：同一批 3 张以上的图收成一摞，可「展开 / 收起」=====
     function picStackBox() {
       return document.getElementById('message-container') || msgContainer;
     }
 
-    function findTailPicStack(role) {
+    function findTailPicStack(role, batchId) {
       const box = picStackBox();
       if (!box) return null;
       const last = box.lastElementChild;
       if (!last || !last.classList || !last.classList.contains('pic-stack-host')) return null;
       if ((last.getAttribute('data-pic-role') || '') !== role) return null;
+      const hostBatch = last.getAttribute('data-pic-batch') || '';
+      if (batchId ? hostBatch !== batchId : hostBatch) return null;
       const stack = last.querySelector('.pic-stack');
       if (!stack) return null;
       return last;
+    }
+
+    function isPurePicHistoryItem(m) {
+      if (!m || m.hiddenFromView) return false;
+      const c = String(m.content || '');
+      return !!(m.media && (c === '[IMAGE]' || c.indexOf('[IMAGE:') === 0)) ||
+        /^\[IMAGE:[\s\S]*\]$/.test(c);
+    }
+
+    // 1~2 张永远是两条普通的图；只有一批 3 张以上才收成一摞。
+    function picRunLength(msgIndex, role) {
+      const h = (typeof appData !== 'undefined' && Array.isArray(appData.chatHistory)) ? appData.chatHistory : null;
+      if (!h || msgIndex < 0 || msgIndex >= h.length) return 0;
+      let start = msgIndex;
+      let end = msgIndex;
+      while (start > 0 && (h[start - 1].role || '') === role && isPurePicHistoryItem(h[start - 1])) start--;
+      while (end + 1 < h.length && (h[end + 1].role || '') === role && isPurePicHistoryItem(h[end + 1])) end++;
+      return end - start + 1;
     }
 
     function togglePicStack(stack) {
@@ -5013,14 +5033,19 @@ window.syncNarrationModeUI = syncNarrationModeUI;
         text = text.replace(/<(?:think|thinking|thought)>[\s\S]*$/gi, '');
         text = text.replace(/<\/?(?:think|thinking|thought)>/gi, '').trim();
       }
-      // 【多图叠放】同一人连着发的图收进上一个图堆，不再单独起一条消息
+      // 【多图叠放】同一批 3 张以上的图才收进上一个图堆；1~2 张各自独立成条
       if ((role === 'user' || role === 'assistant') && typeof text === 'string' && !(thought && String(thought).trim())) {
         const picOnly = text.trim().match(/^\[IMAGE:([^\]]+)\]$/);
         if (picOnly && picOnly[1]) {
-          const stackHost = findTailPicStack(role);
-          if (stackHost) {
-            addPicToStack(stackHost, picOnly[1], msgIndex);
-            return stackHost;
+          const stackMsg = (msgIndex !== -1 && typeof appData !== 'undefined' && Array.isArray(appData.chatHistory) && appData.chatHistory[msgIndex]) ? appData.chatHistory[msgIndex] : null;
+          const picBatch = stackMsg && typeof stackMsg.picBatch === 'string' ? stackMsg.picBatch : '';
+          const picStandalone = !!(stackMsg && stackMsg.picStandalone);
+          if (!picStandalone && picRunLength(msgIndex, role) >= 3) {
+            const stackHost = findTailPicStack(role, picBatch);
+            if (stackHost) {
+              addPicToStack(stackHost, picOnly[1], msgIndex);
+              return stackHost;
+            }
           }
         }
       }
@@ -5391,6 +5416,9 @@ window.syncNarrationModeUI = syncNarrationModeUI;
         bubbleWrap.appendChild(imgBubble);
         group.classList.add('pic-stack-host');
         group.setAttribute('data-pic-role', role);
+        if (currentMsg && typeof currentMsg.picBatch === 'string' && currentMsg.picBatch) {
+          group.setAttribute('data-pic-batch', currentMsg.picBatch);
+        }
         refreshPicStack(imgBubble);
       }
       // 角色真的做好了一份可下载的文件（Word / Excel / PPT）
@@ -7257,9 +7285,12 @@ ${(() => {
         window.groupHandleSendPicture(event);
         return;
       }
-      // 支持一次多选：按选择顺序一张一张发，连着发的多张在聊天里自动叠成一摞
+      // 支持一次多选：按选择顺序一张一张发。
+      // 只有这一批 >=3 张才走「叠成一摞」；1~2 张各自是普通图片消息，和微信一致。
       const files = (event.target.files ? Array.prototype.slice.call(event.target.files) : []).filter(Boolean);
       if (!files.length) return;
+      const picBatch = files.length >= 3 ? ('pb_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)) : '';
+      const picStandalone = files.length < 3;
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
@@ -7282,7 +7313,7 @@ ${(() => {
         const newIdx = appData.chatHistory.length;
 
         // 压入聊天记录
-        appData.chatHistory.push({ role: 'user', content: '[IMAGE]', time: getNowStr(), media: base64Img, maskId: currentMaskId()});
+        appData.chatHistory.push({ role: 'user', content: '[IMAGE]', time: getNowStr(), media: base64Img, maskId: currentMaskId(), picBatch: picBatch, picStandalone: picStandalone });
         noteChatImageUserTurn('');
         autoSaveChatImageToAlbum(base64Img, { source: 'chat-user' });
         // 用户先说了「这张给你当头像」，图现在才到：这一张直接收进头像库并换上
@@ -9511,6 +9542,11 @@ ${catalog}
             }
           })();
 
+          // 角色这一轮要发的图：>=3 张才叠成一摞，1~2 张各自独立成条。
+          const replyPicCount = segList.filter(function (item) { return item && item.type === 'albumimage'; }).length;
+          const botPicBatch = replyPicCount >= 3 ? ('pb_bot_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)) : '';
+          const botPicStandalone = replyPicCount > 0 && replyPicCount < 3;
+
           // 撤回指令：优先撤这一轮里刚说的最后一句（它还没落库），
           // 这一轮没说话时才去撤上一轮已发出的最后一条。
           let recallSameTurn = '';
@@ -9640,7 +9676,7 @@ ${catalog}
             const imgContent = '[IMAGE:' + item.src + ']';
             const nowTime = getNowStr();
             const segIdx = appData.chatHistory.length;
-            appData.chatHistory.push({ role: 'assistant', content: imgContent, time: nowTime, albumPhotoId: item.photoId, fromAlbum: true, maskId: currentMaskId() });
+            appData.chatHistory.push({ role: 'assistant', content: imgContent, time: nowTime, albumPhotoId: item.photoId, fromAlbum: true, maskId: currentMaskId(), picBatch: botPicBatch, picStandalone: botPicStandalone });
             renderMessageBubble('assistant', imgContent, nowTime, '', segIdx);
             try { safeSaveChatHistory(); } catch(e){}
             scrollChatToBottom();
@@ -9698,6 +9734,8 @@ ${catalog}
               if (isImage) {
                 historyItem.albumPhotoId = item.photoId;
                 historyItem.fromAlbum = true;
+                if (botPicBatch) historyItem.picBatch = botPicBatch;
+                else if (botPicStandalone) historyItem.picStandalone = true;
               }
               appData.chatHistory.push(historyItem);
               if (!isCard && !isImage && /^\[IMAGE:[\s\S]*\]$/.test(segContent)) {
