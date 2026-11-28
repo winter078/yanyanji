@@ -2750,5 +2750,53 @@ body[data-theme="light"] .wechat-tool-pill.sel {
   color: rgba(92, 69, 32, 0.62);
 }
 
+/* ================= 按条数区间删除聊天记录 ================= */
+.chat-del-range-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 10px;
+  margin-bottom: 8px;
+  border-radius: 11px;
+  border: 1px solid var(--border-default);
+  background: var(--bg-base);
+  box-sizing: border-box;
+}
+.chat-del-range-word {
+  flex: none;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+.chat-del-range-input {
+  width: 62px;
+  min-width: 0;
+  padding: 6px 7px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 13px;
+  text-align: center;
+  box-sizing: border-box;
+}
+.chat-del-range-remove {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  margin-left: auto;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.chat-del-range-remove:active {
+  background: rgba(239, 68, 68, 0.10);
+  color: var(--danger-primary);
+}
+
 
 

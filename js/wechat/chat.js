@@ -9872,6 +9872,349 @@ ${catalog}
         (appData.visionModel ? '\n识图专属模型: ' + appData.visionModel : ''));
     }
 
+    // ================= 按条数区间删除聊天记录 =================
+    // 编号按“聊天里能看到的顺序”来算：第 1 条最早，最后一条是最近的。
+    // 只隐藏的提示不计入编号，避免用户按界面数出来的序号对不上。
+    var chatDeleteRangeState = {
+      scope: 'single',
+      rows: [],
+      total: 0,
+      name: '',
+      groupId: '',
+      lastId: ''
+    };
+
+    function chatDeleteRangeVisibleMap(list) {
+      const out = [];
+      (Array.isArray(list) ? list : []).forEach(function (m, idx) {
+        if (!m || m.hiddenFromView) return;
+        out.push({ index: idx, message: m });
+      });
+      return out;
+    }
+
+    function chatDeleteRangeContext(scope) {
+      if (scope === 'group') {
+        const gid = window.__groupSettingsId || window.__groupMode || '';
+        const g = (typeof window.findGroup === 'function') ? window.findGroup(gid) : null;
+        if (!g) return null;
+        if (!Array.isArray(g.history)) g.history = [];
+        const visible = chatDeleteRangeVisibleMap(g.history);
+        return {
+          scope: 'group',
+          group: g,
+          groupId: g.id,
+          name: g.name || '这个群',
+          list: g.history,
+          visible: visible
+        };
+      }
+      const c = (typeof window.getActiveCharacter === 'function') ? window.getActiveCharacter() : null;
+      if (!Array.isArray(appData.chatHistory)) appData.chatHistory = [];
+      return {
+        scope: 'single',
+        group: null,
+        groupId: '',
+        name: c && c.name ? c.name : '当前角色',
+        list: appData.chatHistory,
+        visible: chatDeleteRangeVisibleMap(appData.chatHistory)
+      };
+    }
+
+    function chatDeleteRangeEl(id) {
+      return document.getElementById(id);
+    }
+
+    function syncChatDeleteRangeRows() {
+      const listEl = chatDeleteRangeEl('chat-delete-range-list');
+      if (!listEl) return chatDeleteRangeState.rows;
+      const rows = [];
+      Array.prototype.forEach.call(listEl.querySelectorAll('[data-del-range-row]'), function (row) {
+        const startEl = row.querySelector('[data-del-role="start"]');
+        const endEl = row.querySelector('[data-del-role="end"]');
+        rows.push({
+          start: startEl ? String(startEl.value || '').trim() : '',
+          end: endEl ? String(endEl.value || '').trim() : ''
+        });
+      });
+      chatDeleteRangeState.rows = rows;
+      return rows;
+    }
+
+    function renderChatDeleteRangeRows() {
+      const listEl = chatDeleteRangeEl('chat-delete-range-list');
+      if (!listEl) return;
+      if (!chatDeleteRangeState.rows.length) chatDeleteRangeState.rows = [{ start: '', end: '' }];
+      listEl.innerHTML = chatDeleteRangeState.rows.map(function (row, i) {
+        const max = Math.max(1, chatDeleteRangeState.total);
+        return '<div class="chat-del-range-row" data-del-range-row>' +
+          '<span class="chat-del-range-word">第</span>' +
+          '<input class="chat-del-range-input" type="number" inputmode="numeric" min="1" max="' + max + '" data-del-role="start" value="' + String(row.start || '').replace(/"/g, '&quot;') + '" placeholder="起" oninput="syncChatDeleteRangeRows();updateChatDeleteRangePreview()" />' +
+          '<span class="chat-del-range-word">到</span>' +
+          '<input class="chat-del-range-input" type="number" inputmode="numeric" min="1" max="' + max + '" data-del-role="end" value="' + String(row.end || '').replace(/"/g, '&quot;') + '" placeholder="止" oninput="syncChatDeleteRangeRows();updateChatDeleteRangePreview()" />' +
+          '<span class="chat-del-range-word">条</span>' +
+          '<button type="button" class="chat-del-range-remove" onclick="removeChatDeleteRangeRow(' + i + ')" title="移除这个区间">×</button>' +
+        '</div>';
+      }).join('');
+    }
+
+    function parseChatDeleteRangeRows() {
+      const rows = syncChatDeleteRangeRows();
+      const total = chatDeleteRangeState.total;
+      const ranges = [];
+      let error = '';
+      rows.forEach(function (row, i) {
+        const sRaw = String(row.start || '').trim();
+        const eRaw = String(row.end || '').trim();
+        if (!sRaw && !eRaw) return;
+        if (!sRaw || !eRaw) {
+          if (!error) error = '第 ' + (i + 1) + ' 个区间缺少起点或终点。';
+          return;
+        }
+        const start = Number(sRaw);
+        const end = Number(eRaw);
+        if (!Number.isInteger(start) || !Number.isInteger(end) || start < 1 || end < 1) {
+          if (!error) error = '区间要填大于 0 的整数条数。';
+          return;
+        }
+        if (start > total || end > total) {
+          if (!error) error = '最大只能填到第 ' + total + ' 条。';
+          return;
+        }
+        if (start > end) {
+          if (!error) error = '第 ' + (i + 1) + ' 个区间的起点不能大于终点。';
+          return;
+        }
+        ranges.push([start, end]);
+      });
+      return { ranges: ranges, error: error, total: total };
+    }
+
+    function mergeChatDeleteRanges(ranges) {
+      const sorted = (ranges || []).slice().sort(function (a, b) { return a[0] - b[0]; });
+      const merged = [];
+      sorted.forEach(function (range) {
+        const last = merged[merged.length - 1];
+        if (!last || range[0] > last[1] + 1) merged.push([range[0], range[1]]);
+        else last[1] = Math.max(last[1], range[1]);
+      });
+      return merged;
+    }
+
+    function updateChatDeleteRangePreview() {
+      const previewEl = chatDeleteRangeEl('chat-delete-range-preview');
+      if (!previewEl) return;
+      const parsed = parseChatDeleteRangeRows();
+      const total = chatDeleteRangeState.total;
+      if (parsed.error) {
+        previewEl.style.color = 'var(--danger-primary)';
+        previewEl.textContent = parsed.error;
+        return;
+      }
+      const merged = mergeChatDeleteRanges(parsed.ranges);
+      let delCount = 0;
+      merged.forEach(function (range) { delCount += range[1] - range[0] + 1; });
+      const keep = Math.max(0, total - delCount);
+      previewEl.style.color = '';
+      if (!merged.length) {
+        previewEl.textContent = '还没有填写要删除的区间。';
+      } else {
+        previewEl.innerHTML = '将删除 <b>' + delCount + '</b> 条，保留 <b>' + keep + '</b> 条。重叠的区间会自动合并。';
+      }
+    }
+
+    function renderChatDeleteRangeModal() {
+      const metaEl = chatDeleteRangeEl('chat-delete-range-meta');
+      const nameEl = chatDeleteRangeEl('chat-delete-range-name');
+      const total = chatDeleteRangeState.total;
+      if (nameEl) nameEl.textContent = chatDeleteRangeState.name;
+      if (metaEl) {
+        const rawCount = chatDeleteRangeState.rawTotal || total;
+        const hiddenCount = Math.max(0, rawCount - total);
+        metaEl.textContent = '当前共 ' + total + ' 条可查看记录' +
+          (hiddenCount ? '（另有 ' + hiddenCount + ' 条已隐藏提示）' : '') +
+          '。第 1 条最早，第 ' + Math.max(1, total) + ' 条最近。';
+      }
+      const keepEl = chatDeleteRangeEl('chat-delete-keep-input');
+      if (keepEl) {
+        keepEl.max = String(Math.max(0, total));
+        keepEl.value = String(Math.min(100, total));
+      }
+      renderChatDeleteRangeRows();
+      updateChatDeleteRangePreview();
+    }
+
+    window.openChatDeleteRangeModal = function (scope) {
+      const ctx = chatDeleteRangeContext(scope === 'group' ? 'group' : 'single');
+      if (!ctx) {
+        alert('找不到这个聊天，先回到聊天页再试一次。');
+        return;
+      }
+      if (!ctx.visible.length) {
+        alert('当前没有可删除的聊天记录。');
+        return;
+      }
+      const last = ctx.visible.length ? ctx.visible[ctx.visible.length - 1].message : null;
+      chatDeleteRangeState = {
+        scope: ctx.scope,
+        rows: [{ start: '', end: '' }],
+        total: ctx.visible.length,
+        rawTotal: ctx.list.length,
+        name: ctx.name,
+        groupId: ctx.groupId,
+        lastId: last && last.id ? String(last.id) : ''
+      };
+      renderChatDeleteRangeModal();
+      const modal = chatDeleteRangeEl('chat-delete-range-modal');
+      if (modal) modal.classList.add('open');
+    };
+
+    window.closeChatDeleteRangeModal = function () {
+      const modal = chatDeleteRangeEl('chat-delete-range-modal');
+      if (modal) modal.classList.remove('open');
+    };
+
+    window.addChatDeleteRangeRow = function () {
+      syncChatDeleteRangeRows();
+      chatDeleteRangeState.rows.push({ start: '', end: '' });
+      renderChatDeleteRangeRows();
+      updateChatDeleteRangePreview();
+    };
+
+    window.removeChatDeleteRangeRow = function (index) {
+      syncChatDeleteRangeRows();
+      if (index >= 0 && index < chatDeleteRangeState.rows.length) {
+        chatDeleteRangeState.rows.splice(index, 1);
+      }
+      if (!chatDeleteRangeState.rows.length) chatDeleteRangeState.rows.push({ start: '', end: '' });
+      renderChatDeleteRangeRows();
+      updateChatDeleteRangePreview();
+    };
+
+    window.syncChatDeleteRangeRows = syncChatDeleteRangeRows;
+    window.updateChatDeleteRangePreview = updateChatDeleteRangePreview;
+
+    window.applyChatDeleteKeepRecent = function () {
+      const input = chatDeleteRangeEl('chat-delete-keep-input');
+      const total = chatDeleteRangeState.total;
+      const keep = Number(input ? input.value : 0);
+      if (!Number.isInteger(keep) || keep < 0) {
+        alert('请输入要保留的最近条数，0 表示全部删除。');
+        return;
+      }
+      if (keep > total) {
+        alert('当前只有 ' + total + ' 条可查看记录。');
+        return;
+      }
+      if (keep === total) {
+        chatDeleteRangeState.rows = [{ start: '', end: '' }];
+      } else {
+        const delCount = total - keep;
+        chatDeleteRangeState.rows = [{ start: '1', end: String(delCount) }];
+      }
+      renderChatDeleteRangeRows();
+      updateChatDeleteRangePreview();
+    };
+
+    window.confirmChatDeleteRange = function () {
+      const parsed = parseChatDeleteRangeRows();
+      if (parsed.error) {
+        alert(parsed.error);
+        return;
+      }
+      const merged = mergeChatDeleteRanges(parsed.ranges);
+      if (!merged.length) {
+        alert('先填一个要删除的条数区间，例如从第 1 条到第 80 条。');
+        return;
+      }
+      const ctx = chatDeleteRangeContext(chatDeleteRangeState.scope);
+      if (!ctx) {
+        alert('找不到这个聊天，请重新打开删除面板。');
+        return;
+      }
+      const last = ctx.visible.length ? ctx.visible[ctx.visible.length - 1].message : null;
+      const nowLastId = last && last.id ? String(last.id) : '';
+      if (ctx.visible.length !== chatDeleteRangeState.total ||
+          (chatDeleteRangeState.lastId && nowLastId !== chatDeleteRangeState.lastId)) {
+        alert('聊天记录刚刚有更新，条数编号变了。已重新打开面板，请重新选择区间。');
+        window.openChatDeleteRangeModal(chatDeleteRangeState.scope);
+        return;
+      }
+
+      let delCount = 0;
+      merged.forEach(function (range) { delCount += range[1] - range[0] + 1; });
+      const keep = Math.max(0, ctx.visible.length - delCount);
+      const targetName = '「' + ctx.name + '」';
+
+      if (!confirm('删除' + targetName + '的所选区间？\n\n将删除 ' + delCount + ' 条，保留 ' + keep + ' 条。\n只删聊天记录，不会动角色卡和记忆；删除前会先自动备份。')) return;
+
+      if (ctx.scope === 'group') {
+        const g = ctx.group;
+        try {
+          localStorage.setItem('momo_group_history_backup_' + g.id, JSON.stringify({
+            name: g.name || '',
+            savedAt: new Date().toISOString(),
+            history: g.history || []
+          }));
+        } catch (e) {}
+        const oldCursor = parseInt(g.settings && g.settings.summaryCursor, 10) || 0;
+        let removedBeforeCursor = 0;
+        const selected = new Set();
+        merged.forEach(function (range) {
+          for (let ord = range[0]; ord <= range[1]; ord++) {
+            const item = ctx.visible[ord - 1];
+            if (!item) continue;
+            selected.add(item.index);
+            if (item.index < oldCursor) removedBeforeCursor++;
+          }
+        });
+        g.history = ctx.list.filter(function (_, idx) { return !selected.has(idx); });
+        if (g.settings) {
+          g.settings.summaryCursor = Math.max(0, oldCursor - removedBeforeCursor);
+          if (g.settings.summaryCursor > g.history.length) g.settings.summaryCursor = g.history.length;
+        }
+        g.updatedAt = Date.now();
+        try { if (window.persistGroups) window.persistGroups(); } catch (e) {}
+        if (typeof window.renderGroupHistory === 'function') window.renderGroupHistory(g);
+        if (typeof window.renderWechatSessions === 'function') window.renderWechatSessions();
+        if (typeof window.renderContacts === 'function') window.renderContacts();
+        window.closeChatDeleteRangeModal();
+        if (typeof window.wxToast === 'function') window.wxToast('已删除 ' + delCount + ' 条，保留 ' + keep + ' 条');
+        return;
+      }
+
+      if (typeof window.saveChatSnapshot === 'function') {
+        window.saveChatSnapshot('按区间删除聊天记录前自动备份');
+      }
+      const selected = new Set();
+      merged.forEach(function (range) {
+        for (let ord = range[0]; ord <= range[1]; ord++) {
+          const item = ctx.visible[ord - 1];
+          if (item) selected.add(item.index);
+        }
+      });
+      appData.chatHistory = ctx.list.filter(function (_, idx) { return !selected.has(idx); });
+      window.__momAllowEmptyChatSave = appData.chatHistory.length === 0;
+      safeSaveChatHistory();
+      if (!appData.chatHistory.length) {
+        try { window.clearChatHistoryBackup(activeChatCharId()); } catch (e0) {}
+      }
+      loadChatHistory();
+      if (typeof window.renderWechatSessions === 'function') window.renderWechatSessions();
+      window.closeChatDeleteRangeModal();
+      if (typeof window.wxToast === 'function') window.wxToast('已删除 ' + delCount + ' 条，保留 ' + keep + ' 条');
+    };
+
+    window.clearAllChatFromRangeModal = function () {
+      const scope = chatDeleteRangeState.scope;
+      window.closeChatDeleteRangeModal();
+      if (scope === 'group' && typeof window.clearGroupChatHistory === 'function') {
+        window.clearGroupChatHistory();
+      } else if (typeof window.clearChatHistory === 'function') {
+        window.clearChatHistory();
+      }
+    };
+
     function clearChatHistory() {
       const c = (typeof window.getActiveCharacter === 'function') ? window.getActiveCharacter() : null;
       const who = c && c.name ? '「' + c.name + '」' : '当前角色';
