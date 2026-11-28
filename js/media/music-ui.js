@@ -182,26 +182,62 @@
     syncPlayerView();
     if (window.MzLyrics) window.MzLyrics.refresh();
   };
-  /* ---------------- 一起听：歌词两行 ---------------- */
+  /* ---------------- 一起听：滚动歌词 ---------------- */
   let lyricBound = false;
+  let lyricKey = '';
+  let lyricIndex = -1;
 
   function renderLyric(pair) {
     const box = $('music-lyric-box');
-    const cur = $('music-lyric-cur');
-    const next = $('music-lyric-next');
-    if (!box || !cur || !next) return;
-    const a = (pair && pair[0]) || '';
-    const b = (pair && pair[1]) || '';
+    const scroll = $('music-lyric-scroll');
+    if (!box || !scroll) return;
+    const info = (window.MzLyrics && typeof window.MzLyrics.info === 'function')
+      ? window.MzLyrics.info()
+      : null;
+    const lines = (info && info.lines) || [];
     // 取不到歌词（纯音乐 / 还没返回 / 没有网易云 id）就整块淡出，不要弹"暂无歌词"去打扰
-    if (!a && !b) {
+    if (!lines.length) {
       box.classList.remove('show');
-      if (cur.textContent) cur.textContent = '';
-      if (next.textContent) next.textContent = '';
+      scroll.innerHTML = '';
+      lyricKey = '';
+      lyricIndex = -1;
       return;
     }
-    if (cur.textContent !== a) cur.textContent = a;
-    if (next.textContent !== b) next.textContent = b;
+
+    const key = lines.join('\u0001');
+    if (key !== lyricKey) {
+      lyricKey = key;
+      scroll.innerHTML = '';
+      lines.forEach(function (text, i) {
+        const row = document.createElement('div');
+        row.className = 'mz-lyric-line';
+        row.setAttribute('data-i', String(i));
+        row.textContent = text;
+        scroll.appendChild(row);
+      });
+      lyricIndex = -1;
+    }
+
     box.classList.add('show');
+    let idx = info && typeof info.index === 'number' ? info.index : 0;
+    if (idx < 0) idx = 0;
+    const rows = scroll.children;
+    if (!rows.length) return;
+    if (idx >= rows.length) idx = rows.length - 1;
+
+    const old = scroll.querySelector('.mz-lyric-line.cur');
+    if (old) old.classList.remove('cur');
+    const row = rows[idx];
+    row.classList.add('cur');
+
+    // 当前句保持垂直居中；换行时整条歌词向上推。
+    const target = row.offsetTop - Math.max(0, (scroll.clientHeight - row.offsetHeight) / 2);
+    if (lyricIndex === -1 || Math.abs(idx - lyricIndex) > 3) {
+      scroll.scrollTop = target;
+    } else if (idx !== lyricIndex) {
+      scroll.scrollTo({ top: target, behavior: 'smooth' });
+    }
+    lyricIndex = idx;
   }
 
   function bindLyric() {

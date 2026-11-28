@@ -3,11 +3,11 @@
    一个很小的东西，只干四件事：
      1) 拿当前歌的网易云 id，去 /api/music/lyric 取 LRC
      2) 把 LRC 解析成 [{t, text}]，元信息行（作词/作曲）扔掉
-     3) 跟着 window._momoAudio.currentTime 算出"现在这两句"
+     3) 跟着 window._momoAudio.currentTime 算出当前句序号与整首歌词
      4) 变化了就通知订阅者（一起听页面、桌面小组件都订阅它）
 
-   刻意不做的事：整屏滚动歌词、逐字高亮、翻译行叠排。
-   两行就够，页面上没有地方放更多。
+   一起听页面用 info() 做滚动歌词窗口；桌面的 pair() 仍是当前句+下一句。
+   不做逐字高亮、翻译行叠排。
    ============================================================ */
 (function () {
   'use strict';
@@ -124,6 +124,19 @@
     return [lines[idx].text, lines[idx + 1] ? lines[idx + 1].text : ''];
   }
 
+  // 给滚动歌词用：当前句序号 + 整首歌的歌词文本。
+  // 两行 pair 仍保留给桌面小组件，不要改它的返回结构。
+  function currentInfo() {
+    var lines = state.lines;
+    if (!lines.length) return { index: -1, lines: [] };
+    var audio = window._momoAudio;
+    var t = audio && !audio.paused ? (audio.currentTime || 0) : (window._mzLastKnownTime || 0);
+    return {
+      index: indexAt(t),
+      lines: lines.map(function (l) { return l.text; })
+    };
+  }
+
   /* ---------- 时间驱动 ---------- */
   function tick() {
     var audio = window._momoAudio;
@@ -131,8 +144,10 @@
       window._mzLastKnownTime = audio.currentTime;
     }
     var pair = currentPair();
-    var changed = pair[0] !== lastPair[0] || pair[1] !== lastPair[1];
+    var idx = indexAt(window._mzLastKnownTime || 0);
+    var changed = pair[0] !== lastPair[0] || pair[1] !== lastPair[1] || idx !== lastIndex;
     lastPair = pair;
+    lastIndex = idx;
     if (changed) emit();
   }
 
@@ -232,6 +247,7 @@
       tick();
     },
     pair: currentPair,
+    info: currentInfo,
     state: function () {
       return {
         neId: state.neId,
