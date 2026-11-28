@@ -1216,7 +1216,9 @@ html.kb-open #page-chat .wechat-input-bar-v2 {
 .msg-bubble-wechat {
   display: inline-block;
   width: fit-content;
-  max-width: var(--chat-bubble-max, 248px);
+  /* 微信文字气泡上限约为屏幕宽度的 70%，且不超过 300px；
+     原来的 248px 会让十几个字也被挤成两行，看起来忽长忽短。 */
+  max-width: min(var(--chat-bubble-max, 300px), 72vw);
   padding: var(--chat-bubble-pad-y, 10px) var(--chat-bubble-pad-x, 13px);
   border-radius: var(--chat-bubble-radius, 16px);
   font-size: var(--chat-font-size, 15px);
