@@ -547,7 +547,7 @@
   position: relative;
   width: 100%;
   padding: 7.5px 12px calc(7.5px + env(safe-area-inset-bottom, 7px));
-  background: var(--bg-elevated) !important;
+  background: var(--wechat-bg-input-bar, var(--bg-elevated)) !important;
   backdrop-filter: blur(25px);
   -webkit-backdrop-filter: blur(25px);
   border-top: 0.5px solid var(--color-border);
@@ -1233,7 +1233,7 @@ html.kb-open #page-chat .wechat-input-bar-v2 {
 }
 
 .msg-group.bot .msg-bubble-wechat {
-  background: var(--bubble-bot, #2b2a33);
+  background: var(--bubble-bot, #2c2c2c);
   color: var(--bubble-bot-text, #f5f5f7);
   border: var(--chat-bubble-border, 0.5px) solid var(--chat-bubble-outline, var(--color-border-subtle, transparent));
   border-top-left-radius: var(--chat-bubble-tail, 5px);

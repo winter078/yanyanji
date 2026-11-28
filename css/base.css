@@ -55,6 +55,7 @@
   --wechat-bg-bar: rgba(237, 237, 237, 0.96);
   --chat-dim: rgba(10, 10, 14, 0.16); /* 聊天壁纸压暗层：浅色下要轻 */
   --wechat-bg-input: #ffffff;
+  --wechat-bg-input-bar: var(--bg-elevated);
   /* 聊天页四块浮层（＋抽屉 / 表情抽屉 / 引用条 / 多选栏）共用的面板底 */
   --chat-drawer-bg: #ffffff;
 
@@ -181,12 +182,13 @@ body[data-theme="dark"],
   /* 寰俊娣辫壊涓撳睘浠ょ墝瑕嗙洊 */
   --bubble-user: #28c445;
   --bubble-user-text: #000000;
-  --bubble-bot: #2b2a33;
+  --bubble-bot: #2c2c2c;
   --bubble-bot-text: #f5f5f7;
   --wechat-bg-chat: #111114;
-  --wechat-bg-bar: rgba(23, 23, 27, 0.94);
-  --chat-dim: rgba(10, 10, 14, 0.58); /* 聊天壁纸压暗层 */
+  --wechat-bg-bar: rgba(26, 25, 24, 0.94);
+  --chat-dim: rgba(10, 10, 14, 0.46); /* 聊天壁纸压暗层 */
   --wechat-bg-input: #2c2c2e;
+  --wechat-bg-input-bar: #232323;
   --chat-drawer-bg: #1e1e1e;
 
   /* 一起看（影视放映室）深色覆盖 */
