@@ -30,12 +30,26 @@
     el.classList.remove('open');
     el.classList.add('mom-collapse');
     el.style.pointerEvents = 'none';
-    setTimeout(function () {
+    el.__momCollapseTimer = setTimeout(function () {
+      el.__momCollapseTimer = 0;
       el.__momCollapsing = false;
       el.style.pointerEvents = prevPE || '';
       el.classList.remove('mom-collapse');
-      if (!el.classList.contains('open')) el.style.display = 'none';
+      // 不能留 inline display:none，否则下一次 classList.add('open') 会被内联样式压住，
+      // 弹层就变成“只能打开一次”。清回空值，让 .open 的 CSS display:flex 重新生效。
+      el.style.display = '';
     }, 300);
+  }
+
+  function cancelCollapse(el) {
+    if (el.__momCollapseTimer) {
+      clearTimeout(el.__momCollapseTimer);
+      el.__momCollapseTimer = 0;
+    }
+    el.__momCollapsing = false;
+    el.classList.remove('mom-collapse');
+    el.style.display = '';
+    el.style.pointerEvents = '';
   }
 
   var mo = new MutationObserver(function (list) {
@@ -46,7 +60,14 @@
       if (!el.matches || !el.matches(SEL)) continue;
       var before = m.oldValue || '';
       var after = el.className || '';
-      if (/\bopen\b/.test(before) && !/\bopen\b/.test(after)) collapse(el);
+      var wasOpen = /\bopen\b/.test(before);
+      var isOpen = /\bopen\b/.test(after);
+      if (!wasOpen && isOpen) {
+        // 如果在收起动画的 300ms 内又打开了，取消上一次的收尾，避免它把 display 锁死。
+        cancelCollapse(el);
+      } else if (wasOpen && !isOpen) {
+        collapse(el);
+      }
     }
   });
 

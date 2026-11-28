@@ -4009,7 +4009,13 @@ window.syncNarrationModeUI = syncNarrationModeUI;
         });
       }
       const modal = document.getElementById('bubble-context-menu');
-      if (modal) modal.classList.add('open');
+      if (modal) {
+        // 收起动画可能在 300ms 后留下 inline display:none；每次打开都清掉，
+        // 否则第二次长按只会加上 .open，但被内联样式压住，菜单打不开。
+        modal.style.display = '';
+        modal.style.pointerEvents = '';
+        modal.classList.add('open');
+      }
     }
     window.openBubbleContextMenu = openBubbleContextMenu;
 
@@ -4117,7 +4123,11 @@ window.syncNarrationModeUI = syncNarrationModeUI;
         document.getElementById('bubble-edit-textarea').value = rawContent;
         if (typeof window.setBubbleEditType === 'function') window.setBubbleEditType(currentBubbleEditType);
         const modal = document.getElementById('bubble-edit-modal');
-        if (modal) modal.classList.add('open');
+        if (modal) {
+          modal.style.display = '';
+          modal.style.pointerEvents = '';
+          modal.classList.add('open');
+        }
         setTimeout(() => {
           document.getElementById('bubble-edit-textarea').focus();
         }, 150);
